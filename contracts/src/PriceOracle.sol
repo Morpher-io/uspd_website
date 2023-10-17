@@ -4,10 +4,10 @@ pragma solidity ^0.8.20;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-import "https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/interfaces/IUniswapV2Router02.sol";
+import "uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import "https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolState.sol";
-import "https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/IUniswapV3Factory.sol";
+import "v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
+import "v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 
 contract PriceOracle {
