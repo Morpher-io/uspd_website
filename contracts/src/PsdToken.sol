@@ -10,14 +10,19 @@ contract PSD is ERC20, ERC20Permit, AccessControl {
 
     PriceOracle oracle;
 
+
     bytes32 public constant EXCESS_COLLATERAL_DRAIN_ROLE = keccak256("EXCESS_COLLATERAL_DRAIN_ROLE");
+    bytes32 public constant UPDATE_ORACLE_ROLE = keccak256("UPDATE_ORACLE_ROLE");
 
     event Payout(address to, uint psdAmount, uint ethAmount, uint askPrice);
     event ExcessCollateralPayout(address to, uint ethAmount);
+    event PriceOracleUpdated(address oldOracle, address newOracle);
 
     constructor(address _oracle) ERC20("PSD", "PSD") ERC20Permit("PSD") {
         oracle = PriceOracle(_oracle);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(EXCESS_COLLATERAL_DRAIN_ROLE, msg.sender);
+        _grantRole(UPDATE_ORACLE_ROLE, msg.sender);
     }
 
     function mint(address to) public payable {
@@ -51,6 +56,11 @@ contract PSD is ERC20, ERC20Permit, AccessControl {
         uint excessCollateral = (address(this).balance - (totalSupply()*1e18 / ethAskPrice)); 
         to.transfer((95*excessCollateral)/100); //leave it 5% overcollateralized
         emit ExcessCollateralPayout(to, excessCollateral);
+    }
+
+    function updateOracle(address newOracle) public onlyRole(UPDATE_ORACLE_ROLE) {
+        emit PriceOracleUpdated(address(oracle), newOracle);
+        oracle = PriceOracle(newOracle);
     }
 
    

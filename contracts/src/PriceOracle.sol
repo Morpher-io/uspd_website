@@ -6,7 +6,7 @@ import "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
 import "v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "uniswap-v2-periphery/interfaces/IUniswapV2Router02.sol";
 
 
 
@@ -68,34 +68,36 @@ contract PriceOracle {
 
     
     function getAskPrice() public view returns(uint) {
-      uint uniswapV3PriceUSDC = getUniswapV3WethUsdcPrice();
-      uint uniswapV2PriceUSDC  = getUniswapV2WethUSDPrice(1 ether);
       uint chainlinkPrice = uint(getChainlinkDataFeedLatestAnswer());
+      return chainlinkPrice; //removed the fee/risk model for the demo
+    //   uint uniswapV3PriceUSDC = getUniswapV3WethUsdcPrice();
+    //   uint uniswapV2PriceUSDC  = getUniswapV2WethUSDPrice(1 ether);
 
-      uint returnPrice = uniswapV3PriceUSDC != 0 ? uniswapV3PriceUSDC : uniswapV2PriceUSDC;
-      if(uniswapV2PriceUSDC > returnPrice) {
-        returnPrice = uniswapV3PriceUSDC;
-      }
-      if(chainlinkPrice > returnPrice) {
-        returnPrice = chainlinkPrice;
-      }
-      return returnPrice;
+    //   uint returnPrice = uniswapV3PriceUSDC != 0 ? uniswapV3PriceUSDC : uniswapV2PriceUSDC;
+    //   if(uniswapV2PriceUSDC > returnPrice) {
+    //     returnPrice = uniswapV3PriceUSDC;
+    //   }
+    //   if(chainlinkPrice > returnPrice) {
+    //     returnPrice = chainlinkPrice;
+    //   }
+    //   return returnPrice;
 
     }
     
     function getBidPrice() public view returns(uint) {
-      uint uniswapV3PriceUSDC = getUniswapV3WethUsdcPrice();
-      uint uniswapV2PriceUSDC  = getUniswapV2WethUSDPrice(1 ether);
       uint chainlinkPrice = uint(getChainlinkDataFeedLatestAnswer());
+      return chainlinkPrice; //removed fee/risk model for the demo
+    //   uint uniswapV3PriceUSDC = getUniswapV3WethUsdcPrice();
+    //   uint uniswapV2PriceUSDC  = getUniswapV2WethUSDPrice(1 ether);
 
-      uint returnPrice = uniswapV3PriceUSDC != 0 ? uniswapV3PriceUSDC : uniswapV2PriceUSDC;
-      if(uniswapV2PriceUSDC < returnPrice) {
-        returnPrice = uniswapV3PriceUSDC;
-      }
-      if(chainlinkPrice < returnPrice) {
-        returnPrice = chainlinkPrice;
-      }
-      return returnPrice;
+    //   uint returnPrice = uniswapV3PriceUSDC != 0 ? uniswapV3PriceUSDC : uniswapV2PriceUSDC;
+    //   if(uniswapV2PriceUSDC < returnPrice) {
+    //     returnPrice = uniswapV3PriceUSDC;
+    //   }
+    //   if(chainlinkPrice < returnPrice) {
+    //     returnPrice = chainlinkPrice;
+    //   }
+    //   return returnPrice;
 
     }
 
