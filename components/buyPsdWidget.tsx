@@ -53,7 +53,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
     if (isConnected) {
         return (
             <div className="flex flex-col">
-                <div className="flex flex-col p-4 rounded-lg bg-gray-100 text-center">
+                <div className="flex flex-col p-4 rounded-lg bg-gray-100 dark:bg-gray-900 text-center">
                     <div className="flex flex-row justify-between">
 
                         <input
@@ -63,7 +63,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                             placeholder="ETH to convert"
                             type="number"
                             step={0.01}
-                            className="bg-gray-100 border-transparent focus:border-transparent focus:ring-0 focus:outline-none text-xl grow w-1/2"
+                            className="bg-gray-100 dark:bg-gray-900 border-transparent focus:border-transparent focus:ring-0 focus:outline-none text-xl grow w-1/2"
                             onChange={
                                 (e) => {
                                     if (Number(e.target.value) >= 0) {
@@ -76,7 +76,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                         <span className="text-xl ml-2">ETH</span>
                     </div>
 
-                    <div className="flex flex-row text-xs pt-2 justify-between  text-gray-400 text-light">
+                    <div className="flex flex-row text-xs pt-2 justify-between  text-gray-400 text-light dark:text-gray-200">
                         <span>
                             {purchaseAmount && purchaseAmount > 0 && !askPriceRead.isLoading ?
                                 <span>1 PSD ≈ ${parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)}</span> : ''
@@ -99,17 +99,17 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                     zIndex: 2,
                     left: "50%",
 
-                }} className="bg-gray-100 text-center p-1" onClick={() => setIsPurchase(false)}>
+                }} className="bg-gray-100 text-center p-1 dark:bg-gray-900" onClick={() => setIsPurchase(false)}>
                     ⬇</button>
 
-                <div className="flex flex-col p-4 rounded-lg bg-gray-100">
+                <div className="flex flex-col p-4 rounded-lg bg-gray-100 dark:bg-gray-900">
                     <div className="flex flex-row justify-between">
 
                         <span>{purchaseAmount && purchaseAmount > 0 ? ((purchaseAmount || 0) * Number(formatEther(askPriceRead.data as bigint))).toFixed(5) : ''}</span>
                         <span className="text-xl">PSD</span>
                     </div>
                     {purchaseAmount ?
-                        <div className="text-right text-xs pt-2  text-gray-400 text-light">
+                        <div className="text-right text-xs pt-2  text-gray-400 dark:text-gray-200 text-light">
 
                             <span>Balance: {parseFloat(formatEther(psdBalance.data as bigint)).toFixed(5)} PSD</span>
                         </div>
