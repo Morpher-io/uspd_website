@@ -25,6 +25,10 @@ contract PriceOracle {
   //uniswap V3 Pool Weth/USDC: 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
   //parameter mainchain: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48","0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D","0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640","0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
   //parameter görli: "0x07865c6E87B9F70255377e024ace6630C1Eaa37F","0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D","0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e"
+  //parameter Polygon: "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359","0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D","0xAB594600376Ec9fD91F8e885dADF0CE036862dE0"
+
+  //frame wallet polygon: forge create PriceOracle --rpc-url http://localhost:1248 --from 0x88884CB9ca20Edcea734e01Af376FdD8C5048B4F --gas-limit 8000000 --unlocked --chain-id 137 --verify --constructor-args "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359" "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D" "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0"
+  //forge verify-contract --chain-id 137 0x95705530B53c4d7F9f5a8251fa67971908ef09Bb PriceOracle --compiler-version 0.8.20  --watch
   constructor(address _usdcAddress, address uniswapV2Router02Address, address chainLinkAggregatorAddress) {
     dataFeed = AggregatorV3Interface(chainLinkAggregatorAddress);
     usdcAddress = _usdcAddress;
@@ -62,7 +66,7 @@ contract PriceOracle {
             /*uint timeStamp*/,
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData();
-        return 1e18 * (answer/1e8); //converted to 18 digits
+        return (1e18 * answer)/1e8; //converted to 18 digits
     }
 
 

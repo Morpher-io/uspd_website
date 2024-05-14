@@ -6,7 +6,7 @@ import { useAccount, useBalance, useContractRead, useContractWrite, useNetwork, 
 import { ConnectButton, } from "@rainbow-me/rainbowkit";
 import { Dispatch, SetStateAction, useState } from "react";
 
-import PsdToken from "../contracts/out/PsdToken.sol/PSD.json";
+import UspdToken from "../contracts/out/UspdToken.sol/USPD.json";
 import PriceOracle from "../contracts/out/PriceOracle.sol/PriceOracle.json";
 
 import { formatEther, parseEther } from "viem";
@@ -29,7 +29,7 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
 
     const psdBalance = useContractRead({
         address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
-        abi: PsdToken.abi,
+        abi: UspdToken.abi,
         functionName: 'balanceOf',
         args: [address],
         watch: true
@@ -39,7 +39,7 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
 
     const { config } = usePrepareContractWrite({
         address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
-        abi: PsdToken.abi,
+        abi: UspdToken.abi,
         functionName: 'burn',
         args: [parseEther((purchaseAmount || 0).toString()), address],
     })
@@ -61,7 +61,7 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
                             id="input-example"
                             disabled={isLoading}
                             name="input-name"
-                            placeholder="PSD to convert"
+                            placeholder="USPD to convert"
                             type="number"
                             step={0.1}
                             key="buyinput"
@@ -69,12 +69,12 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
                             className="bg-gray-100 dark:bg-gray-900 border-transparent focus:border-transparent focus:ring-0 focus:outline-none text-xl grow w-1/2"
                             value={purchaseAmount || ''}
                         />
-                        <span className="text-xl ml-2">PSD</span>
+                        <span className="text-xl ml-2">USPD</span>
                     </div>
 
                     <div className="flex flex-row text-xs pt-2 justify-between text-gray-400 dark:text-gray-300 text-light">
                         <span>{purchaseAmount && !askPriceRead.isLoading ? 
-                            <span>{parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)} PSD ≈ 1 ETH </span>
+                            <span>{parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)} USPD ≈ 1 ETH </span>
                             : ''
                         }</span>
                         <span>
@@ -111,7 +111,7 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
                         </div> : ''
                     }
                 </div>
-                <button onClick={() => { sendBurnTokens?.() }} disabled={chain?.unsupported || isLoading} type="button" className={[...["mt-4 rounded-lg p-4 text-white "], ...((chain?.unsupported || isLoading) ? ["bg-gray-700 hover:bg-gray-700"] : ["transition ease-in-out delay-50 bg-blue-500 hover:-translate-y-1 hover:scale-110 hover:bg-indigo-500 duration-300 active:-translate-y-0 active:scale-90 active:delay-0 active:duration-0 focus:scale-100 focus:-translate-y-0 focus:delay-0 focus:duration-100"])].join(" ")}>Burn PSD</button>
+                <button onClick={() => { sendBurnTokens?.() }} disabled={chain?.unsupported || isLoading} type="button" className={[...["mt-4 rounded-lg p-4 text-white "], ...((chain?.unsupported || isLoading) ? ["bg-gray-700 hover:bg-gray-700"] : ["transition ease-in-out delay-50 bg-blue-500 hover:-translate-y-1 hover:scale-110 hover:bg-indigo-500 duration-300 active:-translate-y-0 active:scale-90 active:delay-0 active:duration-0 focus:scale-100 focus:-translate-y-0 focus:delay-0 focus:duration-100"])].join(" ")}>Burn USPD</button>
                 <div className="flex flex-col items-center">
                     <ThreeDots
                         height="80"

@@ -11,8 +11,8 @@ import { ThemeProvider } from "./theme-provider";
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'PSD Demo',
-  description: 'Demo of the Provably Stable Coin',
+  title: 'USPD Demo',
+  description: 'Demo of the US Permissionless Dollar',
 }
 
 export default function RootLayout({

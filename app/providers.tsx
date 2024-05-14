@@ -17,7 +17,7 @@ import {
 import { configureChains, createConfig, WagmiConfig } from 'wagmi';
 import {
   // mainnet,
-  // polygon,
+  polygon,
   // optimism,
   // arbitrum,
   // base,
@@ -29,7 +29,7 @@ import { publicProvider } from 'wagmi/providers/public';
 const { chains, publicClient, webSocketPublicClient } = configureChains(
   [
     // mainnet,
-    // polygon,
+    polygon,
     // optimism,
     // arbitrum,
     // base,
@@ -50,7 +50,7 @@ const connectors = connectorsForWallets([{groupName: "Connect", wallets}]);
 // });
 
 const demoAppInfo = {
-  appName: 'PSD Token Demo',
+  appName: 'USPD Token Demo',
 };
 
 // const connectors = connectorsForWallets([

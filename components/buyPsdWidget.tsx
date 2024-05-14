@@ -6,7 +6,7 @@ import { useAccount, useBalance, useContractRead, useNetwork, usePrepareSendTran
 import { ConnectButton, } from "@rainbow-me/rainbowkit";
 import { useState, Dispatch, SetStateAction } from "react";
 
-import PsdToken from "../contracts/out/PsdToken.sol/PSD.json";
+import UspdToken from "../contracts/out/UspdToken.sol/USPD.json";
 import PriceOracle from "../contracts/out/PriceOracle.sol/PriceOracle.json";
 
 import useDebounce from "./utils/debounce";
@@ -29,9 +29,9 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
         functionName: 'getBidPrice',
     })
 
-    const psdBalance = useContractRead({
+    const uspdBalance = useContractRead({
         address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
-        abi: PsdToken.abi,
+        abi: UspdToken.abi,
         functionName: 'balanceOf',
         args: [address],
         watch: true
@@ -60,7 +60,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                             id="input-example"
                             name="input-name"
                             disabled={isLoading}
-                            placeholder="ETH to convert"
+                            placeholder="MATIC to convert"
                             type="number"
                             step={0.01}
                             className="bg-gray-100 dark:bg-gray-900 border-transparent focus:border-transparent focus:ring-0 focus:outline-none text-xl grow w-1/2"
@@ -73,13 +73,13 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                             }
                             value={(purchaseAmount !== undefined ? purchaseAmount : '')}
                         />
-                        <span className="text-xl ml-2">ETH</span>
+                        <span className="text-xl ml-2">MATIC</span>
                     </div>
 
                     <div className="flex flex-row text-xs pt-2 justify-between  text-gray-400 text-light dark:text-gray-200">
                         <span>
                             {purchaseAmount && purchaseAmount > 0 && !askPriceRead.isLoading ?
-                                <span>1 PSD ≈ ${parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)}</span> : ''
+                                <span>1 MATIC ≈ ${parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)}</span> : ''
                             }
                         </span>
                         <span>
@@ -106,17 +106,17 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                     <div className="flex flex-row justify-between">
 
                         <span>{purchaseAmount && purchaseAmount > 0 ? ((purchaseAmount || 0) * Number(formatEther(askPriceRead.data as bigint))).toFixed(5) : ''}</span>
-                        <span className="text-xl">PSD</span>
+                        <span className="text-xl">USPD</span>
                     </div>
                     {purchaseAmount ?
                         <div className="text-right text-xs pt-2  text-gray-400 dark:text-gray-200 text-light">
 
-                            <span>Balance: {parseFloat(formatEther(psdBalance.data as bigint)).toFixed(5)} PSD</span>
+                            <span>Balance: {parseFloat(formatEther(uspdBalance.data as bigint)).toFixed(5)} USPD</span>
                         </div>
                         : ''
                     }
                 </div>
-                <button onClick={() => sendPurchaseTransaction?.()} disabled={chain?.unsupported || isLoading} type="button" className={[...["mt-4 rounded-lg p-4 text-white "], ...((chain?.unsupported || isLoading) ? ["bg-gray-700 hover:bg-gray-700"] : ["transition ease-in-out delay-50 bg-blue-500 hover:-translate-y-1 hover:scale-110 hover:bg-indigo-500 duration-300 active:-translate-y-0 active:scale-90 active:delay-0 active:duration-0 focus:scale-100 focus:-translate-y-0 focus:delay-0 focus:duration-100"])].join(" ")}>Mint PSD</button>
+                <button onClick={() => sendPurchaseTransaction?.()} disabled={chain?.unsupported || isLoading} type="button" className={[...["mt-4 rounded-lg p-4 text-white "], ...((chain?.unsupported || isLoading) ? ["bg-gray-700 hover:bg-gray-700"] : ["transition ease-in-out delay-50 bg-blue-500 hover:-translate-y-1 hover:scale-110 hover:bg-indigo-500 duration-300 active:-translate-y-0 active:scale-90 active:delay-0 active:duration-0 focus:scale-100 focus:-translate-y-0 focus:delay-0 focus:duration-100"])].join(" ")}>Mint USPD</button>
                 <div className="flex flex-col items-center">
                     <ThreeDots
                         height="80"
