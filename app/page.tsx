@@ -102,7 +102,7 @@ export default function Home() {
             </span>
           </h2>
           <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            USPD is minted by sending ETH to the smart contract and redeemed against ETH from the smart contract at the current price of ETH.
+            USPD is minted by sending MATIC to the smart contract and redeemed against MATIC from the smart contract at the current price of MATIC.
           </p>
         </div>
 
