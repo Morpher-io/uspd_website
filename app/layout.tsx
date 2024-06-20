@@ -17,7 +17,19 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'USPD Demo',
-  description: 'Demo of the US Permissionless Dollar',
+  description: "Welcome to the new era of decentralized stablecoins. USPD is the only sovereign stablecoin that doesn&#x27;t rely on banks. It&#x27;s backed by ETH with fully transparent on-chain reserves.",
+  openGraph: {
+    type: "website",
+    url: "https://uspd.com",
+    title: "USPD - Decentralized, Permissionless &amp; Transparent Stablecoin",
+    description: "Welcome to the new era of decentralized stablecoins. USPD is the only sovereign stablecoin that doesn&#x27;t rely on banks. It&#x27;s backed by ETH with fully transparent on-chain reserves.",
+    images: [{
+      url: "images/og_uspd.png",
+    }],
+    
+  },
+  viewport: 'width=device-width, initial-scale=1'
+
 }
 
 
