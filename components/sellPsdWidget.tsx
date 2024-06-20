@@ -125,5 +125,5 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
             </div>
         )
     }
-    return <div className="flex flex-col items-center"><ConnectButton /></div>
+    return <div className="flex flex-col items-center menu-btns"><ConnectButton /></div>
 }
