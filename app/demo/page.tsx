@@ -18,7 +18,7 @@ export default function Home() {
       <div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" className="navigation w-nav">
         <div className="nav-container">
           <div className="menu-left">
-            <a href="index.html" aria-current="page" className="brand w-nav-brand w--current"><img src="images/logo_uspd.svg" loading="lazy" alt="USPD Logo" className="l-icon" /></a>
+            <a href="/" aria-current="page" className="brand w-nav-brand w--current"><img src="images/logo_uspd.svg" loading="lazy" alt="USPD Logo" className="l-icon" /></a>
             <p className="nav-link">1 USPD = 1 USD</p>
           </div>
           <nav role="navigation" className="menu-right w-nav-menu">
