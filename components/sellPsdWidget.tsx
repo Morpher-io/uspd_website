@@ -11,6 +11,8 @@ import PriceOracle from "../contracts/out/PriceOracle.sol/PriceOracle.json";
 
 import { formatEther, parseEther } from "viem";
 import { ThreeDots } from "react-loader-spinner";
+import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
+import { toast } from 'react-hot-toast';
 
 
 
@@ -51,6 +53,23 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
             setPurchaseAmount(undefined);
         }
     })
+
+    const executeSell = () => {
+        if (!purchaseAmount || purchaseAmount == 0) {
+            toast.error('Enter the amount of USPD to sell.')
+            return
+        }
+        if (purchaseAmount >parseFloat(formatEther(psdBalance.data as bigint))) {
+            toast.error('USPD balance is too low')
+            return
+        }
+        try {
+            sendBurnTokens?.() 
+        } catch (err:any) {
+            console.log('error executing sell transaction:' + err.toString())
+
+        }
+    }
 
     if (isConnected) {
         return (
@@ -111,7 +130,7 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
                         </div> : ''
                     }
                 </div>
-                <button onClick={() => { sendBurnTokens?.() }} disabled={chain?.unsupported || isLoading} type="button" className={[...["mt-4 rounded-lg p-4 text-white "], ...((chain?.unsupported || isLoading) ? ["bg-gray-700 hover:bg-gray-700"] : ["transition ease-in-out delay-50 bg-blue-500 hover:-translate-y-1 hover:scale-110 hover:bg-indigo-500 duration-300 active:-translate-y-0 active:scale-90 active:delay-0 active:duration-0 focus:scale-100 focus:-translate-y-0 focus:delay-0 focus:duration-100"])].join(" ")}>Burn USPD</button>
+                <button onClick={executeSell} disabled={chain?.unsupported || isLoading} type="button" className='mint-button'>Burn USPD</button>
                 <div className="flex flex-col items-center">
                     <ThreeDots
                         height="80"
@@ -125,5 +144,5 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
             </div>
         )
     }
-    return <div className="flex flex-col items-center menu-btns"><ConnectButton /></div>
+    return <div className="flex flex-col items-center menu-btns"><CustomConnectButton /></div>
 }

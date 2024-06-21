@@ -332,7 +332,9 @@
   max-height: 100vh;
   left: -80px;
 }
-
+main {
+  background-color: #0b0910  ;
+}
 .nav-container {
   justify-content: space-between;
   align-items: center;
@@ -341,6 +343,7 @@
   margin-left: auto;
   margin-right: auto;
   display: flex;
+  
 }
 
 .menu-right {
@@ -734,6 +737,7 @@
 .outlined-section {
   border-top: 1px solid #373737;
   border-bottom: 1px solid #000;
+  background-color: #0b0910; 
 }
 
 ._2-items-outlined-flex {
@@ -1068,6 +1072,7 @@
 
 .footer {
   padding: 5rem 3rem;
+  background-color: #0b0910;
 }
 
 .footer.bordered {
@@ -1281,16 +1286,58 @@
   border-right-style: none;
 }
 
-.menu-btns button {
-  font-size: 16px!important;
-  font-weight: 500!important;
-  line-height: 24px!important;
-  text-transform: uppercase;
-  padding: .75rem 1.5rem!important;
-  height: unset!important;
-  border-radius: .5rem!important;
+.network-button {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  border: 0;
+  padding: .75rem 1.5rem;
+  transition: color .3s, background-color .3s;
+  font-family: Barlow, sans-serif;
 }
-.menu-btns button:hover {
+.network-button:hover {
+  color: #00c386;
+}
+.mint-button {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  text-transform: uppercase;
+  padding: .75rem 1.5rem;
+  border-radius: .5rem;
+  border: 1px solid rgba(154, 219, 255, 0);
+  background-color: #00c386;
+  color: #040126;
+  transition: color .3s, background-color .3s;
+  font-family: Barlow, sans-serif;
+  margin-top: 15px;
+
+
+}
+.mint-button:hover {
+
+  color: #00c386;
+  background-color: #0d2b26;
+  border: 1px solid #00c386;
+}
+.connect-button {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  text-transform: uppercase;
+  padding: .75rem 1.5rem;
+  border-radius: .5rem;
+  border: 1px solid #00c386;
+  color: #fff;
+  transition: color .3s, background-color .3s;
+  font-family: Barlow, sans-serif;
+
+}
+.wrong-network {
+  color: #c32100;
+  /* border: 1px solid  #c32100; */
+}
+.connect-button:hover {
 
     color: #00c386;
     background-color: #0d2b26;

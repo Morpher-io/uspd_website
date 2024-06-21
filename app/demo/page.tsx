@@ -5,13 +5,16 @@ import BuyPSDWidget from '@/components/buyPsdWidget';
 import SellPSDWidget from '@/components/sellPsdWidget';
 import { useState } from 'react';
 import { Features } from '@/components/Features';
+import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
+
+
 
 
 
 export default function Home() {
   const [isPurchase, setIsPurchase] = useState(true);
   return (
-    <main className="">
+    <main className="main">
       <div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" className="navigation w-nav">
         <div className="nav-container">
           <div className="menu-left">
@@ -20,12 +23,12 @@ export default function Home() {
           </div>
           <nav role="navigation" className="menu-right w-nav-menu">
             <div className="menu-btns">
-              <ConnectButton />
+              <CustomConnectButton />
 
             </div>
           </nav>
         </div>
-        <div className="w-nav-overlay" data-wf-ignore="" id="w-nav-overlay-0"></div>
+        {/* <div className="w-nav-overlay" data-wf-ignore="" id="w-nav-overlay-0"></div> */}
       </div>
 
       <div className='section outlined-section flex flex-col items-center justify-between p-4 lg-p-24 py-24'>

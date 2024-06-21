@@ -1,4 +1,4 @@
 User-Agent: *
 Allow: /
 Disallow: /private/
-Sitemap: https://uspd.com/sitemap.xml
+Sitemap: https://uspd.io/sitemap.xml
