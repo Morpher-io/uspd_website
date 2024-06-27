@@ -1,11 +1,13 @@
 "use client";
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
 import BuyPSDWidget from '@/components/buyPsdWidget';
 import SellPSDWidget from '@/components/sellPsdWidget';
 import { useState } from 'react';
 import { Features } from '@/components/Features';
 import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
+import { getSmartAccountAddress } from '@/components/utils/abstraction';
 
 
 
@@ -13,6 +15,8 @@ import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
 
 export default function Home() {
   const [isPurchase, setIsPurchase] = useState(true);
+  const { address } = useAccount();
+  const smartAddress = address ? getSmartAccountAddress(address) as `0x${string}` : undefined;
   return (
     <main className="main">
       <div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" className="navigation w-nav">
@@ -64,7 +68,10 @@ export default function Home() {
         <div>
           <div className="max-w-sm p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 ">
 
-            <h5 className="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">{isPurchase ? "Mint USPD for Matic" : "Burn USPD for Matic"} </h5>
+            <h5 className="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">{isPurchase ? "Mint USPD for ETH" : "Burn USPD for ETH"} </h5>
+            <p className="mt-4 text-sm text-center sm:text-base md:text-lg leading-6 md:leading-8 text-gray-600 dark:text-gray-400">
+              Smart Account Address: {smartAddress ? smartAddress.substring(0, 4) + '...' + smartAddress.substring(38, 42) : '-'}
+            </p>
             {/* <div className='mb-4 mt-2'>
                 <TradingViewWidget symbol={"ETHUSD"} />
               </div> */}

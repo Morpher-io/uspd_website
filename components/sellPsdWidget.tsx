@@ -93,7 +93,7 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
 
                     <div className="flex flex-row text-xs pt-2 justify-between text-gray-400 dark:text-gray-300 text-light">
                         <span>{purchaseAmount && !askPriceRead.isLoading ? 
-                            <span>{parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)} USPD ≈ 1 MATIC </span>
+                            <span>{parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)} USPD ≈ 1 ETH </span>
                             : ''
                         }</span>
                         <span>
@@ -120,12 +120,12 @@ export default function SellPSDWidget({ setIsPurchase }: Props) {
                     <div className="flex flex-row justify-between">
 
                         <span>{purchaseAmount && purchaseAmount > 0 ? ((purchaseAmount) / Number(formatEther(askPriceRead.data as bigint))).toFixed(10) : ''}</span>
-                        <span className="text-xl">MATIC</span>
+                        <span className="text-xl">ETH</span>
                     </div>
                     {purchaseAmount ?
                         <div className="text-right text-xs pt-2  text-gray-400 dark:text-gray-300 text-light ">
                             {!balance.isLoading &&
-                                <span>Balance: {parseFloat(balance.data?.formatted || "").toFixed(3)} MATIC</span>
+                                <span>Balance: {parseFloat(balance.data?.formatted || "").toFixed(3)} ETH</span>
                             }
                         </div> : ''
                     }

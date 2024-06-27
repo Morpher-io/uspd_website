@@ -7,10 +7,11 @@ import { ConnectButton, } from "@rainbow-me/rainbowkit";
 import { useState, Dispatch, SetStateAction } from "react";
 
 import UspdToken from "../contracts/out/UspdToken.sol/USPD.json";
-import PriceOracle from "../contracts/out/PriceOracle.sol/PriceOracle.json";
+import PriceOracle from "../contracts/out/OracleEntrypoint.sol/OracleEntrypoint.json";
 
 import useDebounce from "./utils/debounce";
-import { formatEther, parseEther } from "viem";
+import { createMintUserOp, getSmartAccountAddress } from "./utils/abstraction";
+import { formatEther, parseEther, keccak256 } from "viem";
 import { ThreeDots } from "react-loader-spinner";
 import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
 import { toast } from 'react-hot-toast';
@@ -23,53 +24,58 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
 
     const { address, isConnected } = useAccount();
     const { chain } = useNetwork();
+    const [isLoading, setIsLoading] = useState(false);
     const [purchaseAmount, setPurchaseAmount] = useState<number>();
     const purchaseAmountDebounced = useDebounce(purchaseAmount, 1000);
 
-    const askPriceRead = useContractRead({
-        address: process.env.NEXT_PUBLIC_ORACLE_ADDRESS as `0x${string}`,
-        abi: PriceOracle.abi,
-        functionName: 'getBidPrice',
-    })
+    const smartAddress = address ? getSmartAccountAddress(address) as `0x${string}` : undefined;
 
-    const executePurchase = () => {
+    const executePurchase = async () => {
         if (!purchaseAmount || purchaseAmount == 0) {
-            toast.error('Enter the amount of MATIC to purchase.')
+            toast.error('Enter the amount of ETH to purchase.')
             return
         }
-        if (purchaseAmount >parseFloat(balance.data?.formatted as string)) {
-            toast.error('MATIC balance is too low')
+        if (purchaseAmount + parseFloat(formatEther(dataPrice.data as bigint)) > parseFloat(balance.data?.formatted as string)) {
+            toast.error('ETH balance is too low')
             return
         }
         try {
-         sendPurchaseTransaction?.()
-        } catch (err:any) {
+            setIsLoading(true);
+            const userOp = await createMintUserOp(address!, dataPrice.data as bigint + BigInt(Math.round(purchaseAmount * 10 ** 18)))
+            console.log(userOp)
+        } catch (err: any) {
             console.log('error executing purchase transaction:' + err.toString())
-
         }
+        setIsLoading(false);
     }
+
+    const dataPrice = useContractRead({
+        address: process.env.NEXT_PUBLIC_ORACLE_ADDRESS as `0x${string}`,
+        abi: PriceOracle.abi,
+        functionName: 'prices',
+        // provider address, dataKey
+        args: ['0x8462e400c0D54C5deE6b4817a93dA6d0E536ab45', keccak256(Buffer.from('BINANCE:ETHUSDT', 'utf-8'))],
+        watch: true
+    })
 
     const uspdBalance = useContractRead({
         address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
         abi: UspdToken.abi,
         functionName: 'balanceOf',
-        args: [address],
+        args: [smartAddress],
         watch: true
     })
 
-    const balance = useBalance({ address });
-    const { config } = usePrepareSendTransaction({
-        to: process.env.NEXT_PUBLIC_TOKEN_ADDRESS,
-        value: parseEther((purchaseAmount || 0).toString()),
-    })
-    const { data, sendTransaction: sendPurchaseTransaction } =
-        useSendTransaction(config)
-    const { isError, isLoading } = useWaitForTransaction({
-        hash: data?.hash,
-        onSettled() {
-            setPurchaseAmount(undefined);
-        }
-    })
+    const balance = useBalance({ address: smartAddress });
+
+
+
+    // const { isError, isLoading } = useWaitForTransaction({
+    //     hash: "0x",
+    //     onSettled() {
+    //         setPurchaseAmount(undefined);
+    //     }
+    // })
     if (isConnected) {
         return (
             <div className="flex flex-col">
@@ -80,7 +86,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                             id="input-example"
                             name="input-name"
                             disabled={isLoading}
-                            placeholder="MATIC to convert"
+                            placeholder="ETH to convert"
                             type="number"
                             step={0.01}
                             className="bg-gray-100 dark:bg-gray-900 border-transparent focus:border-transparent focus:ring-0 focus:outline-none text-xl grow w-1/2"
@@ -93,14 +99,15 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                             }
                             value={(purchaseAmount !== undefined ? purchaseAmount : '')}
                         />
-                        <span className="text-xl ml-2">MATIC</span>
+                        <span className="text-xl ml-2">ETH</span>
                     </div>
 
                     <div className="flex flex-row text-xs pt-2 justify-between  text-gray-400 text-light dark:text-gray-200">
                         <span>
-                            {purchaseAmount && purchaseAmount > 0 && !askPriceRead.isLoading ?
-                                <span>1 MATIC ≈ ${parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)}</span> : ''
-                            }
+                            {/* cant read for free currently */}
+                            {/* {purchaseAmount && purchaseAmount > 0 && !askPriceRead.isLoading ?
+                                <span>1 ETH ≈ ${parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)}</span> : ''
+                            } */}
                         </span>
                         <span>
                             {!balance.isLoading && balance.data?.value != undefined ?
@@ -125,7 +132,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                 <div className="flex flex-col p-4 rounded-lg bg-gray-100 dark:bg-gray-900">
                     <div className="flex flex-row justify-between">
 
-                        <span>{purchaseAmount && purchaseAmount > 0 ? ((purchaseAmount || 0) * Number(formatEther(askPriceRead.data as bigint))).toFixed(5) : ''}</span>
+                        <span>???</span>
                         <span className="text-xl">USPD</span>
                     </div>
                     {purchaseAmount ?
@@ -136,6 +143,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                         : ''
                     }
                 </div>
+                <p className="text-center mt-2">Data costs: {parseFloat(formatEther(dataPrice.data as bigint)).toFixed(3)} ETH</p>
                 <button onClick={executePurchase} disabled={chain?.unsupported || isLoading} type="button" className='mint-button'>Mint USPD</button>
                 <div className="flex flex-col items-center">
                     <ThreeDots

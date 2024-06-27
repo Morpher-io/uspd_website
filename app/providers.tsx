@@ -19,7 +19,7 @@ import {
 import { configureChains, createConfig, WagmiConfig } from 'wagmi';
 import {
   // mainnet,
-  polygon,
+  sepolia,
   // optimism,
   // arbitrum,
   // base,
@@ -31,7 +31,7 @@ import { publicProvider } from 'wagmi/providers/public';
 const { chains, publicClient, webSocketPublicClient } = configureChains(
   [
     // mainnet,
-    polygon,
+    sepolia,
     // optimism,
     // arbitrum,
     // base,
@@ -41,7 +41,7 @@ const { chains, publicClient, webSocketPublicClient } = configureChains(
   [publicProvider()]
 );
 
-const projectId = 'YOUR_PROJECT_ID';
+const projectId = '969a61530d45668dc584f51729796388';
 const wallets = [metaMaskWallet({chains, projectId}), frameWallet({chains}), injectedWallet({chains}),ledgerWallet({chains,projectId}),trustWallet({chains, projectId})];
 const connectors = connectorsForWallets([{groupName: "Connect", wallets}]);
 
