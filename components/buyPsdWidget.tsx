@@ -1,16 +1,15 @@
-
 "use client";
 
 
-import { useAccount, useBalance, useContractRead, useNetwork, usePrepareSendTransaction, useSendTransaction, useWaitForTransaction } from "wagmi";
-import { ConnectButton, } from "@rainbow-me/rainbowkit";
+import { useAccount, useBalance, useContractRead, useNetwork } from "wagmi";
+import { signTypedData } from "@wagmi/core";
 import { useState, Dispatch, SetStateAction } from "react";
 
 import UspdToken from "../contracts/out/UspdToken.sol/USPD.json";
 import PriceOracle from "../contracts/out/OracleEntrypoint.sol/OracleEntrypoint.json";
 
 import useDebounce from "./utils/debounce";
-import { createMintUserOp, getSmartAccountAddress } from "./utils/abstraction";
+import { createMintUserOp, getSmartAccountAddress, createDataToSign, formatSignature, sendUserOperation } from "./utils/abstraction";
 import { formatEther, parseEther, keccak256 } from "viem";
 import { ThreeDots } from "react-loader-spinner";
 import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
@@ -43,8 +42,19 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
             setIsLoading(true);
             const userOp = await createMintUserOp(address!, dataPrice.data as bigint + BigInt(Math.round(purchaseAmount * 10 ** 18)))
             console.log(userOp)
+            const { domain, types, message } = createDataToSign(userOp);
+            const signature = await signTypedData({
+                domain,
+                message,
+                primaryType: 'SafeOp',
+                types,
+            });
+            userOp.signature = formatSignature(smartAddress!, signature);
+            const res = await sendUserOperation(userOp);
+            console.log(res)
         } catch (err: any) {
             console.log('error executing purchase transaction:' + err.toString())
+            console.error(err)
         }
         setIsLoading(false);
     }
