@@ -32,7 +32,7 @@ export async function createMintUserOp(ownerPublicAddress: string, amount: bigin
     )
 
     mintUserOp.verificationGasLimit = BigInt(Math.round(Number(mintUserOp.verificationGasLimit) * 1.2));
-    mintUserOp.maxFeePerGas = BigInt('90000000000');
+    mintUserOp.maxFeePerGas = BigInt('200000000000');
 
     return mintUserOp;
 }
@@ -64,7 +64,7 @@ export async function createBurnUserOp(ownerPublicAddress: string, amount: bigin
     )
 
     burnUserOp.verificationGasLimit = BigInt(Math.round(Number(burnUserOp.verificationGasLimit) * 1.2));
-    burnUserOp.maxFeePerGas = BigInt('90000000000');
+    burnUserOp.maxFeePerGas = BigInt('200000000000');
 
     return burnUserOp;
 }

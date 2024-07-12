@@ -19,6 +19,7 @@
     "react-hot-toast": "^2.4.1",
     "react-loader-spinner": "^5.4.5",
     "react-number-input": "^15.5.1",
+    "react-use-websocket": "^4.8.1",
     "viem": "^1.16.4",
     "wagmi": "^1.4.3"
   },

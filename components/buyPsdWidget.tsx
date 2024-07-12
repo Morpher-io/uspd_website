@@ -1,9 +1,11 @@
 "use client";
 
 
-import { useAccount, useBalance, useContractRead, useNetwork } from "wagmi";
-import { signTypedData } from "@wagmi/core";
-import { useState, Dispatch, SetStateAction } from "react";
+import { useAccount, useContractRead, useNetwork } from "wagmi";
+import { signTypedData, readContract, fetchBalance } from "@wagmi/core";
+import { useState, useEffect, Dispatch, SetStateAction } from "react";
+
+import useWebSocket from 'react-use-websocket';
 
 import UspdToken from "../contracts/out/UspdToken.sol/USPD.json";
 import PriceOracle from "../contracts/out/OracleEntrypoint.sol/OracleEntrypoint.json";
@@ -25,23 +27,54 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
     const { chain } = useNetwork();
     const [isLoading, setIsLoading] = useState(false);
     const [purchaseAmount, setPurchaseAmount] = useState<number>();
+    const [uspdBalance, setUspdBalance] = useState('');
+    const [balance, setBalance] = useState(BigInt(0));
+    const [ethPrice, setEthPrice] = useState('0');
     const purchaseAmountDebounced = useDebounce(purchaseAmount, 1000);
 
+    useEffect(() => {
+        fetchBalances();
+    }, []);
+
     const smartAddress = address ? getSmartAccountAddress(address) as `0x${string}` : undefined;
+
+    const { lastMessage } = useWebSocket('wss://stream.binance.com:9443/ws/ethusdt@trade');
+
+    useEffect(() => {
+        if (lastMessage !== null) {
+            setEthPrice(JSON.parse(lastMessage.data).p);
+        }
+    }, [lastMessage]);
+
+    const fetchBalances = async () => {
+        try {
+            if (!smartAddress) return;
+            const userUspdBalance = await readContract({
+                address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
+                abi: UspdToken.abi,
+                functionName: 'balanceOf',
+                args: [smartAddress],
+            });
+            setUspdBalance(formatEther(userUspdBalance as bigint));
+            const ethBalance = await fetchBalance({ address: smartAddress })
+            setBalance(ethBalance.value);
+        } catch (error) {
+            console.error('Error fetching USPD balance:', error);
+        }
+    }
 
     const executePurchase = async () => {
         if (!purchaseAmount || purchaseAmount == 0) {
             toast.error('Enter the amount of ETH to purchase.')
             return
         }
-        if (purchaseAmount + parseFloat(formatEther(dataPrice.data as bigint)) > parseFloat(balance.data?.formatted as string)) {
+        if (purchaseAmount + parseFloat(formatEther(dataPrice.data as bigint)) > parseFloat(formatEther(balance))) {
             toast.error('ETH balance is too low')
             return
         }
         try {
             setIsLoading(true);
             const userOp = await createMintUserOp(address!, dataPrice.data as bigint + BigInt(Math.round(purchaseAmount * 10 ** 18)))
-            console.log(userOp)
             const { domain, types, message } = createDataToSign(userOp);
             const signature = await signTypedData({
                 domain,
@@ -51,11 +84,23 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
             });
             userOp.signature = formatSignature(smartAddress!, signature);
             const res = await sendUserOperation(userOp);
-            console.log(res)
+            console.log(res);
+
+            // await inclusion
+            let userOperationReceiptResult = await res.included();
+
+            console.log("Useroperation receipt received.");
+            console.log(userOperationReceiptResult);
+            if (userOperationReceiptResult.success) {
+                console.log("Mint successfull. The transaction hash is : " + userOperationReceiptResult.receipt.transactionHash);
+            } else {
+                console.log("Useroperation execution failed");
+            }
         } catch (err: any) {
-            console.log('error executing purchase transaction:' + err.toString())
-            console.error(err)
+            console.log('error executing purchase transaction:' + err.toString());
+            console.error(err);
         }
+        fetchBalances();
         setIsLoading(false);
     }
 
@@ -68,24 +113,6 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
         watch: true
     })
 
-    const uspdBalance = useContractRead({
-        address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
-        abi: UspdToken.abi,
-        functionName: 'balanceOf',
-        args: [smartAddress],
-        watch: true
-    })
-
-    const balance = useBalance({ address: smartAddress });
-
-
-
-    // const { isError, isLoading } = useWaitForTransaction({
-    //     hash: "0x",
-    //     onSettled() {
-    //         setPurchaseAmount(undefined);
-    //     }
-    // })
     if (isConnected) {
         return (
             <div className="flex flex-col">
@@ -114,14 +141,13 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
 
                     <div className="flex flex-row text-xs pt-2 justify-between  text-gray-400 text-light dark:text-gray-200">
                         <span>
-                            {/* cant read for free currently */}
-                            {/* {purchaseAmount && purchaseAmount > 0 && !askPriceRead.isLoading ?
-                                <span>1 ETH ≈ ${parseFloat(formatEther(askPriceRead.data as bigint)).toFixed(2)}</span> : ''
-                            } */}
+                            {purchaseAmount && purchaseAmount > 0 ?
+                                <span>1 ETH ≈ ${parseFloat(ethPrice).toFixed(2)} *</span> : ''
+                            }
                         </span>
                         <span>
-                            {!balance.isLoading && balance.data?.value != undefined ?
-                                <span>Balance: <button onClick={() => setPurchaseAmount(Number(parseFloat(balance.data?.formatted as string).toFixed(3)))} className="hover:underline">{parseFloat(balance.data?.formatted).toFixed(3)}</button></span> : ''
+                            {balance > 0 ?
+                                <span>Balance: <button onClick={() => setPurchaseAmount(Number(formatEther(balance)))} className="hover:underline">{parseFloat(formatEther(balance)).toFixed(3)}</button></span> : ''
                             }</span></div>
 
 
@@ -142,18 +168,15 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                 <div className="flex flex-col p-4 rounded-lg bg-gray-100 dark:bg-gray-900">
                     <div className="flex flex-row justify-between">
 
-                        <span>???</span>
+                        <span>{purchaseAmount && purchaseAmount > 0 ? (parseFloat(ethPrice) * purchaseAmount).toFixed(5) : '0'}</span>
                         <span className="text-xl">USPD</span>
                     </div>
-                    {purchaseAmount ?
-                        <div className="text-right text-xs pt-2  text-gray-400 dark:text-gray-200 text-light">
-
-                            <span>Balance: {parseFloat(formatEther(uspdBalance.data as bigint)).toFixed(5)} USPD</span>
-                        </div>
-                        : ''
-                    }
+                    <div className="text-right text-xs pt-2  text-gray-400 dark:text-gray-200 text-light">
+                        <span>Balance: {parseFloat(uspdBalance).toFixed(5)} USPD</span>
+                    </div>
                 </div>
                 <p className="text-center mt-2">Data costs: {parseFloat(formatEther(dataPrice.data as bigint)).toFixed(3)} ETH</p>
+                <p className="text-center text-xs text-gray-400 mt-1">* Estimate based on Binance price, this data does not come from oracle. Oracle data requires fee.</p>
                 <button onClick={executePurchase} disabled={chain?.unsupported || isLoading} type="button" className='mint-button'>Mint USPD</button>
                 <div className="flex flex-col items-center">
                     <ThreeDots
