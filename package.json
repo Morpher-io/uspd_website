@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^1.1.1",
-    "abstractionkit": "file:../abstractionkit",
+    "abstractionkit": "file:./abstractionkit",
     "next": "13.5.4",
     "next-themes": "^0.2.1",
     "react": "^18",
