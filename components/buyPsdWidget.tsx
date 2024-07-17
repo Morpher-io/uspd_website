@@ -175,7 +175,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                         <span>Balance: {parseFloat(uspdBalance).toFixed(5)} USPD</span>
                     </div>
                 </div>
-                <p className="text-center mt-2">Data costs: {parseFloat(formatEther(dataPrice.data as bigint)).toFixed(3)} ETH</p>
+                <p className="text-center mt-2">{dataPrice.data ? `Data costs: ${parseFloat(formatEther(dataPrice.data as bigint)).toFixed(3)} ETH` : ""}</p>
                 <p className="text-center text-xs text-gray-400 mt-1">* Estimate based on Binance price, this data does not come from oracle. Oracle data requires fee.</p>
                 <button onClick={executePurchase} disabled={chain?.unsupported || isLoading} type="button" className='mint-button'>Mint USPD</button>
                 <div className="flex flex-col items-center">
