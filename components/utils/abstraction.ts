@@ -54,7 +54,7 @@ export async function createBurnUserOp(ownerPublicAddress: string, amount: bigin
     console.log(burnTransactionCallData)
     const burnTransaction = {
         to: process.env.NEXT_PUBLIC_TOKEN_ADDRESS!,
-        value: BigInt("1000000000000000"),
+        value: BigInt(0),
         data: burnTransactionCallData,
     }
     const burnUserOp = await smartAccount.createUserOperation(
