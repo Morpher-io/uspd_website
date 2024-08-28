@@ -13,9 +13,6 @@
 [submodule "contracts/lib/chainlink"]
 	path = contracts/lib/chainlink
 	url = https://github.com/smartcontractkit/chainlink
-[submodule "bundler"]
-	path = bundler
-	url = https://github.com/Morpher-io/dd-voltaire
 [submodule "abstractionkit"]
 	path = abstractionkit
 	url = https://github.com/Morpher-io/dd-abstractionkit
