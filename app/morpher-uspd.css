@@ -407,7 +407,8 @@ main {
 
 .m-paragraph {
   color: #bebebe;
-  max-width: 29rem;
+  margin-left: 10rem;
+  margin-right: 10rem;
   font-family: Barlow, sans-serif;
   font-size: 18px;
   line-height: 28px;

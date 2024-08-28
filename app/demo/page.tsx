@@ -1,29 +1,32 @@
 "use client";
 
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import BuyPSDWidget from '@/components/buyPsdWidget';
-import SellPSDWidget from '@/components/sellPsdWidget';
-import { useState } from 'react';
-import { Features } from '@/components/Features';
 import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
 import { getSmartAccountAddress } from '@/components/utils/abstraction';
 
 
-
-
-
 export default function Home() {
-  const [isPurchase, setIsPurchase] = useState(true);
   const { address } = useAccount();
   const smartAddress = address ? getSmartAccountAddress(address) as `0x${string}` : undefined;
   return (
     <main className="main">
-      <div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" className="navigation w-nav">
+      <div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" className="py-3 bg-white border border-gray-200 shadow dark:bg-gray-800 dark:border-gray-700">
         <div className="nav-container">
           <div className="menu-left">
-            <a href="/" aria-current="page" className="brand w-nav-brand w--current"><img src="images/logo_uspd.svg" loading="lazy" alt="USPD Logo" className="l-icon" /></a>
-            <p className="nav-link">1 USPD = 1 USD</p>
+            <a href="/" aria-current="page" className="brand w-nav-brand w--current"><p className="nav-link mb-0">Morpher Oracle</p></a>
+          </div>
+          <nav role="navigation" className="menu-right">
+            <a href="/documentation" className="nav-link">Documentation</a>
+            <a href="/demo" className="nav-link">Demo</a>
+          </nav>
+        </div>
+      </div>
+      <div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" className="pt-4">
+        <div className="nav-container">
+          <div className="menu-left">
+            <a aria-current="page" className="brand w-nav-brand w--current"><img src="images/logo.png" loading="lazy" alt="Dogeball" className="l-icon" /></a>
+            <p className="nav-link">1 Dogeball = 5$</p>
           </div>
           <nav role="navigation" className="menu-right w-nav-menu">
             <div className="menu-btns">
@@ -50,45 +53,78 @@ export default function Home() {
           />
         </div>
 
-        <div className="text-center py-16">
+        <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl lg:text-6xl dark:text-gray-100">
-            USPD Minting Demo
+            Dogeball Machine
           </h1>
-          <p className="mt-6 text-sm sm:text-base md:text-lg leading-6 md:leading-8 text-gray-600 dark:text-gray-400">
-            The only stablecoin you really own.
-          </p>
-          <p className="mt-2 text-sm sm:text-base md:text-lg leading-6 md:leading-8 text-gray-600 dark:text-gray-400">
-            Collateralization Ratio: 110%
-          </p>
-          {/* <p className="text-xs sm:text-base md:text-sm  md:leading-8 text-gray-500 dark:text-gray-400">
-              x ETH (y USD) | z PSD
-            </p> */}
 
         </div>
         <div>
           <div className="max-w-sm p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 ">
 
-            <h5 className="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">{isPurchase ? "Mint USPD for ETH" : "Burn USPD for ETH"} </h5>
+            <h5 className="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">Mint Dogeballs for 5$ (in ETH)</h5>
             <p className="mt-4 text-sm text-center sm:text-base md:text-lg leading-6 md:leading-8 text-gray-600 dark:text-gray-400">
               Smart Account Address: {smartAddress ? smartAddress.substring(0, 4) + '...' + smartAddress.substring(38, 42) : '-'}
             </p>
             {/* <div className='mb-4 mt-2'>
                 <TradingViewWidget symbol={"ETHUSD"} />
               </div> */}
-            {isPurchase &&
-              <BuyPSDWidget setIsPurchase={setIsPurchase} />
-            }
-            {!isPurchase && <SellPSDWidget setIsPurchase={setIsPurchase} />}
+
+            <BuyPSDWidget />
+
           </div>
         </div>
-        <div style={{ height: '80px' }} >
+        <div style={{ height: '40px' }} >
 
         </div>
-
 
       </div>
 
-      <Features></Features>
+      <div className='section outlined-section flex flex-col items-center justify-between p-4 lg-p-24 py-24'>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl lg:text-4xl dark:text-gray-100">
+          What's going on?
+        </h1>
+        <p className="m-paragraph reset-width-mobile text-center">
+          You are currently interacting with a javascript client on this nextJS website, which is using a
+          <a href='https://github.com/Morpher-io/dd-abstractionkit' target='_blank' className='text-white'> modified version </a>
+          of CandideLabs
+          <a href='https://github.com/candidelabs/abstractionkit' target='_blank' className='text-white'> AbstractionKit</a>.
+        </p>
+        <p className="m-paragraph reset-width-mobile text-center">
+          The client is fetching the Data Requirements from the
+          <a href='https://sepolia.etherscan.io/address/0x3c24D16259eFafbce3853973932d5F9EF69eec7d' className='text-white' target='_blank'> Dogeball contract </a>
+          and creating a data-dependent user operation, an enhanced version of the standard ERC-4337 user operation. In this case the Requirements
+          of the minting functions are the price of ETH provided by Morpher.
+        </p>
+        <p className="m-paragraph reset-width-mobile text-center">
+          Each Data Requirement specifies 3 things:
+          <ul>
+            <li className="text-left">&bull; Who is providing the data (the EOA address of the data provider). In this case, the Morpher data provider.</li>
+            <li className="text-left">&bull; The bytes32 key that identifies the data needed. In this case it's keccak256("MORPHER:CRYPTO_ETH") (The key definition is up to the provider)</li>
+            <li className="text-left">&bull; The address which is consuming the data when the function is called. In this case, the Dogeball contract itself.</li>
+          </ul>
+        </p>
+        <p className="m-paragraph reset-width-mobile text-center">
+          To estimate gas and submit the user operation, this client is relying on a
+          <a href='https://github.com/Morpher-io/dd-voltaire' target='_blank' className='text-white'> modified version </a>
+          of CandideLabs
+          <a href='https://github.com/candidelabs/voltaire' target='_blank' className='text-white'> Voltaire Bundler</a>.
+          Note that at this current version of the bundler implementation, the client is not free to choose any entity which is running
+          the modded bundler, but it MUST submit the user operation to the bundler hosted by the Data Requirement's provider,
+          since the latter is the only one that have access to the requested data. In this case, only the Moprher data provider can provide
+          "MORPHER:CRYPTO_ETH" price signed by the private key of the provider address specified in the Data Requirement.
+        </p>
+        <p className="m-paragraph reset-width-mobile text-center">
+          Upon receiving the user operation, the bundler includes both your user operation and a new user operation which call `storeData` on the
+          <a href='https://sepolia.etherscan.io/address/0x36bDD3f53826e4359E22edb9C6DD2E81Dd4dEf41' target='_blank' className='text-white'> Oracle Entrypoint contract </a>
+          in the bundle and send it to the ERC-4337 entrypoint. In the end, within a single transaction, the data is stored and consumed without any delay.
+        </p>
+        <div style={{ height: '80px' }} >
+
+        </div>
+      </div>
+
+
 
     </main>
   )

@@ -7,7 +7,7 @@ import { useState, useEffect, Dispatch, SetStateAction } from "react";
 
 import useWebSocket from 'react-use-websocket';
 
-import UspdToken from "../contracts/out/UspdToken.sol/USPD.json";
+import DogeBall from "../contracts/out/Dogeball.sol/DogeBall.json";
 import PriceOracle from "../contracts/out/OracleEntrypoint.sol/OracleEntrypoint.json";
 
 import useDebounce from "./utils/debounce";
@@ -18,19 +18,15 @@ import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
 import { toast } from 'react-hot-toast';
 
 
-
-interface Props { setIsPurchase: Dispatch<SetStateAction<boolean>> };
-
-export default function BuyPSDWidget({ setIsPurchase }: Props) {
+export default function BuyPSDWidget() {
 
     const { address, isConnected } = useAccount();
     const { chain } = useNetwork();
     const [isLoading, setIsLoading] = useState(false);
     const [purchaseAmount, setPurchaseAmount] = useState<number>();
-    const [uspdBalance, setUspdBalance] = useState('');
+    const [dogeballBalance, setDogeballBalance] = useState(0);
     const [balance, setBalance] = useState(BigInt(0));
     const [ethPrice, setEthPrice] = useState('0');
-    const purchaseAmountDebounced = useDebounce(purchaseAmount, 1000);
 
     useEffect(() => {
         fetchBalances();
@@ -49,17 +45,17 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
     const fetchBalances = async () => {
         try {
             if (!smartAddress) return;
-            const userUspdBalance = await readContract({
+            const userDogeballBalance = await readContract({
                 address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
-                abi: UspdToken.abi,
-                functionName: 'balanceOf',
+                abi: DogeBall.abi,
+                functionName: 'balances',
                 args: [smartAddress],
             });
-            setUspdBalance(formatEther(userUspdBalance as bigint));
+            setDogeballBalance(Number(userDogeballBalance as bigint));
             const ethBalance = await fetchBalance({ address: smartAddress })
             setBalance(ethBalance.value);
         } catch (error) {
-            console.error('Error fetching USPD balance:', error);
+            console.error('Error fetching Dogeballs balance:', error);
         }
     }
 
@@ -109,7 +105,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
         abi: PriceOracle.abi,
         functionName: 'prices',
         // provider address, dataKey
-        args: ['0x8462e400c0D54C5deE6b4817a93dA6d0E536ab45', keccak256(Buffer.from('BINANCE:ETHUSDT', 'utf-8'))],
+        args: [process.env.NEXT_PUBLIC_PROVIDER_ADDRESS as `0x${string}`, keccak256(Buffer.from('MORPHER:CRYPTO_ETH', 'utf-8'))],
         watch: true
     })
 
@@ -162,22 +158,22 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                     zIndex: 2,
                     left: "50%",
 
-                }} className="bg-gray-100 text-center p-1 dark:bg-gray-900" onClick={() => setIsPurchase(false)}>
+                }} className="bg-gray-100 text-center p-1 dark:bg-gray-900" >
                     ⬇</button>
 
                 <div className="flex flex-col p-4 rounded-lg bg-gray-100 dark:bg-gray-900">
                     <div className="flex flex-row justify-between">
 
-                        <span>{purchaseAmount && purchaseAmount > 0 ? (parseFloat(ethPrice) * purchaseAmount).toFixed(5) : '0'}</span>
-                        <span className="text-xl">USPD</span>
+                        <span className="text-xl">{purchaseAmount && purchaseAmount > 0 ? Math.round(parseFloat(ethPrice) * purchaseAmount / 5) : '0'}</span>
+                        <span className="text-xl">Dogeballs</span>
                     </div>
                     <div className="text-right text-xs pt-2  text-gray-400 dark:text-gray-200 text-light">
-                        <span>Balance: {parseFloat(uspdBalance).toFixed(5)} USPD</span>
+                        <span>Balance: {dogeballBalance} Dogeballs</span>
                     </div>
                 </div>
-                <p className="text-center mt-2">{dataPrice.data ? `Data costs: ${parseFloat(formatEther(dataPrice.data as bigint)).toFixed(3)} ETH` : ""}</p>
-                <p className="text-center text-xs text-gray-400 mt-1">* Estimate based on Binance price, this data does not come from oracle. Oracle data requires fee.</p>
-                <button onClick={executePurchase} disabled={chain?.unsupported || isLoading} type="button" className='mint-button'>Mint USPD</button>
+                <p className="text-center mt-2">{dataPrice.data ? `Data costs: ${parseFloat(formatEther(dataPrice.data as bigint)).toFixed(4)} ETH` : ""}</p>
+                <p className="text-center text-xs text-gray-400 mt-1">* Estimate based on Binance price, this data does not come from oracle.</p>
+                <button onClick={executePurchase} disabled={chain?.unsupported || isLoading} type="button" className='mint-button'>Mint Dogeballs</button>
                 <div className="flex flex-col items-center">
                     <ThreeDots
                         height="80"
