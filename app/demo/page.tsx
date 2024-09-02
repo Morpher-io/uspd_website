@@ -17,6 +17,7 @@ export default function Home() {
             <a href="/" aria-current="page" className="brand w-nav-brand w--current"><p className="nav-link mb-0">Morpher Oracle</p></a>
           </div>
           <nav role="navigation" className="menu-right">
+            <a href="/feeds" className="nav-link">Morpher Data Feeds</a>
             <a href="/documentation" className="nav-link">Documentation</a>
             <a href="/demo" className="nav-link">Demo</a>
           </nav>
