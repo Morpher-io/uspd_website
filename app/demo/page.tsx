@@ -84,19 +84,19 @@ export default function Home() {
         <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl lg:text-4xl dark:text-gray-100">
           What's going on?
         </h1>
-        <p className="m-paragraph reset-width-mobile text-center">
+        <p className="m-paragraph mx-20 reset-width-mobile text-center">
           You are currently interacting with a javascript client on this nextJS website, which is using a
           <a href='https://github.com/Morpher-io/dd-abstractionkit' target='_blank' className='text-white'> modified version </a>
           of CandideLabs
           <a href='https://github.com/candidelabs/abstractionkit' target='_blank' className='text-white'> AbstractionKit</a>.
         </p>
-        <p className="m-paragraph reset-width-mobile text-center">
+        <p className="m-paragraph mx-20 reset-width-mobile text-center">
           The client is fetching the Data Requirements from the
           <a href='https://sepolia.etherscan.io/address/0x3c24D16259eFafbce3853973932d5F9EF69eec7d' className='text-white' target='_blank'> Dogeball contract </a>
           and creating a data-dependent user operation, an enhanced version of the standard ERC-4337 user operation. In this case the Requirements
           of the minting functions are the price of ETH provided by Morpher.
         </p>
-        <p className="m-paragraph reset-width-mobile text-center">
+        <p className="m-paragraph mx-20 reset-width-mobile text-center">
           Each Data Requirement specifies 3 things:
           <ul>
             <li className="text-left">&bull; Who is providing the data (the EOA address of the data provider). In this case, the Morpher data provider.</li>
@@ -104,7 +104,7 @@ export default function Home() {
             <li className="text-left">&bull; The address which is consuming the data when the function is called. In this case, the Dogeball contract itself.</li>
           </ul>
         </p>
-        <p className="m-paragraph reset-width-mobile text-center">
+        <p className="m-paragraph mx-20 reset-width-mobile text-center">
           To estimate gas and submit the user operation, this client is relying on a
           <a href='https://github.com/Morpher-io/dd-voltaire' target='_blank' className='text-white'> modified version </a>
           of CandideLabs
@@ -114,7 +114,7 @@ export default function Home() {
           since the latter is the only one that have access to the requested data. In this case, only the Moprher data provider can provide
           "MORPHER:CRYPTO_ETH" price signed by the private key of the provider address specified in the Data Requirement.
         </p>
-        <p className="m-paragraph reset-width-mobile text-center">
+        <p className="m-paragraph mx-20 reset-width-mobile text-center">
           Upon receiving the user operation, the bundler includes both your user operation and a new user operation which call `storeData` on the
           <a href='https://sepolia.etherscan.io/address/0x36bDD3f53826e4359E22edb9C6DD2E81Dd4dEf41' target='_blank' className='text-white'> Oracle Entrypoint contract </a>
           in the bundle and send it to the ERC-4337 entrypoint. In the end, within a single transaction, the data is stored and consumed without any delay.
