@@ -11,6 +11,7 @@
   "dependencies": {
     "@rainbow-me/rainbowkit": "^1.1.1",
     "abstractionkit": "file:./abstractionkit",
+    "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "next": "13.5.4",
     "next-themes": "^0.2.1",
