@@ -65,7 +65,7 @@ export default function BuyPSDWidget() {
             return
         }
         if (purchaseAmount + parseFloat(formatEther(dataPrice.data as bigint)) > parseFloat(formatEther(balance))) {
-            toast.error('ETH balance is too low')
+            toast.error('ETH balance is too low on Smart Wallet')
             return
         }
         try {

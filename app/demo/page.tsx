@@ -6,8 +6,13 @@ import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
 import { getSmartAccountAddress } from '@/components/utils/abstraction';
 
 
+import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { toast } from 'react-hot-toast';
+import { useState } from 'react';
 export default function Home() {
   const { address } = useAccount();
+  const [isCopied, setIsCopied] = useState(false);
+
   const smartAddress = address ? getSmartAccountAddress(address) as `0x${string}` : undefined;
   return (
     <main className="main">
@@ -64,8 +69,14 @@ export default function Home() {
           <div className="max-w-sm p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 ">
 
             <h5 className="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">Mint Dogeballs for 5$ (in ETH)</h5>
-            <p className="mt-4 text-sm text-center sm:text-base md:text-lg leading-6 md:leading-8 text-gray-600 dark:text-gray-400">
-              Smart Account Address: {smartAddress ? smartAddress.substring(0, 4) + '...' + smartAddress.substring(38, 42) : '-'}
+            <p className="mt-4 text-xs text-center sm:text-base md:text-sm leading-6 md:leading-8 text-gray-600 dark:text-gray-400">
+              Smart Account Address: {smartAddress ? smartAddress.substring(0, 4) + '...' + smartAddress.substring(38, 42) : '-'} <CopyToClipboard text={smartAddress}
+                onCopy={() => {
+                  setIsCopied(true)
+                  toast.success("Address copied");
+                  }}>
+                <button> 📑</button>
+              </CopyToClipboard>
             </p>
             {/* <div className='mb-4 mt-2'>
                 <TradingViewWidget symbol={"ETHUSD"} />
