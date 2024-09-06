@@ -63,13 +63,16 @@ export default function BuyPSDWidget({ setTopOwnersFun }: any) {
     const fetchTopOwners = async () => {
         try {
             if (!smartAddress) return;
-            const owners = (await readContract({
+            let owners = (await readContract({
                 address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
                 abi: DogeBall.abi,
                 functionName: 'getOwners',
                 args: [],
             })) as string[];
-            owners.push(smartAddress);
+            owners = owners.map(o => o.toLowerCase());
+            if (!owners.includes(smartAddress.toLowerCase())) {
+                owners.push(smartAddress.toLowerCase());
+            }
             const ownersWithAmount = [];
             for (const addr of owners) {
                 const amount = await readContract({
@@ -78,7 +81,7 @@ export default function BuyPSDWidget({ setTopOwnersFun }: any) {
                     functionName: 'balances',
                     args: [addr],
                 });
-                ownersWithAmount.push({ name: addr.substring(0, 10) + '...' + addr.substring(30, 42), amount: Number(amount as bigint)});
+                ownersWithAmount.push({ name: addr.substring(0, 10) + '...' + addr.substring(30, 42), amount: Number(amount as bigint) });
             }
             ownersWithAmount.sort((o1, o2) => o2.amount - o1.amount);
             setTopOwnersFun(ownersWithAmount.slice(0, 10));
@@ -192,7 +195,7 @@ export default function BuyPSDWidget({ setTopOwnersFun }: any) {
                 <div className="flex flex-col p-4 rounded-lg bg-gray-100 dark:bg-gray-900">
                     <div className="flex flex-row justify-between">
 
-                        <span className="text-xl">{purchaseAmount && purchaseAmount > 0 ? Math.round(parseFloat(ethPrice) * purchaseAmount / 5) : '0'}</span>
+                        <span className="text-xl">{purchaseAmount && purchaseAmount > 0 ? Math.floor(parseFloat(ethPrice) * purchaseAmount / 5) : '0'}</span>
                         <span className="text-xl">Dogeballs</span>
                     </div>
                     <div className="text-right text-xs pt-2  text-gray-400 dark:text-gray-200 text-light">

@@ -37,4 +37,4 @@ next-env.d.ts
 cache/
 
 # to test locally
-bundler/
+bundler*/
