@@ -18,7 +18,7 @@ import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
 import { toast } from 'react-hot-toast';
 
 
-export default function BuyPSDWidget() {
+export default function BuyPSDWidget({ setTopOwnersFun }: any) {
 
     const { address, isConnected } = useAccount();
     const { chain } = useNetwork();
@@ -30,6 +30,7 @@ export default function BuyPSDWidget() {
 
     useEffect(() => {
         fetchBalances();
+        fetchTopOwners();
     }, []);
 
     const smartAddress = address ? getSmartAccountAddress(address) as `0x${string}` : undefined;
@@ -56,6 +57,33 @@ export default function BuyPSDWidget() {
             setBalance(ethBalance.value);
         } catch (error) {
             console.error('Error fetching Dogeballs balance:', error);
+        }
+    }
+
+    const fetchTopOwners = async () => {
+        try {
+            if (!smartAddress) return;
+            const owners = (await readContract({
+                address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
+                abi: DogeBall.abi,
+                functionName: 'getOwners',
+                args: [],
+            })) as string[];
+            owners.push(smartAddress);
+            const ownersWithAmount = [];
+            for (const addr of owners) {
+                const amount = await readContract({
+                    address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
+                    abi: DogeBall.abi,
+                    functionName: 'balances',
+                    args: [addr],
+                });
+                ownersWithAmount.push({ name: addr.substring(0, 10) + '...' + addr.substring(30, 42), amount: Number(amount as bigint)});
+            }
+            ownersWithAmount.sort((o1, o2) => o2.amount - o1.amount);
+            setTopOwnersFun(ownersWithAmount.slice(0, 10));
+        } catch (error) {
+            console.error('Error fetching Dogeballs owners:', error);
         }
     }
 

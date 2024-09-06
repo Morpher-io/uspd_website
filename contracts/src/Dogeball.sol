@@ -38,11 +38,12 @@ contract DogeBall is DataDependent {
 
     function mint(address to) public payable {
         ResponseWithExpenses memory response = _invokeOracle(ETH_USD);
-        uint ethPrice = response.value;
         require(msg.value > response.expenses, "Not enough value to pay for oracle data!");
-        uint valueAfterExpensesInUsd18Decimals = uint(msg.value - response.expenses) * ethPrice / 1e18;
-        uint amount = (valueAfterExpensesInUsd18Decimals / DOGEBALL_PRICE_USD) / 1e18;
-        uint remainder = valueAfterExpensesInUsd18Decimals - ((amount * 1e18 * DOGEBALL_PRICE_USD));
+        uint ethPrice = response.value;
+        uint dogeBallPriceInWei = DOGEBALL_PRICE_USD * 10 ** 36 / ethPrice;
+        uint valueAfterExpenses = uint(msg.value - response.expenses);
+        uint amount = valueAfterExpenses / dogeBallPriceInWei;
+        uint remainder = valueAfterExpenses - amount * dogeBallPriceInWei;
         if (balances[to] == 0) {
             owners.push(to);
         }

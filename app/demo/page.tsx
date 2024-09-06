@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import BuyPSDWidget from '@/components/buyPsdWidget';
 import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
 import { getSmartAccountAddress } from '@/components/utils/abstraction';
+import { useState } from 'react';
 
 
 import { CopyToClipboard } from 'react-copy-to-clipboard';
@@ -14,6 +15,9 @@ export default function Home() {
   const [isCopied, setIsCopied] = useState(false);
 
   const smartAddress = address ? getSmartAccountAddress(address) as `0x${string}` : undefined;
+
+  const [topOwners, setTopOwners] = useState([] as any[]);
+
   return (
     <main className="main">
       <div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" className="py-3 bg-white border border-gray-200 shadow dark:bg-gray-800 dark:border-gray-700">
@@ -65,7 +69,7 @@ export default function Home() {
           </h1>
 
         </div>
-        <div>
+        <div className="flex flex-col md:flex-row md:space-x-4">
           <div className="max-w-sm p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 ">
 
             <h5 className="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">Mint Dogeballs for 5$ (in ETH)</h5>
@@ -82,7 +86,20 @@ export default function Home() {
                 <TradingViewWidget symbol={"ETHUSD"} />
               </div> */}
 
-            <BuyPSDWidget />
+            <BuyPSDWidget setTopOwnersFun={setTopOwners} />
+
+          </div>
+          <div className="max-w-sm p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 mt-4 md:mt-0">
+
+            <h5 className="mb-2 text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white text-center">Top Owners of Dogeballs</h5>
+            <ul className="mt-4 text-sm pl-0 sm:text-base md:text-lg leading-6 md:leading-8 text-gray-600 dark:text-gray-400">
+              {topOwners.map((owner, index) => (
+                <li key={index} className="mb-2 flex justify-center items-center">
+                  <span className="font-bold">{owner.name}</span>: {owner.amount}
+                  <span className="ml-2 w-3 h-3 bg-gray-600 dark:bg-gray-400 rounded-full inline-block"></span>
+                </li>
+              ))}
+            </ul>
 
           </div>
         </div>
