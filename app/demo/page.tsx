@@ -9,7 +9,7 @@ import { useState } from 'react';
 
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { toast } from 'react-hot-toast';
-import { useState } from 'react';
+
 export default function Home() {
   const { address } = useAccount();
   const [isCopied, setIsCopied] = useState(false);
