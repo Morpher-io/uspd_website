@@ -5,6 +5,8 @@ import {
   RainbowKitProvider,
   getDefaultWallets,
   connectorsForWallets,
+  Theme,
+  darkTheme 
 } from '@rainbow-me/rainbowkit';
 import {
   // argentWallet,
@@ -43,11 +45,6 @@ const projectId = 'YOUR_PROJECT_ID';
 const wallets = [metaMaskWallet({chains, projectId}), frameWallet({chains}), injectedWallet({chains}),ledgerWallet({chains,projectId}),trustWallet({chains, projectId})];
 const connectors = connectorsForWallets([{groupName: "Connect", wallets}]);
 
-// const { wallets } = getDefaultWallets({
-//   appName: 'RainbowKit demo',
-//   projectId,
-//   chains,
-// });
 
 const demoAppInfo = {
   appName: 'USPD Token Demo',
@@ -71,13 +68,27 @@ const wagmiConfig = createConfig({
   publicClient,
   webSocketPublicClient,
 });
+let theme = darkTheme({
+  accentColor: '#00C386',
+  accentColorForeground: '#040126',
+
+  borderRadius: 'small',
+  fontStack: 'system',
+  overlayBlur: 'small',
+  
+})
+
+theme.fonts.body = 'Barlow, sans-serif'
+
+
+
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   return (
     <WagmiConfig config={wagmiConfig}>
-      <RainbowKitProvider chains={chains} appInfo={demoAppInfo} modalSize="compact">
+      <RainbowKitProvider chains={chains} appInfo={demoAppInfo} theme={theme} modalSize="compact">
         {mounted && children}
       </RainbowKitProvider>
     </WagmiConfig>

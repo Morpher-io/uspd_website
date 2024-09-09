@@ -1,6 +1,6 @@
 {
-  "name": "psdwebsite",
-  "version": "0.1.0",
+  "name": "uspdwebsite",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,6 +15,7 @@
     "react": "^18",
     "react-currency-input-field": "^3.6.11",
     "react-dom": "^18",
+    "react-hot-toast": "^2.4.1",
     "react-loader-spinner": "^5.4.5",
     "react-number-input": "^15.5.1",
     "viem": "^1.16.4",

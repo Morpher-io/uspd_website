@@ -12,6 +12,9 @@ import PriceOracle from "../contracts/out/PriceOracle.sol/PriceOracle.json";
 import useDebounce from "./utils/debounce";
 import { formatEther, parseEther } from "viem";
 import { ThreeDots } from "react-loader-spinner";
+import { CustomConnectButton } from '@/components/ui/CustomConnectButton';
+import { toast } from 'react-hot-toast';
+
 
 
 interface Props { setIsPurchase: Dispatch<SetStateAction<boolean>> };
@@ -28,6 +31,23 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
         abi: PriceOracle.abi,
         functionName: 'getBidPrice',
     })
+
+    const executePurchase = () => {
+        if (!purchaseAmount || purchaseAmount == 0) {
+            toast.error('Enter the amount of MATIC to purchase.')
+            return
+        }
+        if (purchaseAmount >parseFloat(balance.data?.formatted as string)) {
+            toast.error('MATIC balance is too low')
+            return
+        }
+        try {
+         sendPurchaseTransaction?.()
+        } catch (err:any) {
+            console.log('error executing purchase transaction:' + err.toString())
+
+        }
+    }
 
     const uspdBalance = useContractRead({
         address: process.env.NEXT_PUBLIC_TOKEN_ADDRESS as `0x${string}`,
@@ -116,7 +136,7 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
                         : ''
                     }
                 </div>
-                <button onClick={() => sendPurchaseTransaction?.()} disabled={chain?.unsupported || isLoading} type="button" className={[...["mt-4 rounded-lg p-4 text-white "], ...((chain?.unsupported || isLoading) ? ["bg-gray-700 hover:bg-gray-700"] : ["transition ease-in-out delay-50 bg-blue-500 hover:-translate-y-1 hover:scale-110 hover:bg-indigo-500 duration-300 active:-translate-y-0 active:scale-90 active:delay-0 active:duration-0 focus:scale-100 focus:-translate-y-0 focus:delay-0 focus:duration-100"])].join(" ")}>Mint USPD</button>
+                <button onClick={executePurchase} disabled={chain?.unsupported || isLoading} type="button" className='mint-button'>Mint USPD</button>
                 <div className="flex flex-col items-center">
                     <ThreeDots
                         height="80"
@@ -130,5 +150,5 @@ export default function BuyPSDWidget({ setIsPurchase }: Props) {
             </div>
         )
     }
-    return <div className="flex flex-col items-center"><ConnectButton /></div>
+    return <div className="flex flex-col items-center  menu-btns"><CustomConnectButton /></div>
 }
