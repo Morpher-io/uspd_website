@@ -32,41 +32,9 @@ export async function createMintUserOp(ownerPublicAddress: string, amount: bigin
     )
 
     mintUserOp.verificationGasLimit = BigInt(Math.round(Number(mintUserOp.verificationGasLimit) * 1.2));
-    mintUserOp.maxFeePerGas = BigInt('200000000000');
+    // mintUserOp.maxFeePerGas = BigInt('20000000000');
 
     return mintUserOp;
-}
-
-export async function createBurnUserOp(ownerPublicAddress: string, amount: bigint) {
-
-    const smartAccount = SafeAccount.initializeNewAccount([ownerPublicAddress]);
-
-    console.log("Account address (sender): " + smartAccount.accountAddress);
-
-    const burnFunctionSignature = 'burn(uint256,address)';
-    const burnFunctionSelector = getFunctionSelector(burnFunctionSignature);
-
-    const burnTransactionCallData = createCallData(
-        burnFunctionSelector,
-        ["uint256", "address"],
-        [amount, smartAccount.accountAddress]
-    );
-    console.log(burnTransactionCallData)
-    const burnTransaction = {
-        to: process.env.NEXT_PUBLIC_TOKEN_ADDRESS!,
-        value: BigInt(0),
-        data: burnTransactionCallData,
-    }
-    const burnUserOp = await smartAccount.createUserOperation(
-        [burnTransaction],
-        process.env.NEXT_PUBLIC_ETH_RPC!,
-        process.env.NEXT_PUBLIC_BUNDLER_RPC!,
-    )
-
-    burnUserOp.verificationGasLimit = BigInt(Math.round(Number(burnUserOp.verificationGasLimit) * 1.2));
-    burnUserOp.maxFeePerGas = BigInt('200000000000');
-
-    return burnUserOp;
 }
 
 export async function sendUserOperation(useroperation: any) {
