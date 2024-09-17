@@ -86,5 +86,5 @@ export function createDataToSign(useroperation: any) {
 }
 
 export function formatSignature(address: `0x${string}`, signature: string) {
-    return SafeAccount.formatEip712SignaturesToUseroperationSignature([address], [signature], BigInt(0), BigInt(0));
+    return SafeAccount.formatEip712SignaturesToUseroperationSignature([address], [signature]);
 }

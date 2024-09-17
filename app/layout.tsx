@@ -52,7 +52,6 @@ export default function RootLayout({
          
           <Providers>{children}</Providers>
         </ThemeProvider>
-        <Footer></Footer>
         
         <Toaster position="bottom-center" />
 
