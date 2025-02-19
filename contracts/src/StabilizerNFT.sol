@@ -152,32 +152,21 @@ contract StabilizerNFT is
 
             StabilizerPosition storage pos = positions[currentId];
 
-            uint256 targetUspd;
+            uint256 targetEth;
             if (maxUspdAmount > 0) {
-                targetUspd = maxUspdAmount - result.uspdAmount;
+                // Calculate ETH needed for maxUspdAmount
+                targetEth = (maxUspdAmount * (10**priceDecimals)) / ethUsdPrice - result.allocatedEth;
+                if (targetEth > remainingEth) {
+                    targetEth = remainingEth;
+                }
             } else {
-                targetUspd = (remainingEth * ethUsdPrice) / (10**priceDecimals);
+                targetEth = remainingEth;
             }
 
-            if (targetUspd == 0) break;
+            if (targetEth == 0) break;
 
-            // Calculate how much USPD this stabilizer can back with its available ETH
-            uint256 maxStabilizerUspd = (pos.totalEth * ethUsdPrice * 100) / 
-                (pos.minCollateralRatio * (10**priceDecimals));
-            
-            // Take minimum of what's needed and what stabilizer can handle
-            uint256 uspdToAllocate = targetUspd > maxStabilizerUspd ? 
-                maxStabilizerUspd : targetUspd;
-            
-            // Calculate required user ETH for this USPD amount
-            uint256 userEthNeeded = (uspdToAllocate * (10**priceDecimals)) / ethUsdPrice;
-            if (userEthNeeded > remainingEth) {
-                uspdToAllocate = (remainingEth * ethUsdPrice) / (10**priceDecimals);
-                userEthNeeded = remainingEth;
-            }
-            
-            // Calculate required stabilizer ETH based on collateral ratio
-            uint256 stabilizerEthNeeded = (userEthNeeded * (pos.minCollateralRatio - 100)) / 100;
+            // Calculate how much stabilizer ETH is needed for this user ETH
+            uint256 stabilizerEthNeeded = (targetEth * (pos.minCollateralRatio - 100)) / 100;
             
             // Check if stabilizer has enough ETH
             uint256 toAllocate = stabilizerEthNeeded > pos.totalEth ? 
@@ -223,18 +212,21 @@ contract StabilizerNFT is
                 _registerAllocatedPosition(currentId);
             }
 
-            if (uspdToAllocate > 0) {
+            if (targetEth > 0) {
                 // Add collateral from both user and stabilizer
-                positionNFT.addCollateral{value: toAllocate + userEthNeeded}(positionId);
-                positionNFT.modifyAllocation(positionId, uspdToAllocate);
+                positionNFT.addCollateral{value: toAllocate + targetEth}(positionId);
+                
+                // Calculate USPD amount from user's ETH
+                uint256 uspdAmount = (targetEth * ethUsdPrice) / (10**priceDecimals);
+                positionNFT.modifyAllocation(positionId, uspdAmount);
 
                 // Update remaining amounts
-                remainingEth -= userEthNeeded;
+                remainingEth -= targetEth;
                 pos.totalEth -= toAllocate;
-                result.allocatedEth += userEthNeeded;  // Only track user's ETH
-                result.uspdAmount += uspdToAllocate;
+                result.allocatedEth += targetEth;  // Only track user's ETH
+                result.uspdAmount += uspdAmount;
 
-                emit FundsAllocated(currentId, toAllocate, userEthNeeded, positionId);
+                emit FundsAllocated(currentId, toAllocate, targetEth, positionId);
             }
 
             // Update unallocated list if no more funds
