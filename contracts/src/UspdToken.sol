@@ -35,7 +35,7 @@ contract USPD is ERC20, ERC20Permit, AccessControl {
         _grantRole(UPDATE_ORACLE_ROLE, msg.sender);
     }
 
-    function mint(address to) public payable {
+    function mint(address to, uint256 maxUspdAmount) public payable {
         PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
             value: oracle.getOracleCommission()
         }();
@@ -46,7 +46,8 @@ contract USPD is ERC20, ERC20Permit, AccessControl {
         StabilizerNFT.AllocationResult memory result = stabilizer.allocateStabilizerFunds(
             ethForAllocation,
             oracleResponse.price,
-            oracleResponse.decimals
+            oracleResponse.decimals,
+            maxUspdAmount
         );
         
         // Mint USPD based on allocated amount
@@ -57,6 +58,11 @@ contract USPD is ERC20, ERC20Permit, AccessControl {
         if (leftover > 0) {
             payable(msg.sender).transfer(leftover);
         }
+    }
+
+    // Fallback to mint without max amount when ETH is sent directly
+    function mint(address to) public payable {
+        mint(to, 0); // 0 means no maximum
     }
 
     function burn(uint amount, address to) public {

@@ -104,7 +104,8 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
     function allocateStabilizerFunds(
         uint256 ethAmount,
         uint256 ethUsdPrice,
-        uint8 priceDecimals
+        uint8 priceDecimals,
+        uint256 maxUspdAmount
     ) external returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(lowestUnallocatedId != 0, "No unallocated funds");
@@ -113,8 +114,8 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         uint256 remainingEth = ethAmount;
         
         while (currentId != 0 && remainingEth > 0) {
-            // Check remaining gas
-            if (gasleft() < MIN_GAS) {
+            // Check remaining gas and USPD limit
+            if (gasleft() < MIN_GAS || (maxUspdAmount > 0 && result.uspdAmount >= maxUspdAmount)) {
                 break;
             }
 
@@ -124,13 +125,22 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
                 uint256 toAllocate = remainingEth > pos.unallocatedEth ? 
                     pos.unallocatedEth : remainingEth;
                 
+                // Calculate resulting USPD amount before allocation
+                uint256 uspdForAllocation = (toAllocate * ethUsdPrice) / (10**priceDecimals);
+                uspdForAllocation = (uspdForAllocation * 100) / pos.minCollateralRatio;
+                
+                // Adjust allocation if it would exceed maxUspdAmount
+                if (maxUspdAmount > 0 && result.uspdAmount + uspdForAllocation > maxUspdAmount) {
+                    uint256 remainingUspd = maxUspdAmount - result.uspdAmount;
+                    // Convert USPD amount back to required ETH
+                    toAllocate = (remainingUspd * pos.minCollateralRatio * (10**priceDecimals)) / (ethUsdPrice * 100);
+                    uspdForAllocation = remainingUspd;
+                }
+                
                 pos.unallocatedEth -= toAllocate;
                 result.allocatedEth += toAllocate;
                 remainingEth -= toAllocate;
-                
-                // Calculate USPD amount based on allocated ETH and price
-                uint256 uspdForAllocation = (toAllocate * ethUsdPrice) / (10**priceDecimals);
-                result.uspdAmount += (uspdForAllocation * 100) / pos.minCollateralRatio;
+                result.uspdAmount += uspdForAllocation;
                 
                 emit FundsAllocated(currentId, toAllocate);
                 
