@@ -33,14 +33,11 @@ contract USPDTokenTest is Test {
 
         priceOracle = new PriceOracle(address(oracleEntrypoint), oracleSigner);
         
-        // Deploy USPD token first (needed for StabilizerNFT initialization)
-        uspdToken = new USPD(address(priceOracle), address(0)); // Temporary zero address for stabilizer
-
-        // Deploy StabilizerNFT implementation and proxy
+        // Deploy StabilizerNFT implementation and proxy first
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
         bytes memory stabilizerInitData = abi.encodeWithSelector(
             StabilizerNFT.initialize.selector,
-            payable(address(uspdToken)),
+            payable(address(0)), // USPD address will be updated after deployment
             address(0) // Position NFT address will be set later
         );
         ERC1967Proxy stabilizerProxy = new ERC1967Proxy(
@@ -49,8 +46,11 @@ contract USPDTokenTest is Test {
         );
         stabilizerNFT = StabilizerNFT(address(stabilizerProxy));
 
-        // Update USPD token with correct stabilizer address
-        uspdToken.updateStabilizer(address(stabilizerNFT));
+        // Deploy USPD token with oracle and stabilizer
+        uspdToken = new USPD(address(priceOracle), address(stabilizerNFT));
+
+        // Update USPD address in StabilizerNFT
+        stabilizerNFT.initialize(payable(address(uspdToken)), address(0));
         
         // Grant minter role to test contract
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
