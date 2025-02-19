@@ -169,10 +169,17 @@ contract StabilizerNFT is
                 remainingEth -= toAllocate;
                 result.uspdAmount += uspdForAllocation;
                 
-                // Mint position NFT to stabilizer
-                positionNFT.mint(ownerOf(currentId), toAllocate, uspdForAllocation);
+                // Mint position NFT to stabilizer and store the mapping
+                uint256 positionId = positionNFT.mint(ownerOf(currentId), toAllocate, uspdForAllocation);
+                stabilizerToPosition[currentId] = positionId;
                 
-                emit FundsAllocated(currentId, toAllocate);
+                // Add to allocated list if first allocation
+                if (pos.allocatedEth == 0) {
+                    _registerAllocatedPosition(currentId);
+                }
+                pos.allocatedEth += toAllocate;
+                
+                emit FundsAllocated(currentId, toAllocate, positionId);
                 
                 // Update unallocated list if no more funds
                 if (pos.unallocatedEth == 0) {
@@ -211,6 +218,36 @@ contract StabilizerNFT is
         emit UnallocatedFundsAdded(tokenId, msg.value);
     }
 
+    function _registerAllocatedPosition(uint256 tokenId) internal {
+        if (lowestAllocatedId == 0 || highestAllocatedId == 0) {
+            // First position
+            lowestAllocatedId = tokenId;
+            highestAllocatedId = tokenId;
+        } else if (tokenId > highestAllocatedId) {
+            // New highest
+            positions[tokenId].prevAllocated = highestAllocatedId;
+            positions[highestAllocatedId].nextAllocated = tokenId;
+            highestAllocatedId = tokenId;
+        } else if (tokenId < lowestAllocatedId) {
+            // New lowest
+            positions[tokenId].nextAllocated = lowestAllocatedId;
+            positions[lowestAllocatedId].prevAllocated = tokenId;
+            lowestAllocatedId = tokenId;
+        } else {
+            // Insert in middle before the next highest ID
+            uint256 nextId = lowestAllocatedId;
+            while (nextId != 0 && nextId < tokenId) {
+                nextId = positions[nextId].nextAllocated;
+            }
+            uint256 prevId = positions[nextId].prevAllocated;
+            
+            positions[tokenId].prevAllocated = prevId;
+            positions[tokenId].nextAllocated = nextId;
+            positions[prevId].nextAllocated = tokenId;
+            positions[nextId].prevAllocated = tokenId;
+        }
+    }
+
     function _removeFromUnallocatedList(uint256 tokenId) internal {
         StabilizerPosition storage pos = positions[tokenId];
         
@@ -237,6 +274,95 @@ contract StabilizerNFT is
     }
 
     // Remove unallocated funds from a position
+    function _removeFromAllocatedList(uint256 tokenId) internal {
+        StabilizerPosition storage pos = positions[tokenId];
+        
+        if (tokenId == lowestAllocatedId && tokenId == highestAllocatedId) {
+            // Last element in list
+            lowestAllocatedId = 0;
+            highestAllocatedId = 0;
+        } else if (tokenId == lowestAllocatedId) {
+            // First element
+            lowestAllocatedId = pos.nextAllocated;
+            positions[pos.nextAllocated].prevAllocated = 0;
+        } else if (tokenId == highestAllocatedId) {
+            // Last element
+            highestAllocatedId = pos.prevAllocated;
+            positions[pos.prevAllocated].nextAllocated = 0;
+        } else {
+            // Middle element
+            positions[pos.nextAllocated].prevAllocated = pos.prevAllocated;
+            positions[pos.prevAllocated].nextAllocated = pos.nextAllocated;
+        }
+        
+        pos.nextAllocated = 0;
+        pos.prevAllocated = 0;
+    }
+
+    function unallocateStabilizerFunds(
+        uint256 uspdAmount,
+        uint256 ethUsdPrice,
+        uint256 priceDecimals
+    ) external returns (uint256 unallocatedEth) {
+        require(msg.sender == address(uspdToken), "Only USPD contract");
+        require(highestAllocatedId != 0, "No allocated funds");
+        
+        uint256 currentId = highestAllocatedId;
+        uint256 remainingUspd = uspdAmount;
+        
+        while (currentId != 0 && remainingUspd > 0) {
+            if (gasleft() < MIN_GAS) break;
+
+            StabilizerPosition storage pos = positions[currentId];
+            uint256 positionId = stabilizerToPosition[currentId];
+            
+            if (pos.allocatedEth > 0 && positionId != 0) {
+                IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
+                
+                uint256 uspdToUnallocate = remainingUspd;
+                if (uspdToUnallocate > position.backedUspd) {
+                    uspdToUnallocate = position.backedUspd;
+                }
+                
+                // Calculate ETH to unallocate based on current price
+                uint256 ethToUnallocate = (uspdToUnallocate * (10**priceDecimals)) / ethUsdPrice;
+                if (ethToUnallocate > position.allocatedEth) {
+                    ethToUnallocate = position.allocatedEth;
+                }
+                
+                // Update position
+                pos.allocatedEth -= ethToUnallocate;
+                pos.unallocatedEth += ethToUnallocate;
+                
+                // If this was the last allocation, remove from allocated list
+                if (pos.allocatedEth == 0) {
+                    _removeFromAllocatedList(currentId);
+                }
+                
+                // Add back to unallocated list if needed
+                if (pos.unallocatedEth > 0 && pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
+                    _registerUnallocatedPosition(currentId, 0);
+                }
+                
+                // Update or burn position NFT
+                if (position.backedUspd == uspdToUnallocate) {
+                    positionNFT.burn(positionId);
+                    delete stabilizerToPosition[currentId];
+                }
+                
+                remainingUspd -= uspdToUnallocate;
+                unallocatedEth += ethToUnallocate;
+                
+                emit FundsUnallocated(currentId, ethToUnallocate, positionId);
+            }
+            
+            currentId = pos.prevAllocated;
+        }
+        
+        require(unallocatedEth > 0, "No funds unallocated");
+        return unallocatedEth;
+    }
+
     function removeUnallocatedFunds(
         uint256 tokenId,
         uint256 amount,
