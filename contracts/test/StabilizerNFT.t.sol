@@ -149,6 +149,7 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.addUnallocatedFunds{value: 5 ether}(1);
 
         // Mock as USPD token to test allocation
+        vm.deal(address(uspdToken), 1 ether);
         vm.startPrank(address(uspdToken));
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{
             value: 1 ether
@@ -156,15 +157,15 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
 
         // Verify allocation result
-        assertEq(result.allocatedEth, 0.909090909090909091 ether, "Should allocate correct user ETH share");
+        assertEq(result.allocatedEth, 1 ether, "Should allocate correct user ETH share");
 
         // Verify position NFT state after allocation
         uint256 positionId = positionNFT.getTokenByOwner(user1);
         IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
         
         // Should have both user's ETH and stabilizer's ETH
-        assertEq(position.allocatedEth, 1 ether, "Position should have correct ETH after allocation (user + stabilizer)");
-        assertEq(position.backedUspd, 1818.181818181818182 ether, "Position should back correct USPD after allocation");
+        assertEq(position.allocatedEth, 1.1 ether, "Position should have correct ETH after allocation (user + stabilizer)");
+        assertEq(position.backedUspd, 2000 ether, "Position should back correct USPD after allocation");
     }
 
     function testMultipleStabilizersAllocation() public {

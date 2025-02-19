@@ -50,6 +50,7 @@ contract UspdCollateralizedPositionNFT is
         
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         oracle = PriceOracle(_oracle);
+        _nextPositionId = 1; //positionIds start at 1
     }
 
     function mint(

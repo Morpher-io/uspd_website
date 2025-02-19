@@ -54,7 +54,11 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
 
         // Allocate funds through stabilizer NFTs
         IStabilizerNFT.AllocationResult memory result = stabilizer
-            .allocateStabilizerFunds{value: ethForAllocation}(ethForAllocation);
+            .allocateStabilizerFunds{value: ethForAllocation}(
+            ethForAllocation,
+            oracleResponse.price,
+            oracleResponse.decimals
+        );
 
         // Calculate USPD amount based on allocated ETH
         uint uspdToMint = (result.allocatedEth * oracleResponse.price) /

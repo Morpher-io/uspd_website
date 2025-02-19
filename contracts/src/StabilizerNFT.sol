@@ -158,11 +158,11 @@ contract StabilizerNFT is
                 pos.totalEth : stabilizerEthNeeded;
 
             // If stabilizer can't provide enough ETH, adjust user's ETH amount
+            uint256 userEthShare = remainingEth;
             if (toAllocate < stabilizerEthNeeded) {
                 // Calculate maximum user ETH that can be backed by available stabilizer ETH
-                remainingEth = (toAllocate * 100) / (pos.minCollateralRatio - 100);
+                userEthShare = (toAllocate * 100) / (pos.minCollateralRatio - 100);
             }
-
 
             address owner = ownerOf(currentId);
             uint256 positionId = positionNFT.getTokenByOwner(owner);
