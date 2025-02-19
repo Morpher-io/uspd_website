@@ -172,14 +172,18 @@ contract StabilizerNFT is
                 _registerAllocatedPosition(currentId);
             }
 
+            // Calculate pro-rata amount of user's ETH based on stabilizer's contribution
+            uint256 userEthShare = (toAllocate * 100) / pos.minCollateralRatio;
+            
             // Add collateral from both user and stabilizer
-            positionNFT.addCollateral{value: toAllocate + remainingEth}(positionId);
+            positionNFT.addCollateral{value: toAllocate + userEthShare}(positionId);
 
             // Update state
             pos.totalEth -= toAllocate;
-            result.allocatedEth += remainingEth;  // Only track user's ETH
+            result.allocatedEth += userEthShare;  // Only track user's ETH
+            remainingEth -= userEthShare;
 
-            emit FundsAllocated(currentId, toAllocate, remainingEth, positionId);
+            emit FundsAllocated(currentId, toAllocate, userEthShare, positionId);
 
             // Move to next stabilizer if we still have ETH to allocate
             currentId = pos.nextUnallocated;
