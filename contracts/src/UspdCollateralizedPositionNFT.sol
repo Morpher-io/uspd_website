@@ -12,6 +12,7 @@ contract UspdCollateralizedPositionNFT is
     ERC721Upgradeable, 
     AccessControlUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant TRANSFERCOLLATERAL_ROLE = keccak256("TRANSFERCOLLATERAL_ROLE");
     
     // Mapping from NFT ID to position
     mapping(uint256 => Position) private _positions;
@@ -64,8 +65,11 @@ contract UspdCollateralizedPositionNFT is
 
     // Transfer ETH back to stabilizer during unallocation
     function transferCollateral(uint256 tokenId, address payable to, uint256 amount) external {
-        require(msg.sender == to, "Only stabilizer can receive funds");
         require(ownerOf(tokenId) != address(0), "Position does not exist");
+        require(
+            hasRole(TRANSFERCOLLATERAL_ROLE, msg.sender) || ownerOf(tokenId) == msg.sender,
+            "Not authorized to transfer collateral"
+        );
         require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
         
         _positions[tokenId].allocatedEth -= amount;

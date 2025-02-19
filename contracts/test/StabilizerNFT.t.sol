@@ -51,6 +51,7 @@ contract StabilizerNFTTest is Test {
 
         // Setup roles
         positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
+        positionNFT.grantRole(positionNFT.TRANSFERCOLLATERAL_ROLE(), address(stabilizerNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
     }
 
