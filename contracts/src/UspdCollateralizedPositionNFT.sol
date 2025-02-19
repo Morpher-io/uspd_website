@@ -13,11 +13,6 @@ contract UspdCollateralizedPositionNFT is
     AccessControlUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     
-    struct Position {
-        uint256 allocatedEth;    // Amount of ETH allocated to this position
-        uint256 backedUspd;      // Amount of USPD backed by this position
-    }
-    
     // Mapping from NFT ID to position
     mapping(uint256 => Position) public positions;
     
