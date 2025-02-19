@@ -131,19 +131,26 @@ contract StabilizerNFT is
             StabilizerPosition storage pos = positions[currentId];
             
             if (pos.unallocatedEth > 0) {
-                uint256 toAllocate = remainingEth > pos.unallocatedEth ? 
-                    pos.unallocatedEth : remainingEth;
+                // Calculate USPD amount from user's ETH
+                uint256 uspdForAllocation = (remainingEth * ethUsdPrice) / (10**priceDecimals);
                 
-                // Calculate resulting USPD amount before allocation
-                uint256 uspdForAllocation = (toAllocate * ethUsdPrice) / (10**priceDecimals);
-                uspdForAllocation = (uspdForAllocation * 100) / pos.minCollateralRatio;
+                // Calculate required ETH for collateralization based on minCollateralRatio
+                uint256 requiredEth = (remainingEth * pos.minCollateralRatio) / 100;
+                uint256 additionalEthNeeded = requiredEth - remainingEth;
                 
-                // Adjust allocation if it would exceed maxUspdAmount
+                // Check how much we can allocate from this stabilizer
+                uint256 toAllocate = additionalEthNeeded > pos.unallocatedEth ? 
+                    pos.unallocatedEth : additionalEthNeeded;
+                
+                // Adjust if we have a max USPD amount limit
                 if (maxUspdAmount > 0 && result.uspdAmount + uspdForAllocation > maxUspdAmount) {
-                    uint256 remainingUspd = maxUspdAmount - result.uspdAmount;
-                    // Convert USPD amount back to required ETH
-                    toAllocate = (remainingUspd * pos.minCollateralRatio * (10**priceDecimals)) / (ethUsdPrice * 100);
-                    uspdForAllocation = remainingUspd;
+                    uspdForAllocation = maxUspdAmount - result.uspdAmount;
+                    // Recalculate required ETH for the reduced USPD amount
+                    uint256 newRequiredEth = (uspdForAllocation * (10**priceDecimals) * pos.minCollateralRatio) / (ethUsdPrice * 100);
+                    toAllocate = newRequiredEth - remainingEth;
+                    if (toAllocate > pos.unallocatedEth) {
+                        toAllocate = pos.unallocatedEth;
+                    }
                 }
                 
                 pos.unallocatedEth -= toAllocate;
