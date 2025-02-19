@@ -321,6 +321,7 @@ contract StabilizerNFT is
 
         uint256 currentId = highestAllocatedId;
         uint256 remainingUspd = uspdAmount;
+        uint256 totalUserEth;
 
         while (currentId != 0 && remainingUspd > 0) {
             if (gasleft() < MIN_GAS) break;
@@ -329,44 +330,56 @@ contract StabilizerNFT is
             uint256 positionId = stabilizerToPosition[currentId];
 
             if (positionId != 0) {
-                IUspdCollateralizedPositionNFT.Position
-                    memory position = positionNFT.getPosition(positionId);
+                IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
+                uint256 collateralRatio = positionNFT.getCollateralizationRatio(
+                    positionId,
+                    ethUsdPrice,
+                    uint8(priceDecimals)
+                );
 
                 uint256 uspdToUnallocate = remainingUspd;
                 if (uspdToUnallocate > position.backedUspd) {
                     uspdToUnallocate = position.backedUspd;
                 }
 
-                // Calculate ETH to unallocate based on current price
-                uint256 ethToUnallocate = (uspdToUnallocate *
-                    (10 ** priceDecimals)) / ethUsdPrice;
-                if (ethToUnallocate > position.allocatedEth) {
-                    ethToUnallocate = position.allocatedEth;
-                }
+                // Calculate ETH to remove proportional to USPD being burned
+                uint256 ethToRemove = (uspdToUnallocate * position.allocatedEth) / position.backedUspd;
+                
+                // Calculate user's share based on position's current collateral ratio
+                uint256 userShare = (ethToRemove * 100) / collateralRatio;
+                uint256 stabilizerShare = ethToRemove - userShare;
 
-                // Transfer ETH from position NFT back to stabilizer
-                IUspdCollateralizedPositionNFT(positionNFT).removeCollateral(
-                    positionId,
-                    payable(address(this)),
-                    ethToUnallocate,
-                    ethUsdPrice,
-                    priceDecimals
-                );
-
-                // Update position state
-                pos.totalEth += ethToUnallocate;
-
-                // Update position NFT allocation
+                // Update position NFT
                 if (position.backedUspd == uspdToUnallocate) {
-                    positionNFT.burn(positionId);
+                    // Fully dissolve position
+                    positionNFT.modifyAllocation(positionId, 0);
+                    positionNFT.removeCollateral(
+                        positionId,
+                        payable(address(this)),
+                        position.allocatedEth,
+                        ethUsdPrice,
+                        priceDecimals
+                    );
                     delete stabilizerToPosition[currentId];
                     _removeFromAllocatedList(currentId);
                 } else {
+                    // Partial unallocation
                     positionNFT.modifyAllocation(
                         positionId,
                         position.backedUspd - uspdToUnallocate
                     );
+                    positionNFT.removeCollateral(
+                        positionId,
+                        payable(address(this)),
+                        ethToRemove,
+                        ethUsdPrice,
+                        priceDecimals
+                    );
                 }
+
+                // Update stabilizer state
+                pos.totalEth += stabilizerShare;
+                totalUserEth += userShare;
 
                 // Add back to unallocated list if needed
                 if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
@@ -374,16 +387,18 @@ contract StabilizerNFT is
                 }
 
                 remainingUspd -= uspdToUnallocate;
-                unallocatedEth += ethToUnallocate;
-
-                emit FundsUnallocated(currentId, ethToUnallocate, positionId);
+                emit FundsUnallocated(currentId, ethToRemove, positionId);
             }
 
             currentId = pos.prevAllocated;
         }
 
-        require(unallocatedEth > 0, "No funds unallocated");
-        return unallocatedEth;
+        require(totalUserEth > 0, "No funds unallocated");
+        
+        // Send user's share back to USPD contract
+        uspdToken.receiveStabilizerReturn{value: totalUserEth}();
+        
+        return totalUserEth;
     }
 
     function removeUnallocatedFunds(
