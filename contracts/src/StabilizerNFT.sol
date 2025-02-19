@@ -53,8 +53,7 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         address to,
         uint256 tokenId,
         uint256 minCollateralRatio,
-        uint256 nextHigherId,
-        uint256 nextLowerId
+        uint256 nextId
     ) external payable onlyRole(MINTER_ROLE) {
         require(minCollateralRatio >= 110, "Collateral ratio too low"); // 110%
         
@@ -75,34 +74,32 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
 
     function _registerUnallocatedPosition(
         uint256 tokenId,
-        uint256 nextHigherId,
-        uint256 nextLowerId
+        uint256 nextId
     ) internal {
         if (lowestUnallocatedId == 0 || highestUnallocatedId == 0) {
             // First position
             lowestUnallocatedId = tokenId;
             highestUnallocatedId = tokenId;
-        } else if (positions[highestUnallocatedId].unallocatedEth <= positions[tokenId].unallocatedEth) {
+        } else if (tokenId > highestUnallocatedId) {
             // New highest
             positions[tokenId].prevUnallocated = highestUnallocatedId;
             positions[highestUnallocatedId].nextUnallocated = tokenId;
             highestUnallocatedId = tokenId;
-        } else if (positions[lowestUnallocatedId].unallocatedEth > positions[tokenId].unallocatedEth) {
+        } else if (tokenId < lowestUnallocatedId) {
             // New lowest
             positions[tokenId].nextUnallocated = lowestUnallocatedId;
             positions[lowestUnallocatedId].prevUnallocated = tokenId;
             lowestUnallocatedId = tokenId;
         } else {
             // Insert in middle
-            require(positions[nextHigherId].unallocatedEth >= positions[tokenId].unallocatedEth, 
-                "Invalid next higher position");
-            require(positions[nextLowerId].unallocatedEth < positions[tokenId].unallocatedEth, 
-                "Invalid next lower position");
+            require(nextId > tokenId, "Invalid next ID");
+            require(positions[nextId].prevUnallocated < tokenId, "Invalid position");
             
-            positions[tokenId].prevUnallocated = nextLowerId;
-            positions[tokenId].nextUnallocated = nextHigherId;
-            positions[nextLowerId].nextUnallocated = tokenId;
-            positions[nextHigherId].prevUnallocated = tokenId;
+            uint256 prevId = positions[nextId].prevUnallocated;
+            positions[tokenId].prevUnallocated = prevId;
+            positions[tokenId].nextUnallocated = nextId;
+            positions[prevId].nextUnallocated = tokenId;
+            positions[nextId].prevUnallocated = tokenId;
         }
     }
 
@@ -160,25 +157,22 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
     // Add more unallocated funds to an existing position
     function addUnallocatedFunds(
         uint256 tokenId,
-        uint256 nextHigherId,
-        uint256 nextLowerId
+        uint256 nextId
     ) external payable {
         require(_exists(tokenId), "Token does not exist");
         require(msg.value > 0, "No ETH sent");
         
         StabilizerPosition storage pos = positions[tokenId];
         
-        // If position is already in unallocated list, remove it
-        if (pos.unallocatedEth > 0) {
-            _removeFromUnallocatedList(tokenId);
-        }
-        
         // Update position amounts
         pos.totalEth += msg.value;
         pos.unallocatedEth += msg.value;
         
-        // Add back to list in correct position
-        _registerUnallocatedPosition(tokenId, nextHigherId, nextLowerId);
+        // Add to list if not already there
+        if (pos.nextUnallocated == 0 && pos.prevUnallocated == 0 && 
+            tokenId != lowestUnallocatedId && tokenId != highestUnallocatedId) {
+            _registerUnallocatedPosition(tokenId, nextId);
+        }
         
         emit UnallocatedFundsAdded(tokenId, msg.value);
     }
