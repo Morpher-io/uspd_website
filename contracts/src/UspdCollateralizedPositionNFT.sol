@@ -5,6 +5,7 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721U
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
+import "./PriceOracle.sol";
 
 contract UspdCollateralizedPositionNFT is 
     IUspdCollateralizedPositionNFT,
@@ -106,7 +107,7 @@ contract UspdCollateralizedPositionNFT is
     }
 
     function modifyAllocation(uint256 tokenId, uint256 newBackedUspd) external onlyRole(MODIFYALLOCATION_ROLE) {
-        require(_exists(tokenId), "Position does not exist");
+        require(ownerOf(tokenId) != address(0), "Position does not exist");
         _positions[tokenId].backedUspd = newBackedUspd;
     }
 
