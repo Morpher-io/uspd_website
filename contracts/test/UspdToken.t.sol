@@ -7,6 +7,7 @@ import "forge-std/console.sol";
 
 import {USPDToken as USPD} from "../src/UspdToken.sol";
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
+import {UspdCollateralizedPositionNFT} from "../src/UspdCollateralizedPositionNFT.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {OracleEntrypoint} from "../src/oracle/OracleEntrypoint.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
@@ -45,7 +46,7 @@ contract USPDTokenTest is Test {
             address(positionNFTImpl),
             positionInitData
         );
-        positionNFT = UspdCollateralizedPositionNFT(address(positionProxy));
+        UspdCollateralizedPositionNFT positionNFT = UspdCollateralizedPositionNFT(address(positionProxy));
 
         // Deploy StabilizerNFT implementation and proxy
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
