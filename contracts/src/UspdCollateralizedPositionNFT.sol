@@ -58,14 +58,14 @@ contract UspdCollateralizedPositionNFT is
 
     // Add ETH to further collateralize a position
     function addCollateral(uint256 tokenId) external payable {
-        require(_exists(tokenId), "Position does not exist");
+        require(ownerOf(tokenId) != address(0), "Position does not exist");
         _positions[tokenId].allocatedEth += msg.value;
     }
 
     // Transfer ETH back to stabilizer during unallocation
     function transferCollateral(uint256 tokenId, address payable to, uint256 amount) external {
         require(msg.sender == to, "Only stabilizer can receive funds");
-        require(_exists(tokenId), "Position does not exist");
+        require(ownerOf(tokenId) != address(0), "Position does not exist");
         require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
         
         _positions[tokenId].allocatedEth -= amount;
