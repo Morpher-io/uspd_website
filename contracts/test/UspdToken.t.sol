@@ -10,6 +10,7 @@ import {StabilizerNFT} from "../src/StabilizerNFT.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {OracleEntrypoint} from "../src/oracle/OracleEntrypoint.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
+import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 
 contract USPDTokenTest is Test {
@@ -32,12 +33,24 @@ contract USPDTokenTest is Test {
 
         priceOracle = new PriceOracle(address(oracleEntrypoint), oracleSigner);
         
-        // Deploy StabilizerNFT
-        stabilizerNFT = new StabilizerNFT();
-        stabilizerNFT.initialize(payable(address(uspdToken)), address(0)); // Position NFT address will be set later
-        
-        // Deploy USPD token with StabilizerNFT
-        uspdToken = new USPD(address(priceOracle), address(stabilizerNFT));
+        // Deploy USPD token first (needed for StabilizerNFT initialization)
+        uspdToken = new USPD(address(priceOracle), address(0)); // Temporary zero address for stabilizer
+
+        // Deploy StabilizerNFT implementation and proxy
+        StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
+        bytes memory stabilizerInitData = abi.encodeWithSelector(
+            StabilizerNFT.initialize.selector,
+            payable(address(uspdToken)),
+            address(0) // Position NFT address will be set later
+        );
+        ERC1967Proxy stabilizerProxy = new ERC1967Proxy(
+            address(stabilizerNFTImpl),
+            stabilizerInitData
+        );
+        stabilizerNFT = StabilizerNFT(address(stabilizerProxy));
+
+        // Update USPD token with correct stabilizer address
+        uspdToken.updateStabilizer(address(stabilizerNFT));
         
         // Grant minter role to test contract
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
