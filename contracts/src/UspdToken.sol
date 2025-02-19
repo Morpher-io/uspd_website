@@ -41,6 +41,7 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         }();
         
         uint256 ethForAllocation = msg.value - oracle.getOracleCommission();
+
         
         // Allocate funds through stabilizer NFTs
         IStabilizerNFT.AllocationResult memory result = stabilizer.allocateStabilizerFunds(

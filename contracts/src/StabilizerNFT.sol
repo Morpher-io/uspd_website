@@ -189,7 +189,7 @@ contract StabilizerNFT is
                 if (pos.totalEth == 0) {
                     _removeFromUnallocatedList(currentId);
                 }
-            }
+            
             
             currentId = pos.nextUnallocated;
         }
@@ -207,11 +207,10 @@ contract StabilizerNFT is
         
         StabilizerPosition storage pos = positions[tokenId];
         
-        bool hadNoFunds = pos.unallocatedEth == 0;
+        bool hadNoFunds = pos.totalEth == 0;
         
         // Update position amounts
         pos.totalEth += msg.value;
-        pos.unallocatedEth += msg.value;
         
         // Only add to list if position went from 0 to having funds
         if (hadNoFunds) {
@@ -380,13 +379,12 @@ contract StabilizerNFT is
         require(to != address(0), "Invalid recipient");
         
         StabilizerPosition storage pos = positions[tokenId];
-        require(pos.unallocatedEth >= amount, "Insufficient unallocated funds");
+        require(pos.totalEth >= amount, "Insufficient unallocated funds");
         
         pos.totalEth -= amount;
-        pos.unallocatedEth -= amount;
         
         // If no more unallocated funds, remove from list
-        if (pos.unallocatedEth == 0) {
+        if (pos.totalEth == 0) {
             _removeFromUnallocatedList(tokenId);
         }
         
@@ -407,8 +405,7 @@ contract StabilizerNFT is
                     '"image": "data:image/svg+xml;base64,', 
                     Base64.encode(bytes(generateSVG(tokenId))),
                     '", "attributes": [',
-                    '{"trait_type": "Total ETH", "value": "', toString(pos.totalEth), '"},',
-                    '{"trait_type": "Unallocated ETH", "value": "', toString(pos.unallocatedEth), '"},',
+                    '{"trait_type": "Unallocated ETH", "value": "', toString(pos.totalEth), '"},',
                     '{"trait_type": "Min Collateral Ratio", "value": "', toString(pos.minCollateralRatio), '%"}',
                     ']}'
                 )
@@ -427,11 +424,8 @@ contract StabilizerNFT is
                 '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">',
                 'Stabilizer #', toString(tokenId),
                 '</text>',
-                '<text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">',
-                toString(pos.totalEth), ' ETH Total',
-                '</text>',
                 '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">',
-                toString(pos.unallocatedEth), ' ETH Unallocated',
+                toString(pos.totalEth), ' ETH Unallocated',
                 '</text>',
                 '</svg>'
             )
