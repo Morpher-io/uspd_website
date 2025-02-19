@@ -13,4 +13,10 @@ interface IStabilizerNFT {
         uint256 priceDecimals,
         uint256 maxUspdAmount
     ) external returns (AllocationResult memory);
+
+    function unallocateStabilizerFunds(
+        uint256 uspdAmount,
+        uint256 ethUsdPrice,
+        uint256 priceDecimals
+    ) external returns (uint256 unallocatedEth);
 }
