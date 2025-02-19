@@ -1,30 +1,47 @@
 # USPD Stablecoin
 
-USPD is an ERC20-compliant USD-pegged stablecoin designed for stability and reliability in the DeFi ecosystem. The token maintains its 1:1 peg to USD through a sophisticated collateralization mechanism and price stabilization algorithms.
+USPD is an ERC20-compliant USD-pegged stablecoin designed for stability and reliability in the DeFi ecosystem. The token maintains its 1:1 peg to USD through a sophisticated NFT-based collateralization mechanism and price stabilization algorithms.
 
 ## Collateralization Mechanism
 
-USPD implements a unique stabilizer-based overcollateralization system. Users can mint USPD by depositing supported collateral assets (e.g., ETH) at the current USD exchange rate. The system is secured by stabilizers who provide additional collateral, ensuring the protocol maintains a healthy overcollateralization ratio. This stabilizer-backed system helps maintain the token's stability and protects against market volatility.
+USPD implements a unique stabilizer-based overcollateralization system using NFTs. Users can mint USPD by depositing supported collateral assets (e.g., ETH) at the current USD exchange rate. The system is secured by stabilizers who provide additional collateral through NFT-based positions, ensuring the protocol maintains a healthy overcollateralization ratio. This stabilizer-backed system helps maintain the token's stability and protects against market volatility.
 
-### Stabilizer Queue Implementation
+### NFT-Based Stabilizer System
 
-The protocol maintains a sorted linked list of stabilizers, ordered by their overcollateralization ratio. Stabilizers can choose their desired overcollateralization level, with the correct position in the queue being determined through offchain computation. The on-chain contract then only needs to validate the proposed position during stabilizer addition, making the process gas-efficient while maintaining the ordered structure of the queue.
+The protocol utilizes two types of NFTs to manage stabilizer positions:
 
-### Stabilizer Queue Challenges
+1. **Stabilizer NFTs**: Represent a stabilizer's commitment to the protocol
+   - Each NFT has a unique ID that determines its priority in fund allocation
+   - Lower IDs have higher priority for fund allocation
+   - Stabilizers specify their total ETH commitment and desired overcollateralization ratio
+   - Initially distributed through auction mechanisms
 
-The implementation of the stabilizer queue faces several technical challenges, particularly when dealing with dynamic overcollateralization ratios:
+2. **Position NFTs**: Represent specific USPD-backing positions
+   - Created when stabilizer funds are allocated to back USPD
+   - Track the amount of ETH allocated and the USPD being backed
+   - Enable efficient management of individual backing positions
 
-1. **Dynamic Ratios**: The queue implementation complexity depends heavily on how stabilizer ratios are specified:
-   
-   - **ETH-based ratio** (simple case):
-     * Stabilizers specify their ratio in terms of ETH (e.g., "I'll provide 1.5x ETH coverage")
-     * Queue ordering remains stable regardless of ETH/USD price changes
-     * Implementation is straightforward as ratios are static
-   
-   - **USPD-based ratio** (complex case):
-     * Stabilizers specify their ratio in USPD terms (e.g., "I'll cover up to 1000 USPD")
-     * Their effective ratio changes with every ETH/USD price update
-     * Queue ordering needs frequent updates to remain accurate
+### Stabilizer System Implementation
+
+The protocol implements an NFT-based stabilizer system with efficient fund allocation and position management:
+
+1. **Fund Allocation**:
+   - Unallocated funds are tracked in a gas-efficient linked list structure
+   - List is ordered by Stabilizer NFT ID (lowest to highest)
+   - When new USPD is minted, funds are allocated from the lowest available NFT ID
+   - System automatically moves to next stabilizer if current one lacks sufficient funds
+
+2. **Position Management**:
+   - Stabilizers can freely add or remove unallocated funds
+   - Can withdraw from overcollateralized positions while maintaining minimum 10% ratio
+   - When USPD is burned, freed funds return to the unallocated list
+   - Position reordering is computed off-chain, with on-chain link verification
+
+3. **Gas Optimization**:
+   - Separate tracking of unallocated funds prevents excessive gas usage
+   - Off-chain position calculation with on-chain verification
+   - Efficient linked list structure for fund management
+   - Position NFTs enable granular tracking without excessive storage costs
 
 2. **Efficient Updates**: When using USPD-based ratios, finding the highest overcollateralization ratio without processing the entire list becomes complex. Potential solutions include:
 
