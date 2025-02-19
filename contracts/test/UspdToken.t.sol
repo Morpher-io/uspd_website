@@ -26,8 +26,10 @@ contract USPDTokenTest is Test {
     USPD uspdToken;
 
     bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
+    address public user;
 
     function setUp() public {
+        user = makeAddr("user");
         // Setup oracle
         oraclePrivateKey = 0xa11ce;
         oracleSigner = vm.addr(oraclePrivateKey);
@@ -89,7 +91,7 @@ contract USPDTokenTest is Test {
     function testMintStablecoin() public {
         // Setup oracle and accounts
         vm.deal(address(priceOracle), 10 ether);
-        vm.deal(address(this), 10 ether);
+        vm.deal(user, 10 ether);
         vm.warp(1000000);
 
         // Set ETH price to $2800
@@ -98,20 +100,22 @@ contract USPDTokenTest is Test {
         setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
         vm.warp(10000);
 
-        // Create stabilizer NFT
-        stabilizerNFT.mint(address(this), 1);
+        // Create stabilizer NFT for user
+        stabilizerNFT.mint(user, 1);
         
-        // Add unallocated funds to stabilizer
+        // Add unallocated funds to stabilizer as user
+        vm.startPrank(user);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1, 0);
         
-        // Mint USPD tokens
-        uspdToken.mint{value: 1 ether}(address(this));
+        // Mint USPD tokens as user
+        uspdToken.mint{value: 1 ether}(user);
+        vm.stopPrank();
         
         vm.warp(10);
         
         // Verify USPD balance
         uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
-        assertEq(uspdToken.balanceOf(address(this)), expectedBalance, "Incorrect USPD balance");
+        assertEq(uspdToken.balanceOf(user), expectedBalance, "Incorrect USPD balance");
     }
 
     function setOracleData(
