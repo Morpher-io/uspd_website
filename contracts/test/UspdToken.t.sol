@@ -193,6 +193,101 @@ contract USPDTokenTest is Test {
         );
     }
 
+    function testBurnWithZeroAmount() public {
+        vm.expectRevert("Amount must be greater than 0");
+        uspdToken.burn(0, payable(address(this)));
+    }
+
+    function testBurnWithZeroAddress() public {
+        vm.expectRevert("Invalid recipient");
+        uspdToken.burn(100, payable(address(0)));
+    }
+
+    function testBurnWithoutOracleCommission() public {
+        vm.expectRevert("UspdToken: Oracle comission needs to be paid on burn");
+        uspdToken.burn(100, payable(address(this)));
+    }
+
+    function testBurnWithInsufficientBalance() public {
+        address user = makeAddr("user");
+        vm.deal(user, 1 ether);
+        
+        vm.prank(user);
+        vm.expectRevert("ERC20: burn amount exceeds balance");
+        uspdToken.burn{value: 0.1 ether}(100 ether, payable(user));
+    }
+
+    function testBurnWithRevertingRecipient() public {
+        // Setup a stabilizer and mint some USPD
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdHolder = makeAddr("uspdHolder");
+        
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdHolder, 10 ether);
+        
+        // Set ETH price to $2800
+        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        
+        // Setup stabilizer
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        
+        // Mint USPD tokens
+        vm.prank(uspdHolder);
+        uspdToken.mint{value: 1 ether}(uspdHolder);
+        
+        // Create a contract that reverts on receive
+        RevertingContract reverting = new RevertingContract();
+        
+        // Try to burn USPD and send ETH to reverting contract
+        vm.prank(uspdHolder);
+        vm.expectRevert("ETH transfer failed");
+        uspdToken.burn{value: 0.1 ether}(1000 ether, payable(address(reverting)));
+    }
+
+    function testSuccessfulBurn() public {
+        // Setup a stabilizer and mint some USPD
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdHolder = makeAddr("uspdHolder");
+        
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdHolder, 10 ether);
+        
+        // Set ETH price to $2800
+        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        
+        // Setup stabilizer
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        
+        // Mint USPD tokens
+        vm.prank(uspdHolder);
+        uspdToken.mint{value: 1 ether}(uspdHolder);
+        
+        uint256 initialBalance = uspdHolder.balance;
+        uint256 initialUspdBalance = uspdToken.balanceOf(uspdHolder);
+        
+        // Burn half of USPD
+        vm.prank(uspdHolder);
+        uspdToken.burn{value: 0.1 ether}(initialUspdBalance / 2, payable(uspdHolder));
+        
+        // Verify USPD was burned
+        assertEq(uspdToken.balanceOf(uspdHolder), initialUspdBalance / 2, "USPD not burned correctly");
+        
+        // Verify ETH was returned
+        assertTrue(uspdHolder.balance > initialBalance, "ETH not returned to holder");
+    }
+
+    contract RevertingContract {
+        receive() external payable {
+            revert("Always reverts");
+        }
+    }
+
     function testMintStablecoin() public {
         // Create test users
         address stabilizerOwner = makeAddr("stabilizerOwner");
