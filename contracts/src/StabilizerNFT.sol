@@ -68,6 +68,7 @@ contract StabilizerNFT is
         uint256 positionId
     );
     event UnallocatedFundsAdded(uint256 indexed tokenId, uint256 amount);
+    event MinCollateralRatioUpdated(uint256 indexed tokenId, uint256 oldRatio, uint256 newRatio);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -462,6 +463,18 @@ console.log("toAllocate %s and totalEth %s", toAllocate, pos.totalEth);
                     "</svg>"
                 )
             );
+    }
+
+    function setMinCollateralizationRatio(uint256 tokenId, uint256 newRatio) external {
+        require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        require(newRatio >= 110, "Ratio must be at least 110%");
+        require(newRatio <= 1000, "Ratio cannot exceed 1000%");
+
+        StabilizerPosition storage pos = positions[tokenId];
+        uint256 oldRatio = pos.minCollateralRatio;
+        pos.minCollateralRatio = newRatio;
+
+        emit MinCollateralRatioUpdated(tokenId, oldRatio, newRatio);
     }
 
     receive() external payable {}

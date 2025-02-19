@@ -216,6 +216,31 @@ contract StabilizerNFTTest is Test {
         assertEq(result.allocatedEth, 2 ether, "Total allocated user ETH should be 2 ETH");
     }
 
+    function testSetMinCollateralizationRatio() public {
+        // Mint token
+        stabilizerNFT.mint(user1, 1);
+
+        // Try to set ratio as non-owner
+        vm.expectRevert("Not token owner");
+        stabilizerNFT.setMinCollateralizationRatio(1, 150);
+
+        // Try to set invalid ratios as owner
+        vm.startPrank(user1);
+        vm.expectRevert("Ratio must be at least 110%");
+        stabilizerNFT.setMinCollateralizationRatio(1, 109);
+
+        vm.expectRevert("Ratio cannot exceed 1000%");
+        stabilizerNFT.setMinCollateralizationRatio(1, 1001);
+
+        // Set valid ratio
+        stabilizerNFT.setMinCollateralizationRatio(1, 150);
+        vm.stopPrank();
+
+        // Verify ratio was updated
+        (,uint256 minCollateralRatio,,,,) = stabilizerNFT.positions(1);
+        assertEq(minCollateralRatio, 150, "Min collateral ratio should be updated");
+    }
+
     function testUnallocationAndPositionNFT() public {
         // Setup like in allocation test
         stabilizerNFT.mint(user1, 1);
