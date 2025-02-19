@@ -154,11 +154,10 @@ contract StabilizerNFT is
             if (remainingEth == 0) break;
 
             // Calculate how much stabilizer ETH is needed for this user ETH
-            uint256 stabilizerEthNeeded = (remainingEth * (pos.minCollateralRatio - 100)) / 100;
-            console.log("StabilizerEthNeeded %s", stabilizerEthNeeded);
-            // Check if stabilizer has enough ETH
+            uint256 stabilizerEthNeeded = (remainingEth * (pos.minCollateralRatio - 100)) / 100;            // Check if stabilizer has enough ETH
+            
             uint256 toAllocate = stabilizerEthNeeded > pos.totalEth ? pos.totalEth : stabilizerEthNeeded;
-console.log("toAllocate %s and totalEth %s", toAllocate, pos.totalEth);
+            
             // If stabilizer can't provide enough ETH, adjust user's ETH amount
             uint256 userEthShare = remainingEth;
             if (toAllocate < stabilizerEthNeeded) {
@@ -197,15 +196,13 @@ console.log("toAllocate %s and totalEth %s", toAllocate, pos.totalEth);
                 _removeFromUnallocatedList(currentId);
             }
 
-            currentId = pos.nextUnallocated;
         }
 
         require(result.allocatedEth > 0, "No funds allocated");
         
         // Return any unallocated ETH to USPD token
         if (remainingEth > 0) {
-            (bool success, ) = address(uspdToken).call{value: remainingEth}("");
-            require(success, "ETH return failed");
+            uspdToken.receiveStabilizerReturn{value: remainingEth}();
         }
         
         return result;
