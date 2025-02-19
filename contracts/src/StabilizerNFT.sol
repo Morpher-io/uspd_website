@@ -355,7 +355,7 @@ contract StabilizerNFT is
                 
                 // Add back to unallocated list if needed
                 if (pos.unallocatedEth > 0 && pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
-                    _registerUnallocatedPosition(currentId, 0);
+                    _registerUnallocatedPosition(currentId);
                 }
                 
                 // Update or burn position NFT
