@@ -8,9 +8,7 @@ interface IUspdCollateralizedPositionNFT {
     }
 
     function mint(
-        address to,
-        uint256 allocatedEth,
-        uint256 backedUspd
+        address to
     ) external returns (uint256);
 
     function burn(uint256 tokenId) external;
@@ -22,4 +20,20 @@ interface IUspdCollateralizedPositionNFT {
     ) external view returns (uint256);
 
     function getPosition(uint256 tokenId) external view returns (Position memory);
+
+    function transferCollateral(uint256 tokenId, address payable to, uint256 amount) external;
+
+     function addCollateral(uint256 tokenId) external payable;
+
+     function modifyAllocation(uint256 tokenId, uint256 newBackedUspd) external;
+
+     function removeCollateral(
+        uint256 tokenId, 
+        address payable to, 
+        uint256 amount,
+        uint256 ethUsdPrice,
+        uint256 priceDecimals
+    ) external;
+
+   function getTokenByOwner(address owner) external view returns (uint256);
 }

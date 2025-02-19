@@ -7,7 +7,6 @@ import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "./PriceOracle.sol";
 import "./interfaces/IStabilizerNFT.sol";
 
-
 contract USPDToken is ERC20, ERC20Permit, AccessControl {
     PriceOracle oracle;
     IStabilizerNFT stabilizer;
@@ -39,26 +38,31 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
             value: oracle.getOracleCommission()
         }();
-        
+
         uint256 oracleCommission = oracle.getOracleCommission();
         uint256 ethForAllocation = msg.value - oracleCommission;
-        
-        // Allocate funds through stabilizer NFTs
-        IStabilizerNFT.AllocationResult memory result = stabilizer.allocateStabilizerFunds{
-            value: ethForAllocation
-        }(ethForAllocation);
-        
-        // Calculate USPD amount based on allocated ETH
-        uint256 uspdToMint = (result.allocatedEth * oracleResponse.price) / (10**oracleResponse.decimals);
-        
-        // Cap at maxUspdAmount if specified
-        if (maxUspdAmount > 0 && uspdToMint > maxUspdAmount) {
-            uspdToMint = maxUspdAmount;
+
+        // Calculate ETH to stabilize based on maxUspdAmount
+        if (maxUspdAmount > 0) {
+            // Calculate ETH needed for maxUspdAmount
+            uint256 ethNeeded = (maxUspdAmount *
+                (10 ** oracleResponse.decimals)) / oracleResponse.price;
+            if (ethNeeded < ethForAllocation) {
+                ethForAllocation = ethNeeded;
+            }
         }
-        
+
+        // Allocate funds through stabilizer NFTs
+        IStabilizerNFT.AllocationResult memory result = stabilizer
+            .allocateStabilizerFunds{value: ethForAllocation}(ethForAllocation);
+
+        // Calculate USPD amount based on allocated ETH
+        uint uspdToMint = (result.allocatedEth * oracleResponse.price) /
+            (10 ** oracleResponse.decimals);
+
         // Mint USPD based on allocated amount
         _mint(to, uspdToMint);
-        
+
         // Return any unallocated ETH
         uint256 leftover = ethForAllocation - result.allocatedEth;
         if (leftover > 0) {
@@ -74,24 +78,24 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
     function burn(uint amount, address payable to) public {
         require(amount > 0, "Amount must be greater than 0");
         require(to != address(0), "Invalid recipient");
-        
+
         // Get current ETH price
         PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
             value: oracle.getOracleCommission()
         }();
-        
+
         // Burn USPD tokens first
         _burn(msg.sender, amount);
-        
+
         // Unallocate funds from stabilizers
         uint256 unallocatedEth = stabilizer.unallocateStabilizerFunds(
             amount,
             oracleResponse.price,
             oracleResponse.decimals
         );
-        
+
         emit Payout(to, amount, unallocatedEth, oracleResponse.price);
-        
+
         // Transfer unallocated ETH to recipient
         (bool success, ) = to.call{value: unallocatedEth}("");
         require(success, "ETH transfer failed");
@@ -133,7 +137,10 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
 
     // Function to receive ETH returns from stabilizer
     function receiveStabilizerReturn() external payable {
-        require(msg.sender == address(stabilizer), "Only stabilizer can return ETH");
+        require(
+            msg.sender == address(stabilizer),
+            "Only stabilizer can return ETH"
+        );
         // ETH will be held here until transferred to user in mint or burn
     }
 

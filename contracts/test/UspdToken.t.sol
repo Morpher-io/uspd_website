@@ -8,6 +8,7 @@ import "forge-std/console.sol";
 import {USPDToken as USPD} from "../src/UspdToken.sol";
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
 import {UspdCollateralizedPositionNFT} from "../src/UspdCollateralizedPositionNFT.sol";
+import {IUspdCollateralizedPositionNFT} from "../src/interfaces/IUspdCollateralizedPositionNFT.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {OracleEntrypoint} from "../src/oracle/OracleEntrypoint.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
@@ -23,6 +24,7 @@ contract USPDTokenTest is Test {
     OracleEntrypoint oracleEntrypoint;
     PriceOracle priceOracle;
     StabilizerNFT public stabilizerNFT;
+    UspdCollateralizedPositionNFT positionNFT;
     USPD uspdToken;
 
     bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
@@ -47,7 +49,7 @@ contract USPDTokenTest is Test {
             address(positionNFTImpl),
             positionInitData
         );
-        UspdCollateralizedPositionNFT positionNFT = UspdCollateralizedPositionNFT(address(positionProxy));
+        positionNFT  = UspdCollateralizedPositionNFT(payable(address(positionProxy)));
 
         // Deploy StabilizerNFT implementation and proxy
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
@@ -60,7 +62,7 @@ contract USPDTokenTest is Test {
             address(stabilizerNFTImpl),
             stabilizerInitData
         );
-        stabilizerNFT = StabilizerNFT(address(stabilizerProxy));
+        stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy)));
 
         // Update USPD token with correct stabilizer address
         uspdToken.updateStabilizer(address(stabilizerNFT));
