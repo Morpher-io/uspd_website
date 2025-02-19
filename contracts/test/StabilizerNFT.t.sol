@@ -48,11 +48,12 @@ contract StabilizerNFTTest is Test {
             address(stabilizerNFTImpl),
             stabilizerInitData
         );
-        stabilizerNFT = StabilizerNFT(address(stabilizerProxy));
+        stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy)));
 
         // Setup roles
         positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
         positionNFT.grantRole(positionNFT.TRANSFERCOLLATERAL_ROLE(), address(stabilizerNFT));
+        positionNFT.grantRole(positionNFT.MODIFYALLOCATION_ROLE(), address(stabilizerNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
     }
 
@@ -84,6 +85,7 @@ contract StabilizerNFTTest is Test {
         // Check position details
         (uint256 totalEth, uint256 minCollateralRatio, , , , ) = stabilizerNFT.positions(1);
         assertEq(totalEth, 1 ether, "Total ETH should match sent amount");
+        assertEq(minCollateralRatio, 110, "Min Collateralization Ration should be 110");
         assertEq(stabilizerNFT.lowestUnallocatedId(), 1, "Should be lowest ID");
         assertEq(
             stabilizerNFT.highestUnallocatedId(),
@@ -108,9 +110,9 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.highestUnallocatedId(), 3, "Wrong highest ID");
 
         // Verify linked list connections
-        (, , , , uint256 next1) = stabilizerNFT.positions(1);
-        (, , , uint256 prev2, uint256 next2) = stabilizerNFT.positions(2);
-        (, , , uint256 prev3, ) = stabilizerNFT.positions(3);
+        (, , , uint256 next1, , ) = stabilizerNFT.positions(1);
+        (, , uint256 prev2, uint256 next2, ,) = stabilizerNFT.positions(2);
+        (, , uint256 prev3, , , ) = stabilizerNFT.positions(3);
 
         assertEq(next1, 2, "Wrong next for ID 1");
         assertEq(prev2, 1, "Wrong prev for ID 2");
@@ -135,6 +137,8 @@ contract StabilizerNFTTest is Test {
             3 ether,
             "Total ETH should be sum of both additions"
         );
+
+        assertEq(minCollateralRatio, 110, "Min Collateralization Ration should be 110");
     }
 
     function testAllocationAndPositionNFT() public {
