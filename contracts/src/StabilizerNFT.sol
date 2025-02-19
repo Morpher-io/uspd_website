@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./UspdToken.sol";
 import "./interfaces/IStabilizerNFT.sol";
 
@@ -26,7 +26,7 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
     uint256 public highestUnallocatedId;
     
     // USPD token contract
-    UspdToken public uspdToken;
+    USPDToken public uspdToken;
     
     // Minimum gas required for allocation loop
     uint256 public constant MIN_GAS = 100000;
@@ -47,7 +47,7 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
         __AccessControl_init();
         
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        uspdToken = UspdToken(_uspdToken);
+        uspdToken = USPDToken(_uspdToken);
     }
 
     function mint(
@@ -101,7 +101,7 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
     function allocateStabilizerFunds(
         uint256 ethAmount,
         uint256 ethUsdPrice,
-        uint8 priceDecimals,
+        uint256 priceDecimals,
         uint256 maxUspdAmount
     ) external returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
