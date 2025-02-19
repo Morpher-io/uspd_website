@@ -75,6 +75,127 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - Advantage: Gas-efficient, permissionless, handles dynamic ratios
    - Challenge: Designing incentives for timely updates
 
+#### Example Implementation: Merkle-Proof Verified Ordering
+
+```solidity
+struct Stabilizer {
+    address addr;
+    uint256 ratio;    // Current overcollateralization ratio
+    uint256 position; // Position in queue (1-based)
+}
+
+contract StabilizerQueue {
+    bytes32 public merkleRoot;
+    uint256 public lastUpdatePrice;
+    
+    // Verify and update stabilizer position
+    function updatePosition(
+        Stabilizer calldata newPos,
+        Stabilizer calldata prevPos,
+        Stabilizer calldata nextPos,
+        bytes32[] calldata proof
+    ) external {
+        // Verify the position is between prev and next
+        require(prevPos.position < newPos.position, "Invalid prev position");
+        require(newPos.position < nextPos.position, "Invalid next position");
+        require(prevPos.ratio >= newPos.ratio, "Invalid ratio vs prev");
+        require(newPos.ratio >= nextPos.ratio, "Invalid ratio vs next");
+        
+        // Construct leaf node
+        bytes32 leaf = keccak256(abi.encode(
+            newPos.addr,
+            newPos.ratio,
+            newPos.position
+        ));
+        
+        // Verify merkle proof
+        require(
+            MerkleProof.verify(proof, merkleRoot, leaf),
+            "Invalid merkle proof"
+        );
+        
+        // Update stabilizer data
+        stabilizers[newPos.addr] = newPos;
+        emit PositionUpdated(newPos.addr, newPos.position, newPos.ratio);
+    }
+}
+```
+
+#### Example Implementation: Bitmap-based Permissionless Updates
+
+```solidity
+contract StabilizerQueueBitmap {
+    uint256 public constant MAX_STABILIZERS = 256;
+    uint256 public lastUpdateTimestamp;
+    uint256 public lastUpdatePrice;
+    
+    struct UpdateInfo {
+        uint256 bitmap;        // Bit 1 means position changed
+        address[] addresses;   // Addresses in new order
+        uint256[] ratios;     // New ratios
+        bytes32[] proofs;     // Merkle proofs
+    }
+    
+    function submitUpdate(UpdateInfo calldata update) external {
+        // Check update conditions
+        require(
+            block.timestamp >= lastUpdateTimestamp + 4 hours ||
+            _getPriceDeviation() >= 0.02e18, // 2%
+            "Update conditions not met"
+        );
+        
+        // Verify bitmap matches provided data
+        require(
+            update.addresses.length == update.ratios.length &&
+            update.addresses.length == _countBits(update.bitmap),
+            "Invalid update data"
+        );
+        
+        // Process each changed position
+        uint256 currentBit = 0;
+        for (uint256 i = 0; i < MAX_STABILIZERS; i++) {
+            if (update.bitmap & (1 << i) != 0) {
+                // Position i has changed
+                _updateStabilizer(
+                    i,
+                    update.addresses[currentBit],
+                    update.ratios[currentBit],
+                    update.proofs[currentBit]
+                );
+                currentBit++;
+            }
+        }
+        
+        lastUpdateTimestamp = block.timestamp;
+        lastUpdatePrice = _getCurrentPrice();
+        emit QueueUpdated(update.bitmap);
+    }
+    
+    function _countBits(uint256 bitmap) internal pure returns (uint256) {
+        uint256 count = 0;
+        while (bitmap > 0) {
+            count += bitmap & 1;
+            bitmap >>= 1;
+        }
+        return count;
+    }
+}
+```
+
+Key points about these implementations:
+
+1. **Merkle-Proof Approach**:
+   - Each stabilizer position is verified against neighbors
+   - Merkle proof ensures position is part of the valid ordering
+   - Gas cost is O(log n) for proof verification
+   - Offchain service maintains full ordering and generates proofs
+
+2. **Bitmap Approach**:
+   - Uses compact bitmap to track changed positions
+   - Only processes positions that need updates
+   - Supports batch updates for multiple positions
+   - Gas cost scales with number of changes, not total size
+
 ### Liquidation and Stabilizer Takeover Mechanism
 
 The protocol implements a robust liquidation system to maintain stability when collateral value decreases:
