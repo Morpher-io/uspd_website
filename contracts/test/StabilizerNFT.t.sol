@@ -61,7 +61,7 @@ contract StabilizerNFTTest is Test {
                 1
             )
         );
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1, 2);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
     }
 
     function testAddUnallocatedFundsWithZeroAmount() public {
@@ -69,7 +69,7 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.mint(user1, 1);
 
         vm.expectRevert("No ETH sent");
-        stabilizerNFT.addUnallocatedFunds(1, 2);
+        stabilizerNFT.addUnallocatedFunds(1);
     }
 
     function testAddUnallocatedFundsSuccess() public {
@@ -77,7 +77,7 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.mint(user1, 1);
 
         // Add funds to first token
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1, 2);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
 
         // Check position details
         (uint256 totalEth, uint256 unallocatedEth, , , ) = stabilizerNFT
@@ -103,9 +103,9 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.mint(user1, 3);
 
         // Add funds to tokens in different order
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(2, 3);
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1, 2);
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(3, 0);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(2);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(3);
 
         // Check ordering
         assertEq(stabilizerNFT.lowestUnallocatedId(), 1, "Wrong lowest ID");
@@ -127,10 +127,10 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.mint(user1, 1);
 
         // Add initial funds
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1, 2);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
 
         // Add more funds to same token
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1, 2);
+        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
 
         // Check updated amounts
         (uint256 totalEth, uint256 unallocatedEth, , , ) = stabilizerNFT

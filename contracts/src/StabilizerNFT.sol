@@ -93,8 +93,7 @@ contract StabilizerNFT is
     }
 
     function _registerUnallocatedPosition(
-        uint256 tokenId,
-        uint256 nextId
+        uint256 tokenId
     ) internal {
         if (lowestUnallocatedId == 0 || highestUnallocatedId == 0) {
             // First position
@@ -111,9 +110,11 @@ contract StabilizerNFT is
             positions[lowestUnallocatedId].prevUnallocated = tokenId;
             lowestUnallocatedId = tokenId;
         } else {
-            // Insert in middle
-            require(nextId > tokenId, "Invalid next ID");
-            require(positions[nextId].prevUnallocated < tokenId, "Invalid position");
+            // Find insertion point by scanning through IDs
+            uint256 nextId = lowestUnallocatedId;
+            while (nextId != 0 && nextId < tokenId) {
+                nextId = positions[nextId].nextUnallocated;
+            }
             
             uint256 prevId = positions[nextId].prevUnallocated;
             positions[tokenId].prevUnallocated = prevId;
@@ -203,8 +204,7 @@ contract StabilizerNFT is
 
     // Add more unallocated funds to an existing position
     function addUnallocatedFunds(
-        uint256 tokenId,
-        uint256 nextId
+        uint256 tokenId
     ) external payable {
         require(ownerOf(tokenId) != address(0), "Token does not exist");
         require(msg.value > 0, "No ETH sent");
@@ -219,7 +219,7 @@ contract StabilizerNFT is
         
         // Only add to list if position went from 0 to having funds
         if (hadNoFunds) {
-            _registerUnallocatedPosition(tokenId, nextId);
+            _registerUnallocatedPosition(tokenId);
         }
         
         emit UnallocatedFundsAdded(tokenId, msg.value);
