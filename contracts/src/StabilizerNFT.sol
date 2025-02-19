@@ -183,8 +183,8 @@ contract StabilizerNFT is
                 positionNFT.addCollateral(positionId);
                 positionNFT.modifyAllocation(positionId, uspdForAllocation);
                 
-                // Add to allocated list if first allocation
-                if (stabilizerToPosition[currentId] == 0) {
+                // Add to allocated list if we just created a new position
+                if (positionId == _nextPositionId - 1) {
                     _registerAllocatedPosition(currentId);
                 }
                 
