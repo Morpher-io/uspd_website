@@ -129,8 +129,7 @@ contract StabilizerNFT is
     }
 
     function allocateStabilizerFunds(
-        uint256 ethAmount,
-        uint256 uspdAmount
+        uint256 ethAmount
     ) external payable returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(lowestUnallocatedId != 0, "No unallocated funds");
@@ -140,11 +139,8 @@ contract StabilizerNFT is
         uint256 remainingEth = ethAmount;
 
         while (currentId != 0 && remainingEth > 0) {
-            // Check remaining gas and USPD limit
-            if (
-                gasleft() < MIN_GAS ||
-                (maxUspdAmount > 0 && result.uspdAmount >= maxUspdAmount)
-            ) {
+            // Check remaining gas
+            if (gasleft() < MIN_GAS) {
                 break;
             }
 
