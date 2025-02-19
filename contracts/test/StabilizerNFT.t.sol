@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol";
+import "../src/UspdCollateralizedPositionNFT.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 
 contract StabilizerNFTTest is Test {
@@ -13,6 +14,8 @@ contract StabilizerNFTTest is Test {
     address public user1;
     address public user2;
 
+    UspdCollateralizedPositionNFT public positionNFT;
+
     function setUp() public {
         owner = address(this);
         user1 = makeAddr("user1");
@@ -21,9 +24,14 @@ contract StabilizerNFTTest is Test {
         // Deploy USPD token first (needed for StabilizerNFT initialization)
         uspdToken = new USPDToken(address(0), address(0)); // Mock addresses for oracle and stabilizer
 
+        // Deploy and initialize Position NFT
+        positionNFT = new UspdCollateralizedPositionNFT();
+        positionNFT.initialize();
+        positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
+
         // Deploy and initialize StabilizerNFT
         stabilizerNFT = new StabilizerNFT();
-        stabilizerNFT.initialize(payable(address(uspdToken)));
+        stabilizerNFT.initialize(payable(address(uspdToken)), address(positionNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
     }
 
