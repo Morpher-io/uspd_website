@@ -141,17 +141,16 @@ contract StabilizerNFT is
 
             StabilizerPosition storage pos = positions[currentId];
             
-            if (pos.unallocatedEth > 0) {
-                // Calculate USPD amount from user's ETH
-                uint256 uspdForAllocation = (remainingEth * ethUsdPrice) / (10**priceDecimals);
-                
-                // Calculate required ETH for collateralization based on minCollateralRatio
-                uint256 requiredEth = (remainingEth * pos.minCollateralRatio) / 100;
-                uint256 additionalEthNeeded = requiredEth - remainingEth;
-                
-                // Check how much we can allocate from this stabilizer
-                uint256 toAllocate = additionalEthNeeded > pos.totalEth ? 
-                    pos.totalEth : additionalEthNeeded;
+            // Calculate USPD amount from user's ETH
+            uint256 uspdForAllocation = (remainingEth * ethUsdPrice) / (10**priceDecimals);
+            
+            // Calculate required ETH for collateralization based on minCollateralRatio
+            uint256 requiredEth = (remainingEth * pos.minCollateralRatio) / 100;
+            uint256 additionalEthNeeded = requiredEth - remainingEth;
+            
+            // Check how much we can allocate from this stabilizer
+            uint256 toAllocate = additionalEthNeeded > pos.totalEth ? 
+                pos.totalEth : additionalEthNeeded;
                 
                 // Adjust if we have a max USPD amount limit
                 if (maxUspdAmount > 0 && result.uspdAmount + uspdForAllocation > maxUspdAmount) {
@@ -187,7 +186,7 @@ contract StabilizerNFT is
                 emit FundsAllocated(currentId, toAllocate, positionId);
                 
                 // Update unallocated list if no more funds
-                if (pos.unallocatedEth == 0) {
+                if (pos.totalEth == 0) {
                     _removeFromUnallocatedList(currentId);
                 }
             }
