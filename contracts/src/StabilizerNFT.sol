@@ -159,7 +159,7 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
         uint256 tokenId,
         uint256 nextId
     ) external payable {
-        require(_exists(tokenId), "Token does not exist");
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
         require(msg.value > 0, "No ETH sent");
         
         StabilizerPosition storage pos = positions[tokenId];
@@ -209,7 +209,7 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
         uint256 amount,
         address payable to
     ) external {
-        require(_exists(tokenId), "Token does not exist");
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
         require(to != address(0), "Invalid recipient");
         
