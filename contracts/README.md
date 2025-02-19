@@ -17,9 +17,27 @@ The implementation of the stabilizer queue faces several technical challenges, p
 1. **Dynamic Ratios**: When stabilizers specify their overcollateralization in USPD terms while providing ETH as collateral, their effective ratio changes with every ETH/USD price update, potentially affecting the entire queue's ordering.
 
 2. **Efficient Updates**: Finding the highest overcollateralization ratio without processing the entire list becomes complex when ratios are dynamic. Potential solutions include:
-   - Using an index-based approach with commitment factors
-   - Implementing threshold-based buckets for ratio ranges
-   - Utilizing a max-heap structure with lazy updates
+
+   a. **Index-based Approach with Commitment Factors**:
+   - Instead of storing actual ratios, stabilizers specify a commitment factor (0-100%)
+   - This factor represents what portion of their maximum possible coverage they're willing to provide
+   - Actual ratio = (ETH_amount * ETH_price) / (commitment_factor * max_possible_USPD)
+   - Advantage: Queue ordering remains stable despite price changes
+   - Challenge: Need to carefully design the commitment factor calculation
+
+   b. **Threshold-based Buckets**:
+   - Group stabilizers into predefined ratio range buckets (e.g., 150-200%, 200-250%, etc.)
+   - Each bucket maintains its own sub-list of stabilizers
+   - When price changes, stabilizers might move between buckets
+   - Advantage: Reduces sorting complexity, only need to check highest non-empty bucket
+   - Challenge: Determining optimal bucket sizes and handling bucket transitions
+
+   c. **Max-heap with Lazy Updates**:
+   - Maintain a heap structure ordered by overcollateralization ratio
+   - Only recalculate positions when attempting to use a stabilizer
+   - Track last price update timestamp for each position
+   - Advantage: O(log n) updates when needed
+   - Challenge: Heap maintenance and ensuring accurate ordering when needed
 
 ## Foundry
 
