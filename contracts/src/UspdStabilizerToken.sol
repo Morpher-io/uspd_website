@@ -145,18 +145,18 @@ contract UspdStabilizerToken is DynamicTraits, ERC721, AccessControl {
     }
 
     function assignCollateral(uint amountInUspd, PriceOracle.PriceResponse memory oracleResponse ) public onlyRole(COLLATERAL_ALLOCATION_ROLE) {
-        if(totalAvailableStabilizerAmountInWei >= amountInWei) {
-            uint remainingAmountToStabilize = amountInWei;
-            uint curId = _highestStabilizerCollateralId;
+        // if(totalAvailableStabilizerAmountInWei >= amountInWei) {
+        //     uint remainingAmountToStabilize = amountInWei;
+        //     uint curId = _highestStabilizerCollateralId;
 
-            while(remainingAmountToStabilize > 0) {
-                uint collateralInUspd = stabilizers[curId].stakedWei * oracleResponse.price / oracleResponse.decimals;
-                stabilizers[curId].collateralUsedInWei
-                uint collateralizationRatio = (stabilizers[curId].stakedWei * 100) / stabilizers[curId].collateralUsedInWei;
+        //     while(remainingAmountToStabilize > 0) {
+        //         uint collateralInUspd = stabilizers[curId].stakedWei * oracleResponse.price / oracleResponse.decimals;
+        //         stabilizers[curId].collateralUsedInWei
+        //         uint collateralizationRatio = (stabilizers[curId].stakedWei * 100) / stabilizers[curId].collateralUsedInWei;
 
-                if(stabilizers[curId].stakedWei
-            }
-        }
+        //         if(stabilizers[curId].stakedWei
+        //     }
+        // }
     }
 
     function unassignCollateral(uint amountInUspd) public onlyRole(COLLATERAL_ALLOCATION_ROLE) {
