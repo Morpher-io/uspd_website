@@ -49,27 +49,20 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         uspdToken = UspdToken(_uspdToken);
     }
 
-    function createStabilizerPosition(
+    function mint(
         address to,
-        uint256 tokenId,
-        uint256 minCollateralRatio,
-        uint256 nextId
-    ) external payable onlyRole(MINTER_ROLE) {
-        require(minCollateralRatio >= 110, "Collateral ratio too low"); // 110%
-        
+        uint256 tokenId
+    ) external onlyRole(MINTER_ROLE) {
         positions[tokenId] = StabilizerPosition({
-            totalEth: msg.value,
-            unallocatedEth: msg.value,
-            minCollateralRatio: minCollateralRatio,
+            totalEth: 0,
+            unallocatedEth: 0,
+            minCollateralRatio: 110, // Default 110%
             prevUnallocated: 0,
             nextUnallocated: 0
         });
 
-        // Register in unallocated funds list
-        _registerUnallocatedPosition(tokenId, nextHigherId, nextLowerId);
-
         _safeMint(to, tokenId);
-        emit StabilizerPositionCreated(tokenId, to, msg.value);
+        emit StabilizerPositionCreated(tokenId, to, 0);
     }
 
     function _registerUnallocatedPosition(
