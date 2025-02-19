@@ -341,7 +341,7 @@ contract StabilizerNFT is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721Upgradeable, AccessControlUpgradeable)
+        override(ERC721Upgradeable, DynamicTraits, AccessControlUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
