@@ -255,11 +255,13 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.setMinCollateralizationRatio(1, 200);
 
         // First allocate - user provides 1 ETH, stabilizer provides 1 ETH for 200% ratio
+
+        vm.deal(address(uspdToken), 1 ether);
         vm.startPrank(address(uspdToken));
         stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(1 ether, 2000 ether, 18);
 
         // Verify initial position state
-        uint256 positionId = stabilizerNFT.stabilizerToPosition(1);
+        uint256 positionId = positionNFT.getTokenByOwner(user1);
         IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
         assertEq(position.allocatedEth, 2 ether, "Position should have 2 ETH total (1 user + 1 stabilizer)");
         assertEq(position.backedUspd, 2000 ether, "Position should back 2000 USPD (1 ETH * 2000)");
