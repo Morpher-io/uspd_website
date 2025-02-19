@@ -10,6 +10,17 @@ USPD implements a unique stabilizer-based overcollateralization system. Users ca
 
 The protocol maintains a sorted linked list of stabilizers, ordered by their overcollateralization ratio. Stabilizers can choose their desired overcollateralization level, with the correct position in the queue being determined through offchain computation. The on-chain contract then only needs to validate the proposed position during stabilizer addition, making the process gas-efficient while maintaining the ordered structure of the queue.
 
+### Stabilizer Queue Challenges
+
+The implementation of the stabilizer queue faces several technical challenges, particularly when dealing with dynamic overcollateralization ratios:
+
+1. **Dynamic Ratios**: When stabilizers specify their overcollateralization in USPD terms while providing ETH as collateral, their effective ratio changes with every ETH/USD price update, potentially affecting the entire queue's ordering.
+
+2. **Efficient Updates**: Finding the highest overcollateralization ratio without processing the entire list becomes complex when ratios are dynamic. Potential solutions include:
+   - Using an index-based approach with commitment factors
+   - Implementing threshold-based buckets for ratio ranges
+   - Utilizing a max-heap structure with lazy updates
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
