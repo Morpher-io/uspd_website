@@ -21,9 +21,16 @@ contract UspdCollateralizedPositionNFT is
     
     // Mapping from NFT ID to position
     mapping(uint256 => Position) private _positions;
+    
+    // Mapping from owner address to token ID
+    mapping(address => uint256) private _ownerToken;
 
     function getPosition(uint256 tokenId) external view returns (Position memory) {
         return _positions[tokenId];
+    }
+
+    function getTokenByOwner(address owner) external view returns (uint256) {
+        return _ownerToken[owner];
     }
     
     // Counter for position IDs
@@ -48,6 +55,8 @@ contract UspdCollateralizedPositionNFT is
     function mint(
         address to
     ) external onlyRole(MINTER_ROLE) returns (uint256) {
+        require(_ownerToken[to] == 0, "Owner already has a position");
+        
         uint256 tokenId = _nextPositionId++;
         
         _positions[tokenId] = Position({
@@ -55,6 +64,7 @@ contract UspdCollateralizedPositionNFT is
             backedUspd: 0
         });
 
+        _ownerToken[to] = tokenId;
         _safeMint(to, tokenId);
         emit PositionCreated(tokenId, to, 0, 0);
         
@@ -118,6 +128,7 @@ contract UspdCollateralizedPositionNFT is
         
         Position memory pos = _positions[tokenId];
         delete _positions[tokenId];
+        delete _ownerToken[msg.sender];
         
         _burn(tokenId);
         emit PositionBurned(tokenId, msg.sender, pos.allocatedEth, pos.backedUspd);
@@ -128,7 +139,12 @@ contract UspdCollateralizedPositionNFT is
         _positions[tokenId].backedUspd = newBackedUspd;
     }
 
-    receive() external payable {}
+    receive() external payable {
+        uint256 tokenId = _ownerToken[msg.sender];
+        require(tokenId != 0, "No position found for sender");
+        require(ownerOf(tokenId) == msg.sender, "Not position owner");
+        _positions[tokenId].allocatedEth += msg.value;
+    }
 
     function getCollateralizationRatio(uint256 tokenId, uint256 ethUsdPrice, uint8 priceDecimals) 
         external 

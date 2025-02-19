@@ -168,9 +168,14 @@ contract StabilizerNFT is
                 remainingEth -= toAllocate;
                 result.uspdAmount += uspdForAllocation;
                 
-                // Mint position NFT first
-                uint256 positionId = positionNFT.mint(ownerOf(currentId));
-                stabilizerToPosition[currentId] = positionId;
+                address owner = ownerOf(currentId);
+                uint256 positionId = stabilizerToPosition[currentId];
+                
+                // If no position exists, create one
+                if (positionId == 0) {
+                    positionId = positionNFT.mint(owner);
+                    stabilizerToPosition[currentId] = positionId;
+                }
                 
                 // Add collateral and update allocation
                 (bool success, ) = address(positionNFT).call{value: toAllocate}("");
