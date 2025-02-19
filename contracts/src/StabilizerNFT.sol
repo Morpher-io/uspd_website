@@ -59,7 +59,7 @@ contract StabilizerNFT is
         
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         positionNFT = IUspdCollateralizedPositionNFT(_positionNFT);
-        uspdToken = USPDToken(_uspdToken);
+        uspdToken = USPDToken(payable(_uspdToken));
     }
 
     function mint(
