@@ -13,14 +13,16 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         uint256 totalEth;           // Total ETH committed
         uint256 unallocatedEth;     // ETH available for allocation
         uint256 minCollateralRatio; // Minimum collateral ratio (e.g., 110 for 110%)
-        address next;               // Next stabilizer in unallocated funds list
+        uint256 prevUnallocated;    // Previous stabilizer ID in unallocated funds list
+        uint256 nextUnallocated;    // Next stabilizer ID in unallocated funds list
     }
     
     // Mapping from NFT ID to stabilizer position
     mapping(uint256 => StabilizerPosition) public positions;
     
-    // Head of the unallocated funds list (lowest NFT ID with unallocated funds)
-    address public unallocatedListHead;
+    // Head and tail of the unallocated funds list
+    uint256 public lowestUnallocatedId;
+    uint256 public highestUnallocatedId;
     
     // USPD token contract
     UspdToken public uspdToken;
@@ -50,7 +52,9 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
     function createStabilizerPosition(
         address to,
         uint256 tokenId,
-        uint256 minCollateralRatio
+        uint256 minCollateralRatio,
+        uint256 nextHigherId,
+        uint256 nextLowerId
     ) external payable onlyRole(MINTER_ROLE) {
         require(minCollateralRatio >= 110, "Collateral ratio too low"); // 110%
         
@@ -58,16 +62,48 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
             totalEth: msg.value,
             unallocatedEth: msg.value,
             minCollateralRatio: minCollateralRatio,
-            next: address(0)
+            prevUnallocated: 0,
+            nextUnallocated: 0
         });
 
-        // Add to unallocated list if it's empty or this is lowest ID
-        if (unallocatedListHead == address(0)) {
-            unallocatedListHead = to;
-        }
+        // Register in unallocated funds list
+        _registerUnallocatedPosition(tokenId, nextHigherId, nextLowerId);
 
         _safeMint(to, tokenId);
         emit StabilizerPositionCreated(tokenId, to, msg.value);
+    }
+
+    function _registerUnallocatedPosition(
+        uint256 tokenId,
+        uint256 nextHigherId,
+        uint256 nextLowerId
+    ) internal {
+        if (lowestUnallocatedId == 0 || highestUnallocatedId == 0) {
+            // First position
+            lowestUnallocatedId = tokenId;
+            highestUnallocatedId = tokenId;
+        } else if (positions[highestUnallocatedId].unallocatedEth <= positions[tokenId].unallocatedEth) {
+            // New highest
+            positions[tokenId].prevUnallocated = highestUnallocatedId;
+            positions[highestUnallocatedId].nextUnallocated = tokenId;
+            highestUnallocatedId = tokenId;
+        } else if (positions[lowestUnallocatedId].unallocatedEth > positions[tokenId].unallocatedEth) {
+            // New lowest
+            positions[tokenId].nextUnallocated = lowestUnallocatedId;
+            positions[lowestUnallocatedId].prevUnallocated = tokenId;
+            lowestUnallocatedId = tokenId;
+        } else {
+            // Insert in middle
+            require(positions[nextHigherId].unallocatedEth >= positions[tokenId].unallocatedEth, 
+                "Invalid next higher position");
+            require(positions[nextLowerId].unallocatedEth < positions[tokenId].unallocatedEth, 
+                "Invalid next lower position");
+            
+            positions[tokenId].prevUnallocated = nextLowerId;
+            positions[tokenId].nextUnallocated = nextHigherId;
+            positions[nextLowerId].nextUnallocated = tokenId;
+            positions[nextHigherId].prevUnallocated = tokenId;
+        }
     }
 
     struct AllocationResult {
