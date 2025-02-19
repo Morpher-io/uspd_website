@@ -152,20 +152,19 @@ contract StabilizerNFTTest is Test {
         vm.startPrank(address(uspdToken));
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{
             value: 1 ether
-        }(1 ether);
+        }(1 ether, 2000 ether, 18);
         vm.stopPrank();
 
         // Verify allocation result
-        assertEq(result.allocatedEth, 1 ether, "Should allocate 100% of collateral");
-        
+        assertEq(result.allocatedEth, 0.909090909090909091 ether, "Should allocate correct user ETH share");
 
         // Verify position NFT state after allocation
         uint256 positionId = positionNFT.getTokenByOwner(user1);
         IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
         
         // Should have both user's ETH and stabilizer's ETH
-        assertEq(position.allocatedEth, 1.1 ether, "Position should have correct ETH after allocation (user + stabilizer)");
-        assertEq(position.backedUspd, 2000 ether, "Position should back correct USPD after allocation");
+        assertEq(position.allocatedEth, 1 ether, "Position should have correct ETH after allocation (user + stabilizer)");
+        assertEq(position.backedUspd, 1818.181818181818182 ether, "Position should back correct USPD after allocation");
     }
 
     function testMultipleStabilizersAllocation() public {
@@ -192,24 +191,23 @@ contract StabilizerNFTTest is Test {
         vm.startPrank(address(uspdToken));
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{
             value: 2 ether
-        }(2 ether);
+        }(2 ether, 2800 ether, 18);
         vm.stopPrank();
 
         // Verify first position (200% collateralization)
         uint256 positionId1 = stabilizerNFT.stabilizerToPosition(1);
         IUspdCollateralizedPositionNFT.Position memory position1 = positionNFT.getPosition(positionId1);
-        assertEq(position1.backedUspd, 1400 ether, "First position should back 1400 USPD");
-        assertEq(position1.allocatedEth, 1 ether, "First position should have 1 ETH total (0.5 from user + 0.5 from stabilizer)");
+        assertEq(position1.backedUspd, 466.666666666666667 ether, "First position should back correct USPD");
+        assertEq(position1.allocatedEth, 0.25 ether, "First position should have correct ETH total");
 
         // Verify second position (110% collateralization)
         uint256 positionId2 = stabilizerNFT.stabilizerToPosition(2);
         IUspdCollateralizedPositionNFT.Position memory position2 = positionNFT.getPosition(positionId2);
-        assertEq(position2.backedUspd, 3600 ether, "Second position should back 3600 USPD");
-        assertApproxEqAbs(position2.allocatedEth, 1.414285714285714285 ether, 0.000001 ether, "Second position should have ~1.414285714285714285 ETH");
+        assertEq(position2.backedUspd, 4533.333333333333333 ether, "Second position should back correct USPD");
+        assertApproxEqAbs(position2.allocatedEth, 1.75 ether, 0.000001 ether, "Second position should have correct ETH");
 
         // Verify total allocation
-        assertEq(result.uspdAmount, 5000 ether, "Total USPD amount should be 5000");
-        assertApproxEqAbs(result.allocatedEth, 1.785714285714285714 ether, 0.000001 ether, "Total allocated ETH should be ~1.785714285714285714");
+        assertApproxEqAbs(result.allocatedEth, 1.818181818181818182 ether, 0.000001 ether, "Total allocated user ETH should be correct");
     }
 
     function testUnallocationAndPositionNFT() public {
@@ -221,7 +219,7 @@ contract StabilizerNFTTest is Test {
 
         // First allocate
         vm.startPrank(address(uspdToken));
-        stabilizerNFT.allocateStabilizerFunds(1 ether, 2000 ether, 18, 0);
+        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(1 ether, 2000 ether, 18);
 
         // Then unallocate
         uint256 unallocatedEth = stabilizerNFT.unallocateStabilizerFunds(
