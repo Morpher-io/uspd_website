@@ -56,8 +56,26 @@ contract UspdCollateralizedPositionNFT is
         return tokenId;
     }
 
+    // Add ETH to further collateralize a position
+    function addCollateral(uint256 tokenId) external payable {
+        require(_exists(tokenId), "Position does not exist");
+        _positions[tokenId].allocatedEth += msg.value;
+    }
+
+    // Transfer ETH back to stabilizer during unallocation
+    function transferCollateral(uint256 tokenId, address payable to, uint256 amount) external {
+        require(msg.sender == to, "Only stabilizer can receive funds");
+        require(_exists(tokenId), "Position does not exist");
+        require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
+        
+        _positions[tokenId].allocatedEth -= amount;
+        (bool success, ) = to.call{value: amount}("");
+        require(success, "ETH transfer failed");
+    }
+
     function burn(uint256 tokenId) external {
         require(ownerOf(tokenId) == msg.sender, "Not position owner");
+        require(_positions[tokenId].allocatedEth == 0, "Position still has collateral");
         
         Position memory pos = _positions[tokenId];
         delete _positions[tokenId];
@@ -65,6 +83,8 @@ contract UspdCollateralizedPositionNFT is
         _burn(tokenId);
         emit PositionBurned(tokenId, msg.sender, pos.allocatedEth, pos.backedUspd);
     }
+
+    receive() external payable {}
 
     function getCollateralizationRatio(uint256 tokenId, uint256 ethUsdPrice, uint8 priceDecimals) 
         external 

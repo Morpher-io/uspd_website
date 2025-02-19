@@ -176,6 +176,10 @@ contract StabilizerNFT is
                 uint256 positionId = positionNFT.mint(ownerOf(currentId), toAllocate, uspdForAllocation);
                 stabilizerToPosition[currentId] = positionId;
                 
+                // Transfer ETH to position NFT
+                (bool success, ) = address(positionNFT).call{value: toAllocate}("");
+                require(success, "ETH transfer to position failed");
+                
                 // Add to allocated list if first allocation
                 if (pos.allocatedEth == 0) {
                     _registerAllocatedPosition(currentId);
@@ -333,7 +337,14 @@ contract StabilizerNFT is
                     ethToUnallocate = position.allocatedEth;
                 }
                 
-                // Update position
+                // Transfer ETH from position NFT back to stabilizer
+                IUspdCollateralizedPositionNFT(positionNFT).transferCollateral(
+                    positionId,
+                    payable(address(this)),
+                    ethToUnallocate
+                );
+
+                // Update position state
                 pos.allocatedEth -= ethToUnallocate;
                 pos.unallocatedEth += ethToUnallocate;
                 
@@ -433,6 +444,8 @@ contract StabilizerNFT is
             )
         );
     }
+
+    receive() external payable {}
 
     function toString(uint256 value) internal pure returns (string memory) {
         if (value == 0) {
