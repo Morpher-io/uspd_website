@@ -45,6 +45,7 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         // Calculate ETH to stabilize based on maxUspdAmount
         if (maxUspdAmount > 0) {
             // Calculate ETH needed for maxUspdAmount
+            // Attention: this can lead to rounding errors
             uint256 ethNeeded = (maxUspdAmount *
                 (10 ** oracleResponse.decimals)) / oracleResponse.price;
             if (ethNeeded < ethForAllocation) {
@@ -68,7 +69,7 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         _mint(to, uspdToMint);
 
         // Return any unallocated ETH
-        uint256 leftover = ethForAllocation - result.allocatedEth;
+        uint256 leftover = msg.value - result.allocatedEth - oracleCommission;
         if (leftover > 0) {
             payable(msg.sender).transfer(leftover);
         }
@@ -79,9 +80,10 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         mint(to, 0); // 0 means no maximum
     }
 
-    function burn(uint amount, address payable to) public {
+    function burn(uint amount, address payable to) public payable {
         require(amount > 0, "Amount must be greater than 0");
         require(to != address(0), "Invalid recipient");
+        require(msg.value >= oracle.getOracleCommission(), "UspdToken: Oracle comission needs to be paid on burn");
 
         // Get current ETH price
         PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
@@ -101,7 +103,7 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         emit Payout(to, amount, unallocatedEth, oracleResponse.price);
 
         // Transfer unallocated ETH to recipient
-        (bool success, ) = to.call{value: unallocatedEth}("");
+        (bool success, ) = to.call{value: unallocatedEth + msg.value - oracle.getOracleCommission()}("");
         require(success, "ETH transfer failed");
     }
 

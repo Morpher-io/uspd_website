@@ -68,7 +68,11 @@ contract StabilizerNFT is
         uint256 positionId
     );
     event UnallocatedFundsAdded(uint256 indexed tokenId, uint256 amount);
-    event MinCollateralRatioUpdated(uint256 indexed tokenId, uint256 oldRatio, uint256 newRatio);
+    event MinCollateralRatioUpdated(
+        uint256 indexed tokenId,
+        uint256 oldRatio,
+        uint256 newRatio
+    );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -154,15 +158,20 @@ contract StabilizerNFT is
             if (remainingEth == 0) break;
 
             // Calculate how much stabilizer ETH is needed for this user ETH
-            uint256 stabilizerEthNeeded = (remainingEth * (pos.minCollateralRatio - 100)) / 100;            // Check if stabilizer has enough ETH
-            
-            uint256 toAllocate = stabilizerEthNeeded > pos.totalEth ? pos.totalEth : stabilizerEthNeeded;
-            
+            uint256 stabilizerEthNeeded = (remainingEth *
+                (pos.minCollateralRatio - 100)) / 100; // Check if stabilizer has enough ETH
+
+            uint256 toAllocate = stabilizerEthNeeded > pos.totalEth
+                ? pos.totalEth
+                : stabilizerEthNeeded;
+
             // If stabilizer can't provide enough ETH, adjust user's ETH amount
             uint256 userEthShare = remainingEth;
             if (toAllocate < stabilizerEthNeeded) {
                 // Calculate maximum user ETH that can be backed by available stabilizer ETH
-                userEthShare = (toAllocate * 100) / (pos.minCollateralRatio - 100);
+                userEthShare =
+                    (toAllocate * 100) /
+                    (pos.minCollateralRatio - 100);
             }
 
             address owner = ownerOf(currentId);
@@ -175,36 +184,45 @@ contract StabilizerNFT is
             }
 
             // Add collateral from both user and stabilizer
-            positionNFT.addCollateral{value: toAllocate + userEthShare}(positionId);
+            positionNFT.addCollateral{value: toAllocate + userEthShare}(
+                positionId
+            );
 
             // Calculate USPD amount backed by user's ETH
-            uint256 uspdAmount = (userEthShare * ethUsdPrice) / (10**priceDecimals);
+            uint256 uspdAmount = (userEthShare * ethUsdPrice) /
+                (10 ** priceDecimals);
             positionNFT.modifyAllocation(positionId, uspdAmount);
 
             // Update state
             pos.totalEth -= toAllocate;
-            result.allocatedEth += userEthShare;  // Only track user's ETH
+            result.allocatedEth += userEthShare; // Only track user's ETH
             remainingEth -= userEthShare;
 
-            emit FundsAllocated(currentId, toAllocate, userEthShare, positionId);
+            emit FundsAllocated(
+                currentId,
+                toAllocate,
+                userEthShare,
+                positionId
+            );
 
-            // Move to next stabilizer if we still have ETH to allocate
-            currentId = pos.nextUnallocated;
+            uint nextId = pos.nextUnallocated;
 
             // Update unallocated list if no more funds
             if (pos.totalEth == 0) {
                 _removeFromUnallocatedList(currentId);
             }
 
+            // Move to next stabilizer if we still have ETH to allocate
+            currentId = nextId;
         }
 
         require(result.allocatedEth > 0, "No funds allocated");
-        
+
         // Return any unallocated ETH to USPD token
         if (remainingEth > 0) {
             uspdToken.receiveStabilizerReturn{value: remainingEth}();
         }
-        
+
         return result;
     }
 
@@ -327,15 +345,11 @@ contract StabilizerNFT is
             if (gasleft() < MIN_GAS) break;
 
             StabilizerPosition storage pos = positions[currentId];
-            uint256 positionId = stabilizerToPosition[currentId];
+            uint256 positionId = positionNFT.getTokenByOwner(ownerOf(currentId));
 
             if (positionId != 0) {
-                IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
-                uint256 collateralRatio = positionNFT.getCollateralizationRatio(
-                    positionId,
-                    ethUsdPrice,
-                    uint8(priceDecimals)
-                );
+                IUspdCollateralizedPositionNFT.Position
+                    memory position = positionNFT.getPosition(positionId);
 
                 uint256 uspdToUnallocate = remainingUspd;
                 if (uspdToUnallocate > position.backedUspd) {
@@ -343,12 +357,24 @@ contract StabilizerNFT is
                 }
 
                 // Calculate ETH to remove proportional to USPD being burned
-                uint256 ethToRemove = (uspdToUnallocate * position.allocatedEth) / position.backedUspd;
-                
-                // Calculate user's share based on position's current collateral ratio
-                uint256 userShare = (ethToRemove * 100) / collateralRatio;
-                uint256 stabilizerShare = ethToRemove - userShare;
+                uint256 ethToRemove = (uspdToUnallocate *
+                    position.allocatedEth) / position.backedUspd;
 
+                //stackTooDeep  
+                {
+                    // Calculate user's share based on position's current collateral ratio
+                    uint256 userShare = (ethToRemove * 100) /
+                        positionNFT.getCollateralizationRatio(
+                            positionId,
+                            ethUsdPrice,
+                            uint8(priceDecimals)
+                        );
+
+                    // Update stabilizer state
+                    pos.totalEth += ethToRemove - userShare;
+                    totalUserEth += userShare;
+                }
+                
                 // Update position NFT
                 if (position.backedUspd == uspdToUnallocate) {
                     // Fully dissolve position
@@ -377,9 +403,7 @@ contract StabilizerNFT is
                     );
                 }
 
-                // Update stabilizer state
-                pos.totalEth += stabilizerShare;
-                totalUserEth += userShare;
+                
 
                 // Add back to unallocated list if needed
                 if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
@@ -394,10 +418,10 @@ contract StabilizerNFT is
         }
 
         require(totalUserEth > 0, "No funds unallocated");
-        
+
         // Send user's share back to USPD contract
         uspdToken.receiveStabilizerReturn{value: totalUserEth}();
-        
+
         return totalUserEth;
     }
 
@@ -477,7 +501,10 @@ contract StabilizerNFT is
             );
     }
 
-    function setMinCollateralizationRatio(uint256 tokenId, uint256 newRatio) external {
+    function setMinCollateralizationRatio(
+        uint256 tokenId,
+        uint256 newRatio
+    ) external {
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
         require(newRatio >= 110, "Ratio must be at least 110%");
         require(newRatio <= 1000, "Ratio cannot exceed 1000%");

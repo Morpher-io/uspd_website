@@ -97,14 +97,15 @@ contract USPDTokenTest is Test {
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdBuyer = makeAddr("uspdBuyer");
         
-        vm.deal(address(priceOracle), 10 ether);
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
         
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        vm.warp(3000000);
         setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        
+        vm.warp(10000);
+
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
@@ -132,8 +133,10 @@ contract USPDTokenTest is Test {
         
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        vm.warp(3000000);
         setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        
+        vm.warp(10000);
+
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
@@ -160,8 +163,10 @@ contract USPDTokenTest is Test {
         
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        
+        vm.warp(3000000);
+        setOracleData(2500 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        vm.warp(10000);
+
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
@@ -175,11 +180,11 @@ contract USPDTokenTest is Test {
         uspdToken.mint{value: 2 ether}(uspdBuyer, 4000 ether);
         
         // Verify USPD balance
-        assertEq(uspdToken.balanceOf(uspdBuyer), 4000 ether, "Incorrect USPD balance");
+        assertApproxEqAbs(uspdToken.balanceOf(uspdBuyer), 4000 ether, 1e9, "Incorrect USPD balance");
         
         // Verify ETH refund
-        uint256 ethUsed = (4000 ether * (10**18)) / 2800 ether;
-        uint256 expectedRefund = 2 ether - ethUsed - priceOracle.getOracleCommission();
+        uint256 ethUsed = uint256((4000 * (10**18))) / 2500;
+        // uint256 expectedRefund = 2 ether - ethUsed - priceOracle.getOracleCommission();
         assertApproxEqAbs(
             uspdBuyer.balance,
             initialBalance - ethUsed - priceOracle.getOracleCommission(),
@@ -223,7 +228,7 @@ contract USPDTokenTest is Test {
         assertEq(uspdToken.balanceOf(uspdBuyer), expectedBalance, "Incorrect USPD balance");
 
         // Verify position NFT state
-        uint256 positionId = stabilizerNFT.stabilizerToPosition(1);
+        uint256 positionId = positionNFT.getTokenByOwner(stabilizerOwner);
         IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
         
         // Calculate expected allocation (110% of 1 ETH minus commission)

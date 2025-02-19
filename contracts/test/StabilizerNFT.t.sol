@@ -55,6 +55,7 @@ contract StabilizerNFTTest is Test {
         positionNFT.grantRole(positionNFT.TRANSFERCOLLATERAL_ROLE(), address(stabilizerNFT));
         positionNFT.grantRole(positionNFT.MODIFYALLOCATION_ROLE(), address(stabilizerNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
+        uspdToken.updateStabilizer(address(stabilizerNFT));
     }
 
     function testAddUnallocatedFundsToNonExistentToken() public {
@@ -265,6 +266,13 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.addUnallocatedFunds{value: 1 ether}(3);
         assertEq(stabilizerNFT.lowestUnallocatedId(), 3, "ID 3 should be lowest unallocated");
         assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should be highest unallocated");
+
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(1, 200);
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(3, 200);
+        vm.prank(user2);
+        stabilizerNFT.setMinCollateralizationRatio(2, 200);
 
         vm.prank(user2);
         stabilizerNFT.addUnallocatedFunds{value: 1 ether}(2);
