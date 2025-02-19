@@ -35,7 +35,7 @@ contract StabilizerNFTTest is Test {
             address(positionNFTImpl),
             positionInitData
         );
-        positionNFT = UspdCollateralizedPositionNFT(address(positionProxy));
+        positionNFT = UspdCollateralizedPositionNFT(payable(address(positionProxy)));
 
         // Deploy StabilizerNFT implementation and proxy
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
