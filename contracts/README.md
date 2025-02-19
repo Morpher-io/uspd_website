@@ -317,8 +317,8 @@ The protocol implements a robust liquidation system to maintain stability when c
         * Required collateral for $3500 USPD at 150% = $5250
         * Excess collateral = $10,500 - $5250 = $5250
         * Stabilizer can withdraw 0.75 ETH ($5250 worth)
-        * Remaining collateral: User's 1 ETH + Stabilizer's 0.25 ETH = $8750
-        * Final ratio = ($8750/$3500) = 150%
+        * Remaining collateral: 0.75 ETH (User's 1 ETH - Stabilizer's 0.25 ETH) = $5250
+        * Final ratio = ($5250/$3500) = 150%
 
 ## Foundry
 
