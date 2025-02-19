@@ -172,80 +172,110 @@ contract StabilizerQueue {
 }
 ```
 
-#### Example Implementation: Bitmap-based Permissionless Updates
+#### Example Implementation: Hybrid Priority Queue with Reserve Pool
 
 ```solidity
-contract StabilizerQueueBitmap {
-    uint256 public constant MAX_STABILIZERS = 256;
-    uint256 public lastUpdateTimestamp;
-    uint256 public lastUpdatePrice;
+contract StabilizerQueue {
+    uint256 public constant ACTIVE_QUEUE_SIZE = 50;  // Optimal size for active management
     
-    struct UpdateInfo {
-        uint256 bitmap;        // Bit 1 means position changed
-        address[] addresses;   // Addresses in new order
-        uint256[] ratios;     // New ratios
-        bytes32[] proofs;     // Merkle proofs
+    struct Stabilizer {
+        uint256 collateralAmount;
+        uint256 maxCoverage;
+        uint256 ratio;        // Current overcollateralization ratio
+        bool isActive;        // Whether in active queue or reserve pool
     }
     
-    function submitUpdate(UpdateInfo calldata update) external {
-        // Check update conditions
-        require(
-            block.timestamp >= lastUpdateTimestamp + 4 hours ||
-            _getPriceDeviation() >= 0.02e18, // 2%
-            "Update conditions not met"
-        );
+    // Active queue of top stabilizers (ordered by ratio)
+    address[] public activeQueue;
+    // Reserve pool for additional stabilizers
+    address[] public reservePool;
+    
+    mapping(address => Stabilizer) public stabilizers;
+    
+    // Update active queue positions with merkle proof verification
+    function updateActiveQueue(
+        address[] calldata newOrder,
+        uint256[] calldata ratios,
+        bytes32[] calldata proof
+    ) external {
+        require(newOrder.length <= ACTIVE_QUEUE_SIZE, "Queue too large");
         
-        // Verify bitmap matches provided data
-        require(
-            update.addresses.length == update.ratios.length &&
-            update.addresses.length == _countBits(update.bitmap),
-            "Invalid update data"
-        );
+        // Verify ordering and merkle proof
+        _verifyOrderedRatios(ratios);
+        _verifyMerkleProof(newOrder, ratios, proof);
         
-        // Process each changed position
-        uint256 currentBit = 0;
-        for (uint256 i = 0; i < MAX_STABILIZERS; i++) {
-            if (update.bitmap & (1 << i) != 0) {
-                // Position i has changed
-                _updateStabilizer(
-                    i,
-                    update.addresses[currentBit],
-                    update.ratios[currentBit],
-                    update.proofs[currentBit]
-                );
-                currentBit++;
+        // Update active queue
+        _updateQueue(newOrder, ratios);
+    }
+    
+    // Move stabilizer between active queue and reserve pool
+    function moveStabilizer(
+        address stabilizer,
+        bool toActive,
+        uint256 position,
+        bytes32[] calldata proof
+    ) external {
+        require(stabilizers[stabilizer].collateralAmount > 0, "Not a stabilizer");
+        
+        if (toActive) {
+            require(activeQueue.length < ACTIVE_QUEUE_SIZE, "Active queue full");
+            require(position <= activeQueue.length, "Invalid position");
+            
+            // Remove from reserve pool
+            _removeFromReserve(stabilizer);
+            
+            // Insert into active queue at position
+            _insertActive(stabilizer, position);
+        } else {
+            _removeFromActive(stabilizer);
+            reservePool.push(stabilizer);
+        }
+        
+        stabilizers[stabilizer].isActive = toActive;
+    }
+    
+    // Get next available stabilizer from reserve pool
+    function getNextReserve() external view returns (address) {
+        if (reservePool.length == 0) return address(0);
+        
+        // Find highest ratio in reserve pool
+        uint256 highestRatio = 0;
+        address bestStabilizer;
+        
+        for (uint i = 0; i < reservePool.length; i++) {
+            address addr = reservePool[i];
+            uint256 ratio = stabilizers[addr].ratio;
+            if (ratio > highestRatio) {
+                highestRatio = ratio;
+                bestStabilizer = addr;
             }
         }
         
-        lastUpdateTimestamp = block.timestamp;
-        lastUpdatePrice = _getCurrentPrice();
-        emit QueueUpdated(update.bitmap);
-    }
-    
-    function _countBits(uint256 bitmap) internal pure returns (uint256) {
-        uint256 count = 0;
-        while (bitmap > 0) {
-            count += bitmap & 1;
-            bitmap >>= 1;
-        }
-        return count;
+        return bestStabilizer;
     }
 }
 ```
 
-Key points about these implementations:
+Key points about this hybrid implementation:
 
-1. **Merkle-Proof Approach**:
-   - Each stabilizer position is verified against neighbors
-   - Merkle proof ensures position is part of the valid ordering
-   - Gas cost is O(log n) for proof verification
-   - Offchain service maintains full ordering and generates proofs
+1. **Active Queue**:
+   - Maintains a small, actively managed queue (e.g., 50 positions)
+   - Ordered by overcollateralization ratio
+   - Frequently updated with merkle proof verification
+   - Handles most normal stabilization needs
+   - Gas-efficient updates due to limited size
 
-2. **Bitmap Approach**:
-   - Uses compact bitmap to track changed positions
-   - Only processes positions that need updates
-   - Supports batch updates for multiple positions
-   - Gas cost scales with number of changes, not total size
+2. **Reserve Pool**:
+   - Holds additional stabilizers without strict ordering
+   - Available for larger positions or when active queue is depleted
+   - Lower maintenance overhead
+   - Can scale to thousands of stabilizers
+   - Provides depth without active management costs
+
+3. **Dynamic Movement**:
+   - Stabilizers can move between active queue and reserve pool
+   - Movement triggered by ratio changes or market conditions
+   - Maintains optimal balance between efficiency and depth
 
 ### Liquidation and Stabilizer Takeover Mechanism
 
