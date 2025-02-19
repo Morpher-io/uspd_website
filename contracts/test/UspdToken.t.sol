@@ -92,6 +92,102 @@ contract USPDTokenTest is Test {
         assertEq(ethPrice, 3120 ether);
     }
 
+    function testMintByDirectEtherTransfer() public {
+        // Setup stabilizer
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdBuyer = makeAddr("uspdBuyer");
+        
+        vm.deal(address(priceOracle), 10 ether);
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdBuyer, 10 ether);
+        
+        // Set ETH price to $2800
+        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        
+        // Setup stabilizer
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        
+        // Send ETH directly to USPD contract
+        vm.prank(uspdBuyer);
+        (bool success,) = address(uspdToken).call{value: 1 ether}("");
+        require(success, "ETH transfer failed");
+        
+        // Verify USPD balance
+        uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
+        assertEq(uspdToken.balanceOf(uspdBuyer), expectedBalance, "Incorrect USPD balance after direct ETH transfer");
+    }
+
+    function testMintWithToAddress() public {
+        // Setup stabilizer
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdBuyer = makeAddr("uspdBuyer");
+        address recipient = makeAddr("recipient");
+        
+        vm.deal(address(priceOracle), 10 ether);
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdBuyer, 10 ether);
+        
+        // Set ETH price to $2800
+        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        
+        // Setup stabilizer
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        
+        // Mint USPD tokens to a specific address
+        vm.prank(uspdBuyer);
+        uspdToken.mint{value: 1 ether}(recipient);
+        
+        // Verify USPD balance of recipient
+        uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
+        assertEq(uspdToken.balanceOf(recipient), expectedBalance, "Incorrect USPD balance of recipient");
+        assertEq(uspdToken.balanceOf(uspdBuyer), 0, "Buyer should not receive USPD");
+    }
+
+    function testMintWithMaxAmount() public {
+        // Setup stabilizer
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdBuyer = makeAddr("uspdBuyer");
+        
+        vm.deal(address(priceOracle), 10 ether);
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdBuyer, 10 ether);
+        
+        // Set ETH price to $2800
+        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        
+        // Setup stabilizer
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        
+        // Calculate initial balance
+        uint256 initialBalance = uspdBuyer.balance;
+        
+        // Mint USPD tokens with max amount
+        vm.prank(uspdBuyer);
+        uspdToken.mint{value: 2 ether}(uspdBuyer, 4000 ether);
+        
+        // Verify USPD balance
+        assertEq(uspdToken.balanceOf(uspdBuyer), 4000 ether, "Incorrect USPD balance");
+        
+        // Verify ETH refund
+        uint256 ethUsed = (4000 ether * (10**18)) / 2800 ether;
+        uint256 expectedRefund = 2 ether - ethUsed - priceOracle.getOracleCommission();
+        assertApproxEqAbs(
+            uspdBuyer.balance,
+            initialBalance - ethUsed - priceOracle.getOracleCommission(),
+            1e9,
+            "Incorrect ETH refund"
+        );
+    }
+
     function testMintStablecoin() public {
         // Create test users
         address stabilizerOwner = makeAddr("stabilizerOwner");
