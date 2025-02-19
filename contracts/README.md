@@ -64,7 +64,7 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - Scaling: O(log n) proof size and verification time, excellent for thousands of stabilizers as most computation is off-chain
 
    e. **Oracle-Inspired Permissionless Updates**:
-   - Implement a threshold-triggered update system similar to Chainlink's price feeds
+   - Implement a threshold-triggered update system similar to Push-Based price feeds
    - Any participant can submit an updated ordering when:
      * ETH/USD price changes exceed a threshold (e.g., ±2%)
      * Or after a minimum time interval (e.g., 4 hours)
