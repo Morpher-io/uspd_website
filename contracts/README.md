@@ -80,48 +80,94 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - Challenge: Designing incentives for timely updates
    - Scaling: O(k) where k is number of changed positions, highly efficient for thousands of stabilizers as unchanged positions require no gas
 
-#### Example Implementation: Merkle-Proof Verified Ordering
+#### Example Implementation: Merkle-Proof Verified Ordering with Batch Updates
 
 ```solidity
 struct Stabilizer {
-    address addr;
-    uint256 ratio;    // Current overcollateralization ratio
-    uint256 position; // Position in queue (1-based)
+    uint256 collateralAmount;  // ETH amount provided
+    uint256 maxCoverage;       // Max USPD amount willing to cover
+    uint256 lastUpdateBlock;   // Last position update
 }
 
 contract StabilizerQueue {
     bytes32 public merkleRoot;
     uint256 public lastUpdatePrice;
+    uint256 public constant MIN_RATIO = 110e16; // 110%
     
-    // Verify and update stabilizer position
-    function updatePosition(
-        Stabilizer calldata newPos,
-        Stabilizer calldata prevPos,
-        Stabilizer calldata nextPos,
+    // Ordered array of stabilizer addresses
+    address[] public orderedStabilizers;
+    mapping(address => Stabilizer) public stabilizerData;
+    
+    // Update the entire ordering in a single transaction
+    function updateOrdering(
+        address[] calldata newOrder,
+        uint256[] calldata ratios,
         bytes32[] calldata proof
     ) external {
-        // Verify the position is between prev and next
-        require(prevPos.position < newPos.position, "Invalid prev position");
-        require(newPos.position < nextPos.position, "Invalid next position");
-        require(prevPos.ratio >= newPos.ratio, "Invalid ratio vs prev");
-        require(newPos.ratio >= nextPos.ratio, "Invalid ratio vs next");
+        require(newOrder.length > 0, "Empty order");
+        require(newOrder.length == ratios.length, "Length mismatch");
         
-        // Construct leaf node
-        bytes32 leaf = keccak256(abi.encode(
-            newPos.addr,
-            newPos.ratio,
-            newPos.position
-        ));
+        // Verify the ordering is valid (descending ratios)
+        for (uint i = 1; i < ratios.length; i++) {
+            require(ratios[i-1] >= ratios[i], "Invalid ratio order");
+        }
         
-        // Verify merkle proof
+        // Verify merkle proof of the new ordering
+        bytes32 leaf = keccak256(abi.encode(newOrder, ratios));
         require(
             MerkleProof.verify(proof, merkleRoot, leaf),
             "Invalid merkle proof"
         );
         
-        // Update stabilizer data
-        stabilizers[newPos.addr] = newPos;
-        emit PositionUpdated(newPos.addr, newPos.position, newPos.ratio);
+        // Update the ordering
+        orderedStabilizers = newOrder;
+        merkleRoot = _computeNewRoot(newOrder, ratios);
+        lastUpdatePrice = _getCurrentEthPrice();
+        
+        emit OrderingUpdated(newOrder, ratios);
+    }
+    
+    // Calculate current overcollateralization ratio for a stabilizer
+    function calculateRatio(address stabilizer) public view returns (uint256) {
+        Stabilizer storage s = stabilizerData[stabilizer];
+        uint256 ethPrice = _getCurrentEthPrice();
+        uint256 collateralValue = s.collateralAmount * ethPrice;
+        return (collateralValue * 1e18) / s.maxCoverage;
+    }
+    
+    // Get ordered list of stabilizers
+    function getOrderedStabilizers() external view returns (
+        address[] memory addresses,
+        uint256[] memory currentRatios
+    ) {
+        addresses = orderedStabilizers;
+        currentRatios = new uint256[](addresses.length);
+        
+        for (uint i = 0; i < addresses.length; i++) {
+            currentRatios[i] = calculateRatio(addresses[i]);
+        }
+    }
+    
+    // Internal helper to compute new merkle root
+    function _computeNewRoot(
+        address[] calldata addresses,
+        uint256[] calldata ratios
+    ) internal pure returns (bytes32) {
+        bytes32[] memory leaves = new bytes32[](addresses.length);
+        for (uint i = 0; i < addresses.length; i++) {
+            leaves[i] = keccak256(abi.encode(
+                addresses[i],
+                ratios[i],
+                i  // Position is implicit in array index
+            ));
+        }
+        return _merkleRoot(leaves);
+    }
+    
+    // Get current ETH price from oracle
+    function _getCurrentEthPrice() internal view returns (uint256) {
+        // Implementation depends on chosen oracle
+        return 0;
     }
 }
 ```
