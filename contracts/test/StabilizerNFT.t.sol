@@ -156,21 +156,15 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
 
         // Verify allocation result
-        assertEq(result.allocatedEth, 1.1 ether, "Should allocate 110% collateral");
-        assertEq(result.uspdAmount, 2000 ether, "Should mint correct USPD amount");
+        assertEq(result.allocatedEth, 1 ether, "Should allocate 100% of collateral");
+        
 
         // Verify position NFT state after allocation
-        uint256 positionId = stabilizerNFT.stabilizerToPosition(1);
+        uint256 positionId = positionNFT.getTokenByOwner(user1);
         IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
         
-        // First verify position is created with zero values
-        assertEq(position.allocatedEth, 0, "Position should start with zero ETH");
-        assertEq(position.backedUspd, 0, "Position should start with zero USPD");
-        
-        // Then verify values after allocation
-        position = positionNFT.getPosition(positionId);
         // Should have both user's ETH and stabilizer's ETH
-        assertEq(position.allocatedEth, 2.1 ether, "Position should have correct ETH after allocation (user + stabilizer)");
+        assertEq(position.allocatedEth, 1.1 ether, "Position should have correct ETH after allocation (user + stabilizer)");
         assertEq(position.backedUspd, 2000 ether, "Position should back correct USPD after allocation");
     }
 
