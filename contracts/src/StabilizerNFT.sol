@@ -19,9 +19,12 @@ contract StabilizerNFT is
     struct StabilizerPosition {
         uint256 totalEth;           // Total ETH committed
         uint256 unallocatedEth;     // ETH available for allocation
+        uint256 allocatedEth;       // ETH currently allocated
         uint256 minCollateralRatio; // Minimum collateral ratio (e.g., 110 for 110%)
         uint256 prevUnallocated;    // Previous stabilizer ID in unallocated funds list
         uint256 nextUnallocated;    // Next stabilizer ID in unallocated funds list
+        uint256 prevAllocated;      // Previous stabilizer ID in allocated funds list
+        uint256 nextAllocated;      // Next stabilizer ID in allocated funds list
     }
     
     // Mapping from NFT ID to stabilizer position
@@ -30,6 +33,13 @@ contract StabilizerNFT is
     // Head and tail of the unallocated funds list
     uint256 public lowestUnallocatedId;
     uint256 public highestUnallocatedId;
+    
+    // Head and tail of the allocated funds list
+    uint256 public lowestAllocatedId;
+    uint256 public highestAllocatedId;
+    
+    // Mapping from stabilizer ID to position NFT ID
+    mapping(uint256 => uint256) public stabilizerToPosition;
     
     // USPD token contract
     USPDToken public uspdToken;
@@ -42,7 +52,8 @@ contract StabilizerNFT is
 
 
     event StabilizerPositionCreated(uint256 indexed tokenId, address indexed owner, uint256 totalEth);
-    event FundsAllocated(uint256 indexed tokenId, uint256 amount);
+    event FundsAllocated(uint256 indexed tokenId, uint256 amount, uint256 positionId);
+    event FundsUnallocated(uint256 indexed tokenId, uint256 amount, uint256 positionId);
     event UnallocatedFundsAdded(uint256 indexed tokenId, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
