@@ -14,7 +14,6 @@ import {OracleEntrypoint} from "../src/oracle/OracleEntrypoint.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-
 contract USPDTokenTest is Test {
     uint256 internal oraclePrivateKey;
     address internal oracleSigner;
@@ -49,7 +48,9 @@ contract USPDTokenTest is Test {
             address(positionNFTImpl),
             positionInitData
         );
-        positionNFT  = UspdCollateralizedPositionNFT(payable(address(positionProxy)));
+        positionNFT = UspdCollateralizedPositionNFT(
+            payable(address(positionProxy))
+        );
 
         // Deploy StabilizerNFT implementation and proxy
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
@@ -66,24 +67,38 @@ contract USPDTokenTest is Test {
 
         // Update USPD token with correct stabilizer address
         uspdToken.updateStabilizer(address(stabilizerNFT));
-        
+
         // Setup roles
-        positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
-        positionNFT.grantRole(positionNFT.TRANSFERCOLLATERAL_ROLE(), address(stabilizerNFT));
-        positionNFT.grantRole(positionNFT.MODIFYALLOCATION_ROLE(), address(stabilizerNFT));
+        positionNFT.grantRole(
+            positionNFT.MINTER_ROLE(),
+            address(stabilizerNFT)
+        );
+        positionNFT.grantRole(
+            positionNFT.TRANSFERCOLLATERAL_ROLE(),
+            address(stabilizerNFT)
+        );
+        positionNFT.grantRole(
+            positionNFT.MODIFYALLOCATION_ROLE(),
+            address(stabilizerNFT)
+        );
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
     }
-
 
     function testOracle() public {
         vm.deal(address(this), 10 ether);
         vm.warp(10);
         oracleEntrypoint.deposit{value: 1 ether}(address(this));
 
-        assertEq(oracleEntrypoint.prices(oracleSigner, PRICE_FEED_ETH_USD), 0 gwei);
+        assertEq(
+            oracleEntrypoint.prices(oracleSigner, PRICE_FEED_ETH_USD),
+            0 gwei
+        );
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
         vm.warp(10);
-        assertEq(oracleEntrypoint.prices(oracleSigner, PRICE_FEED_ETH_USD), 1 gwei);
+        assertEq(
+            oracleEntrypoint.prices(oracleSigner, PRICE_FEED_ETH_USD),
+            1 gwei
+        );
 
         setOracleData(3120 ether, PRICE_FEED_ETH_USD, address(this));
         vm.warp(10);
@@ -96,10 +111,10 @@ contract USPDTokenTest is Test {
         // Setup stabilizer
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdBuyer = makeAddr("uspdBuyer");
-        
+
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
-        
+
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
         vm.warp(3000000);
@@ -110,15 +125,20 @@ contract USPDTokenTest is Test {
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
-        
+
         // Send ETH directly to USPD contract
         vm.prank(uspdBuyer);
-        (bool success,) = address(uspdToken).call{value: 1 ether}("");
+        (bool success, ) = address(uspdToken).call{value: 1 ether}("");
         require(success, "ETH transfer failed");
-        
+
         // Verify USPD balance
-        uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
-        assertEq(uspdToken.balanceOf(uspdBuyer), expectedBalance, "Incorrect USPD balance after direct ETH transfer");
+        uint256 expectedBalance = ((1 ether -
+            priceOracle.getOracleCommission()) * 2800 ether) / 1 ether;
+        assertEq(
+            uspdToken.balanceOf(uspdBuyer),
+            expectedBalance,
+            "Incorrect USPD balance after direct ETH transfer"
+        );
     }
 
     function testMintWithToAddress() public {
@@ -126,11 +146,11 @@ contract USPDTokenTest is Test {
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdBuyer = makeAddr("uspdBuyer");
         address recipient = makeAddr("recipient");
-        
+
         vm.deal(address(priceOracle), 10 ether);
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
-        
+
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
         vm.warp(3000000);
@@ -141,26 +161,35 @@ contract USPDTokenTest is Test {
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
-        
+
         // Mint USPD tokens to a specific address
         vm.prank(uspdBuyer);
         uspdToken.mint{value: 1 ether}(recipient);
-        
+
         // Verify USPD balance of recipient
-        uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
-        assertEq(uspdToken.balanceOf(recipient), expectedBalance, "Incorrect USPD balance of recipient");
-        assertEq(uspdToken.balanceOf(uspdBuyer), 0, "Buyer should not receive USPD");
+        uint256 expectedBalance = ((1 ether -
+            priceOracle.getOracleCommission()) * 2800 ether) / 1 ether;
+        assertEq(
+            uspdToken.balanceOf(recipient),
+            expectedBalance,
+            "Incorrect USPD balance of recipient"
+        );
+        assertEq(
+            uspdToken.balanceOf(uspdBuyer),
+            0,
+            "Buyer should not receive USPD"
+        );
     }
 
     function testMintWithMaxAmount() public {
         // Setup stabilizer
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdBuyer = makeAddr("uspdBuyer");
-        
+
         vm.deal(address(priceOracle), 10 ether);
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
-        
+
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
         vm.warp(3000000);
@@ -171,19 +200,24 @@ contract USPDTokenTest is Test {
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
-        
+
         // Calculate initial balance
         uint256 initialBalance = uspdBuyer.balance;
-        
+
         // Mint USPD tokens with max amount
         vm.prank(uspdBuyer);
         uspdToken.mint{value: 2 ether}(uspdBuyer, 4000 ether);
-        
+
         // Verify USPD balance
-        assertApproxEqAbs(uspdToken.balanceOf(uspdBuyer), 4000 ether, 1e9, "Incorrect USPD balance");
-        
+        assertApproxEqAbs(
+            uspdToken.balanceOf(uspdBuyer),
+            4000 ether,
+            1e9,
+            "Incorrect USPD balance"
+        );
+
         // Verify ETH refund
-        uint256 ethUsed = uint256((4000 * (10**18))) / 2500;
+        uint256 ethUsed = uint256((4000 * (10 ** 18))) / 2500;
         // uint256 expectedRefund = 2 ether - ethUsed - priceOracle.getOracleCommission();
         assertApproxEqAbs(
             uspdBuyer.balance,
@@ -211,7 +245,7 @@ contract USPDTokenTest is Test {
     function testBurnWithInsufficientBalance() public {
         address user = makeAddr("user");
         vm.deal(user, 1 ether);
-        
+
         vm.prank(user);
         vm.expectRevert("ERC20: burn amount exceeds balance");
         uspdToken.burn{value: 0.1 ether}(100 ether, payable(user));
@@ -221,71 +255,78 @@ contract USPDTokenTest is Test {
         // Setup a stabilizer and mint some USPD
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdHolder = makeAddr("uspdHolder");
-        
+
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdHolder, 10 ether);
-        
+
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
         setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        
+
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
-        
+
         // Mint USPD tokens
         vm.prank(uspdHolder);
         uspdToken.mint{value: 1 ether}(uspdHolder);
-        
+
         // Create a contract that reverts on receive
         RevertingContract reverting = new RevertingContract();
-        
+
         // Try to burn USPD and send ETH to reverting contract
         vm.prank(uspdHolder);
         vm.expectRevert("ETH transfer failed");
-        uspdToken.burn{value: 0.1 ether}(1000 ether, payable(address(reverting)));
+        uspdToken.burn{value: 0.1 ether}(
+            1000 ether,
+            payable(address(reverting))
+        );
     }
 
     function testSuccessfulBurn() public {
         // Setup a stabilizer and mint some USPD
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdHolder = makeAddr("uspdHolder");
-        
+
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdHolder, 10 ether);
-        
+
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
         setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        
+
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
-        
+
         // Mint USPD tokens
         vm.prank(uspdHolder);
         uspdToken.mint{value: 1 ether}(uspdHolder);
-        
+
         uint256 initialBalance = uspdHolder.balance;
         uint256 initialUspdBalance = uspdToken.balanceOf(uspdHolder);
-        
+
         // Burn half of USPD
         vm.prank(uspdHolder);
-        uspdToken.burn{value: 0.1 ether}(initialUspdBalance / 2, payable(uspdHolder));
-        
-        // Verify USPD was burned
-        assertEq(uspdToken.balanceOf(uspdHolder), initialUspdBalance / 2, "USPD not burned correctly");
-        
-        // Verify ETH was returned
-        assertTrue(uspdHolder.balance > initialBalance, "ETH not returned to holder");
-    }
+        uspdToken.burn{value: 0.1 ether}(
+            initialUspdBalance / 2,
+            payable(uspdHolder)
+        );
 
-    contract RevertingContract {
-        receive() external payable {
-            revert("Always reverts");
-        }
+        // Verify USPD was burned
+        assertEq(
+            uspdToken.balanceOf(uspdHolder),
+            initialUspdBalance / 2,
+            "USPD not burned correctly"
+        );
+
+        // Verify ETH was returned
+        assertTrue(
+            uspdHolder.balance > initialBalance,
+            "ETH not returned to holder"
+        );
     }
 
     function testMintStablecoin() public {
@@ -307,29 +348,44 @@ contract USPDTokenTest is Test {
 
         // Create stabilizer NFT for stabilizerOwner
         stabilizerNFT.mint(stabilizerOwner, 1);
-        
+
         // Add unallocated funds to stabilizer as stabilizerOwner
         vm.startPrank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
         vm.stopPrank();
-        
+
         // Mint USPD tokens as uspdBuyer
         vm.startPrank(uspdBuyer);
         uspdToken.mint{value: 1 ether}(uspdBuyer);
         vm.stopPrank();
-        
+
         // Verify USPD balance
-        uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
-        assertEq(uspdToken.balanceOf(uspdBuyer), expectedBalance, "Incorrect USPD balance");
+        uint256 expectedBalance = ((1 ether -
+            priceOracle.getOracleCommission()) * 2800 ether) / 1 ether;
+        assertEq(
+            uspdToken.balanceOf(uspdBuyer),
+            expectedBalance,
+            "Incorrect USPD balance"
+        );
 
         // Verify position NFT state
         uint256 positionId = positionNFT.getTokenByOwner(stabilizerOwner);
-        IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
-        
+        IUspdCollateralizedPositionNFT.Position memory position = positionNFT
+            .getPosition(positionId);
+
         // Calculate expected allocation (110% of 1 ETH minus commission)
-        uint256 expectedAllocation = (1 ether - priceOracle.getOracleCommission()) * 110 / 100;
-        assertEq(position.allocatedEth, expectedAllocation, "Position should have correct ETH allocation");
-        assertEq(position.backedUspd, expectedBalance, "Position should back correct USPD amount");
+        uint256 expectedAllocation = ((1 ether -
+            priceOracle.getOracleCommission()) * 110) / 100;
+        assertEq(
+            position.allocatedEth,
+            expectedAllocation,
+            "Position should have correct ETH allocation"
+        );
+        assertEq(
+            position.backedUspd,
+            expectedBalance,
+            "Position should back correct USPD amount"
+        );
     }
 
     function setOracleData(
@@ -338,7 +394,7 @@ contract USPDTokenTest is Test {
         address consumer
     ) public {
         uint nonce = oracleEntrypoint.nonces(oracleSigner);
-        bytes32 encodedData = (bytes32(block.timestamp*1000) << (26 * 8)) |
+        bytes32 encodedData = (bytes32(block.timestamp * 1000) << (26 * 8)) |
             (bytes32(uint256(18)) << (25 * 8)) |
             bytes32(dataPointPrice);
 
@@ -425,5 +481,11 @@ contract USPDTokenTest is Test {
             asUint - timestamp * (2 ** (26 * 8)) - decimals * (2 ** (25 * 8))
         );
         return price;
+    }
+}
+
+contract RevertingContract {
+    receive() external payable {
+        revert("Always reverts");
     }
 }
