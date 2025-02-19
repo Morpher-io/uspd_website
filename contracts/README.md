@@ -270,6 +270,23 @@ The protocol implements a robust liquidation system to maintain stability when c
    - Can withdraw excess collateral when ETH price increases while maintaining minimum 100% overcollateralization
    - Example: If 1 ETH = $3500 at deposit, and price rises to $7000, stabilizer can withdraw collateral while maintaining required ratio
 
+   - Detailed Example with 150% Overcollateralization:
+     1. Initial Setup:
+        * ETH Price = $3500
+        * Stabilizer deposits 1 ETH ($3500 worth)
+        * Wants to maintain 150% overcollateralization
+        * Maximum USPD coverage = $3500/1.5 = $2333.33
+        * Initial ratio = ($3500/$2333.33) = 150%
+     
+     2. After ETH Price Doubles:
+        * New ETH Price = $7000
+        * Current collateral value = 1 ETH = $7000
+        * Required collateral for same coverage = $2333.33 * 1.5 = $3500
+        * Excess collateral = $7000 - $3500 = $3500
+        * Can withdraw 0.5 ETH ($3500 worth)
+        * Remaining 0.5 ETH ($3500) still maintains 150% ratio
+        * Final ratio = ($3500/$2333.33) = 150%
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
