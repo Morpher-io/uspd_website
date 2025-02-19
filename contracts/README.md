@@ -65,6 +65,29 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - Advantage: Gas-efficient, permissionless, handles dynamic ratios
    - Challenge: Designing incentives for timely updates
 
+### Liquidation and Stabilizer Takeover Mechanism
+
+The protocol implements a robust liquidation system to maintain stability when collateral value decreases:
+
+1. **Liquidation Trigger**:
+   - Liquidation becomes possible when a stabilizer's overcollateralization ratio falls below 110%
+   - Anyone can trigger the liquidation process (permissionless)
+   - The highest-ratio stabilizer from the queue automatically takes over the position
+
+2. **Liquidation Rewards**:
+   - 50% of remaining overcollateral goes to a protocol safety fund
+   - 50% is awarded to the liquidator who triggered the process
+   - Original stabilizer loses their provided collateral as a penalty
+
+3. **Dynamic Takeover**:
+   - During liquidation, new stabilizers can join and immediately take over if they provide the highest ratio
+   - This ensures optimal stability by always selecting the strongest available stabilizer
+
+4. **Stabilizer Compensation**:
+   - Stabilizers earn staking rewards through automatic liquid staking of their ETH collateral
+   - Can withdraw excess collateral when ETH price increases while maintaining minimum 100% overcollateralization
+   - Example: If 1 ETH = $3500 at deposit, and price rises to $7000, stabilizer can withdraw collateral while maintaining required ratio
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
