@@ -27,18 +27,31 @@ contract USPDTokenTest is Test {
     bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
 
     function setUp() public {
+        // Setup oracle
         oraclePrivateKey = 0xa11ce;
         oracleSigner = vm.addr(oraclePrivateKey);
         oracleEntrypoint = new OracleEntrypoint();
-
         priceOracle = new PriceOracle(address(oracleEntrypoint), oracleSigner);
-        
-        // Deploy StabilizerNFT implementation and proxy first
+
+        // Deploy USPD token first with oracle and temporary zero address for stabilizer
+        uspdToken = new USPD(address(priceOracle), address(0));
+
+        // Deploy Position NFT implementation and proxy
+        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
+        bytes memory positionInitData = abi.encodeWithSelector(
+            UspdCollateralizedPositionNFT.initialize.selector
+        );
+        ERC1967Proxy positionProxy = new ERC1967Proxy(
+            address(positionNFTImpl),
+            positionInitData
+        );
+        positionNFT = UspdCollateralizedPositionNFT(address(positionProxy));
+
+        // Deploy StabilizerNFT implementation and proxy
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
         bytes memory stabilizerInitData = abi.encodeWithSelector(
             StabilizerNFT.initialize.selector,
-            payable(address(0)), // USPD address will be updated after deployment
-            address(0) // Position NFT address will be set later
+            address(positionNFT)
         );
         ERC1967Proxy stabilizerProxy = new ERC1967Proxy(
             address(stabilizerNFTImpl),
@@ -46,13 +59,11 @@ contract USPDTokenTest is Test {
         );
         stabilizerNFT = StabilizerNFT(address(stabilizerProxy));
 
-        // Deploy USPD token with oracle and stabilizer
-        uspdToken = new USPD(address(priceOracle), address(stabilizerNFT));
-
-        // Update USPD address in StabilizerNFT
-        stabilizerNFT.initialize(payable(address(uspdToken)), address(0));
+        // Update USPD token with correct stabilizer address
+        uspdToken.updateStabilizer(address(stabilizerNFT));
         
-        // Grant minter role to test contract
+        // Setup roles
+        positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
     }
 
