@@ -26,10 +26,8 @@ contract USPDTokenTest is Test {
     USPD uspdToken;
 
     bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
-    address public user;
 
     function setUp() public {
-        user = makeAddr("user");
         // Setup oracle
         oraclePrivateKey = 0xa11ce;
         oracleSigner = vm.addr(oraclePrivateKey);
@@ -89,9 +87,14 @@ contract USPDTokenTest is Test {
     }
 
     function testMintStablecoin() public {
+        // Create test users
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdBuyer = makeAddr("uspdBuyer");
+
         // Setup oracle and accounts
         vm.deal(address(priceOracle), 10 ether);
-        vm.deal(user, 10 ether);
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdBuyer, 10 ether);
         vm.warp(1000000);
 
         // Set ETH price to $2800
@@ -100,22 +103,24 @@ contract USPDTokenTest is Test {
         setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
         vm.warp(10000);
 
-        // Create stabilizer NFT for user
-        stabilizerNFT.mint(user, 1);
+        // Create stabilizer NFT for stabilizerOwner
+        stabilizerNFT.mint(stabilizerOwner, 1);
         
-        // Add unallocated funds to stabilizer as user
-        vm.startPrank(user);
+        // Add unallocated funds to stabilizer as stabilizerOwner
+        vm.startPrank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1, 0);
+        vm.stopPrank();
         
-        // Mint USPD tokens as user
-        uspdToken.mint{value: 1 ether}(user);
+        // Mint USPD tokens as uspdBuyer
+        vm.startPrank(uspdBuyer);
+        uspdToken.mint{value: 1 ether}(uspdBuyer);
         vm.stopPrank();
         
         vm.warp(10);
         
         // Verify USPD balance
         uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
-        assertEq(uspdToken.balanceOf(user), expectedBalance, "Incorrect USPD balance");
+        assertEq(uspdToken.balanceOf(uspdBuyer), expectedBalance, "Incorrect USPD balance");
     }
 
     function setOracleData(
