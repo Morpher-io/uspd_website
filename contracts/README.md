@@ -43,61 +43,23 @@ The protocol implements an NFT-based stabilizer system with efficient fund alloc
    - Efficient linked list structure for fund management
    - Position NFTs enable granular tracking without excessive storage costs
 
-2. **Efficient Updates**: When using USPD-based ratios, finding the highest overcollateralization ratio without processing the entire list becomes complex. Potential solutions include:
+2. **NFT-Based Fund Allocation**:
 
-   a. **Index-based Approach with Commitment Factors**:
-   - Instead of storing actual ratios, stabilizers specify a commitment factor (0-100%)
-   - This factor represents what portion of their maximum possible coverage they're willing to provide
-   - Actual ratio = (ETH_amount * ETH_price) / (commitment_factor * max_possible_USPD)
-   - Advantage: Queue ordering remains stable despite price changes
-   - Challenge: Need to carefully design the commitment factor calculation
-   - Scaling: O(1) for individual updates, scales well to thousands of stabilizers since commitment factors don't need reordering
+The protocol implements a simple and efficient linked list structure for managing unallocated funds:
 
-   b. **Threshold-based Buckets**:
-   - Group stabilizers into predefined ratio range buckets (e.g., 150-200%, 200-250%, etc.)
-   - Each bucket maintains its own sub-list of stabilizers
-   - When price changes, stabilizers might move between buckets
-   - Advantage: Reduces sorting complexity, only need to check highest non-empty bucket
-   - Challenge: Determining optimal bucket sizes and handling bucket transitions
-   - Scaling: O(1) bucket lookup, O(k) for k stabilizers in a bucket. Efficient with thousands of stabilizers if well-distributed across buckets
+- Each stabilizer position is represented by two NFTs:
+  * Stabilizer NFT: Represents the stabilizer's position and priority (based on NFT ID)
+  * Position NFT: Represents specific USPD-backing positions
 
-   c. **Max-heap with Lazy Updates**:
-   - Maintain a heap structure ordered by overcollateralization ratio
-   - Only recalculate positions when attempting to use a stabilizer
-   - Track last price update timestamp for each position
-   - Advantage: O(log n) updates when needed
-   - Challenge: Heap maintenance and ensuring accurate ordering when needed
-   - Scaling: O(log n) operations for updates and queries, practical for thousands of stabilizers but gas costs increase logarithmically
+- The linked list structure:
+  * Nodes are ordered by Stabilizer NFT ID (lowest to highest)
+  * Each node contains unallocated ETH amount and links
+  * Updates happen when:
+    - New funds are added
+    - Funds are allocated to back USPD
+    - USPD is burned and funds return to unallocated state
 
-   d. **Merkle-Proof Verified Ordering**:
-   - Calculate stabilizer positions and ratios off-chain based on current ETH/USD price
-   - Create a Merkle tree where each leaf contains (address, ratio, position)
-   - Store the Merkle root and corresponding ETH/USD price on-chain
-   - Require Merkle proofs for position updates that verify:
-     * Correct position relative to neighbors
-     * Validity against stored root at current price
-   - Advantage: Gas-efficient position verification
-   - Challenge: Managing root updates with price changes
-   - Scaling: O(log n) proof size and verification time, excellent for thousands of stabilizers as most computation is off-chain
-
-   e. **Oracle-Inspired Permissionless Updates**:
-   - Implement a threshold-triggered update system similar to Push-Based price feeds
-   - Any participant can submit an updated ordering when:
-     * ETH/USD price changes exceed a threshold (e.g., ±2%)
-     * Or after a minimum time interval (e.g., 4 hours)
-   - Updates include:
-     * A compact bitmap representing position changes
-     * Merkle proof of new positions
-     * Current ETH/USD price from oracle
-   - On-chain contract:
-     * Validates update conditions (time/price thresholds)
-     * Verifies position changes using O(1) bitmap operations
-     * Updates only affected positions
-   - Advantage: Gas-efficient, permissionless, handles dynamic ratios
-   - Challenge: Designing incentives for timely updates
-   - Scaling: O(k) where k is number of changed positions, highly efficient for thousands of stabilizers as unchanged positions require no gas
-
-#### Example Implementation: Merkle-Proof Verified Ordering with Batch Updates
+#### Example Implementation: NFT-Based Stabilizer System
 
 ```solidity
 struct Stabilizer {
