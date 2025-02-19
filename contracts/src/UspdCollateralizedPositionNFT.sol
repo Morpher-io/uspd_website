@@ -14,7 +14,11 @@ contract UspdCollateralizedPositionNFT is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     
     // Mapping from NFT ID to position
-    mapping(uint256 => Position) public positions;
+    mapping(uint256 => Position) private _positions;
+
+    function getPosition(uint256 tokenId) external view returns (Position memory) {
+        return _positions[tokenId];
+    }
     
     // Counter for position IDs
     uint256 private _nextPositionId;
@@ -41,7 +45,7 @@ contract UspdCollateralizedPositionNFT is
     ) external onlyRole(MINTER_ROLE) returns (uint256) {
         uint256 tokenId = _nextPositionId++;
         
-        positions[tokenId] = Position({
+        _positions[tokenId] = Position({
             allocatedEth: allocatedEth,
             backedUspd: backedUspd
         });
@@ -55,8 +59,8 @@ contract UspdCollateralizedPositionNFT is
     function burn(uint256 tokenId) external {
         require(ownerOf(tokenId) == msg.sender, "Not position owner");
         
-        Position memory pos = positions[tokenId];
-        delete positions[tokenId];
+        Position memory pos = _positions[tokenId];
+        delete _positions[tokenId];
         
         _burn(tokenId);
         emit PositionBurned(tokenId, msg.sender, pos.allocatedEth, pos.backedUspd);
@@ -67,7 +71,7 @@ contract UspdCollateralizedPositionNFT is
         view 
         returns (uint256) 
     {
-        Position memory pos = positions[tokenId];
+        Position memory pos = _positions[tokenId];
         uint256 ethValue = (pos.allocatedEth * ethUsdPrice) / (10**priceDecimals);
         return (ethValue * 100) / pos.backedUspd;
     }
