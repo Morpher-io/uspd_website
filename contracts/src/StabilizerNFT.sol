@@ -8,7 +8,7 @@ import "./UspdToken.sol";
 import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
 import "shipyard-core/src/dynamic-traits/DynamicTraits.sol";
-import "./libraries/Base64.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
 contract StabilizerNFT is 
     IStabilizerNFT, 
