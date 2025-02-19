@@ -245,6 +245,67 @@ contract StabilizerNFTTest is Test {
         assertEq(minCollateralRatio, 150, "Min collateral ratio should be updated");
     }
 
+    function testAllocatedAndUnallocatedIds() public {
+        // Setup three stabilizers
+        stabilizerNFT.mint(user1, 1);
+        stabilizerNFT.mint(user2, 2);
+        stabilizerNFT.mint(user1, 3);
+
+        // Initially no allocated or unallocated IDs
+        assertEq(stabilizerNFT.lowestUnallocatedId(), 0, "Should have no unallocated IDs initially");
+        assertEq(stabilizerNFT.highestUnallocatedId(), 0, "Should have no unallocated IDs initially");
+        assertEq(stabilizerNFT.lowestAllocatedId(), 0, "Should have no allocated IDs initially");
+        assertEq(stabilizerNFT.highestAllocatedId(), 0, "Should have no allocated IDs initially");
+
+        // Add funds to stabilizers in mixed order
+        vm.deal(user1, 5 ether);
+        vm.deal(user2, 5 ether);
+        
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(3);
+        assertEq(stabilizerNFT.lowestUnallocatedId(), 3, "ID 3 should be lowest unallocated");
+        assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should be highest unallocated");
+
+        vm.prank(user2);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(2);
+        assertEq(stabilizerNFT.lowestUnallocatedId(), 2, "ID 2 should be lowest unallocated");
+        assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should still be highest unallocated");
+
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
+        assertEq(stabilizerNFT.lowestUnallocatedId(), 1, "ID 1 should be lowest unallocated");
+        assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should still be highest unallocated");
+
+        // Allocate funds and check allocated IDs
+        vm.deal(address(uspdToken), 3 ether);
+        vm.startPrank(address(uspdToken));
+        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(1 ether, 2000 ether, 18);
+        vm.stopPrank();
+
+        assertEq(stabilizerNFT.lowestAllocatedId(), 1, "ID 1 should be lowest allocated");
+        assertEq(stabilizerNFT.highestAllocatedId(), 1, "ID 1 should be highest allocated");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), 2, "ID 2 should now be lowest unallocated");
+
+        // Allocate more funds
+        vm.startPrank(address(uspdToken));
+        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(1 ether, 2000 ether, 18);
+        vm.stopPrank();
+
+        assertEq(stabilizerNFT.lowestAllocatedId(), 1, "ID 1 should still be lowest allocated");
+        assertEq(stabilizerNFT.highestAllocatedId(), 2, "ID 2 should now be highest allocated");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), 3, "ID 3 should now be lowest unallocated");
+        assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should now be highest unallocated");
+
+        // Unallocate funds and verify IDs update
+        vm.startPrank(address(uspdToken));
+        stabilizerNFT.unallocateStabilizerFunds(2000 ether, 2000 ether, 18);
+        vm.stopPrank();
+
+        assertEq(stabilizerNFT.lowestAllocatedId(), 1, "ID 1 should still be lowest allocated");
+        assertEq(stabilizerNFT.highestAllocatedId(), 1, "ID 1 should now be highest allocated");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), 2, "ID 2 should be back in unallocated list");
+    }
+
     function testUnallocationAndPositionNFT() public {
         // Setup stabilizer with 200% ratio
         stabilizerNFT.mint(user1, 1);
