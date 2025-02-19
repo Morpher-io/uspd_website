@@ -14,9 +14,19 @@ The protocol maintains a sorted linked list of stabilizers, ordered by their ove
 
 The implementation of the stabilizer queue faces several technical challenges, particularly when dealing with dynamic overcollateralization ratios:
 
-1. **Dynamic Ratios**: When stabilizers specify their overcollateralization in USPD terms while providing ETH as collateral, their effective ratio changes with every ETH/USD price update, potentially affecting the entire queue's ordering.
+1. **Dynamic Ratios**: The queue implementation complexity depends heavily on how stabilizer ratios are specified:
+   
+   - **ETH-based ratio** (simple case):
+     * Stabilizers specify their ratio in terms of ETH (e.g., "I'll provide 1.5x ETH coverage")
+     * Queue ordering remains stable regardless of ETH/USD price changes
+     * Implementation is straightforward as ratios are static
+   
+   - **USPD-based ratio** (complex case):
+     * Stabilizers specify their ratio in USPD terms (e.g., "I'll cover up to 1000 USPD")
+     * Their effective ratio changes with every ETH/USD price update
+     * Queue ordering needs frequent updates to remain accurate
 
-2. **Efficient Updates**: Finding the highest overcollateralization ratio without processing the entire list becomes complex when ratios are dynamic. Potential solutions include:
+2. **Efficient Updates**: When using USPD-based ratios, finding the highest overcollateralization ratio without processing the entire list becomes complex. Potential solutions include:
 
    a. **Index-based Approach with Commitment Factors**:
    - Instead of storing actual ratios, stabilizers specify a commitment factor (0-100%)
