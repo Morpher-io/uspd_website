@@ -155,18 +155,12 @@ contract StabilizerNFT is
             uint256 toAllocate = stabilizerEthNeeded > pos.totalEth ? 
                 pos.totalEth : stabilizerEthNeeded;
 
-            // Adjust USPD amount if stabilizer can't provide enough ETH
+            // If stabilizer can't provide enough ETH, adjust user's ETH amount
             if (toAllocate < stabilizerEthNeeded) {
                 uint256 maxUserEth = (toAllocate * 100) / (pos.minCollateralRatio - 100);
-                userEthNeeded = maxUserEth;
-                uspdToAllocate = (userEthNeeded * ethUsdPrice) / (10**priceDecimals);
+                remainingEth = maxUserEth;
             }
 
-
-            pos.totalEth -= toAllocate;
-            result.allocatedEth += toAllocate;
-            remainingEth -= toAllocate;
-            result.uspdAmount += uspdForAllocation;
 
             address owner = ownerOf(currentId);
             uint256 positionId = positionNFT.getTokenByOwner(owner);
@@ -175,21 +169,20 @@ contract StabilizerNFT is
             if (positionId == 0) {
                 positionId = positionNFT.mint(owner);
                 stabilizerToPosition[currentId] = positionId;
-
-                // Add to allocated list if we just created a new position
                 _registerAllocatedPosition(currentId);
             }
 
-            if (remainingEth > 0) {
-                // Add collateral from both user and stabilizer
-                positionNFT.addCollateral{value: toAllocate + remainingEth}(positionId);
+            // Add collateral from both user and stabilizer
+            positionNFT.addCollateral{value: toAllocate + remainingEth}(positionId);
 
-                // Update remaining amounts
-                pos.totalEth -= toAllocate;
-                result.allocatedEth += remainingEth;  // Only track user's ETH
+            // Update state
+            pos.totalEth -= toAllocate;
+            result.allocatedEth += remainingEth;  // Only track user's ETH
 
-                emit FundsAllocated(currentId, toAllocate, remainingEth, positionId);
-            }
+            emit FundsAllocated(currentId, toAllocate, remainingEth, positionId);
+
+            // Move to next stabilizer if we still have ETH to allocate
+            currentId = pos.nextUnallocated;
 
             // Update unallocated list if no more funds
             if (pos.totalEth == 0) {
