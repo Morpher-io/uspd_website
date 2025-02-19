@@ -162,21 +162,6 @@ contract StabilizerNFT is
                 uspdToAllocate = (userEthNeeded * ethUsdPrice) / (10**priceDecimals);
             }
 
-            // Adjust if we have a max USPD amount limit
-            if (
-                maxUspdAmount > 0 &&
-                result.uspdAmount + uspdForAllocation > maxUspdAmount
-            ) {
-                uspdForAllocation = maxUspdAmount - result.uspdAmount;
-                // Recalculate required ETH for the reduced USPD amount
-                uint256 newRequiredEth = (uspdForAllocation *
-                    (10 ** priceDecimals) *
-                    pos.minCollateralRatio) / (ethUsdPrice * 100);
-                toAllocate = newRequiredEth - remainingEth;
-                if (toAllocate > pos.totalEth) {
-                    toAllocate = pos.totalEth;
-                }
-            }
 
             pos.totalEth -= toAllocate;
             result.allocatedEth += toAllocate;
@@ -195,21 +180,15 @@ contract StabilizerNFT is
                 _registerAllocatedPosition(currentId);
             }
 
-            if (targetEth > 0) {
+            if (remainingEth > 0) {
                 // Add collateral from both user and stabilizer
-                positionNFT.addCollateral{value: toAllocate + targetEth}(positionId);
-                
-                // Calculate USPD amount from user's ETH
-                uint256 uspdAmount = (targetEth * ethUsdPrice) / (10**priceDecimals);
-                positionNFT.modifyAllocation(positionId, uspdAmount);
+                positionNFT.addCollateral{value: toAllocate + remainingEth}(positionId);
 
                 // Update remaining amounts
-                remainingEth -= targetEth;
                 pos.totalEth -= toAllocate;
-                result.allocatedEth += targetEth;  // Only track user's ETH
-                result.uspdAmount += uspdAmount;
+                result.allocatedEth += remainingEth;  // Only track user's ETH
 
-                emit FundsAllocated(currentId, toAllocate, targetEth, positionId);
+                emit FundsAllocated(currentId, toAllocate, remainingEth, positionId);
             }
 
             // Update unallocated list if no more funds

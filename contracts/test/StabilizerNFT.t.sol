@@ -150,12 +150,9 @@ contract StabilizerNFTTest is Test {
 
         // Mock as USPD token to test allocation
         vm.startPrank(address(uspdToken));
-        IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds(
-            1 ether,      // ethAmount
-            2000 ether,   // ethUsdPrice
-            18,          // priceDecimals
-            0           // maxUspdAmount
-        );
+        IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{
+            value: 1 ether
+        }(1 ether);
         vm.stopPrank();
 
         // Verify allocation result
@@ -201,12 +198,7 @@ contract StabilizerNFTTest is Test {
         vm.startPrank(address(uspdToken));
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{
             value: 2 ether
-        }(
-            2 ether,      // ethAmount (user provides 2 ETH)
-            2800 ether,   // ethUsdPrice (1 ETH = 2800 USPD)
-            18,          // priceDecimals
-            5000 ether   // maxUspdAmount (cap at 5000 USPD)
-        );
+        }(2 ether);
         vm.stopPrank();
 
         // Verify first position (200% collateralization)
