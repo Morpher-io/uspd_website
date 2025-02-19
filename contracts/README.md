@@ -39,6 +39,16 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - Advantage: O(log n) updates when needed
    - Challenge: Heap maintenance and ensuring accurate ordering when needed
 
+   d. **Merkle-Proof Verified Ordering**:
+   - Calculate stabilizer positions and ratios off-chain based on current ETH/USD price
+   - Create a Merkle tree where each leaf contains (address, ratio, position)
+   - Store the Merkle root and corresponding ETH/USD price on-chain
+   - Require Merkle proofs for position updates that verify:
+     * Correct position relative to neighbors
+     * Validity against stored root at current price
+   - Advantage: Gas-efficient position verification
+   - Challenge: Managing root updates with price changes
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
