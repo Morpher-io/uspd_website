@@ -189,6 +189,7 @@ contract StabilizerNFTTest is Test {
         assertEq(totalEth2, 4 ether, "Second stabilizer should have 4 ETH");
         
         // Mock as USPD token to test allocation
+        vm.deal(address(uspdToken), 2 ether); //user sends 2 eth to the uspd contract
         vm.startPrank(address(uspdToken));
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{
             value: 2 ether
@@ -196,7 +197,7 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
 
         // Verify first position (200% collateralization)
-        uint256 positionId1 = stabilizerNFT.stabilizerToPosition(1);
+        uint256 positionId1 = positionNFT.getTokenByOwner(user1);
         IUspdCollateralizedPositionNFT.Position memory position1 = positionNFT.getPosition(positionId1);
         
         // For 200% ratio: user provides 0.5 ETH, stabilizer provides 0.5 ETH
@@ -204,7 +205,7 @@ contract StabilizerNFTTest is Test {
         assertEq(position1.backedUspd, 1400 ether, "First position should back 1400 USPD (0.5 ETH * 2800)");
 
         // Verify second position (110% collateralization)
-        uint256 positionId2 = stabilizerNFT.stabilizerToPosition(2);
+        uint256 positionId2 = positionNFT.getTokenByOwner(user2);
         IUspdCollateralizedPositionNFT.Position memory position2 = positionNFT.getPosition(positionId2);
         
         // For 110% ratio: user provides 1.5 ETH, stabilizer provides 0.15 ETH

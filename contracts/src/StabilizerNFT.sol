@@ -9,6 +9,8 @@ import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
+import {console} from "forge-std/console.sol";
+
 contract StabilizerNFT is
     IStabilizerNFT,
     Initializable,
@@ -152,11 +154,10 @@ contract StabilizerNFT is
 
             // Calculate how much stabilizer ETH is needed for this user ETH
             uint256 stabilizerEthNeeded = (remainingEth * (pos.minCollateralRatio - 100)) / 100;
-            
+            console.log("StabilizerEthNeeded %s", stabilizerEthNeeded);
             // Check if stabilizer has enough ETH
-            uint256 toAllocate = stabilizerEthNeeded > pos.totalEth ? 
-                pos.totalEth : stabilizerEthNeeded;
-
+            uint256 toAllocate = stabilizerEthNeeded > pos.totalEth ? pos.totalEth : stabilizerEthNeeded;
+console.log("toAllocate %s and totalEth %s", toAllocate, pos.totalEth);
             // If stabilizer can't provide enough ETH, adjust user's ETH amount
             uint256 userEthShare = remainingEth;
             if (toAllocate < stabilizerEthNeeded) {
@@ -174,7 +175,7 @@ contract StabilizerNFT is
             }
 
             // Add collateral from both user and stabilizer
-            positionNFT.addCollateral{value: toAllocate + remainingEth}(positionId);
+            positionNFT.addCollateral{value: toAllocate + userEthShare}(positionId);
 
             // Calculate USPD amount backed by user's ETH
             uint256 uspdAmount = (userEthShare * ethUsdPrice) / (10**priceDecimals);
