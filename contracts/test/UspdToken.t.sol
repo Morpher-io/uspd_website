@@ -6,12 +6,11 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {USPDToken as USPD} from "../src/UspdToken.sol";
-import {UspdStabilizerToken} from "../src/UspdStabilizerToken.sol";
+import {StabilizerNFT} from "../src/StabilizerNFT.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {OracleEntrypoint} from "../src/oracle/OracleEntrypoint.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 
-error ErrMaxMintingLimit(uint remaining, uint exceeded);
 
 contract USPDTokenTest is Test {
     uint256 internal oraclePrivateKey;
@@ -21,7 +20,7 @@ contract USPDTokenTest is Test {
 
     OracleEntrypoint oracleEntrypoint;
     PriceOracle priceOracle;
-    UspdStabilizerToken stabilizer;
+    StabilizerNFT public stabilizerNFT;
     USPD uspdToken;
 
     bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
@@ -32,118 +31,18 @@ contract USPDTokenTest is Test {
         oracleEntrypoint = new OracleEntrypoint();
 
         priceOracle = new PriceOracle(address(oracleEntrypoint), oracleSigner);
-
-        stabilizer = new UspdStabilizerToken(address(this)); //set the admin to this contract
-
-        uspdToken = new USPD(address(priceOracle), address(stabilizer));
-
-        stabilizer.setUspdTokenAddress(address(uspdToken));
+        
+        // Deploy StabilizerNFT
+        stabilizerNFT = new StabilizerNFT();
+        stabilizerNFT.initialize(payable(address(uspdToken)), address(0)); // Position NFT address will be set later
+        
+        // Deploy USPD token with StabilizerNFT
+        uspdToken = new USPD(address(priceOracle), address(stabilizerNFT));
+        
+        // Grant minter role to test contract
+        stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
     }
 
-    function testAddStabilizer() public {
-        address alice = makeAddr("alice");
-        emit log_address(alice);
-        vm.deal(alice, 100 ether);
-        vm.prank(alice);
-
-        uint collateralPercentage = 10 * 100; //10%
-
-        stabilizer.safeMint{value: 10 ether}(alice, collateralPercentage, 0, 0);
-        assertEq(
-            stabilizer.numStabilizersIds(),
-            1,
-            "There is more than one stabilizer"
-        );
-        // console.log(stabilizer.stabilizers(1));
-        (
-            uint collateralizationPerc,
-            uint prevStabilizerId,
-            uint nextStabilizerId,
-            uint nextStabilizerNonceRemainingAmount,
-            uint stakedWei,
-            uint blockNumberLastBuy,
-            uint blockNumberBurn
-        ) = stabilizer.stabilizers(1);
-
-        assertEq(stakedWei, 10 ether);
-        assertEq(collateralizationPerc, collateralPercentage);
-        assertEq(prevStabilizerId, 1);
-        assertEq(nextStabilizerId, 1);
-        assertEq(nextStabilizerNonceRemainingAmount, 1);
-        assertEq(blockNumberLastBuy, block.number);
-        assertEq(blockNumberBurn, 0);
-    }
-
-    function testAddTwoStabilizers() public {
-        address alice = makeAddr("alice");
-        emit log_address(alice);
-        vm.deal(alice, 100 ether);
-        vm.prank(alice);
-
-        uint collateralPercentage = 10 * 100; //10%
-        {
-            stabilizer.safeMint{value: 10 ether}(
-                alice,
-                collateralPercentage,
-                0,
-                0
-            );
-            assertEq(
-                stabilizer.numStabilizersIds(),
-                1,
-                "There is more than one stabilizer"
-            );
-            // console.log(stabilizer.stabilizers(1));
-            (
-                uint collateralizationPerc,
-                uint prevStabilizerId,
-                uint nextStabilizerId,
-                uint nextStabilizerNonceRemainingAmount,
-                uint stakedWei,
-                uint blockNumberLastBuy,
-                uint blockNumberBurn
-            ) = stabilizer.stabilizers(1);
-
-            assertEq(stakedWei, 10 ether);
-            assertEq(collateralizationPerc, collateralPercentage);
-            assertEq(prevStabilizerId, 1);
-            assertEq(nextStabilizerId, 1);
-            assertEq(nextStabilizerNonceRemainingAmount, 1);
-            assertEq(blockNumberLastBuy, block.number);
-            assertEq(blockNumberBurn, 0);
-        }
-
-        {
-            address bob = makeAddr("bob");
-            emit log_address(bob);
-            vm.deal(bob, 100 ether);
-            vm.prank(bob);
-            stabilizer.safeMint{value: 1 ether}(
-                bob,
-                collateralPercentage,
-                0,
-                0
-            );
-            assertEq(stabilizer.numStabilizersIds(), 2);
-            (
-                uint collateralizationPercBob,
-                uint prevStabilizerIdBob,
-                uint nextStabilizerIdBob,
-                uint nextStabilizerNonceRemainingAmountBob,
-                uint stakedWeiBob,
-                uint blockNumberLastBuyBob,
-                uint blockNumberBurnBob
-            ) = stabilizer.stabilizers(2);
-
-            assertEq(stakedWeiBob, 1 ether);
-            assertEq(collateralizationPercBob, collateralPercentage);
-            assertEq(prevStabilizerIdBob, 1);
-            assertEq(nextStabilizerIdBob, 2);
-            assertEq(nextStabilizerNonceRemainingAmountBob, 2);
-            assertEq(blockNumberLastBuyBob, block.number);
-            assertEq(blockNumberBurnBob, 0);
-        }
-    }
 
     function testOracle() public {
         vm.deal(address(this), 10 ether);
@@ -163,19 +62,31 @@ contract USPDTokenTest is Test {
     }
 
     function testMintStablecoin() public {
+        // Setup oracle and accounts
         vm.deal(address(priceOracle), 10 ether);
         vm.deal(address(this), 10 ether);
         vm.warp(1000000);
 
+        // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
         vm.warp(3000000);
-        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle)); //18 decimals = $2800 * 1e18
+        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
         vm.warp(10000);
-        uspdToken.mint{value: 1 ether}(address(this)); //mint us some uspd
+
+        // Create stabilizer NFT
+        stabilizerNFT.mint(address(this), 1);
+        
+        // Add unallocated funds to stabilizer
+        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1, 0);
+        
+        // Mint USPD tokens
+        uspdToken.mint{value: 1 ether}(address(this));
+        
         vm.warp(10);
-        assertEq(uspdToken.balanceOf(address(this)), (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether); //balance must be $2800 or 2800 * 1e18
-
-
+        
+        // Verify USPD balance
+        uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
+        assertEq(uspdToken.balanceOf(address(this)), expectedBalance, "Incorrect USPD balance");
     }
 
     function setOracleData(
@@ -272,31 +183,4 @@ contract USPDTokenTest is Test {
         );
         return price;
     }
-
-    // function testMinting() public {
-    //     {
-    //         address alice = makeAddr("alice");
-    //         emit log_address(alice);
-    //         uint collateralPercentage = 10 * 100; //10%
-
-    //         vm.deal(alice, 100 ether);
-    //         vm.prank(alice);
-
-    //         stabilizer.safeMint{value: 10 ether}(
-    //             alice,
-    //             collateralPercentage,
-    //             0,
-    //             0
-    //         );
-    //     }
-    // }
-
-    // function testMintingLimiter() public {
-    //     address alice = makeAddr("alice");
-    //     emit log_address(alice);
-    //     vm.deal(alice, 10000 ether);
-    //     vm.prank(alice);
-    //     vm.expectRevert("Minting Error: Maximum Limit Reached");
-    //     uspdToken.mint{value: 10000 ether}(alice);
-    // }
 }
