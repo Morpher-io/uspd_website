@@ -246,17 +246,29 @@ contract StabilizerNFTTest is Test {
     }
 
     function testUnallocationAndPositionNFT() public {
-        // Setup like in allocation test
+        // Setup stabilizer with 200% ratio
         stabilizerNFT.mint(user1, 1);
         vm.deal(user1, 5 ether);
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFunds{value: 5 ether}(1);
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(1, 200);
 
-        // First allocate
+        // First allocate - user provides 1 ETH, stabilizer provides 1 ETH for 200% ratio
         vm.startPrank(address(uspdToken));
         stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(1 ether, 2000 ether, 18);
 
-        // Then unallocate
+        // Verify initial position state
+        uint256 positionId = stabilizerNFT.stabilizerToPosition(1);
+        IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
+        assertEq(position.allocatedEth, 2 ether, "Position should have 2 ETH total (1 user + 1 stabilizer)");
+        assertEq(position.backedUspd, 2000 ether, "Position should back 2000 USPD (1 ETH * 2000)");
+
+        // Get initial collateralization ratio
+        uint256 initialRatio = positionNFT.getCollateralizationRatio(positionId, 2000 ether, 18);
+        assertEq(initialRatio, 200, "Initial ratio should be 200%");
+
+        // Unallocate half the USPD (1000 USPD)
         uint256 unallocatedEth = stabilizerNFT.unallocateStabilizerFunds(
             1000 ether,   // Unallocate half the USPD
             2000 ether,   // ethUsdPrice
@@ -265,13 +277,20 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
 
         // Verify unallocation
-        assertEq(unallocatedEth, 0.55 ether, "Should unallocate correct amount of ETH");
+        assertEq(unallocatedEth, 0.5 ether, "Should return 0.5 ETH to user");
 
-        // Verify position NFT state
-        uint256 positionId = stabilizerNFT.stabilizerToPosition(1);
-        IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
-        assertEq(position.allocatedEth, 0.55 ether, "Position should have remaining ETH");
-        assertEq(position.backedUspd, 1000 ether, "Position should back remaining USPD");
+        // Verify position NFT state after partial unallocation
+        position = positionNFT.getPosition(positionId);
+        assertEq(position.allocatedEth, 1 ether, "Position should have 1 ETH remaining");
+        assertEq(position.backedUspd, 1000 ether, "Position should back 1000 USPD");
+
+        // Verify collateralization ratio remains the same
+        uint256 finalRatio = positionNFT.getCollateralizationRatio(positionId, 2000 ether, 18);
+        assertEq(finalRatio, 200, "Ratio should remain at 200%");
+
+        // Verify stabilizer received its share back
+        (uint256 totalEth, , , , , ) = stabilizerNFT.positions(1);
+        assertEq(totalEth, 4.5 ether, "Stabilizer should have 4.5 ETH unallocated");
     }
 
     receive() external payable {}
