@@ -28,6 +28,9 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
     // USPD token contract
     USPDToken public uspdToken;
     
+    // Position NFT contract
+    UspdCollateralizedPositionNFT public positionNFT;
+    
     // Minimum gas required for allocation loop
     uint256 public constant MIN_GAS = 100000;
 
@@ -41,13 +44,15 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
     }
 
     function initialize(
-        address payable _uspdToken
+        address payable _uspdToken,
+        address _positionNFT
     ) public initializer {
         __ERC721_init("USPD Stabilizer", "USPDS");
         __AccessControl_init();
         
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         uspdToken = USPDToken(_uspdToken);
+        positionNFT = UspdCollateralizedPositionNFT(_positionNFT);
     }
 
     function mint(
@@ -138,6 +143,9 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
                 result.allocatedEth += toAllocate;
                 remainingEth -= toAllocate;
                 result.uspdAmount += uspdForAllocation;
+                
+                // Mint position NFT to stabilizer
+                positionNFT.mint(ownerOf(currentId), toAllocate, uspdForAllocation);
                 
                 emit FundsAllocated(currentId, toAllocate);
                 
