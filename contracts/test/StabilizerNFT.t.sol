@@ -172,7 +172,8 @@ contract StabilizerNFTTest is Test {
         
         // Then verify values after allocation
         position = positionNFT.getPosition(positionId);
-        assertEq(position.allocatedEth, 1.1 ether, "Position should have correct ETH after allocation");
+        // Should have both user's ETH and stabilizer's ETH
+        assertEq(position.allocatedEth, 2.1 ether, "Position should have correct ETH after allocation (user + stabilizer)");
         assertEq(position.backedUspd, 2000 ether, "Position should back correct USPD after allocation");
     }
 

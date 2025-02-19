@@ -197,10 +197,10 @@ contract StabilizerNFT is
             }
 
             // Add collateral and update allocation
-            positionNFT.addCollateral{value: toAllocate}(positionId);
+            positionNFT.addCollateral{value: toAllocate + remainingEth}(positionId);
             positionNFT.modifyAllocation(positionId, uspdForAllocation);
 
-            emit FundsAllocated(currentId, toAllocate, positionId);
+            emit FundsAllocated(currentId, toAllocate, remainingEth, positionId);
 
             // Update unallocated list if no more funds
             if (pos.totalEth == 0) {
