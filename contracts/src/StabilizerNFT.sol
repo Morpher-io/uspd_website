@@ -18,8 +18,6 @@ contract StabilizerNFT is
     
     struct StabilizerPosition {
         uint256 totalEth;           // Total ETH committed
-        uint256 unallocatedEth;     // ETH available for allocation
-        uint256 allocatedEth;       // ETH currently allocated
         uint256 minCollateralRatio; // Minimum collateral ratio (e.g., 110 for 110%)
         uint256 prevUnallocated;    // Previous stabilizer ID in unallocated funds list
         uint256 nextUnallocated;    // Next stabilizer ID in unallocated funds list
@@ -79,8 +77,6 @@ contract StabilizerNFT is
     ) external onlyRole(MINTER_ROLE) {
         positions[tokenId] = StabilizerPosition({
             totalEth: 0,
-            allocatedEth: 0,
-            unallocatedEth: 0,
             minCollateralRatio: 110, // Default 110%
             prevUnallocated: 0,
             nextUnallocated: 0,
@@ -154,8 +150,8 @@ contract StabilizerNFT is
                 uint256 additionalEthNeeded = requiredEth - remainingEth;
                 
                 // Check how much we can allocate from this stabilizer
-                uint256 toAllocate = additionalEthNeeded > pos.unallocatedEth ? 
-                    pos.unallocatedEth : additionalEthNeeded;
+                uint256 toAllocate = additionalEthNeeded > pos.totalEth ? 
+                    pos.totalEth : additionalEthNeeded;
                 
                 // Adjust if we have a max USPD amount limit
                 if (maxUspdAmount > 0 && result.uspdAmount + uspdForAllocation > maxUspdAmount) {
@@ -163,29 +159,30 @@ contract StabilizerNFT is
                     // Recalculate required ETH for the reduced USPD amount
                     uint256 newRequiredEth = (uspdForAllocation * (10**priceDecimals) * pos.minCollateralRatio) / (ethUsdPrice * 100);
                     toAllocate = newRequiredEth - remainingEth;
-                    if (toAllocate > pos.unallocatedEth) {
-                        toAllocate = pos.unallocatedEth;
+                    if (toAllocate > pos.totalEth) {
+                        toAllocate = pos.totalEth;
                     }
                 }
                 
-                pos.unallocatedEth -= toAllocate;
+                pos.totalEth -= toAllocate;
                 result.allocatedEth += toAllocate;
                 remainingEth -= toAllocate;
                 result.uspdAmount += uspdForAllocation;
                 
-                // Mint position NFT to stabilizer and store the mapping
-                uint256 positionId = positionNFT.mint(ownerOf(currentId), toAllocate, uspdForAllocation);
+                // Mint position NFT first
+                uint256 positionId = positionNFT.mint(ownerOf(currentId), 0, 0);
                 stabilizerToPosition[currentId] = positionId;
                 
-                // Transfer ETH to position NFT
+                // Add collateral and update allocation
                 (bool success, ) = address(positionNFT).call{value: toAllocate}("");
                 require(success, "ETH transfer to position failed");
+                positionNFT.addCollateral(positionId);
+                positionNFT.modifyAllocation(positionId, uspdForAllocation);
                 
                 // Add to allocated list if first allocation
-                if (pos.allocatedEth == 0) {
+                if (stabilizerToPosition[currentId] == 0) {
                     _registerAllocatedPosition(currentId);
                 }
-                pos.allocatedEth += toAllocate;
                 
                 emit FundsAllocated(currentId, toAllocate, positionId);
                 
