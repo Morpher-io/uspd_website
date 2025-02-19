@@ -6,6 +6,7 @@ import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol";
 import "../src/UspdCollateralizedPositionNFT.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract StabilizerNFTTest is Test {
     StabilizerNFT public stabilizerNFT;
@@ -24,14 +25,32 @@ contract StabilizerNFTTest is Test {
         // Deploy USPD token first (needed for StabilizerNFT initialization)
         uspdToken = new USPDToken(address(0), address(0)); // Mock addresses for oracle and stabilizer
 
-        // Deploy and initialize Position NFT
-        positionNFT = new UspdCollateralizedPositionNFT();
-        positionNFT.initialize();
-        positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
+        // Deploy Position NFT implementation and proxy
+        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
+        bytes memory positionInitData = abi.encodeWithSelector(
+            UspdCollateralizedPositionNFT.initialize.selector
+        );
+        ERC1967Proxy positionProxy = new ERC1967Proxy(
+            address(positionNFTImpl),
+            positionInitData
+        );
+        positionNFT = UspdCollateralizedPositionNFT(address(positionProxy));
 
-        // Deploy and initialize StabilizerNFT
-        stabilizerNFT = new StabilizerNFT();
-        stabilizerNFT.initialize(payable(address(uspdToken)), address(positionNFT));
+        // Deploy StabilizerNFT implementation and proxy
+        StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
+        bytes memory stabilizerInitData = abi.encodeWithSelector(
+            StabilizerNFT.initialize.selector,
+            payable(address(uspdToken)),
+            address(positionNFT)
+        );
+        ERC1967Proxy stabilizerProxy = new ERC1967Proxy(
+            address(stabilizerNFTImpl),
+            stabilizerInitData
+        );
+        stabilizerNFT = StabilizerNFT(address(stabilizerProxy));
+
+        // Setup roles
+        positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
     }
 
