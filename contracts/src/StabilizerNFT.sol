@@ -320,7 +320,7 @@ contract StabilizerNFT is
             StabilizerPosition storage pos = positions[currentId];
             uint256 positionId = stabilizerToPosition[currentId];
             
-            if (pos.allocatedEth > 0 && positionId != 0) {
+            if (positionId != 0) {
                 IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
                 
                 uint256 uspdToUnallocate = remainingUspd;
@@ -342,23 +342,20 @@ contract StabilizerNFT is
                 );
 
                 // Update position state
-                pos.allocatedEth -= ethToUnallocate;
-                pos.unallocatedEth += ethToUnallocate;
+                pos.totalEth += ethToUnallocate;
                 
-                // If this was the last allocation, remove from allocated list
-                if (pos.allocatedEth == 0) {
-                    _removeFromAllocatedList(currentId);
-                }
-                
-                // Add back to unallocated list if needed
-                if (pos.unallocatedEth > 0 && pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
-                    _registerUnallocatedPosition(currentId);
-                }
-                
-                // Update or burn position NFT
+                // Update position NFT allocation
                 if (position.backedUspd == uspdToUnallocate) {
                     positionNFT.burn(positionId);
                     delete stabilizerToPosition[currentId];
+                    _removeFromAllocatedList(currentId);
+                } else {
+                    positionNFT.modifyAllocation(positionId, position.backedUspd - uspdToUnallocate);
+                }
+                
+                // Add back to unallocated list if needed
+                if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
+                    _registerUnallocatedPosition(currentId);
                 }
                 
                 remainingUspd -= uspdToUnallocate;
