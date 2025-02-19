@@ -159,8 +159,8 @@ contract StabilizerNFT is
 
             // If stabilizer can't provide enough ETH, adjust user's ETH amount
             if (toAllocate < stabilizerEthNeeded) {
-                uint256 maxUserEth = (toAllocate * 100) / (pos.minCollateralRatio - 100);
-                remainingEth = maxUserEth;
+                // Calculate maximum user ETH that can be backed by available stabilizer ETH
+                remainingEth = (toAllocate * 100) / (pos.minCollateralRatio - 100);
             }
 
 
@@ -173,11 +173,8 @@ contract StabilizerNFT is
                 _registerAllocatedPosition(currentId);
             }
 
-            // Calculate pro-rata amount of user's ETH based on stabilizer's contribution
-            uint256 userEthShare = (toAllocate * 100) / pos.minCollateralRatio;
-            
             // Add collateral from both user and stabilizer
-            positionNFT.addCollateral{value: toAllocate + userEthShare}(positionId);
+            positionNFT.addCollateral{value: toAllocate + remainingEth}(positionId);
 
             // Calculate USPD amount backed by user's ETH
             uint256 uspdAmount = (userEthShare * ethUsdPrice) / (10**priceDecimals);
