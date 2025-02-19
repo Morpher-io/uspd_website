@@ -37,11 +37,11 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers();
+        // _disableInitializers();
     }
 
     function initialize(
-        address _uspdToken
+        address payable _uspdToken
     ) public initializer {
         __ERC721_init("USPD Stabilizer", "USPDS");
         __AccessControl_init();
