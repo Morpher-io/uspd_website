@@ -174,12 +174,16 @@ contract StabilizerNFTTest is Test {
         vm.deal(user1, 0.5 ether);
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFunds{value: 0.5 ether}(1);
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(1, 200);
         
         // Setup second stabilizer with 110% ratio and 4 ETH
         stabilizerNFT.mint(user2, 2);
         vm.deal(user2, 4 ether);
         vm.prank(user2);
         stabilizerNFT.addUnallocatedFunds{value: 4 ether}(2);
+        vm.prank(user2);
+        stabilizerNFT.setMinCollateralizationRatio(2, 110);
         
         // Set custom collateral ratios
         vm.startPrank(address(this));
