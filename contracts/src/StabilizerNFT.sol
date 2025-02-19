@@ -136,6 +136,7 @@ contract StabilizerNFT is
     ) external payable returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(lowestUnallocatedId != 0, "No unallocated funds");
+        require(msg.value == ethAmount, "ETH amount mismatch");
 
         uint256 currentId = lowestUnallocatedId;
         uint256 remainingEth = ethAmount;
