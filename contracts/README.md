@@ -6,6 +6,35 @@ USPD is an ERC20-compliant USD-pegged stablecoin designed for stability and reli
 
 USPD implements a unique stabilizer-based overcollateralization system using NFTs. Users can mint USPD by depositing supported collateral assets (e.g., ETH) at the current USD exchange rate. The system is secured by stabilizers who provide additional collateral through NFT-based positions, ensuring the protocol maintains a healthy overcollateralization ratio. This stabilizer-backed system helps maintain the token's stability and protects against market volatility.
 
+### NFT Metadata and Dynamic Traits
+
+The protocol utilizes ERC-7496: NFT Dynamic Traits for real-time metadata updates:
+
+1. **Dynamic Traits Implementation**:
+   - Uses on-chain trait updates for rapidly changing values
+   - Enables immediate reflection of position changes
+   - Supports real-time collateralization ratio updates
+   - Compatible with OpenSea and other NFT marketplaces
+
+2. **Stabilizer NFT Traits**:
+   - Total ETH committed
+   - Unallocated ETH available
+   - Minimum collateral ratio
+   - Updates automatically with position changes
+
+3. **Position NFT Traits**:
+   - Allocated ETH amount
+   - Backed USPD amount
+   - Current collateralization ratio (dynamic with ETH/USD price)
+   - Updates in real-time with price changes
+
+4. **Advantages of Dynamic Traits**:
+   - No metadata caching issues
+   - Real-time position monitoring
+   - On-chain verifiability
+   - Enhanced UX with immediate updates
+   - No need for manual metadata refresh
+
 ### NFT-Based Stabilizer System
 
 The protocol implements a three-contract architecture to manage stablecoin minting and collateralization:
