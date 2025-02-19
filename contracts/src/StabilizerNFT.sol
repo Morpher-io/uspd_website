@@ -9,49 +9,61 @@ import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
-contract StabilizerNFT is 
-    IStabilizerNFT, 
-    Initializable, 
-    ERC721Upgradeable, 
-    AccessControlUpgradeable {
+contract StabilizerNFT is
+    IStabilizerNFT,
+    Initializable,
+    ERC721Upgradeable,
+    AccessControlUpgradeable
+{
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    
+
     struct StabilizerPosition {
-        uint256 totalEth;           // Total ETH committed
+        uint256 totalEth; // Total ETH committed
         uint256 minCollateralRatio; // Minimum collateral ratio (e.g., 110 for 110%)
-        uint256 prevUnallocated;    // Previous stabilizer ID in unallocated funds list
-        uint256 nextUnallocated;    // Next stabilizer ID in unallocated funds list
-        uint256 prevAllocated;      // Previous stabilizer ID in allocated funds list
-        uint256 nextAllocated;      // Next stabilizer ID in allocated funds list
+        uint256 prevUnallocated; // Previous stabilizer ID in unallocated funds list
+        uint256 nextUnallocated; // Next stabilizer ID in unallocated funds list
+        uint256 prevAllocated; // Previous stabilizer ID in allocated funds list
+        uint256 nextAllocated; // Next stabilizer ID in allocated funds list
     }
-    
+
     // Mapping from NFT ID to stabilizer position
     mapping(uint256 => StabilizerPosition) public positions;
-    
+
     // Head and tail of the unallocated funds list
     uint256 public lowestUnallocatedId;
     uint256 public highestUnallocatedId;
-    
+
     // Head and tail of the allocated funds list
     uint256 public lowestAllocatedId;
     uint256 public highestAllocatedId;
-    
+
     // Mapping from stabilizer ID to position NFT ID
     mapping(uint256 => uint256) public stabilizerToPosition;
-    
+
     // USPD token contract
     USPDToken public uspdToken;
-    
+
     // Position NFT contract
     IUspdCollateralizedPositionNFT public positionNFT;
-    
+
     // Minimum gas required for allocation loop
     uint256 public constant MIN_GAS = 100000;
 
-
-    event StabilizerPositionCreated(uint256 indexed tokenId, address indexed owner, uint256 totalEth);
-    event FundsAllocated(uint256 indexed tokenId, uint256 amount, uint256 positionId);
-    event FundsUnallocated(uint256 indexed tokenId, uint256 amount, uint256 positionId);
+    event StabilizerPositionCreated(
+        uint256 indexed tokenId,
+        address indexed owner,
+        uint256 totalEth
+    );
+    event FundsAllocated(
+        uint256 indexed tokenId,
+        uint256 amount,
+        uint256 positionId
+    );
+    event FundsUnallocated(
+        uint256 indexed tokenId,
+        uint256 amount,
+        uint256 positionId
+    );
     event UnallocatedFundsAdded(uint256 indexed tokenId, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -65,16 +77,13 @@ contract StabilizerNFT is
     ) public initializer {
         __ERC721_init("USPD Stabilizer", "USPDS");
         __AccessControl_init();
-        
+
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         positionNFT = IUspdCollateralizedPositionNFT(_positionNFT);
         uspdToken = USPDToken(payable(_uspdToken));
     }
 
-    function mint(
-        address to,
-        uint256 tokenId
-    ) external onlyRole(MINTER_ROLE) {
+    function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
         positions[tokenId] = StabilizerPosition({
             totalEth: 0,
             minCollateralRatio: 110, // Default 110%
@@ -88,9 +97,7 @@ contract StabilizerNFT is
         emit StabilizerPositionCreated(tokenId, to, 0);
     }
 
-    function _registerUnallocatedPosition(
-        uint256 tokenId
-    ) internal {
+    function _registerUnallocatedPosition(uint256 tokenId) internal {
         if (lowestUnallocatedId == 0 || highestUnallocatedId == 0) {
             // First position
             lowestUnallocatedId = tokenId;
@@ -111,7 +118,7 @@ contract StabilizerNFT is
             while (nextId != 0 && nextId < tokenId) {
                 nextId = positions[nextId].nextUnallocated;
             }
-            
+
             uint256 prevId = positions[nextId].prevUnallocated;
             positions[tokenId].prevUnallocated = prevId;
             positions[tokenId].nextUnallocated = nextId;
@@ -119,7 +126,6 @@ contract StabilizerNFT is
             positions[nextId].prevUnallocated = tokenId;
         }
     }
-
 
     function allocateStabilizerFunds(
         uint256 ethAmount,
@@ -129,99 +135,100 @@ contract StabilizerNFT is
     ) external returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(lowestUnallocatedId != 0, "No unallocated funds");
-        
+
         uint256 currentId = lowestUnallocatedId;
         uint256 remainingEth = ethAmount;
-        
+
         while (currentId != 0 && remainingEth > 0) {
             // Check remaining gas and USPD limit
-            if (gasleft() < MIN_GAS || (maxUspdAmount > 0 && result.uspdAmount >= maxUspdAmount)) {
+            if (
+                gasleft() < MIN_GAS ||
+                (maxUspdAmount > 0 && result.uspdAmount >= maxUspdAmount)
+            ) {
                 break;
             }
 
             StabilizerPosition storage pos = positions[currentId];
-            
+
             // Calculate USPD amount from user's ETH
-            uint256 uspdForAllocation = (remainingEth * ethUsdPrice) / (10**priceDecimals);
-            
+            uint256 uspdForAllocation = (remainingEth * ethUsdPrice) /
+                (10 ** priceDecimals);
+
             // Calculate required ETH for collateralization based on minCollateralRatio
             uint256 requiredEth = (remainingEth * pos.minCollateralRatio) / 100;
             uint256 additionalEthNeeded = requiredEth - remainingEth;
-            
+
             // Check how much we can allocate from this stabilizer
-            uint256 toAllocate = additionalEthNeeded > pos.totalEth ? 
-                pos.totalEth : additionalEthNeeded;
-                
-                // Adjust if we have a max USPD amount limit
-                if (maxUspdAmount > 0 && result.uspdAmount + uspdForAllocation > maxUspdAmount) {
-                    uspdForAllocation = maxUspdAmount - result.uspdAmount;
-                    // Recalculate required ETH for the reduced USPD amount
-                    uint256 newRequiredEth = (uspdForAllocation * (10**priceDecimals) * pos.minCollateralRatio) / (ethUsdPrice * 100);
-                    toAllocate = newRequiredEth - remainingEth;
-                    if (toAllocate > pos.totalEth) {
-                        toAllocate = pos.totalEth;
-                    }
+            uint256 toAllocate = additionalEthNeeded > pos.totalEth ? pos.totalEth : additionalEthNeeded;
+
+            // Adjust if we have a max USPD amount limit
+            if (
+                maxUspdAmount > 0 &&
+                result.uspdAmount + uspdForAllocation > maxUspdAmount
+            ) {
+                uspdForAllocation = maxUspdAmount - result.uspdAmount;
+                // Recalculate required ETH for the reduced USPD amount
+                uint256 newRequiredEth = (uspdForAllocation *
+                    (10 ** priceDecimals) *
+                    pos.minCollateralRatio) / (ethUsdPrice * 100);
+                toAllocate = newRequiredEth - remainingEth;
+                if (toAllocate > pos.totalEth) {
+                    toAllocate = pos.totalEth;
                 }
-                
-                pos.totalEth -= toAllocate;
-                result.allocatedEth += toAllocate;
-                remainingEth -= toAllocate;
-                result.uspdAmount += uspdForAllocation;
-                
-                address owner = ownerOf(currentId);
-                uint256 positionId = stabilizerToPosition[currentId];
-                
-                // If no position exists, create one
-                if (positionId == 0) {
-                    positionId = positionNFT.mint(owner);
-                    stabilizerToPosition[currentId] = positionId;
-                }
-                
-                // Add collateral and update allocation
-                (bool success, ) = address(positionNFT).call{value: toAllocate}("");
-                require(success, "ETH transfer to position failed");
-                positionNFT.addCollateral(positionId);
-                positionNFT.modifyAllocation(positionId, uspdForAllocation);
-                
+            }
+
+            pos.totalEth -= toAllocate;
+            result.allocatedEth += toAllocate;
+            remainingEth -= toAllocate;
+            result.uspdAmount += uspdForAllocation;
+
+            address owner = ownerOf(currentId);
+            uint256 positionId = positionNFT.getTokenByOwner(owner);
+
+            // If no position exists, create one
+            if (positionId == 0) {
+                positionId = positionNFT.mint(owner);
+                stabilizerToPosition[currentId] = positionId;
+
                 // Add to allocated list if we just created a new position
-                if (positionId == _nextPositionId - 1) {
-                    _registerAllocatedPosition(currentId);
-                }
-                
-                emit FundsAllocated(currentId, toAllocate, positionId);
-                
-                // Update unallocated list if no more funds
-                if (pos.totalEth == 0) {
-                    _removeFromUnallocatedList(currentId);
-                }
-            
-            
+                _registerAllocatedPosition(currentId);
+            }
+
+            // Add collateral and update allocation
+            positionNFT.addCollateral{value: toAllocate}(positionId);
+            positionNFT.modifyAllocation(positionId, uspdForAllocation);
+
+            emit FundsAllocated(currentId, toAllocate, positionId);
+
+            // Update unallocated list if no more funds
+            if (pos.totalEth == 0) {
+                _removeFromUnallocatedList(currentId);
+            }
+
             currentId = pos.nextUnallocated;
         }
-        
+
         require(result.allocatedEth > 0, "No funds allocated");
         return result;
     }
 
     // Add more unallocated funds to an existing position
-    function addUnallocatedFunds(
-        uint256 tokenId
-    ) external payable {
+    function addUnallocatedFunds(uint256 tokenId) external payable {
         require(ownerOf(tokenId) != address(0), "Token does not exist");
         require(msg.value > 0, "No ETH sent");
-        
+
         StabilizerPosition storage pos = positions[tokenId];
-        
+
         bool hadNoFunds = pos.totalEth == 0;
-        
+
         // Update position amounts
         pos.totalEth += msg.value;
-        
+
         // Only add to list if position went from 0 to having funds
         if (hadNoFunds) {
             _registerUnallocatedPosition(tokenId);
         }
-        
+
         emit UnallocatedFundsAdded(tokenId, msg.value);
     }
 
@@ -247,7 +254,7 @@ contract StabilizerNFT is
                 nextId = positions[nextId].nextAllocated;
             }
             uint256 prevId = positions[nextId].prevAllocated;
-            
+
             positions[tokenId].prevAllocated = prevId;
             positions[tokenId].nextAllocated = nextId;
             positions[prevId].nextAllocated = tokenId;
@@ -257,7 +264,7 @@ contract StabilizerNFT is
 
     function _removeFromUnallocatedList(uint256 tokenId) internal {
         StabilizerPosition storage pos = positions[tokenId];
-        
+
         if (tokenId == lowestUnallocatedId && tokenId == highestUnallocatedId) {
             // Last element in list
             lowestUnallocatedId = 0;
@@ -272,10 +279,12 @@ contract StabilizerNFT is
             positions[pos.prevUnallocated].nextUnallocated = 0;
         } else {
             // Middle element
-            positions[pos.nextUnallocated].prevUnallocated = pos.prevUnallocated;
-            positions[pos.prevUnallocated].nextUnallocated = pos.nextUnallocated;
+            positions[pos.nextUnallocated].prevUnallocated = pos
+                .prevUnallocated;
+            positions[pos.prevUnallocated].nextUnallocated = pos
+                .nextUnallocated;
         }
-        
+
         pos.nextUnallocated = 0;
         pos.prevUnallocated = 0;
     }
@@ -283,7 +292,7 @@ contract StabilizerNFT is
     // Remove unallocated funds from a position
     function _removeFromAllocatedList(uint256 tokenId) internal {
         StabilizerPosition storage pos = positions[tokenId];
-        
+
         if (tokenId == lowestAllocatedId && tokenId == highestAllocatedId) {
             // Last element in list
             lowestAllocatedId = 0;
@@ -301,7 +310,7 @@ contract StabilizerNFT is
             positions[pos.nextAllocated].prevAllocated = pos.prevAllocated;
             positions[pos.prevAllocated].nextAllocated = pos.nextAllocated;
         }
-        
+
         pos.nextAllocated = 0;
         pos.prevAllocated = 0;
     }
@@ -313,30 +322,32 @@ contract StabilizerNFT is
     ) external returns (uint256 unallocatedEth) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(highestAllocatedId != 0, "No allocated funds");
-        
+
         uint256 currentId = highestAllocatedId;
         uint256 remainingUspd = uspdAmount;
-        
+
         while (currentId != 0 && remainingUspd > 0) {
             if (gasleft() < MIN_GAS) break;
 
             StabilizerPosition storage pos = positions[currentId];
             uint256 positionId = stabilizerToPosition[currentId];
-            
+
             if (positionId != 0) {
-                IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
-                
+                IUspdCollateralizedPositionNFT.Position
+                    memory position = positionNFT.getPosition(positionId);
+
                 uint256 uspdToUnallocate = remainingUspd;
                 if (uspdToUnallocate > position.backedUspd) {
                     uspdToUnallocate = position.backedUspd;
                 }
-                
+
                 // Calculate ETH to unallocate based on current price
-                uint256 ethToUnallocate = (uspdToUnallocate * (10**priceDecimals)) / ethUsdPrice;
+                uint256 ethToUnallocate = (uspdToUnallocate *
+                    (10 ** priceDecimals)) / ethUsdPrice;
                 if (ethToUnallocate > position.allocatedEth) {
                     ethToUnallocate = position.allocatedEth;
                 }
-                
+
                 // Transfer ETH from position NFT back to stabilizer
                 IUspdCollateralizedPositionNFT(positionNFT).removeCollateral(
                     positionId,
@@ -348,30 +359,33 @@ contract StabilizerNFT is
 
                 // Update position state
                 pos.totalEth += ethToUnallocate;
-                
+
                 // Update position NFT allocation
                 if (position.backedUspd == uspdToUnallocate) {
                     positionNFT.burn(positionId);
                     delete stabilizerToPosition[currentId];
                     _removeFromAllocatedList(currentId);
                 } else {
-                    positionNFT.modifyAllocation(positionId, position.backedUspd - uspdToUnallocate);
+                    positionNFT.modifyAllocation(
+                        positionId,
+                        position.backedUspd - uspdToUnallocate
+                    );
                 }
-                
+
                 // Add back to unallocated list if needed
                 if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
                     _registerUnallocatedPosition(currentId);
                 }
-                
+
                 remainingUspd -= uspdToUnallocate;
                 unallocatedEth += ethToUnallocate;
-                
+
                 emit FundsUnallocated(currentId, ethToUnallocate, positionId);
             }
-            
+
             currentId = pos.prevAllocated;
         }
-        
+
         require(unallocatedEth > 0, "No funds unallocated");
         return unallocatedEth;
     }
@@ -384,59 +398,72 @@ contract StabilizerNFT is
         require(ownerOf(tokenId) != address(0), "Token does not exist");
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
         require(to != address(0), "Invalid recipient");
-        
+
         StabilizerPosition storage pos = positions[tokenId];
         require(pos.totalEth >= amount, "Insufficient unallocated funds");
-        
+
         pos.totalEth -= amount;
-        
+
         // If no more unallocated funds, remove from list
         if (pos.totalEth == 0) {
             _removeFromUnallocatedList(tokenId);
         }
-        
+
         to.transfer(amount);
     }
 
-    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+    function tokenURI(
+        uint256 tokenId
+    ) public view virtual override returns (string memory) {
         require(ownerOf(tokenId) != address(0), "Token does not exist");
-        
-        StabilizerPosition storage pos = positions[tokenId];
-        
-        string memory json = Base64.encode(
-            bytes(string(
-                abi.encodePacked(
-                    '{"name": "USPD Stabilizer #', 
-                    toString(tokenId),
-                    '", "description": "USPD Stabilizer Position NFT", ',
-                    '"image": "data:image/svg+xml;base64,', 
-                    Base64.encode(bytes(generateSVG(tokenId))),
-                    '", "attributes": [',
-                    '{"trait_type": "Unallocated ETH", "value": "', toString(pos.totalEth), '"},',
-                    '{"trait_type": "Min Collateral Ratio", "value": "', toString(pos.minCollateralRatio), '%"}',
-                    ']}'
-                )
-            ))
-        );
-        return string(abi.encodePacked('data:application/json;base64,', json));
-    }
 
-    function generateSVG(uint256 tokenId) internal view returns (string memory) {
         StabilizerPosition storage pos = positions[tokenId];
-        return string(
-            abi.encodePacked(
-                '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">',
-                '<style>.base { fill: white; font-family: serif; font-size: 14px; }</style>',
-                '<rect width="100%" height="100%" fill="black"/>',
-                '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">',
-                'Stabilizer #', toString(tokenId),
-                '</text>',
-                '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">',
-                toString(pos.totalEth), ' ETH Unallocated',
-                '</text>',
-                '</svg>'
+
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        '{"name": "USPD Stabilizer #',
+                        toString(tokenId),
+                        '", "description": "USPD Stabilizer Position NFT", ',
+                        '"image": "data:image/svg+xml;base64,',
+                        Base64.encode(bytes(generateSVG(tokenId))),
+                        '", "attributes": [',
+                        '{"trait_type": "Unallocated ETH", "value": "',
+                        toString(pos.totalEth),
+                        '"},',
+                        '{"trait_type": "Min Collateral Ratio", "value": "',
+                        toString(pos.minCollateralRatio),
+                        '%"}',
+                        "]}"
+                    )
+                )
             )
         );
+        return string(abi.encodePacked("data:application/json;base64,", json));
+    }
+
+    function generateSVG(
+        uint256 tokenId
+    ) internal view returns (string memory) {
+        StabilizerPosition storage pos = positions[tokenId];
+        return
+            string(
+                abi.encodePacked(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">',
+                    "<style>.base { fill: white; font-family: serif; font-size: 14px; }</style>",
+                    '<rect width="100%" height="100%" fill="black"/>',
+                    '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">',
+                    "Stabilizer #",
+                    toString(tokenId),
+                    "</text>",
+                    '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">',
+                    toString(pos.totalEth),
+                    " ETH Unallocated",
+                    "</text>",
+                    "</svg>"
+                )
+            );
     }
 
     receive() external payable {}
@@ -461,7 +488,9 @@ contract StabilizerNFT is
     }
 
     // Required overrides
-    function supportsInterface(bytes4 interfaceId)
+    function supportsInterface(
+        bytes4 interfaceId
+    )
         public
         view
         override(ERC721Upgradeable, AccessControlUpgradeable)
