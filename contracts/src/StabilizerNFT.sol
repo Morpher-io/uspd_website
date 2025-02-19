@@ -152,16 +152,29 @@ contract StabilizerNFT is
 
             StabilizerPosition storage pos = positions[currentId];
 
+            uint256 targetUspd;
+            if (maxUspdAmount > 0) {
+                targetUspd = maxUspdAmount - result.uspdAmount;
+            } else {
+                targetUspd = (remainingEth * ethUsdPrice) / (10**priceDecimals);
+            }
+
+            if (targetUspd == 0) break;
+
             // Calculate how much USPD this stabilizer can back with its available ETH
             uint256 maxStabilizerUspd = (pos.totalEth * ethUsdPrice * 100) / 
                 (pos.minCollateralRatio * (10**priceDecimals));
             
-            // Calculate how much USPD we still need to allocate
-            uint256 uspdForAllocation = remainingUspd > maxStabilizerUspd ? 
-                maxStabilizerUspd : remainingUspd;
+            // Take minimum of what's needed and what stabilizer can handle
+            uint256 uspdToAllocate = targetUspd > maxStabilizerUspd ? 
+                maxStabilizerUspd : targetUspd;
             
             // Calculate required user ETH for this USPD amount
-            uint256 userEthNeeded = (uspdForAllocation * (10**priceDecimals)) / ethUsdPrice;
+            uint256 userEthNeeded = (uspdToAllocate * (10**priceDecimals)) / ethUsdPrice;
+            if (userEthNeeded > remainingEth) {
+                uspdToAllocate = (remainingEth * ethUsdPrice) / (10**priceDecimals);
+                userEthNeeded = remainingEth;
+            }
             
             // Calculate required stabilizer ETH based on collateral ratio
             uint256 stabilizerEthNeeded = (userEthNeeded * (pos.minCollateralRatio - 100)) / 100;
@@ -169,6 +182,13 @@ contract StabilizerNFT is
             // Check if stabilizer has enough ETH
             uint256 toAllocate = stabilizerEthNeeded > pos.totalEth ? 
                 pos.totalEth : stabilizerEthNeeded;
+
+            // Adjust USPD amount if stabilizer can't provide enough ETH
+            if (toAllocate < stabilizerEthNeeded) {
+                uint256 maxUserEth = (toAllocate * 100) / (pos.minCollateralRatio - 100);
+                userEthNeeded = maxUserEth;
+                uspdToAllocate = (userEthNeeded * ethUsdPrice) / (10**priceDecimals);
+            }
 
             // Adjust if we have a max USPD amount limit
             if (
@@ -203,18 +223,19 @@ contract StabilizerNFT is
                 _registerAllocatedPosition(currentId);
             }
 
-            // Add collateral from both user and stabilizer
-            positionNFT.addCollateral{value: toAllocate + userEthNeeded}(positionId);
-            positionNFT.modifyAllocation(positionId, uspdForAllocation);
+            if (uspdToAllocate > 0) {
+                // Add collateral from both user and stabilizer
+                positionNFT.addCollateral{value: toAllocate + userEthNeeded}(positionId);
+                positionNFT.modifyAllocation(positionId, uspdToAllocate);
 
-            // Update remaining amounts
-            remainingUspd -= uspdForAllocation;
-            remainingEth -= userEthNeeded;
-            pos.totalEth -= toAllocate;
-            result.allocatedEth += toAllocate + userEthNeeded;
-            result.uspdAmount += uspdForAllocation;
+                // Update remaining amounts
+                remainingEth -= userEthNeeded;
+                pos.totalEth -= toAllocate;
+                result.allocatedEth += userEthNeeded;  // Only track user's ETH
+                result.uspdAmount += uspdToAllocate;
 
-            emit FundsAllocated(currentId, toAllocate, userEthNeeded, positionId);
+                emit FundsAllocated(currentId, toAllocate, userEthNeeded, positionId);
+            }
 
             // Update unallocated list if no more funds
             if (pos.totalEth == 0) {
@@ -225,6 +246,13 @@ contract StabilizerNFT is
         }
 
         require(result.allocatedEth > 0, "No funds allocated");
+        
+        // Return any unallocated ETH to USPD token
+        if (remainingEth > 0) {
+            (bool success, ) = address(uspdToken).call{value: remainingEth}("");
+            require(success, "ETH return failed");
+        }
+        
         return result;
     }
 

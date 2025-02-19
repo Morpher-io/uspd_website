@@ -128,6 +128,12 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         stabilizer = IStabilizerNFT(newStabilizer);
     }
 
+    // Function to receive ETH returns from stabilizer
+    function receiveStabilizerReturn() external payable {
+        require(msg.sender == address(stabilizer), "Only stabilizer can return ETH");
+        // ETH will be held here until transferred to user in mint or burn
+    }
+
     receive() external payable {
         mint(msg.sender);
     }
