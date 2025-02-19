@@ -49,6 +49,22 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - Advantage: Gas-efficient position verification
    - Challenge: Managing root updates with price changes
 
+   e. **Oracle-Inspired Permissionless Updates**:
+   - Implement a threshold-triggered update system similar to Chainlink's price feeds
+   - Any participant can submit an updated ordering when:
+     * ETH/USD price changes exceed a threshold (e.g., ±2%)
+     * Or after a minimum time interval (e.g., 4 hours)
+   - Updates include:
+     * A compact bitmap representing position changes
+     * Merkle proof of new positions
+     * Current ETH/USD price from oracle
+   - On-chain contract:
+     * Validates update conditions (time/price thresholds)
+     * Verifies position changes using O(1) bitmap operations
+     * Updates only affected positions
+   - Advantage: Gas-efficient, permissionless, handles dynamic ratios
+   - Challenge: Designing incentives for timely updates
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
