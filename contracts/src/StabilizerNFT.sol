@@ -79,10 +79,13 @@ contract StabilizerNFT is
     ) external onlyRole(MINTER_ROLE) {
         positions[tokenId] = StabilizerPosition({
             totalEth: 0,
+            allocatedEth: 0,
             unallocatedEth: 0,
             minCollateralRatio: 110, // Default 110%
             prevUnallocated: 0,
-            nextUnallocated: 0
+            nextUnallocated: 0,
+            prevAllocated: 0,
+            nextAllocated: 0
         });
 
         _safeMint(to, tokenId);
