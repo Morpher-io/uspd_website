@@ -70,17 +70,23 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         emit StabilizerPositionCreated(tokenId, to, msg.value);
     }
 
+    struct AllocationResult {
+        uint256 allocatedEth;
+        uint256 uspdAmount;
+    }
+
     function allocateStabilizerFunds(
-        uint256 uspdAmount
-    ) external returns (uint256 allocatedAmount) {
+        uint256 ethAmount,
+        uint256 ethUsdPrice,
+        uint8 priceDecimals
+    ) external returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(unallocatedListHead != address(0), "No unallocated funds");
-
-        uint256 startGas = gasleft();
-        address current = unallocatedListHead;
-        uint256 remainingUspd = uspdAmount;
         
-        while (current != address(0) && remainingUspd > 0) {
+        address current = unallocatedListHead;
+        uint256 remainingEth = ethAmount;
+        
+        while (current != address(0) && remainingEth > 0) {
             // Check remaining gas
             if (gasleft() < MIN_GAS) {
                 break;
@@ -90,13 +96,16 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
             StabilizerPosition storage pos = positions[tokenId];
             
             if (pos.unallocatedEth > 0) {
-                uint256 ethNeeded = (remainingUspd * pos.minCollateralRatio) / 100;
-                uint256 toAllocate = ethNeeded > pos.unallocatedEth ? 
-                    pos.unallocatedEth : ethNeeded;
+                uint256 toAllocate = remainingEth > pos.unallocatedEth ? 
+                    pos.unallocatedEth : remainingEth;
                 
                 pos.unallocatedEth -= toAllocate;
-                allocatedAmount += toAllocate;
-                remainingUspd -= (toAllocate * 100) / pos.minCollateralRatio;
+                result.allocatedEth += toAllocate;
+                remainingEth -= toAllocate;
+                
+                // Calculate USPD amount based on allocated ETH and price
+                uint256 uspdForAllocation = (toAllocate * ethUsdPrice) / (10**priceDecimals);
+                result.uspdAmount += (uspdForAllocation * 100) / pos.minCollateralRatio;
                 
                 emit FundsAllocated(tokenId, toAllocate);
                 
@@ -109,8 +118,8 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
             current = pos.next;
         }
         
-        require(allocatedAmount > 0, "No funds allocated");
-        return allocatedAmount;
+        require(result.allocatedEth > 0, "No funds allocated");
+        return result;
     }
 
     // Add more unallocated funds to an existing position

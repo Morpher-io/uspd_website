@@ -36,18 +36,24 @@ contract USPD is ERC20, ERC20Permit, AccessControl {
     }
 
     function mint(address to) public payable {
-       PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
+        PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
             value: oracle.getOracleCommission()
         }();
-        uint remainder = msg.value - oracle.getOracleCommission();
-        uint amountUspd = ((remainder * oracleResponse.price) /
-            (10**oracleResponse.decimals));
-
-        stabilizer.allocateCollateral(amountUspd, oracleResponse);
-
-        _mint(to, amountUspd);
-        uint leftover = remainder -
-            ((amountUspd * (10**oracleResponse.decimals)) / oracleResponse.price);
+        
+        uint256 ethForAllocation = msg.value - oracle.getOracleCommission();
+        
+        // Allocate funds through stabilizer NFTs
+        StabilizerNFT.AllocationResult memory result = stabilizer.allocateStabilizerFunds(
+            ethForAllocation,
+            oracleResponse.price,
+            oracleResponse.decimals
+        );
+        
+        // Mint USPD based on allocated amount
+        _mint(to, result.uspdAmount);
+        
+        // Return any unallocated ETH
+        uint256 leftover = ethForAllocation - result.allocatedEth;
         if (leftover > 0) {
             payable(msg.sender).transfer(leftover);
         }
