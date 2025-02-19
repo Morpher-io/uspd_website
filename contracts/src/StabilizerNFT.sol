@@ -7,8 +7,14 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initiali
 import "./UspdToken.sol";
 import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
+import "shipyard-core/src/dynamic-traits/DynamicTraits.sol";
 
-contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, AccessControlUpgradeable {
+contract StabilizerNFT is 
+    IStabilizerNFT, 
+    Initializable, 
+    ERC721Upgradeable, 
+    AccessControlUpgradeable,
+    DynamicTraits {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     
     struct StabilizerPosition {
@@ -35,6 +41,11 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
     // Minimum gas required for allocation loop
     uint256 public constant MIN_GAS = 100000;
 
+    // Dynamic trait keys
+    bytes32 public constant TRAIT_TOTAL_ETH = keccak256("Total ETH");
+    bytes32 public constant TRAIT_UNALLOCATED_ETH = keccak256("Unallocated ETH");
+    bytes32 public constant TRAIT_MIN_COLLATERAL_RATIO = keccak256("Min Collateral Ratio");
+
     event StabilizerPositionCreated(uint256 indexed tokenId, address indexed owner, uint256 totalEth);
     event FundsAllocated(uint256 indexed tokenId, uint256 amount);
     event UnallocatedFundsAdded(uint256 indexed tokenId, uint256 amount);
@@ -54,6 +65,14 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         uspdToken = USPDToken(_uspdToken);
         positionNFT = IUspdCollateralizedPositionNFT(_positionNFT);
+
+        // Initialize dynamic traits
+        _setTraitMetadataURI('data:application/json;utf8,{"traits":{'
+            '"total_eth":{"displayName":"Total ETH","dataType":{"type":"decimal","signed":false,"decimals":18}},'
+            '"unallocated_eth":{"displayName":"Unallocated ETH","dataType":{"type":"decimal","signed":false,"decimals":18}},'
+            '"min_collateral_ratio":{"displayName":"Min Collateral Ratio","dataType":{"type":"decimal","signed":false,"decimals":2}}'
+            '}}'
+        );
     }
 
     function mint(
