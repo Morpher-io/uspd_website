@@ -4,8 +4,13 @@ pragma solidity ^0.8.20;
 import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "./interfaces/IUspdCollateralizedPositionNFT.sol";
 
-contract UspdCollateralizedPositionNFT is Initializable, ERC721Upgradeable, AccessControlUpgradeable {
+contract UspdCollateralizedPositionNFT is 
+    IUspdCollateralizedPositionNFT,
+    Initializable, 
+    ERC721Upgradeable, 
+    AccessControlUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     
     struct Position {

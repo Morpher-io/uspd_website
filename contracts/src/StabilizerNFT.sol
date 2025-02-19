@@ -29,7 +29,7 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
     USPDToken public uspdToken;
     
     // Position NFT contract
-    UspdCollateralizedPositionNFT public positionNFT;
+    IUspdCollateralizedPositionNFT public positionNFT;
     
     // Minimum gas required for allocation loop
     uint256 public constant MIN_GAS = 100000;
@@ -52,7 +52,7 @@ contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, Acce
         
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         uspdToken = USPDToken(_uspdToken);
-        positionNFT = UspdCollateralizedPositionNFT(_positionNFT);
+        positionNFT = IUspdCollateralizedPositionNFT(_positionNFT);
     }
 
     function mint(
