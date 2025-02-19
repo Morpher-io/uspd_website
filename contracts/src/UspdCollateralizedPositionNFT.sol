@@ -75,23 +75,7 @@ contract UspdCollateralizedPositionNFT is
     function addCollateral(uint256 tokenId) external payable {
         require(ownerOf(tokenId) != address(0), "Position does not exist");
         require(msg.value > 0, "No ETH sent");
-        
-        // Get current ETH price
-        PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
-            value: oracle.getOracleCommission()
-        }();
-        
-        // Calculate new collateral ratio
-        uint256 newEthTotal = _positions[tokenId].allocatedEth + msg.value;
-        uint256 ethValue = (newEthTotal * oracleResponse.price) / (10**oracleResponse.decimals);
-        
-        // Only check ratio if position backs USPD
-        if (_positions[tokenId].backedUspd > 0) {
-            uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
-            require(newRatio >= 110, "Collateral ratio would fall below 110%");
-        }
-        
-        _positions[tokenId].allocatedEth = newEthTotal;
+        _positions[tokenId].allocatedEth += msg.value;
     }
 
     // Transfer ETH back to stabilizer during unallocation
@@ -160,23 +144,7 @@ contract UspdCollateralizedPositionNFT is
         uint256 tokenId = _ownerToken[msg.sender];
         require(tokenId != 0, "No position found for sender");
         require(ownerOf(tokenId) == msg.sender, "Not position owner");
-        
-        // Get current ETH price
-        PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
-            value: oracle.getOracleCommission()
-        }();
-        
-        // Calculate new collateral ratio
-        uint256 newEthTotal = _positions[tokenId].allocatedEth + msg.value;
-        uint256 ethValue = (newEthTotal * oracleResponse.price) / (10**oracleResponse.decimals);
-        
-        // Only check ratio if position backs USPD
-        if (_positions[tokenId].backedUspd > 0) {
-            uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
-            require(newRatio >= 110, "Collateral ratio would fall below 110%");
-        }
-        
-        _positions[tokenId].allocatedEth = newEthTotal;
+        _positions[tokenId].allocatedEth += msg.value;
     }
 
     function getCollateralizationRatio(uint256 tokenId, uint256 ethUsdPrice, uint8 priceDecimals) 
