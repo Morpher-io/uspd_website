@@ -8,18 +8,37 @@ USPD implements a unique stabilizer-based overcollateralization system using NFT
 
 ### NFT-Based Stabilizer System
 
-The protocol utilizes two types of NFTs to manage stabilizer positions:
+The protocol implements a three-contract architecture to manage stablecoin minting and collateralization:
 
-1. **Stabilizer NFTs**: Represent a stabilizer's commitment to the protocol
-   - Each NFT has a unique ID that determines its priority in fund allocation
+1. **USPD Token (ERC20)**:
+   - The main stablecoin contract users interact with
+   - Users send ETH to mint USPD tokens
+   - Manages the overall supply and burning of USPD
+   - Coordinates with StabilizerNFT for collateral allocation
+
+2. **Stabilizer NFTs**:
+   - Represent stabilizers who provide backing collateral
+   - Each NFT has a unique ID determining priority in fund allocation
    - Lower IDs have higher priority for fund allocation
-   - Stabilizers specify their total ETH commitment and desired overcollateralization ratio
+   - Stabilizers can add/remove unallocated ETH to their position
    - Initially distributed through auction mechanisms
+   - Tracks unallocated funds in an ordered linked list
 
-2. **Position NFTs**: Represent specific USPD-backing positions
-   - Created when stabilizer funds are allocated to back USPD
-   - Track the amount of ETH allocated and the USPD being backed
-   - Enable efficient management of individual backing positions
+3. **Position NFTs**:
+   - Created automatically when USPD is minted
+   - Minted to stabilizers whose funds are used
+   - Each Position NFT represents:
+     * Amount of ETH allocated from a specific stabilizer
+     * Amount of USPD being backed by this position
+   - Enables tracking and management of individual backing positions
+
+### Minting Process Flow:
+1. User sends ETH to USPD Token contract requesting to mint USPD
+2. USPD Token contract requests allocation from StabilizerNFT
+3. StabilizerNFT allocates funds from stabilizers (lowest ID first)
+4. For each allocation, a Position NFT is minted to the stabilizer
+5. USPD tokens are minted to the user
+6. Any unused ETH is returned to the user
 
 ### Stabilizer System Implementation
 
