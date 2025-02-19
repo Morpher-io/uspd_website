@@ -13,6 +13,10 @@ contract UspdCollateralizedPositionNFT is
     AccessControlUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant TRANSFERCOLLATERAL_ROLE = keccak256("TRANSFERCOLLATERAL_ROLE");
+    bytes32 public constant MODIFYALLOCATION_ROLE = keccak256("MODIFYALLOCATION_ROLE");
+    
+    // Oracle contract for price feeds
+    PriceOracle public oracle;
     
     // Mapping from NFT ID to position
     mapping(uint256 => Position) private _positions;
@@ -32,11 +36,12 @@ contract UspdCollateralizedPositionNFT is
         _disableInitializers();
     }
 
-    function initialize() public initializer {
+    function initialize(address _oracle) public initializer {
         __ERC721_init("USPD Collateralized Position", "USPDPOS");
         __AccessControl_init();
         
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        oracle = PriceOracle(_oracle);
     }
 
     function mint(
@@ -72,6 +77,18 @@ contract UspdCollateralizedPositionNFT is
         );
         require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
         
+        // Get current ETH price
+        PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
+            value: oracle.getOracleCommission()
+        }();
+        
+        // Calculate new collateral ratio after transfer
+        uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
+        uint256 ethValue = (remainingEth * oracleResponse.price) / (10**oracleResponse.decimals);
+        uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
+        
+        require(newRatio >= 110, "Collateral ratio would fall below 110%");
+        
         _positions[tokenId].allocatedEth -= amount;
         (bool success, ) = to.call{value: amount}("");
         require(success, "ETH transfer failed");
@@ -86,6 +103,11 @@ contract UspdCollateralizedPositionNFT is
         
         _burn(tokenId);
         emit PositionBurned(tokenId, msg.sender, pos.allocatedEth, pos.backedUspd);
+    }
+
+    function modifyAllocation(uint256 tokenId, uint256 newBackedUspd) external onlyRole(MODIFYALLOCATION_ROLE) {
+        require(_exists(tokenId), "Position does not exist");
+        _positions[tokenId].backedUspd = newBackedUspd;
     }
 
     receive() external payable {}

@@ -40,7 +40,8 @@ contract USPDTokenTest is Test {
         // Deploy Position NFT implementation and proxy
         UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
         bytes memory positionInitData = abi.encodeWithSelector(
-            UspdCollateralizedPositionNFT.initialize.selector
+            UspdCollateralizedPositionNFT.initialize.selector,
+            address(priceOracle)
         );
         ERC1967Proxy positionProxy = new ERC1967Proxy(
             address(positionNFTImpl),
@@ -67,6 +68,7 @@ contract USPDTokenTest is Test {
         // Setup roles
         positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
         positionNFT.grantRole(positionNFT.TRANSFERCOLLATERAL_ROLE(), address(stabilizerNFT));
+        positionNFT.grantRole(positionNFT.MODIFYALLOCATION_ROLE(), address(stabilizerNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
     }
 
