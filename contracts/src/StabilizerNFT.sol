@@ -117,19 +117,18 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         uint8 priceDecimals
     ) external returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
-        require(unallocatedListHead != address(0), "No unallocated funds");
+        require(lowestUnallocatedId != 0, "No unallocated funds");
         
-        address current = unallocatedListHead;
+        uint256 currentId = lowestUnallocatedId;
         uint256 remainingEth = ethAmount;
         
-        while (current != address(0) && remainingEth > 0) {
+        while (currentId != 0 && remainingEth > 0) {
             // Check remaining gas
             if (gasleft() < MIN_GAS) {
                 break;
             }
 
-            uint256 tokenId = uint256(uint160(current));
-            StabilizerPosition storage pos = positions[tokenId];
+            StabilizerPosition storage pos = positions[currentId];
             
             if (pos.unallocatedEth > 0) {
                 uint256 toAllocate = remainingEth > pos.unallocatedEth ? 
@@ -143,15 +142,15 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
                 uint256 uspdForAllocation = (toAllocate * ethUsdPrice) / (10**priceDecimals);
                 result.uspdAmount += (uspdForAllocation * 100) / pos.minCollateralRatio;
                 
-                emit FundsAllocated(tokenId, toAllocate);
+                emit FundsAllocated(currentId, toAllocate);
                 
                 // Update unallocated list if no more funds
                 if (pos.unallocatedEth == 0) {
-                    unallocatedListHead = pos.next;
+                    _removeFromUnallocatedList(currentId);
                 }
             }
             
-            current = pos.next;
+            currentId = pos.nextUnallocated;
         }
         
         require(result.allocatedEth > 0, "No funds allocated");
@@ -168,6 +167,31 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         pos.unallocatedEth += msg.value;
         
         emit UnallocatedFundsAdded(tokenId, msg.value);
+    }
+
+    function _removeFromUnallocatedList(uint256 tokenId) internal {
+        StabilizerPosition storage pos = positions[tokenId];
+        
+        if (tokenId == lowestUnallocatedId && tokenId == highestUnallocatedId) {
+            // Last element in list
+            lowestUnallocatedId = 0;
+            highestUnallocatedId = 0;
+        } else if (tokenId == lowestUnallocatedId) {
+            // First element
+            lowestUnallocatedId = pos.nextUnallocated;
+            positions[pos.nextUnallocated].prevUnallocated = 0;
+        } else if (tokenId == highestUnallocatedId) {
+            // Last element
+            highestUnallocatedId = pos.prevUnallocated;
+            positions[pos.prevUnallocated].nextUnallocated = 0;
+        } else {
+            // Middle element
+            positions[pos.nextUnallocated].prevUnallocated = pos.prevUnallocated;
+            positions[pos.prevUnallocated].nextUnallocated = pos.nextUnallocated;
+        }
+        
+        pos.nextUnallocated = 0;
+        pos.prevUnallocated = 0;
     }
 
     // Required overrides
