@@ -34,6 +34,7 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - Actual ratio = (ETH_amount * ETH_price) / (commitment_factor * max_possible_USPD)
    - Advantage: Queue ordering remains stable despite price changes
    - Challenge: Need to carefully design the commitment factor calculation
+   - Scaling: O(1) for individual updates, scales well to thousands of stabilizers since commitment factors don't need reordering
 
    b. **Threshold-based Buckets**:
    - Group stabilizers into predefined ratio range buckets (e.g., 150-200%, 200-250%, etc.)
@@ -41,6 +42,7 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - When price changes, stabilizers might move between buckets
    - Advantage: Reduces sorting complexity, only need to check highest non-empty bucket
    - Challenge: Determining optimal bucket sizes and handling bucket transitions
+   - Scaling: O(1) bucket lookup, O(k) for k stabilizers in a bucket. Efficient with thousands of stabilizers if well-distributed across buckets
 
    c. **Max-heap with Lazy Updates**:
    - Maintain a heap structure ordered by overcollateralization ratio
@@ -48,6 +50,7 @@ The implementation of the stabilizer queue faces several technical challenges, p
    - Track last price update timestamp for each position
    - Advantage: O(log n) updates when needed
    - Challenge: Heap maintenance and ensuring accurate ordering when needed
+   - Scaling: O(log n) operations for updates and queries, practical for thousands of stabilizers but gas costs increase logarithmically
 
    d. **Merkle-Proof Verified Ordering**:
    - Calculate stabilizer positions and ratios off-chain based on current ETH/USD price
@@ -58,6 +61,7 @@ The implementation of the stabilizer queue faces several technical challenges, p
      * Validity against stored root at current price
    - Advantage: Gas-efficient position verification
    - Challenge: Managing root updates with price changes
+   - Scaling: O(log n) proof size and verification time, excellent for thousands of stabilizers as most computation is off-chain
 
    e. **Oracle-Inspired Permissionless Updates**:
    - Implement a threshold-triggered update system similar to Chainlink's price feeds
@@ -74,6 +78,7 @@ The implementation of the stabilizer queue faces several technical challenges, p
      * Updates only affected positions
    - Advantage: Gas-efficient, permissionless, handles dynamic ratios
    - Challenge: Designing incentives for timely updates
+   - Scaling: O(k) where k is number of changed positions, highly efficient for thousands of stabilizers as unchanged positions require no gas
 
 #### Example Implementation: Merkle-Proof Verified Ordering
 
