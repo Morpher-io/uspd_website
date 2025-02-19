@@ -6,6 +6,7 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControl
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./UspdToken.sol";
 import "./interfaces/IStabilizerNFT.sol";
+import "./interfaces/IUspdCollateralizedPositionNFT.sol";
 
 contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, AccessControlUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
