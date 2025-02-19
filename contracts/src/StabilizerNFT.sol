@@ -88,6 +88,12 @@ contract StabilizerNFT is
         });
 
         _safeMint(to, tokenId);
+        
+        // Set initial trait values
+        setTrait(tokenId, TRAIT_TOTAL_ETH, 0);
+        setTrait(tokenId, TRAIT_UNALLOCATED_ETH, 0);
+        setTrait(tokenId, TRAIT_MIN_COLLATERAL_RATIO, 110);
+        
         emit StabilizerPositionCreated(tokenId, to, 0);
     }
 
@@ -164,6 +170,9 @@ contract StabilizerNFT is
                 remainingEth -= toAllocate;
                 result.uspdAmount += uspdForAllocation;
                 
+                // Update trait values
+                setTrait(currentId, TRAIT_UNALLOCATED_ETH, pos.unallocatedEth);
+                
                 // Mint position NFT to stabilizer
                 positionNFT.mint(ownerOf(currentId), toAllocate, uspdForAllocation);
                 
@@ -197,6 +206,10 @@ contract StabilizerNFT is
         // Update position amounts
         pos.totalEth += msg.value;
         pos.unallocatedEth += msg.value;
+        
+        // Update trait values
+        setTrait(tokenId, TRAIT_TOTAL_ETH, pos.totalEth);
+        setTrait(tokenId, TRAIT_UNALLOCATED_ETH, pos.unallocatedEth);
         
         // Only add to list if position went from 0 to having funds
         if (hadNoFunds) {
@@ -246,6 +259,10 @@ contract StabilizerNFT is
         
         pos.totalEth -= amount;
         pos.unallocatedEth -= amount;
+        
+        // Update trait values
+        setTrait(tokenId, TRAIT_TOTAL_ETH, pos.totalEth);
+        setTrait(tokenId, TRAIT_UNALLOCATED_ETH, pos.unallocatedEth);
         
         // If no more unallocated funds, remove from list
         if (pos.unallocatedEth == 0) {
