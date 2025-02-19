@@ -158,13 +158,27 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
     }
 
     // Add more unallocated funds to an existing position
-    function addUnallocatedFunds(uint256 tokenId) external payable {
+    function addUnallocatedFunds(
+        uint256 tokenId,
+        uint256 nextHigherId,
+        uint256 nextLowerId
+    ) external payable {
         require(_exists(tokenId), "Token does not exist");
         require(msg.value > 0, "No ETH sent");
         
         StabilizerPosition storage pos = positions[tokenId];
+        
+        // If position is already in unallocated list, remove it
+        if (pos.unallocatedEth > 0) {
+            _removeFromUnallocatedList(tokenId);
+        }
+        
+        // Update position amounts
         pos.totalEth += msg.value;
         pos.unallocatedEth += msg.value;
+        
+        // Add back to list in correct position
+        _registerUnallocatedPosition(tokenId, nextHigherId, nextLowerId);
         
         emit UnallocatedFundsAdded(tokenId, msg.value);
     }
