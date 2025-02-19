@@ -168,7 +168,6 @@ contract StabilizerNFT is
             // If no position exists, create one
             if (positionId == 0) {
                 positionId = positionNFT.mint(owner);
-                stabilizerToPosition[currentId] = positionId;
                 _registerAllocatedPosition(currentId);
             }
 
