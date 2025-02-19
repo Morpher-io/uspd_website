@@ -8,6 +8,7 @@ import "./UspdToken.sol";
 import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
 import "shipyard-core/src/dynamic-traits/DynamicTraits.sol";
+import "./libraries/Base64.sol";
 
 contract StabilizerNFT is 
     IStabilizerNFT, 
@@ -270,6 +271,70 @@ contract StabilizerNFT is
         }
         
         to.transfer(amount);
+    }
+
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
+        
+        StabilizerPosition storage pos = positions[tokenId];
+        
+        string memory json = Base64.encode(
+            bytes(string(
+                abi.encodePacked(
+                    '{"name": "USPD Stabilizer #', 
+                    toString(tokenId),
+                    '", "description": "USPD Stabilizer Position NFT", ',
+                    '"image": "data:image/svg+xml;base64,', 
+                    Base64.encode(bytes(generateSVG(tokenId))),
+                    '", "attributes": [',
+                    '{"trait_type": "Total ETH", "value": "', toString(pos.totalEth), '"},',
+                    '{"trait_type": "Unallocated ETH", "value": "', toString(pos.unallocatedEth), '"},',
+                    '{"trait_type": "Min Collateral Ratio", "value": "', toString(pos.minCollateralRatio), '%"}',
+                    ']}'
+                )
+            ))
+        );
+        return string(abi.encodePacked('data:application/json;base64,', json));
+    }
+
+    function generateSVG(uint256 tokenId) internal view returns (string memory) {
+        StabilizerPosition storage pos = positions[tokenId];
+        return string(
+            abi.encodePacked(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">',
+                '<style>.base { fill: white; font-family: serif; font-size: 14px; }</style>',
+                '<rect width="100%" height="100%" fill="black"/>',
+                '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">',
+                'Stabilizer #', toString(tokenId),
+                '</text>',
+                '<text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">',
+                toString(pos.totalEth), ' ETH Total',
+                '</text>',
+                '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">',
+                toString(pos.unallocatedEth), ' ETH Unallocated',
+                '</text>',
+                '</svg>'
+            )
+        );
+    }
+
+    function toString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
 
     // Required overrides
