@@ -106,6 +106,13 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         oracle = PriceOracle(newOracle);
     }
 
+    function updateStabilizer(
+        address newStabilizer
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit StabilizerUpdated(address(stabilizer), newStabilizer);
+        stabilizer = IStabilizerNFT(newStabilizer);
+    }
+
     receive() external payable {
         mint(msg.sender);
     }
