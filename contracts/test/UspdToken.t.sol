@@ -112,7 +112,7 @@ contract USPDTokenTest is Test {
         
         // Add unallocated funds to stabilizer as stabilizerOwner
         vm.startPrank(stabilizerOwner);
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1, 0);
+        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
         vm.stopPrank();
         
         // Mint USPD tokens as uspdBuyer
@@ -120,11 +120,18 @@ contract USPDTokenTest is Test {
         uspdToken.mint{value: 1 ether}(uspdBuyer);
         vm.stopPrank();
         
-        vm.warp(10);
-        
         // Verify USPD balance
         uint256 expectedBalance = (1 ether - priceOracle.getOracleCommission()) * 2800 ether / 1 ether;
         assertEq(uspdToken.balanceOf(uspdBuyer), expectedBalance, "Incorrect USPD balance");
+
+        // Verify position NFT state
+        uint256 positionId = stabilizerNFT.stabilizerToPosition(1);
+        IUspdCollateralizedPositionNFT.Position memory position = positionNFT.getPosition(positionId);
+        
+        // Calculate expected allocation (110% of 1 ETH minus commission)
+        uint256 expectedAllocation = (1 ether - priceOracle.getOracleCommission()) * 110 / 100;
+        assertEq(position.allocatedEth, expectedAllocation, "Position should have correct ETH allocation");
+        assertEq(position.backedUspd, expectedBalance, "Position should back correct USPD amount");
     }
 
     function setOracleData(
