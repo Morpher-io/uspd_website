@@ -46,19 +46,17 @@ contract UspdCollateralizedPositionNFT is
     }
 
     function mint(
-        address to,
-        uint256 allocatedEth,
-        uint256 backedUspd
+        address to
     ) external onlyRole(MINTER_ROLE) returns (uint256) {
         uint256 tokenId = _nextPositionId++;
         
         _positions[tokenId] = Position({
-            allocatedEth: allocatedEth,
-            backedUspd: backedUspd
+            allocatedEth: 0,
+            backedUspd: 0
         });
 
         _safeMint(to, tokenId);
-        emit PositionCreated(tokenId, to, allocatedEth, backedUspd);
+        emit PositionCreated(tokenId, to, 0, 0);
         
         return tokenId;
     }

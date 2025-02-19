@@ -170,7 +170,7 @@ contract StabilizerNFT is
                 result.uspdAmount += uspdForAllocation;
                 
                 // Mint position NFT first
-                uint256 positionId = positionNFT.mint(ownerOf(currentId), 0, 0);
+                uint256 positionId = positionNFT.mint(ownerOf(currentId));
                 stabilizerToPosition[currentId] = positionId;
                 
                 // Add collateral and update allocation
