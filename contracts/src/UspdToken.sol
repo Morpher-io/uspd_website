@@ -66,18 +66,30 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         mint(to, 0); // 0 means no maximum
     }
 
-    function burn(uint amount, address to) public {
-        _burn(msg.sender, amount);
-
+    function burn(uint amount, address payable to) public {
+        require(amount > 0, "Amount must be greater than 0");
+        require(to != address(0), "Invalid recipient");
+        
+        // Get current ETH price
         PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
             value: oracle.getOracleCommission()
         }();
-        uint ethAmountToSend = ((amount * 1e18) / oracleResponse.price);
-        emit Payout(to, amount, ethAmountToSend, oracleResponse.price);
-        /**
-        TODO: if getCollateralization < 95*1e3 (95%) then add to conversion rate, so that price gets lower to avoid bank runs
-        **/
-        payable(to).transfer(ethAmountToSend);
+        
+        // Burn USPD tokens first
+        _burn(msg.sender, amount);
+        
+        // Unallocate funds from stabilizers
+        uint256 unallocatedEth = stabilizer.unallocateStabilizerFunds(
+            amount,
+            oracleResponse.price,
+            oracleResponse.decimals
+        );
+        
+        emit Payout(to, amount, unallocatedEth, oracleResponse.price);
+        
+        // Transfer unallocated ETH to recipient
+        (bool success, ) = to.call{value: unallocatedEth}("");
+        require(success, "ETH transfer failed");
     }
 
     // function getCollateralization() public view returns (uint) {

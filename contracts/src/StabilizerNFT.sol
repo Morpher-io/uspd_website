@@ -333,10 +333,12 @@ contract StabilizerNFT is
                 }
                 
                 // Transfer ETH from position NFT back to stabilizer
-                IUspdCollateralizedPositionNFT(positionNFT).transferCollateral(
+                IUspdCollateralizedPositionNFT(positionNFT).removeCollateral(
                     positionId,
                     payable(address(this)),
-                    ethToUnallocate
+                    ethToUnallocate,
+                    ethUsdPrice,
+                    priceDecimals
                 );
 
                 // Update position state

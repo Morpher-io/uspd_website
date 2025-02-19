@@ -70,10 +70,7 @@ contract UspdCollateralizedPositionNFT is
     // Transfer ETH back to stabilizer during unallocation
     function transferCollateral(uint256 tokenId, address payable to, uint256 amount) external {
         require(ownerOf(tokenId) != address(0), "Position does not exist");
-        require(
-            hasRole(TRANSFERCOLLATERAL_ROLE, msg.sender) || ownerOf(tokenId) == msg.sender,
-            "Not authorized to transfer collateral"
-        );
+        require(ownerOf(tokenId) == msg.sender, "Not position owner");
         require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
         
         // Get current ETH price
@@ -84,6 +81,28 @@ contract UspdCollateralizedPositionNFT is
         // Calculate new collateral ratio after transfer
         uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
         uint256 ethValue = (remainingEth * oracleResponse.price) / (10**oracleResponse.decimals);
+        uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
+        
+        require(newRatio >= 110, "Collateral ratio would fall below 110%");
+        
+        _positions[tokenId].allocatedEth -= amount;
+        (bool success, ) = to.call{value: amount}("");
+        require(success, "ETH transfer failed");
+    }
+
+    function removeCollateral(
+        uint256 tokenId, 
+        address payable to, 
+        uint256 amount,
+        uint256 ethUsdPrice,
+        uint256 priceDecimals
+    ) external onlyRole(TRANSFERCOLLATERAL_ROLE) {
+        require(ownerOf(tokenId) != address(0), "Position does not exist");
+        require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
+        
+        // Calculate new collateral ratio after transfer using provided price
+        uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
+        uint256 ethValue = (remainingEth * ethUsdPrice) / (10**priceDecimals);
         uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
         
         require(newRatio >= 110, "Collateral ratio would fall below 110%");
