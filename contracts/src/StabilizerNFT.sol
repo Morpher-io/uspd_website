@@ -56,7 +56,8 @@ contract StabilizerNFT is
     );
     event FundsAllocated(
         uint256 indexed tokenId,
-        uint256 amount,
+        uint256 stabilizersAmount,
+        uint256 usersAmount,
         uint256 positionId
     );
     event FundsUnallocated(
@@ -132,7 +133,7 @@ contract StabilizerNFT is
         uint256 ethUsdPrice,
         uint256 priceDecimals,
         uint256 maxUspdAmount
-    ) external returns (AllocationResult memory result) {
+    ) external payable returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(lowestUnallocatedId != 0, "No unallocated funds");
 
