@@ -303,19 +303,22 @@ The protocol implements a robust liquidation system to maintain stability when c
    - Detailed Example with 150% Overcollateralization:
      1. Initial Setup:
         * ETH Price = $3500
-        * Stabilizer deposits 1 ETH ($3500 worth)
-        * Wants to maintain 150% overcollateralization
-        * Maximum USPD coverage = $3500/1.5 = $2333.33
-        * Initial ratio = ($3500/$2333.33) = 150%
+        * User deposits 1 ETH ($3500 worth) to mint USPD
+        * Stabilizer adds 0.5 ETH ($1750 worth) for 150% coverage
+        * Total collateral = 1.5 ETH ($5250 worth)
+        * USPD minted = $3500 (backed by user's 1 ETH)
+        * Initial ratio = ($5250/$3500) = 150%
      
      2. After ETH Price Doubles:
         * New ETH Price = $7000
-        * Current collateral value = 1 ETH = $7000
-        * Required collateral for same coverage = $2333.33 * 1.5 = $3500
-        * Excess collateral = $7000 - $3500 = $3500
-        * Can withdraw 0.5 ETH ($3500 worth)
-        * Remaining 0.5 ETH ($3500) still maintains 150% ratio
-        * Final ratio = ($3500/$2333.33) = 150%
+        * User's 1 ETH now worth $7000
+        * Stabilizer's 0.5 ETH now worth $3500
+        * Total collateral value = 1.5 ETH = $10,500
+        * Required collateral for $3500 USPD at 150% = $5250
+        * Excess collateral = $10,500 - $5250 = $5250
+        * Stabilizer can withdraw 0.75 ETH ($5250 worth)
+        * Remaining collateral: User's 1 ETH + Stabilizer's 0.25 ETH = $8750
+        * Final ratio = ($8750/$3500) = 150%
 
 ## Foundry
 
