@@ -43,15 +43,26 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         uint256 oracleCommission = oracle.getOracleCommission();
         uint256 ethForAllocation = msg.value - oracleCommission;
         
+        // Calculate USPD amount based on ETH and price
+        uint256 uspdToMint;
+        if (maxUspdAmount > 0) {
+            // Calculate ETH needed for maxUspdAmount
+            uint256 ethNeeded = (maxUspdAmount * (10**oracleResponse.decimals)) / oracleResponse.price;
+            if (ethNeeded > ethForAllocation) {
+                ethNeeded = ethForAllocation;
+                uspdToMint = (ethNeeded * oracleResponse.price) / (10**oracleResponse.decimals);
+            } else {
+                uspdToMint = maxUspdAmount;
+                ethForAllocation = ethNeeded;
+            }
+        } else {
+            uspdToMint = (ethForAllocation * oracleResponse.price) / (10**oracleResponse.decimals);
+        }
+        
         // Allocate funds through stabilizer NFTs
         IStabilizerNFT.AllocationResult memory result = stabilizer.allocateStabilizerFunds{
             value: ethForAllocation
-        }(
-            ethForAllocation,
-            oracleResponse.price,
-            oracleResponse.decimals,
-            maxUspdAmount
-        );
+        }(ethForAllocation, uspdToMint);
         
         // Mint USPD based on allocated amount
         _mint(to, result.uspdAmount);

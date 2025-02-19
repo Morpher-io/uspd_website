@@ -130,9 +130,7 @@ contract StabilizerNFT is
 
     function allocateStabilizerFunds(
         uint256 ethAmount,
-        uint256 ethUsdPrice,
-        uint256 priceDecimals,
-        uint256 maxUspdAmount
+        uint256 uspdAmount
     ) external payable returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(lowestUnallocatedId != 0, "No unallocated funds");
@@ -152,21 +150,10 @@ contract StabilizerNFT is
 
             StabilizerPosition storage pos = positions[currentId];
 
-            uint256 targetEth;
-            if (maxUspdAmount > 0) {
-                // Calculate ETH needed for maxUspdAmount
-                targetEth = (maxUspdAmount * (10**priceDecimals)) / ethUsdPrice - result.allocatedEth;
-                if (targetEth > remainingEth) {
-                    targetEth = remainingEth;
-                }
-            } else {
-                targetEth = remainingEth;
-            }
-
-            if (targetEth == 0) break;
+            if (remainingEth == 0) break;
 
             // Calculate how much stabilizer ETH is needed for this user ETH
-            uint256 stabilizerEthNeeded = (targetEth * (pos.minCollateralRatio - 100)) / 100;
+            uint256 stabilizerEthNeeded = (remainingEth * (pos.minCollateralRatio - 100)) / 100;
             
             // Check if stabilizer has enough ETH
             uint256 toAllocate = stabilizerEthNeeded > pos.totalEth ? 
