@@ -164,13 +164,14 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         
         StabilizerPosition storage pos = positions[tokenId];
         
+        bool hadNoFunds = pos.unallocatedEth == 0;
+        
         // Update position amounts
         pos.totalEth += msg.value;
         pos.unallocatedEth += msg.value;
         
-        // Add to list if not already there
-        if (pos.nextUnallocated == 0 && pos.prevUnallocated == 0 && 
-            tokenId != lowestUnallocatedId && tokenId != highestUnallocatedId) {
+        // Only add to list if position went from 0 to having funds
+        if (hadNoFunds) {
             _registerUnallocatedPosition(tokenId, nextId);
         }
         
