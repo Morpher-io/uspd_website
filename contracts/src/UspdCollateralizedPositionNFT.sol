@@ -85,17 +85,20 @@ contract UspdCollateralizedPositionNFT is
         require(ownerOf(tokenId) == msg.sender, "Not position owner");
         require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
         
-        // Get current ETH price
-        PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
-            value: oracle.getOracleCommission()
-        }();
-        
-        // Calculate new collateral ratio after transfer
-        uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
-        uint256 ethValue = (remainingEth * oracleResponse.price) / (10**oracleResponse.decimals);
-        uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
-        
-        require(newRatio >= 110, "Collateral ratio would fall below 110%");
+        // If position backs no USPD, we can remove any amount of ETH
+        if (_positions[tokenId].backedUspd > 0) {
+            // Get current ETH price
+            PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
+                value: oracle.getOracleCommission()
+            }();
+            
+            // Calculate new collateral ratio after transfer
+            uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
+            uint256 ethValue = (remainingEth * oracleResponse.price) / (10**oracleResponse.decimals);
+            uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
+            
+            require(newRatio >= 110, "Collateral ratio would fall below 110%");
+        }
         
         _positions[tokenId].allocatedEth -= amount;
         (bool success, ) = to.call{value: amount}("");
@@ -112,12 +115,15 @@ contract UspdCollateralizedPositionNFT is
         require(ownerOf(tokenId) != address(0), "Position does not exist");
         require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
         
-        // Calculate new collateral ratio after transfer using provided price
-        uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
-        uint256 ethValue = (remainingEth * ethUsdPrice) / (10**priceDecimals);
-        uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
-        
-        require(newRatio >= 110, "Collateral ratio would fall below 110%");
+        // If position backs no USPD, we can remove any amount of ETH
+        if (_positions[tokenId].backedUspd > 0) {
+            // Calculate new collateral ratio after transfer using provided price
+            uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
+            uint256 ethValue = (remainingEth * ethUsdPrice) / (10**priceDecimals);
+            uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
+            
+            require(newRatio >= 110, "Collateral ratio would fall below 110%");
+        }
         
         _positions[tokenId].allocatedEth -= amount;
         (bool success, ) = to.call{value: amount}("");
