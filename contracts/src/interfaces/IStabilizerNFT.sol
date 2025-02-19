@@ -7,7 +7,9 @@ interface IStabilizerNFT {
     }
 
     function allocateStabilizerFunds(
-        uint256 ethAmount
+        uint256 ethAmount,
+        uint256 ethUsdPrice,
+        uint256 priceDecimals
     ) external payable returns (AllocationResult memory);
 
     function unallocateStabilizerFunds(

@@ -129,7 +129,9 @@ contract StabilizerNFT is
     }
 
     function allocateStabilizerFunds(
-        uint256 ethAmount
+        uint256 ethAmount,
+        uint256 ethUsdPrice,
+        uint256 priceDecimals
     ) external payable returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(lowestUnallocatedId != 0, "No unallocated funds");
@@ -176,6 +178,10 @@ contract StabilizerNFT is
             
             // Add collateral from both user and stabilizer
             positionNFT.addCollateral{value: toAllocate + userEthShare}(positionId);
+
+            // Calculate USPD amount backed by user's ETH
+            uint256 uspdAmount = (userEthShare * ethUsdPrice) / (10**priceDecimals);
+            positionNFT.modifyAllocation(positionId, uspdAmount);
 
             // Update state
             pos.totalEth -= toAllocate;
