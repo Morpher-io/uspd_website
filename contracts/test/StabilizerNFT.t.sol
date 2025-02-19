@@ -6,7 +6,7 @@ import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol";
 import "../src/UspdCollateralizedPositionNFT.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
-import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract StabilizerNFTTest is Test {
     StabilizerNFT public stabilizerNFT;

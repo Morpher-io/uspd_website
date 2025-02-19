@@ -5,10 +5,11 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {USPD} from "../src/UspdToken.sol";
+import {USPDToken as USPD} from "../src/UspdToken.sol";
 import {UspdStabilizerToken} from "../src/UspdStabilizerToken.sol";
 import {PriceOracle} from "../src/PriceOracle.sol";
 import {OracleEntrypoint} from "../src/oracle/OracleEntrypoint.sol";
+import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 
 error ErrMaxMintingLimit(uint remaining, uint exceeded);
 

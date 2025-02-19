@@ -8,7 +8,7 @@ import "./PriceOracle.sol";
 import "./interfaces/IStabilizerNFT.sol";
 
 
-contract USPD is ERC20, ERC20Permit, AccessControl {
+contract USPDToken is ERC20, ERC20Permit, AccessControl {
     PriceOracle oracle;
     IStabilizerNFT stabilizer;
     bytes32 public constant EXCESS_COLLATERAL_DRAIN_ROLE =
@@ -43,7 +43,7 @@ contract USPD is ERC20, ERC20Permit, AccessControl {
         uint256 ethForAllocation = msg.value - oracle.getOracleCommission();
         
         // Allocate funds through stabilizer NFTs
-        StabilizerNFT.AllocationResult memory result = stabilizer.allocateStabilizerFunds(
+        IStabilizerNFT.AllocationResult memory result = stabilizer.allocateStabilizerFunds(
             ethForAllocation,
             oracleResponse.price,
             oracleResponse.decimals,

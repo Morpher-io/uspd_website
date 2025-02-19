@@ -53,18 +53,18 @@ contract UspdStabilizerToken is DynamicTraits, ERC721, AccessControl {
     function safeMint(address to, uint maxCollateralInWei, uint nextHigherCollateralStabilizerId, uint nextLowerCollateralStabilizerId) public payable {
       
         
-        uint256 tokenId = ++numStabilizersIds;
-        Stabilizer memory newStabilizer = Stabilizer(tokenId, tokenId, msg.value, maxCollateralInWei, block.number, 0);
-        setTrait(tokenId, TRAIT_COLLATERAL, msg.value);
-        setTrait(tokenId, TRAIT_COLLATERAL_LOCKED, 0);
-        setTrait(tokenId, TRAIT_USPD_BACKED, 0);
-        stabilizers[tokenId] = newStabilizer;
-        _registerStabilizer(tokenId, nextHigherCollateralStabilizerId, nextLowerCollateralStabilizerId);
+        // uint256 tokenId = ++numStabilizersIds;
+        // Stabilizer memory newStabilizer = Stabilizer(tokenId, tokenId, msg.value, maxCollateralInWei, block.number, 0);
+        // setTrait(tokenId, TRAIT_COLLATERAL, msg.value);
+        // setTrait(tokenId, TRAIT_COLLATERAL_LOCKED, 0);
+        // setTrait(tokenId, TRAIT_USPD_BACKED, 0);
+        // stabilizers[tokenId] = newStabilizer;
+        // _registerStabilizer(tokenId, nextHigherCollateralStabilizerId, nextLowerCollateralStabilizerId);
 
-        _safeMint(to, tokenId);
+        // _safeMint(to, tokenId);
 
-        //TODO: Convert ETH to stETH
-        convertEthToStEth(msg.value);
+        // //TODO: Convert ETH to stETH
+        // convertEthToStEth(msg.value);
     }
 
     function _registerStabilizer(uint tokenId, uint nextHigherCollateralStabilizerId, uint nextLowerCollateralStabilizerId ) internal {
