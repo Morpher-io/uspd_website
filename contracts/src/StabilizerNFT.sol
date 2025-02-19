@@ -207,9 +207,14 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
     }
 
     // Remove unallocated funds from a position
-    function removeUnallocatedFunds(uint256 tokenId, uint256 amount) external {
+    function removeUnallocatedFunds(
+        uint256 tokenId,
+        uint256 amount,
+        address payable to
+    ) external {
         require(_exists(tokenId), "Token does not exist");
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        require(to != address(0), "Invalid recipient");
         
         StabilizerPosition storage pos = positions[tokenId];
         require(pos.unallocatedEth >= amount, "Insufficient unallocated funds");
@@ -222,7 +227,7 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
             _removeFromUnallocatedList(tokenId);
         }
         
-        payable(msg.sender).transfer(amount);
+        to.transfer(amount);
     }
 
     // Required overrides
