@@ -8,7 +8,7 @@ USPD implements a unique stabilizer-based overcollateralization system. Users ca
 
 ### Stabilizer Queue Implementation
 
-The protocol maintains a sorted linked list of stabilizers, ordered by their overcollateralization ratio. Stabilizers can choose their desired overcollateralization level, and the system automatically positions them in the queue based on this ratio. This on-chain sorting mechanism ensures efficient processing while working within EVM gas limits, as only the correct position needs to be found and validated during stabilizer addition.
+The protocol maintains a sorted linked list of stabilizers, ordered by their overcollateralization ratio. Stabilizers can choose their desired overcollateralization level, with the correct position in the queue being determined through offchain computation. The on-chain contract then only needs to validate the proposed position during stabilizer addition, making the process gas-efficient while maintaining the ordered structure of the queue.
 
 ## Foundry
 
