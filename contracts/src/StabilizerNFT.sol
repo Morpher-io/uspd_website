@@ -5,8 +5,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./UspdToken.sol";
+import "./interfaces/IStabilizerNFT.sol";
 
-contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgradeable {
+contract StabilizerNFT is IStabilizerNFT, Initializable, ERC721Upgradeable, AccessControlUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     
     struct StabilizerPosition {
@@ -96,10 +97,6 @@ contract StabilizerNFT is Initializable, ERC721Upgradeable, AccessControlUpgrade
         }
     }
 
-    struct AllocationResult {
-        uint256 allocatedEth;
-        uint256 uspdAmount;
-    }
 
     function allocateStabilizerFunds(
         uint256 ethAmount,

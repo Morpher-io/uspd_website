@@ -5,12 +5,12 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "./PriceOracle.sol";
-import {UspdStabilizerToken} from "./UspdStabilizerToken.sol";
+import "./interfaces/IStabilizerNFT.sol";
 
 
 contract USPD is ERC20, ERC20Permit, AccessControl {
     PriceOracle oracle;
-    UspdStabilizerToken stabilizer;
+    IStabilizerNFT stabilizer;
     bytes32 public constant EXCESS_COLLATERAL_DRAIN_ROLE =
         keccak256("EXCESS_COLLATERAL_DRAIN_ROLE");
     bytes32 public constant UPDATE_ORACLE_ROLE =
@@ -29,7 +29,7 @@ contract USPD is ERC20, ERC20Permit, AccessControl {
         address _stabilizer
     ) ERC20("USPD Demo", "USPDDEMO") ERC20Permit("USPDDEMO") {
         oracle = PriceOracle(_oracle);
-        stabilizer = UspdStabilizerToken(_stabilizer);
+        stabilizer = IStabilizerNFT(_stabilizer);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(EXCESS_COLLATERAL_DRAIN_ROLE, msg.sender);
         _grantRole(UPDATE_ORACLE_ROLE, msg.sender);
