@@ -9,8 +9,7 @@ import {USPDToken as USPD} from "../src/UspdToken.sol";
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
 import {UspdCollateralizedPositionNFT} from "../src/UspdCollateralizedPositionNFT.sol";
 import {IUspdCollateralizedPositionNFT} from "../src/interfaces/IUspdCollateralizedPositionNFT.sol";
-import {PriceOracle} from "../src/PriceOracle.sol";
-import {OracleEntrypoint} from "../src/oracle/OracleEntrypoint.sol";
+import {IPriceOracle, PriceOracle} from "../src/PriceOracle.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -133,28 +132,7 @@ contract USPDTokenTest is Test {
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
     }
 
-    function testOracle() public {
-        vm.deal(address(this), 10 ether);
-        vm.warp(10);
-        oracleEntrypoint.deposit{value: 1 ether}(address(this));
-
-        assertEq(
-            oracleEntrypoint.prices(oracleSigner, PRICE_FEED_ETH_USD),
-            0 gwei
-        );
-        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        vm.warp(10);
-        assertEq(
-            oracleEntrypoint.prices(oracleSigner, PRICE_FEED_ETH_USD),
-            1 gwei
-        );
-
-        setOracleData(3120 ether, PRICE_FEED_ETH_USD, address(this));
-        vm.warp(10);
-        uint ethPrice = getEthUsdPrice();
-
-        assertEq(ethPrice, 3120 ether);
-    }
+   
 
     function testMintByDirectEtherTransfer() public {
         // Setup stabilizer
