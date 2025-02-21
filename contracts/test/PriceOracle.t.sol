@@ -47,4 +47,35 @@ contract PriceOracleTest is Test {
         int256 price = priceOracle.getChainlinkDataFeedLatestAnswer();
         assertTrue(price > 0, "Should get valid price from Chainlink");
     }
+
+    function testUnauthorizedSigner() public {
+        // Create a new private key and address for unauthorized signer
+        uint256 unauthorizedPrivateKey = 0xb33f;
+        address unauthorizedSigner = vm.addr(unauthorizedPrivateKey);
+        
+        // Create price attestation signed by unauthorized signer
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
+            price: 2000 ether,
+            decimals: 18,
+            dataTimestamp: block.timestamp,
+            assetPair: keccak256("ETH_USD"),
+            signature: bytes("")
+        });
+
+        // Create and sign message
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                query.price,
+                query.decimals,
+                query.dataTimestamp,
+                query.assetPair
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(unauthorizedPrivateKey, messageHash);
+        query.signature = abi.encodePacked(r, s, v);
+
+        // Expect revert when using unauthorized signature
+        vm.expectRevert(InvalidSignature.selector);
+        priceOracle.attestationService(query);
+    }
 }
