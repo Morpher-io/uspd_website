@@ -199,15 +199,13 @@ contract USPDTokenTest is Test {
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdBuyer = makeAddr("uspdBuyer");
 
-        vm.deal(address(priceOracle), 10 ether);
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
 
-        // Set ETH price to $2800
-        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        vm.warp(3000000);
-        setOracleData(2500 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        vm.warp(10000);
+        // Create price attestation
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
 
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
@@ -219,7 +217,7 @@ contract USPDTokenTest is Test {
 
         // Mint USPD tokens with max amount
         vm.prank(uspdBuyer);
-        uspdToken.mint{value: 2 ether}(uspdBuyer, 4000 ether);
+        uspdToken.mint{value: 2 ether}(uspdBuyer, 4000 ether, priceQuery);
 
         // Verify USPD balance
         assertApproxEqAbs(
@@ -230,11 +228,10 @@ contract USPDTokenTest is Test {
         );
 
         // Verify ETH refund
-        uint256 ethUsed = uint256((4000 * (10 ** 18))) / 2500;
-        // uint256 expectedRefund = 2 ether - ethUsed - priceOracle.getOracleCommission();
+        uint256 ethUsed = (4000 ether * (10 ** 18)) / priceQuery.price;
         assertApproxEqAbs(
             uspdBuyer.balance,
-            initialBalance - ethUsed - priceOracle.getOracleCommission(),
+            initialBalance - ethUsed,
             1e9,
             "Incorrect ETH refund"
         );
