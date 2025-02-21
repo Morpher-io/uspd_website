@@ -375,17 +375,14 @@ contract USPDTokenTest is Test {
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdBuyer = makeAddr("uspdBuyer");
 
-        // Setup oracle and accounts
-        vm.deal(address(priceOracle), 10 ether);
+        // Setup accounts
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
-        vm.warp(1000000);
 
-        // Set ETH price to $2800
-        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        vm.warp(3000000);
-        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        vm.warp(10000);
+        // Create price attestation
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
 
         // Create stabilizer NFT for stabilizerOwner
         stabilizerNFT.mint(stabilizerOwner, 1);
@@ -397,12 +394,11 @@ contract USPDTokenTest is Test {
 
         // Mint USPD tokens as uspdBuyer
         vm.startPrank(uspdBuyer);
-        uspdToken.mint{value: 1 ether}(uspdBuyer);
+        uspdToken.mint{value: 1 ether}(uspdBuyer, priceQuery);
         vm.stopPrank();
 
-        // Verify USPD balance
-        uint256 expectedBalance = ((1 ether -
-            priceOracle.getOracleCommission()) * 2800 ether) / 1 ether;
+        // Calculate expected USPD balance
+        uint256 expectedBalance = (1 ether * priceQuery.price) / (10 ** priceQuery.decimals);
         assertEq(
             uspdToken.balanceOf(uspdBuyer),
             expectedBalance,
@@ -414,9 +410,8 @@ contract USPDTokenTest is Test {
         IUspdCollateralizedPositionNFT.Position memory position = positionNFT
             .getPosition(positionId);
 
-        // Calculate expected allocation (110% of 1 ETH minus commission)
-        uint256 expectedAllocation = ((1 ether -
-            priceOracle.getOracleCommission()) * 110) / 100;
+        // Calculate expected allocation (110% of 1 ETH)
+        uint256 expectedAllocation = (1 ether * 110) / 100;
         assertEq(
             position.allocatedEth,
             expectedAllocation,
