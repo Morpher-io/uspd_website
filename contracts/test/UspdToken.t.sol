@@ -60,13 +60,31 @@ contract USPDTokenTest is Test {
     }
 
     function setUp() public {
-        // Setup oracle
-        oraclePrivateKey = 0xa11ce;
-        oracleSigner = vm.addr(oraclePrivateKey);
-        oracleEntrypoint = new OracleEntrypoint();
-        priceOracle = new PriceOracle(address(oracleEntrypoint), oracleSigner);
+        // Setup signer for price attestations
+        signerPrivateKey = 0xa11ce;
+        signer = vm.addr(signerPrivateKey);
 
-        // Deploy USPD token first with oracle and temporary zero address for stabilizer
+        // Deploy PriceOracle implementation and proxy
+        PriceOracle implementation = new PriceOracle();
+        bytes memory initData = abi.encodeWithSelector(
+            PriceOracle.initialize.selector,
+            500,                // 5% max deviation
+            300,               // 5 minute staleness period
+            USDC,              // USDC address
+            UNISWAP_ROUTER,    // Uniswap router
+            CHAINLINK_ETH_USD  // Chainlink ETH/USD feed
+        );
+        
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(implementation),
+            initData
+        );
+        priceOracle = PriceOracle(address(proxy));
+        
+        // Add signer as authorized
+        priceOracle.grantRole(keccak256("SIGNER_ROLE"), signer);
+
+        // Deploy USPD token with oracle and temporary zero address for stabilizer
         uspdToken = new USPD(address(priceOracle), address(0));
 
         // Deploy Position NFT implementation and proxy
