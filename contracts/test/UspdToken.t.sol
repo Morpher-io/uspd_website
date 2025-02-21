@@ -286,11 +286,10 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdHolder, 10 ether);
 
-        // Set ETH price to $2800
-        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        vm.warp(3000000);
-        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        vm.warp(10000);
+        // Create price attestation for minting
+        IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
 
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
@@ -299,17 +298,23 @@ contract USPDTokenTest is Test {
 
         // Mint USPD tokens
         vm.prank(uspdHolder);
-        uspdToken.mint{value: 1 ether}(uspdHolder);
+        uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
 
         // Create a contract that reverts on receive
         RevertingContract reverting = new RevertingContract();
 
+        // Create price attestation for burning
+        IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
+
         // Try to burn USPD and send ETH to reverting contract
         vm.prank(uspdHolder);
         vm.expectRevert("ETH transfer failed");
-        uspdToken.burn{value: 0.1 ether}(
+        uspdToken.burn(
             1000 ether,
-            payable(address(reverting))
+            payable(address(reverting)),
+            burnPriceQuery
         );
     }
 
@@ -321,11 +326,10 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdHolder, 10 ether);
 
-        // Set ETH price to $2800
-        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        vm.warp(3000000);
-        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        vm.warp(10000);
+        // Create price attestation for minting
+        IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
 
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
@@ -334,16 +338,22 @@ contract USPDTokenTest is Test {
 
         // Mint USPD tokens
         vm.prank(uspdHolder);
-        uspdToken.mint{value: 1 ether}(uspdHolder);
+        uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
 
         uint256 initialBalance = uspdHolder.balance;
         uint256 initialUspdBalance = uspdToken.balanceOf(uspdHolder);
 
+        // Create price attestation for burning
+        IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
+
         // Burn half of USPD
         vm.prank(uspdHolder);
-        uspdToken.burn{value: 0.1 ether}(
+        uspdToken.burn(
             initialUspdBalance / 2,
-            payable(uspdHolder)
+            payable(uspdHolder),
+            burnPriceQuery
         );
 
         // Verify USPD was burned
