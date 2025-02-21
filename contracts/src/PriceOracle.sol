@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./oracle/OracleEntrypoint.sol";
 import "./PriceOracleStorage.sol";
 
@@ -11,7 +14,15 @@ error PriceDeviationTooHigh(uint morpherPrice, uint chainlinkPrice, uint uniswap
 error InvalidSignature();
 error OraclePaused();
 
-contract PriceOracle is PriceOracleStorage, Pausable, Initializable {
+contract PriceOracle is 
+    PriceOracleStorage, 
+    Initializable, 
+    ERC721Upgradeable,
+    PausableUpgradeable,
+    AccessControlUpgradeable,
+    UUPSUpgradeable 
+{
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
     struct ResponseWithExpenses {
         uint value;
         uint expenses;
@@ -43,16 +54,44 @@ contract PriceOracle is PriceOracleStorage, Pausable, Initializable {
 
     //frame wallet polygon: forge create PriceOracle --rpc-url http://localhost:1248 --from 0x88884CB9ca20Edcea734e01Af376FdD8C5048B4F --gas-limit 8000000 --unlocked --chain-id 137 --verify --constructor-args "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359" "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D" "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0"
     //forge verify-contract --chain-id 137 0x95705530B53c4d7F9f5a8251fa67971908ef09Bb PriceOracle --compiler-version 0.8.20  --watch
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address _oracleEntrypoint,
         address _priceProvider,
         uint256 _maxPriceDeviation,
         uint256 _priceStalenessPeriod
     ) public initializer {
+        __ERC721_init("USPD Price Oracle", "USPDO");
+        __Pausable_init();
+        __AccessControl_init();
+        __UUPSUpgradeable_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(UPGRADER_ROLE, msg.sender);
+
         oracleEntrypoint = _oracleEntrypoint;
         priceProvider = _priceProvider;
         maxPriceDeviation = _maxPriceDeviation;
         priceStalenessPeriod = _priceStalenessPeriod;
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(UPGRADER_ROLE)
+    {}
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721Upgradeable, AccessControlUpgradeable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 
     function getUniswapV3WethUsdcPrice() public view returns (uint) {
