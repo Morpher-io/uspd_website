@@ -328,8 +328,7 @@ contract StabilizerNFT is
 
     function unallocateStabilizerFunds(
         uint256 uspdAmount,
-        uint256 ethUsdPrice,
-        uint256 priceDecimals
+        IPriceOracle.PriceResponse memory priceResponse
     ) external returns (uint256 unallocatedEth) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(highestAllocatedId != 0, "No allocated funds");
@@ -379,8 +378,8 @@ contract StabilizerNFT is
                     positionId,
                     payable(address(this)),
                     ethToRemove,
-                    ethUsdPrice,
-                    priceDecimals
+                    priceResponse.price,
+                    priceResponse.decimals
                 );
 
                 if (isFullUnallocation) {
@@ -522,8 +521,8 @@ contract StabilizerNFT is
         } else {
             uint256 currentRatio = positionNFT.getCollateralizationRatio(
                 positionId,
-                ethUsdPrice,
-                uint8(priceDecimals)
+                priceResponse.price,
+                uint8(priceResponse.decimals)
             );
             uint256 newBackedUspd = position.backedUspd - uspdToUnallocate;
             uint256 newRequiredEth = (currentRatio *

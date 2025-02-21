@@ -14,7 +14,6 @@ interface IStabilizerNFT {
 
     function unallocateStabilizerFunds(
         uint256 uspdAmount,
-        uint256 ethUsdPrice,
-        uint256 priceDecimals
+        IPriceOracle.PriceResponse memory priceResponse
     ) external returns (uint256 unallocatedEth);
 }
