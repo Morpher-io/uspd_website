@@ -349,49 +349,37 @@ contract StabilizerNFT is
                     memory position = positionNFT.getPosition(positionId);
 
                 uint256 uspdToUnallocate = remainingUspd > position.backedUspd ? position.backedUspd : remainingUspd;
-                uint256 currentRatio = positionNFT.getCollateralizationRatio(
-                    positionId,
+                bool isFullUnallocation = position.backedUspd == uspdToUnallocate;
+                
+                // Calculate ETH to remove and user's share
+                (ethToRemove, uint256 userShare) = _calculateUnallocation(
+                    position,
+                    uspdToUnallocate,
+                    isFullUnallocation,
                     ethUsdPrice,
-                    uint8(priceDecimals)
+                    priceDecimals
+                );
+                
+                // Update position
+                positionNFT.modifyAllocation(
+                    positionId, 
+                    isFullUnallocation ? 0 : position.backedUspd - uspdToUnallocate
+                );
+                
+                positionNFT.removeCollateral(
+                    positionId,
+                    payable(address(this)),
+                    ethToRemove,
+                    ethUsdPrice,
+                    priceDecimals
                 );
 
-                if (position.backedUspd == uspdToUnallocate) {
-                    // Fully dissolve position
-                    uint256 userShare = (position.allocatedEth * 100) / currentRatio;
-                    totalUserEth += userShare;
-                    pos.totalEth += position.allocatedEth - userShare;
-
-                    ethToRemove = position.allocatedEth;
-                    positionNFT.modifyAllocation(positionId, 0);
-                    positionNFT.removeCollateral(
-                        positionId,
-                        payable(address(this)),
-                        position.allocatedEth,
-                        ethUsdPrice,
-                        priceDecimals
-                    );
+                // Update totals
+                totalUserEth += userShare;
+                pos.totalEth += ethToRemove - userShare;
+                
+                if (isFullUnallocation) {
                     _removeFromAllocatedList(currentId);
-                } else {
-                    // Partial unallocation
-                    uint256 newBackedUspd = position.backedUspd - uspdToUnallocate;
-                    positionNFT.modifyAllocation(positionId, newBackedUspd);
-                    
-                    // Calculate new required ETH to maintain same ratio
-                    uint256 newRequiredEth = (currentRatio * newBackedUspd * (10**priceDecimals)) / (ethUsdPrice * 100);
-                    ethToRemove = position.allocatedEth - newRequiredEth;
-                    
-                    // Calculate user's share of the removed ETH
-                    uint256 userShare = (ethToRemove * 100) / currentRatio;
-                    totalUserEth += userShare;
-                    pos.totalEth += ethToRemove - userShare;
-                    
-                    positionNFT.removeCollateral(
-                        positionId,
-                        payable(address(this)),
-                        ethToRemove,
-                        ethUsdPrice,
-                        priceDecimals
-                    );
                 }
 
                 
@@ -505,6 +493,33 @@ contract StabilizerNFT is
         pos.minCollateralRatio = newRatio;
 
         emit MinCollateralRatioUpdated(tokenId, oldRatio, newRatio);
+    }
+
+    function _calculateUnallocation(
+        IUspdCollateralizedPositionNFT.Position memory position,
+        uint256 uspdToUnallocate,
+        bool isFullUnallocation,
+        uint256 ethUsdPrice,
+        uint256 priceDecimals
+    ) internal view returns (uint256 ethToRemove, uint256 userShare) {
+        if (isFullUnallocation) {
+            ethToRemove = position.allocatedEth;
+            userShare = (position.allocatedEth * 100) / positionNFT.getCollateralizationRatio(
+                positionId,
+                ethUsdPrice,
+                uint8(priceDecimals)
+            );
+        } else {
+            uint256 currentRatio = positionNFT.getCollateralizationRatio(
+                positionId,
+                ethUsdPrice,
+                uint8(priceDecimals)
+            );
+            uint256 newBackedUspd = position.backedUspd - uspdToUnallocate;
+            uint256 newRequiredEth = (currentRatio * newBackedUspd * (10**priceDecimals)) / (ethUsdPrice * 100);
+            ethToRemove = position.allocatedEth - newRequiredEth;
+            userShare = (ethToRemove * 100) / currentRatio;
+        }
     }
 
     receive() external payable {}
