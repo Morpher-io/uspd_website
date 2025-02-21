@@ -5,9 +5,10 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgrad
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./oracle/OracleEntrypoint.sol";
-import "./PriceOracleStorage.sol";
 import "../lib/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../lib/v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
+import "../lib/chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 error PriceDataTooOld(uint timestamp, uint currentTime);
 error PriceDeviationTooHigh(uint morpherPrice, uint chainlinkPrice, uint uniswapPrice);
@@ -19,19 +20,47 @@ error PriceSourceUnavailable(string source);
 contract PriceOracle is 
     Initializable, 
     PausableUpgradeable,
-    AccessControlUpgradeable,
-    PriceOracleStorage
+    AccessControlUpgradeable
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     uint256 public constant PRICE_PRECISION = 1e18;
     uint256 public maxDeviationPercentage = 500; // 5% = 500 basis points
-    struct ResponseWithExpenses {
-        uint value;
-        uint expenses;
+
+
+    struct PriceResponse {
+        uint256 price;
+        uint8 decimals;
+        uint256 timestamp;
     }
 
+    struct PriceAttestationQuery {
+        uint256 price;
+        uint8 decimals;
+        uint256 dataTimestamp;
+        bytes32 assetPair;
+        bytes signature;
+    }
+
+    struct PriceConfig {
+        uint256 maxPriceDeviation;
+        uint256 priceStalenessPeriod;
+
+    }
+
+    // Storage variables
+    address public usdcAddress;
+    address public priceProvider;
+    
+    PriceConfig public config;
+    
+    bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
+
+    // Mappings
+    mapping(bytes32 => PriceResponse) public lastPrices;
+    mapping(address => bool) public authorizedSigners;
+
    
-    // IUniswapV2Router02 public uniswapRouter;
+    IUniswapV2Router02 public uniswapRouter;
     AggregatorV3Interface internal dataFeed;
 
 
@@ -60,9 +89,8 @@ contract PriceOracle is
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
-        this.config.priceProvider = _priceProvider;
-        this.config.maxPriceDeviation = _maxPriceDeviation;
-        this.config.priceStalenessPeriod = _priceStalenessPeriod;
+        config.maxPriceDeviation = _maxPriceDeviation;
+        config.priceStalenessPeriod = _priceStalenessPeriod;
     }
 
 
@@ -118,20 +146,18 @@ contract PriceOracle is
         return (1e18 * answer) / 1e8; //converted to 18 digits
     }
 
-    function getOracleCommission() public view returns (uint) {
-        return oracle.prices(priceProvider, PRICE_FEED_ETH_USD);
-    }
-
     function verifySignature(
-        string memory price,
+        uint256 price,
+        uint256 decimals,
         uint256 timestamp,
-        string memory assetPair,
+        bytes32 assetPair,
         bytes memory signature
     ) public pure returns (address) {
         // Recreate the message hash that was signed
         bytes32 messageHash = keccak256(
             abi.encodePacked(
                 price,
+                decimals,
                 timestamp,
                 assetPair
             )
@@ -166,28 +192,25 @@ contract PriceOracle is
         return (r, s, v);
     }
 
-    function getEthUsdPrice() public payable returns (PriceResponse memory) {
+    function attestationService(PriceAttestationQuery calldata priceQuery) public payable returns (PriceResponse memory) {
+        
+        //custom error message
         if (paused()) {
             revert OraclePaused();
         }
 
-        uint expenses = oracle.prices(priceProvider, PRICE_FEED_ETH_USD);
+        if(authorizedSigners[verifySignature(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp, priceQuery.assetPair, priceQuery.signature)] != true) {
+            revert InvalidSignature();
+        }
         
-        // Get Morpher price
-        bytes32 response = oracle.consumeData{value: expenses}(
-            priceProvider,
-            PRICE_FEED_ETH_USD
-        );
-        
-        (uint256 morpherPrice, uint8 decimals, uint256 timestamp) = _decodeMorpherResponse(response);
-        
-        if (decimals != 18) {
-            revert InvalidDecimals(18, decimals);
+       
+        if (priceQuery.decimals != 18) {
+            revert InvalidDecimals(18, priceQuery.decimals);
         }
 
         // Check timestamp staleness
-        if (timestamp <= 1000 * (block.timestamp - priceStalenessPeriod)) {
-            revert PriceDataTooOld(timestamp, block.timestamp);
+        if (priceQuery.dataTimestamp <= 1000 * (block.timestamp - config.priceStalenessPeriod)) {
+            revert PriceDataTooOld(priceQuery.dataTimestamp, block.timestamp);
         }
 
         // Get prices from other sources
@@ -202,21 +225,11 @@ contract PriceOracle is
         }
 
         // Check price deviations
-        if (!_isPriceDeviationAcceptable(morpherPrice, chainlinkPrice, uniswapV3Price)) {
-            revert PriceDeviationTooHigh(morpherPrice, chainlinkPrice, uniswapV3Price);
+        if (!_isPriceDeviationAcceptable(priceQuery.price, chainlinkPrice, uniswapV3Price)) {
+            revert PriceDeviationTooHigh(priceQuery.price, chainlinkPrice, uniswapV3Price);
         }
 
-        return PriceResponse(morpherPrice, decimals, timestamp);
-    }
-
-    function _decodeMorpherResponse(bytes32 response) internal pure returns (uint256 price, uint8 decimals, uint256 timestamp) {
-        uint256 asUint = uint256(response);
-        timestamp = asUint >> (26 * 8);
-        decimals = uint8((asUint >> (25 * 8)) - timestamp * (2 ** 8));
-        price = uint256(
-            asUint - timestamp * (2 ** (26 * 8)) - decimals * (2 ** (25 * 8))
-        );
-        return (price, decimals, timestamp);
+        return PriceResponse(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp);
     }
 
     function _isPriceDeviationAcceptable(
@@ -225,7 +238,7 @@ contract PriceOracle is
         uint256 uniswapPrice
     ) internal view returns (bool) {
         // Calculate max allowed deviation
-        uint256 maxDeviation = (morpherPrice * maxDeviationPercentage) / 10000;
+        uint256 maxDeviation = (morpherPrice * config.maxPriceDeviation) / 10000;
 
         // Check deviation between Morpher and Chainlink
         if (
@@ -255,6 +268,6 @@ contract PriceOracle is
     }
 
     function setMaxDeviationPercentage(uint256 _maxDeviationPercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        maxDeviationPercentage = _maxDeviationPercentage;
+        config.maxPriceDeviation = _maxDeviationPercentage;
     }
 }
