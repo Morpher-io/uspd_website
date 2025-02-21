@@ -142,30 +142,16 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
 
-        // Set ETH price to $2800
-        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        vm.warp(3000000);
-        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        vm.warp(10000);
-
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
 
-        // Send ETH directly to USPD contract
+        // Try to send ETH directly to USPD contract - should revert
         vm.prank(uspdBuyer);
+        vm.expectRevert("Direct ETH transfers not supported. Use mint() with price attestation.");
         (bool success, ) = address(uspdToken).call{value: 1 ether}("");
-        require(success, "ETH transfer failed");
-
-        // Verify USPD balance
-        uint256 expectedBalance = ((1 ether -
-            priceOracle.getOracleCommission()) * 2800 ether) / 1 ether;
-        assertEq(
-            uspdToken.balanceOf(uspdBuyer),
-            expectedBalance,
-            "Incorrect USPD balance after direct ETH transfer"
-        );
+        require(!success, "Direct transfer should fail");
     }
 
     function testMintWithToAddress() public {
@@ -433,100 +419,6 @@ contract USPDTokenTest is Test {
         );
     }
 
-    function setOracleData(
-        uint dataPointPrice,
-        bytes32 dataPointKey,
-        address consumer
-    ) public {
-        uint nonce = oracleEntrypoint.nonces(oracleSigner);
-        bytes32 encodedData = (bytes32(block.timestamp * 1000) << (26 * 8)) |
-            (bytes32(uint256(18)) << (25 * 8)) |
-            bytes32(dataPointPrice);
-
-        vm.startPrank(oracleSigner);
-        // bytes memory prefix = "\x19Oracle Signed Price Change:\n116";
-        bytes32 prefixedHashMessage = keccak256(
-            abi.encodePacked(
-                // prefix,
-                abi.encodePacked(
-                    oracleSigner,
-                    consumer,
-                    nonce,
-                    dataPointKey,
-                    encodedData
-                )
-            )
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            oraclePrivateKey,
-            prefixedHashMessage
-        );
-        // bytes memory signature = abi.encodePacked(r, s, v); // note the order here is different from line above.
-        oracleEntrypoint.storeData(
-            oracleSigner,
-            consumer,
-            nonce,
-            dataPointKey,
-            encodedData,
-            r,
-            s,
-            v
-        );
-        vm.stopPrank();
-    }
-
-    function setDataPriceInOracle(
-        uint priceToSet,
-        bytes32 dataPointKey
-    ) internal {
-        uint nonce = oracleEntrypoint.nonces(oracleSigner);
-
-        vm.startPrank(oracleSigner);
-        bytes memory prefix = "\x19Oracle Signed Price Change:\n116"; //TODO?
-        bytes32 prefixedHashMessage = keccak256(
-            abi.encodePacked(
-                prefix,
-                abi.encodePacked(oracleSigner, nonce, dataPointKey, priceToSet)
-            )
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            oraclePrivateKey,
-            prefixedHashMessage
-        );
-        // bytes memory signature = abi.encodePacked(r, s, v); // note the order here is different from line above.
-        oracleEntrypoint.setPrice(
-            oracleSigner,
-            nonce,
-            dataPointKey,
-            priceToSet,
-            r,
-            s,
-            v
-        );
-        vm.stopPrank();
-    }
-
-    function getEthUsdPrice() internal returns (uint ethPrice) {
-        uint expenses = oracleEntrypoint.prices(
-            oracleSigner,
-            PRICE_FEED_ETH_USD
-        );
-        // pay now, then get the funds from sender
-        bytes32 response = oracleEntrypoint.consumeData{value: expenses}(
-            oracleSigner,
-            PRICE_FEED_ETH_USD
-        );
-        uint256 asUint = uint256(response);
-        uint256 timestamp = asUint >> (26 * 8);
-        // lets take 5 minutes for testing purposes now
-
-        uint8 decimals = uint8((asUint >> (25 * 8)) - timestamp * (2 ** 8));
-
-        uint256 price = uint256(
-            asUint - timestamp * (2 ** (26 * 8)) - decimals * (2 ** (25 * 8))
-        );
-        return price;
-    }
 }
 
 contract RevertingContract {
