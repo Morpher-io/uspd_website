@@ -15,18 +15,49 @@ import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract USPDTokenTest is Test {
-    uint256 internal oraclePrivateKey;
-    address internal oracleSigner;
-
     uint256 internal signerPrivateKey;
-
-    OracleEntrypoint oracleEntrypoint;
+    address internal signer;
+    
     PriceOracle priceOracle;
     StabilizerNFT public stabilizerNFT;
     UspdCollateralizedPositionNFT positionNFT;
     USPD uspdToken;
 
-    bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
+    bytes32 public constant ETH_USD_PAIR = keccak256("ETH_USD");
+    
+    // Mainnet addresses
+    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant UNISWAP_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address public constant CHAINLINK_ETH_USD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+
+    function createSignedPriceAttestation(
+        uint256 price,
+        uint256 timestamp
+    ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
+            price: price,
+            decimals: 18,
+            dataTimestamp: timestamp,
+            assetPair: ETH_USD_PAIR,
+            signature: bytes("")
+        });
+
+        // Create message hash
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                query.price,
+                query.decimals,
+                query.dataTimestamp,
+                query.assetPair
+            )
+        );
+
+        // Sign the message
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, messageHash);
+        query.signature = abi.encodePacked(r, s, v);
+
+        return query;
+    }
 
     function setUp() public {
         // Setup oracle
