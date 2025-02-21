@@ -394,14 +394,14 @@ contract StabilizerNFT is
                     );
                     
                     // First modify the USPD allocation
-                    uint256 newBackedUspd = position.backedUspd - uspdToUnallocate;
-                    positionNFT.modifyAllocation(positionId, newBackedUspd);
+                    
+                    positionNFT.modifyAllocation(positionId, position.backedUspd - uspdToUnallocate);
                     
                     // Calculate ETH amount to remove while maintaining the same ratio
                     // newRatio = (newEth * price) / (newBackedUspd)
                     // currentRatio = newRatio
                     // Therefore: newEth = (currentRatio * newBackedUspd) / price
-                    uint256 newRequiredEth = (currentRatio * newBackedUspd * (10**priceDecimals)) / (ethUsdPrice * 100);
+                    uint256 newRequiredEth = (currentRatio * (position.backedUspd - uspdToUnallocate) * (10**priceDecimals)) / (ethUsdPrice * 100);
                     uint256 ethToRemove = position.allocatedEth - newRequiredEth;
                     
                     positionNFT.removeCollateral(
