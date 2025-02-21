@@ -135,6 +135,50 @@ contract PriceOracle is
         return oracle.prices(priceProvider, PRICE_FEED_ETH_USD);
     }
 
+    function verifySignature(
+        string memory price,
+        uint256 timestamp,
+        string memory assetPair,
+        bytes memory signature
+    ) public pure returns (address) {
+        // Recreate the message hash that was signed
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                price,
+                timestamp,
+                assetPair
+            )
+        );
+
+        // Prefix the hash with Ethereum Signed Message
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
+
+        // Recover the signer address
+        (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
+        address signer = ecrecover(prefixedHash, v, r, s);
+        require(signer != address(0), "Invalid signature");
+        return signer;
+    }
+
+    function splitSignature(bytes memory sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
+        require(sig.length == 65, "Invalid signature length");
+
+        assembly {
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+        
+        if (v < 27) {
+            v += 27;
+        }
+
+        require(v == 27 || v == 28, "Invalid signature v value");
+        return (r, s, v);
+    }
+
     function getEthUsdPrice() public payable whenNotPaused returns (PriceResponse memory) {
         if (paused()) {
             revert OraclePaused();
