@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
+import "./interfaces/IPriceOracle.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
@@ -18,6 +19,7 @@ error InvalidDecimals(uint8 expected, uint8 actual);
 error PriceSourceUnavailable(string source);
 
 contract PriceOracle is 
+    IPriceOracle,
     Initializable, 
     PausableUpgradeable,
     AccessControlUpgradeable
