@@ -11,6 +11,8 @@ error PriceDataTooOld(uint timestamp, uint currentTime);
 error PriceDeviationTooHigh(uint morpherPrice, uint chainlinkPrice, uint uniswapPrice);
 error InvalidSignature();
 error OraclePaused();
+error InvalidDecimals(uint8 expected, uint8 actual);
+error PriceSourceUnavailable(string source);
 
 contract PriceOracle is 
     PriceOracleStorage, 
@@ -18,6 +20,9 @@ contract PriceOracle is
     PausableUpgradeable,
     AccessControlUpgradeable
 {
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    uint256 public constant PRICE_PRECISION = 1e18;
+    uint256 public maxDeviationPercentage = 500; // 5% = 500 basis points
     struct ResponseWithExpenses {
         uint value;
         uint expenses;
@@ -131,27 +136,94 @@ contract PriceOracle is
     }
 
     function getEthUsdPrice() public payable whenNotPaused returns (PriceResponse memory) {
+        if (paused()) {
+            revert OraclePaused();
+        }
+
         uint expenses = oracle.prices(priceProvider, PRICE_FEED_ETH_USD);
-        // pay now, then get the funds from sender
+        
+        // Get Morpher price
         bytes32 response = oracle.consumeData{value: expenses}(
             priceProvider,
             PRICE_FEED_ETH_USD
         );
-        uint256 asUint = uint256(response);
-        uint256 timestamp = asUint >> (26 * 8);
-        // lets take 5 minutes for testing purposes now
-        if (timestamp <= 1000 * (block.timestamp - 5 * 60)) {
+        
+        (uint256 morpherPrice, uint8 decimals, uint256 timestamp) = _decodeMorpherResponse(response);
+        
+        if (decimals != 18) {
+            revert InvalidDecimals(18, decimals);
+        }
+
+        // Check timestamp staleness
+        if (timestamp <= 1000 * (block.timestamp - priceStalenessPeriod)) {
             revert PriceDataTooOld(timestamp, block.timestamp);
         }
-        uint8 decimals = uint8((asUint >> (25 * 8)) - timestamp * (2 ** 8));
-        require(decimals == 18, "Oracle response with wrong decimals!");
-        uint256 price = uint256(
+
+        // Get prices from other sources
+        uint256 chainlinkPrice = uint256(getChainlinkDataFeedLatestAnswer());
+        if (chainlinkPrice == 0) {
+            revert PriceSourceUnavailable("Chainlink");
+        }
+
+        uint256 uniswapV3Price = getUniswapV3WethUsdcPrice();
+        if (uniswapV3Price == 0) {
+            revert PriceSourceUnavailable("Uniswap V3");
+        }
+
+        // Check price deviations
+        if (!_isPriceDeviationAcceptable(morpherPrice, chainlinkPrice, uniswapV3Price)) {
+            revert PriceDeviationTooHigh(morpherPrice, chainlinkPrice, uniswapV3Price);
+        }
+
+        return PriceResponse(morpherPrice, decimals, timestamp);
+    }
+
+    function _decodeMorpherResponse(bytes32 response) internal pure returns (uint256 price, uint8 decimals, uint256 timestamp) {
+        uint256 asUint = uint256(response);
+        timestamp = asUint >> (26 * 8);
+        decimals = uint8((asUint >> (25 * 8)) - timestamp * (2 ** 8));
+        price = uint256(
             asUint - timestamp * (2 ** (26 * 8)) - decimals * (2 ** (25 * 8))
         );
-        return PriceResponse(price, 18, timestamp);
+        return (price, decimals, timestamp);
+    }
 
-        // uint chainlinkPrice = uint(getChainlinkDataFeedLatestAnswer());
-        // // return chainlinkPrice; //removed the fee/risk model for the demo
-        // uint uniswapV3PriceUSDC = getUniswapV3WethUsdcPrice();
+    function _isPriceDeviationAcceptable(
+        uint256 morpherPrice,
+        uint256 chainlinkPrice,
+        uint256 uniswapPrice
+    ) internal view returns (bool) {
+        // Calculate max allowed deviation
+        uint256 maxDeviation = (morpherPrice * maxDeviationPercentage) / 10000;
+
+        // Check deviation between Morpher and Chainlink
+        if (
+            morpherPrice > chainlinkPrice + maxDeviation ||
+            morpherPrice + maxDeviation < chainlinkPrice
+        ) {
+            return false;
+        }
+
+        // Check deviation between Morpher and Uniswap
+        if (
+            morpherPrice > uniswapPrice + maxDeviation ||
+            morpherPrice + maxDeviation < uniswapPrice
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    function pause() external onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(PAUSER_ROLE) {
+        _unpause();
+    }
+
+    function setMaxDeviationPercentage(uint256 _maxDeviationPercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        maxDeviationPercentage = _maxDeviationPercentage;
     }
 }
