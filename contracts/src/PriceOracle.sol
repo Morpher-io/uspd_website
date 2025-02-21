@@ -68,7 +68,10 @@ contract PriceOracle is
 
     function initialize(
         uint256 _maxPriceDeviation,
-        uint256 _priceStalenessPeriod
+        uint256 _priceStalenessPeriod,
+        address _usdcAddress,
+        address _uniswapRouter,
+        address _chainlinkAggregator
     ) public initializer {
         __Pausable_init();
         __AccessControl_init();
@@ -77,6 +80,10 @@ contract PriceOracle is
 
         config.maxPriceDeviation = _maxPriceDeviation;
         config.priceStalenessPeriod = _priceStalenessPeriod;
+        
+        usdcAddress = _usdcAddress;
+        uniswapRouter = IUniswapV2Router02(_uniswapRouter);
+        dataFeed = AggregatorV3Interface(_chainlinkAggregator);
     }
 
 
