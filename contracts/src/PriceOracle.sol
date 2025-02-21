@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/security/PausableUpgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./oracle/OracleEntrypoint.sol";
 import "./PriceOracleStorage.sol";
 
@@ -16,7 +15,6 @@ error OraclePaused();
 contract PriceOracle is 
     PriceOracleStorage, 
     Initializable, 
-    ERC721Upgradeable,
     PausableUpgradeable,
     AccessControlUpgradeable
 {

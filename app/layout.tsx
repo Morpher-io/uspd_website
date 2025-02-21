@@ -1,20 +1,18 @@
-import './components.css'
-import './globals.css'
-import './morpher-uspd.css'
-import './normalize.css'
 
 
-
+import { Footer as NextraFooter, Layout, Navbar } from 'nextra-theme-docs'
+import { Footer } from '@/components/Footer';
+import { Banner, Head } from 'nextra/components'
+import { getPageMap } from 'nextra/page-map'
 
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from './providers';
 import { Inter } from 'next/font/google'
 import type { Metadata } from 'next'
-import { ThemeProvider } from "./theme-provider";
-import {Footer} from '@/components/Footer';
 import { Toaster } from "react-hot-toast";
+import "./globals.css"
 
-import { url } from 'inspector';
+
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,34 +28,60 @@ export const metadata: Metadata = {
     images: [{
       url: "images/og_uspd.png",
     }],
-    
-  },
-  viewport: 'width=device-width, initial-scale=1'
+
+  }
 
 }
 
 
-export default function RootLayout({
+const navbar = (
+  <Navbar
+    logo={<b>USPD</b>}
+  // ... Your additional navbar options
+  />
+)
+const footer = <NextraFooter><Footer /></NextraFooter>
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <head>
+    <html // Not required, but good for SEO
+      lang="en"
+      // Required to be set
+      dir="ltr"
+      // Suggested by `next-themes` package https://github.com/pacocoursey/next-themes#with-app
+      suppressHydrationWarning>
+      <Head>
         <link href="images/favicon.png" rel="shortcut icon" type="image/x-icon" />
         <link href="images/webclip.png" rel="apple-touch-icon" />
-      </head>
+      </Head>
       <body className={`${inter.className} duration-200`}>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-         
-          <Providers>{children}</Providers>
-        </ThemeProvider>
-        <Footer></Footer>
-        
+        <Layout
+          navbar={navbar}
+          pageMap={await getPageMap()}
+          docsRepositoryBase="https://github.com/morpher-io/uspd"
+          footer={footer}
+        // ... Your additional layout options
+        >
+          
+
+            <Providers>
+              
+              {children}
+            </Providers>
+
+
+        </Layout>
+
         <Toaster position="bottom-center" />
 
       </body>
     </html>
   )
 }
+
+
+

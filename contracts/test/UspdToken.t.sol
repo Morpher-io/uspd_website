@@ -238,6 +238,13 @@ contract USPDTokenTest is Test {
     }
 
     function testBurnWithoutOracleCommission() public {
+
+        // Set ETH price to $2800
+        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        vm.warp(3000000);
+        setOracleData(2500 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        vm.warp(10000);
+
         vm.expectRevert("UspdToken: Oracle comission needs to be paid on burn");
         uspdToken.burn(100, payable(address(this)));
     }
@@ -247,7 +254,14 @@ contract USPDTokenTest is Test {
         vm.deal(user, 1 ether);
 
         vm.prank(user);
-        vm.expectRevert("ERC20: burn amount exceeds balance");
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("ERC20InsufficientBalance(address,uint256,uint256)")),
+                user,
+                0,
+                100 ether
+            )
+        );
         uspdToken.burn{value: 0.1 ether}(100 ether, payable(user));
     }
 
@@ -261,7 +275,9 @@ contract USPDTokenTest is Test {
 
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        vm.warp(3000000);
         setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        vm.warp(10000);
 
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
@@ -294,7 +310,9 @@ contract USPDTokenTest is Test {
 
         // Set ETH price to $2800
         setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
+        vm.warp(3000000);
         setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
+        vm.warp(10000);
 
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);

@@ -85,13 +85,13 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         require(to != address(0), "Invalid recipient");
         require(msg.value >= oracle.getOracleCommission(), "UspdToken: Oracle comission needs to be paid on burn");
 
+        // Burn USPD tokens first
+        _burn(msg.sender, amount);
+
         // Get current ETH price
         PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
             value: oracle.getOracleCommission()
         }();
-
-        // Burn USPD tokens first
-        _burn(msg.sender, amount);
 
         // Unallocate funds from stabilizers
         uint256 unallocatedEth = stabilizer.unallocateStabilizerFunds(

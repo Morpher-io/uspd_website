@@ -25,6 +25,9 @@ COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY ./nginx/.htpasswd /etc/nginx/conf.d/.htpasswd
 
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost/health || exit 1
+
 # RUN sed -ri -e "s!chunk-vendors.2.js!chunk-vendors.latest.js!g" /etc/nginx/conf.d/default.conf
 
 

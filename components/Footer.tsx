@@ -1,34 +1,21 @@
-"use client";
-import { useState, useEffect } from "react";
-
+import Link from "next/link";
 
 export const Footer = () => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-
-  if (!mounted) {
-    return null;
-  }
-
-
   return (
-    <div className="footer">
-        <div className="footer-container">
+    <div className="flex justify-between min-w-max container">
+
           <div>
-            <p className="footer-cc">© Permissionless Technologies 2024</p>
+            <p className="">© Permissionless Technologies 2024</p>
           </div>
-          <div className="footer-links">
-            <a href="https://docsend.com/view/ifeip6bksazscjf8" target="_blank" className="footer-link">Deck</a>
-            <a href="https://docsend.com/view/hccjyq4i6th6myk4" target="_blank" className="footer-link">Simulation</a>
-            <a href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank" className="footer-link">Risk Analysis</a>
-            <a href="https://docsend.com/view/tdqrj9us6hp7dn2b" target="_blank" className="footer-link">Litepaper</a>
-            <a href="https://t.me/+V9hBnsllQVY5YWU0" target="_blank" className="footer-link">Join Telegram</a>
+          <div className="flex flex-row gap-x-8">
+            <Link href="https://docsend.com/view/ifeip6bksazscjf8" target="_blank" className="px-2">Deck</Link>
+            <Link href="https://docsend.com/view/hccjyq4i6th6myk4" target="_blank" >Simulation</Link>
+            <Link href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank" >Risk Analysis</Link>
+            <Link href="https://docsend.com/view/tdqrj9us6hp7dn2b" target="_blank" >Litepaper</Link>
+            <Link href="https://t.me/+V9hBnsllQVY5YWU0" target="_blank">Join Telegram</Link>
           </div>
-        </div>
+
       </div>
   );
 };
+
