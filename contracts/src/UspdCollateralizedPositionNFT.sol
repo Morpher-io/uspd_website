@@ -88,9 +88,7 @@ contract UspdCollateralizedPositionNFT is
         // If position backs no USPD, we can remove any amount of ETH
         if (_positions[tokenId].backedUspd > 0) {
             // Get current ETH price
-            PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
-                value: oracle.getOracleCommission()
-            }();
+            PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice();
             
             // Calculate new collateral ratio after transfer
             uint256 remainingEth = _positions[tokenId].allocatedEth - amount;

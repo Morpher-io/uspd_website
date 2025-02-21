@@ -69,7 +69,7 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         _mint(to, uspdToMint);
 
         // Return any unallocated ETH
-        uint256 leftover = msg.value - result.allocatedEth - oracleCommission;
+        uint256 leftover = msg.value - result.allocatedEth;
         if (leftover > 0) {
             payable(msg.sender).transfer(leftover);
         }
