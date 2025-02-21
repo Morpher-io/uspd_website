@@ -28,21 +28,6 @@ contract PriceOracle is
     uint256 public constant PRICE_PRECISION = 1e18;
     uint256 public maxDeviationPercentage = 500; // 5% = 500 basis points
 
-
-    struct PriceResponse {
-        uint256 price;
-        uint8 decimals;
-        uint256 timestamp;
-    }
-
-    struct PriceAttestationQuery {
-        uint256 price;
-        uint8 decimals;
-        uint256 dataTimestamp;
-        bytes32 assetPair;
-        bytes signature;
-    }
-
     struct PriceConfig {
         uint256 maxPriceDeviation;
         uint256 priceStalenessPeriod;
@@ -82,7 +67,6 @@ contract PriceOracle is
     }
 
     function initialize(
-        address _priceProvider,
         uint256 _maxPriceDeviation,
         uint256 _priceStalenessPeriod
     ) public initializer {
