@@ -39,9 +39,6 @@ contract StabilizerNFT is
     uint256 public lowestAllocatedId;
     uint256 public highestAllocatedId;
 
-    // Mapping from stabilizer ID to position NFT ID
-    mapping(uint256 => uint256) public stabilizerToPosition;
-
     // USPD token contract
     USPDToken public uspdToken;
 
@@ -386,7 +383,6 @@ contract StabilizerNFT is
                         ethUsdPrice,
                         priceDecimals
                     );
-                    delete stabilizerToPosition[currentId];
                     _removeFromAllocatedList(currentId);
                 } else {
                     // Partial unallocation
