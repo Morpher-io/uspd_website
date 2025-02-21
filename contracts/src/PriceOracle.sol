@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0
-
 pragma solidity ^0.8.20;
 
-// import "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
-// import "v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
-// import "v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-// import "uniswap-v2-periphery/interfaces/IUniswapV2Router02.sol";
-
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./oracle/OracleEntrypoint.sol";
 
-contract PriceOracle {
+error PriceDataTooOld(uint timestamp, uint currentTime);
+error InvalidSignature();
+error OraclePaused();
+
+contract PriceOracle is Pausable {
     struct ResponseWithExpenses {
         uint value;
         uint expenses;
@@ -101,7 +99,7 @@ contract PriceOracle {
         return oracle.prices(priceProvider, PRICE_FEED_ETH_USD);
     }
 
-    function getEthUsdPrice() public payable returns (PriceResponse memory) {
+    function getEthUsdPrice() public payable whenNotPaused returns (PriceResponse memory) {
         uint expenses = oracle.prices(priceProvider, PRICE_FEED_ETH_USD);
         // pay now, then get the funds from sender
         bytes32 response = oracle.consumeData{value: expenses}(
@@ -111,7 +109,9 @@ contract PriceOracle {
         uint256 asUint = uint256(response);
         uint256 timestamp = asUint >> (26 * 8);
         // lets take 5 minutes for testing purposes now
-        require(timestamp > 1000 * (block.timestamp - 5 * 60), "Data too old!");
+        if (timestamp <= 1000 * (block.timestamp - 5 * 60)) {
+            revert PriceDataTooOld(timestamp, block.timestamp);
+        }
         uint8 decimals = uint8((asUint >> (25 * 8)) - timestamp * (2 ** 8));
         require(decimals == 18, "Oracle response with wrong decimals!");
         uint256 price = uint256(
