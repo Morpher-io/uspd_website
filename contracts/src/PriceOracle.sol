@@ -45,6 +45,7 @@ contract PriceOracle is
     // Mappings
     mapping(bytes32 => PriceResponse) public lastPrices;
     mapping(address => bool) public authorizedSigners;
+    bytes32 public constant SIGNER_ROLE = keccak256("SIGNER_ROLE");
 
    
     IUniswapV2Router02 public uniswapRouter;
@@ -192,7 +193,8 @@ contract PriceOracle is
             revert OraclePaused();
         }
 
-        if(authorizedSigners[verifySignature(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp, priceQuery.assetPair, priceQuery.signature)] != true) {
+        address signer = verifySignature(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp, priceQuery.assetPair, priceQuery.signature);
+        if (!hasRole(SIGNER_ROLE, signer)) {
             revert InvalidSignature();
         }
         

@@ -81,8 +81,8 @@ contract USPDTokenTest is Test {
         );
         priceOracle = PriceOracle(address(proxy));
         
-        // Add signer as authorized
-        priceOracle.grantRole(keccak256("SIGNER_ROLE"), signer);
+        // Add signer as authorized signer
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
 
         // Deploy USPD token with oracle and temporary zero address for stabilizer
         uspdToken = new USPD(address(priceOracle), address(0));
