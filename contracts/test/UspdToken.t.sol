@@ -30,9 +30,12 @@ contract USPDTokenTest is Test {
     address public constant CHAINLINK_ETH_USD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
 
     function createSignedPriceAttestation(
-        uint256 price,
         uint256 timestamp
     ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
+        // Get current price from Uniswap
+        uint256 price = priceOracle.getUniswapV3WethUsdcPrice();
+        require(price > 0, "Failed to get price from Uniswap");
+
         IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
             price: price,
             decimals: 18,
@@ -163,9 +166,8 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
 
-        // Create price attestation for $2800
+        // Create price attestation with current Uniswap price
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
-            2800 ether,
             block.timestamp * 1000
         );
 
