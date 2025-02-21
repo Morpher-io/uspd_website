@@ -343,7 +343,7 @@ contract StabilizerNFT is
 
             StabilizerPosition storage pos = positions[currentId];
             uint256 positionId = positionNFT.getTokenByOwner(ownerOf(currentId));
-
+            uint ethToRemove;
             if (positionId != 0) {
                 IUspdCollateralizedPositionNFT.Position
                     memory position = positionNFT.getPosition(positionId);
@@ -361,6 +361,7 @@ contract StabilizerNFT is
                     totalUserEth += userShare;
                     pos.totalEth += position.allocatedEth - userShare;
 
+                    ethToRemove = position.allocatedEth;
                     positionNFT.modifyAllocation(positionId, 0);
                     positionNFT.removeCollateral(
                         positionId,
@@ -377,7 +378,7 @@ contract StabilizerNFT is
                     
                     // Calculate new required ETH to maintain same ratio
                     uint256 newRequiredEth = (currentRatio * newBackedUspd * (10**priceDecimals)) / (ethUsdPrice * 100);
-                    uint256 ethToRemove = position.allocatedEth - newRequiredEth;
+                    ethToRemove = position.allocatedEth - newRequiredEth;
                     
                     // Calculate user's share of the removed ETH
                     uint256 userShare = (ethToRemove * 100) / currentRatio;
