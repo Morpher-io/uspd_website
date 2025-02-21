@@ -160,15 +160,14 @@ contract USPDTokenTest is Test {
         address uspdBuyer = makeAddr("uspdBuyer");
         address recipient = makeAddr("recipient");
 
-        vm.deal(address(priceOracle), 10 ether);
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
 
-        // Set ETH price to $2800
-        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        vm.warp(3000000);
-        setOracleData(2800 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        vm.warp(10000);
+        // Create price attestation for $2800
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
+            2800 ether,
+            block.timestamp * 1000
+        );
 
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
@@ -177,11 +176,10 @@ contract USPDTokenTest is Test {
 
         // Mint USPD tokens to a specific address
         vm.prank(uspdBuyer);
-        uspdToken.mint{value: 1 ether}(recipient);
+        uspdToken.mint{value: 1 ether}(recipient, priceQuery);
 
         // Verify USPD balance of recipient
-        uint256 expectedBalance = ((1 ether -
-            priceOracle.getOracleCommission()) * 2800 ether) / 1 ether;
+        uint256 expectedBalance = (1 ether * 2800 ether) / 1 ether;
         assertEq(
             uspdToken.balanceOf(recipient),
             expectedBalance,
