@@ -34,13 +34,13 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         _grantRole(UPDATE_ORACLE_ROLE, msg.sender);
     }
 
-    function mint(address to, uint256 maxUspdAmount) public payable {
-        PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
-            value: oracle.getOracleCommission()
-        }();
-
-        uint256 oracleCommission = oracle.getOracleCommission();
-        uint256 ethForAllocation = msg.value - oracleCommission;
+    function mint(
+        address to, 
+        uint256 maxUspdAmount,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) public payable {
+        IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
+        uint256 ethForAllocation = msg.value;
 
         // Calculate ETH to stabilize based on maxUspdAmount
         if (maxUspdAmount > 0) {
@@ -76,22 +76,26 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
     }
 
     // Fallback to mint without max amount when ETH is sent directly
-    function mint(address to) public payable {
-        mint(to, 0); // 0 means no maximum
+    function mint(
+        address to,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) public payable {
+        mint(to, 0, priceQuery); // 0 means no maximum
     }
 
-    function burn(uint amount, address payable to) public payable {
+    function burn(
+        uint amount, 
+        address payable to,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) public {
         require(amount > 0, "Amount must be greater than 0");
         require(to != address(0), "Invalid recipient");
-        require(msg.value >= oracle.getOracleCommission(), "UspdToken: Oracle comission needs to be paid on burn");
 
         // Burn USPD tokens first
         _burn(msg.sender, amount);
 
         // Get current ETH price
-        PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
-            value: oracle.getOracleCommission()
-        }();
+        IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
 
         // Unallocate funds from stabilizers
         uint256 unallocatedEth = stabilizer.unallocateStabilizerFunds(
@@ -103,7 +107,7 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         emit Payout(to, amount, unallocatedEth, oracleResponse.price);
 
         // Transfer unallocated ETH to recipient
-        (bool success, ) = to.call{value: unallocatedEth + msg.value - oracle.getOracleCommission()}("");
+        (bool success, ) = to.call{value: unallocatedEth}("");
         require(success, "ETH transfer failed");
     }
 
@@ -150,7 +154,8 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         // ETH will be held here until transferred to user in mint or burn
     }
 
+    // Disabled direct ETH receiving since we need price attestation
     receive() external payable {
-        mint(msg.sender);
+        revert("Direct ETH transfers not supported. Use mint() with price attestation.");
     }
 }
