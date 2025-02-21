@@ -1,0 +1,147 @@
+# Oracle Integration Steps
+
+## Overview
+This document outlines the step-by-step process to implement a pull-based price oracle system with multi-source price validation and signature verification.
+
+## General Instructions
+
+Signing Schema: ECDSA - where an ethereum private key can sign a message and it can be verified that the message was signed and matches an ethereum address with ecrecover. 
+
+The private key will be given to the nextjs app during bootup. 
+
+The app is currently running on AWS in a docker container (there is a Dockerfile that builds out the app statically, but that will be changed later so it actually runs the nextjs server. The private key will be injected as an evironment variable in the container which comes from an AWS secrets store). 
+
+There is currently only a single signer. 
+
+For the datapoints, there are a few more datapoints: there is price, dataTimestamp, requestTimestamp, signature, assetPair (which is currently only MORPHER:ETH_USD and should be checked in the price oracle). 
+
+There are 8 decimals, which should suffice. However, there is a caveat: The oracle contract should also get the prices from Chainlinks ETH-USD pair (currently commented out in the contract) and also the prices of ETH/USDT and ETH/USDC from the uniswap pool. The oracle then should check if the prices don't deviate more than 5% from each other and only then actually deliver the ETH/USD price from Morpher back to the requesting contract. So, we can choose a decimal precision that is convenient enough to work with the different contracts. 
+
+The general flow is that USPDToken should be able to get the signed price point from the API endpoint and give it to the price attestation service (Oracle), so that needs an additional parameter.
+
+
+The API endpoint should be public and generally be usable from within the same nextjs website. We can either do an API route in nextjs or maybe a page that uses server actions, but my feeling is that an API endpoint is cleaner overall (Correct me there if I am wrong). 
+
+In terms of price updates: Prices can change rather rapidly, however, we can limit this to cache it for 1 second in the API. Thinking about caching, a nonce will not be required, the same price can be used as long as the timestamp is valid (dataTimestamp cannot be older than 30 seconds to 1 minute max). 
+
+In a later step we could make this even dependent on the difference between the different onchain data vs the offchain data, where the price can deviate less between chainlink, the morpher price point from the API and the uniswap pools, the older it is. E.g. the price is less than 30 seconds old it can deviate 5%, its more than 30 seconds old it can deviate 3% and if its more than 1 minute is can deviate 1% and if its older than 1m30s it errors out. 
+
+There should be a pauser role for pausing the oracle in case of an emergency. 
+
+In general, the oracle should be a proxy which can be updated. 
+
+As we're only validating a single price point, we do not need any batching. 
+
+We can do gas opmizitations later on when its fully unit tested so we know there won't be any regression bugs, for now lets keep a clean and beautiful code base. 
+
+In terms of error handling in the contracts: I would go for standard solidity error handling on the contract side. There should be custom errors that are thrown by the contract which are meaningfully describing the error (data point too old, data piont diverges from chainlink, or uniswap pool too much, oracle paused, etc). In terms of API it should probably rely on HTTP error codes with also meaningful error messages (from the top of my head: database connection down, data too old, other internal error). For now we can simply fetch some usd/eth feed from binance, that can be usdt/eth or anything else dollar-like denominated in ethereum, later on it will be an internal redis feed that is giving out prices. 
+
+If the API is unavailable then there are no prices, there is no fallback. 
+
+These are preliminary implementation steps based on the description. If the steps do not make sense then suggest new steps or changes accordingly. The General instructions should be met, no matter what the implementation steps show.
+
+## 1. Smart Contract Updates
+
+### 1.1 Enhance PriceOracle Contract
+- [x] Add Pausable functionality from OpenZeppelin
+- [x] Implement custom errors
+  ```solidity
+  error PriceDataTooOld(uint timestamp, uint currentTime);
+  error PriceDeviationTooHigh(uint morpherPrice, uint chainlinkPrice, uint uniswapPrice);
+  error InvalidSignature();
+  error OraclePaused();
+  ```
+- [x] Add price deviation checks with Chainlink and Uniswap
+- [x] Implement configuration variables for deviation thresholds
+- [x] Add dynamic staleness check based on deviation
+
+## 2. NextJS API Implementation
+
+### 2.1 Create Price Feed API
+- [ ] Create `/app/api/v1/price/eth-usd/route.ts`:
+  ```typescript
+  export type PriceResponse = {
+    price: string;
+    dataTimestamp: number;
+    requestTimestamp: number;
+    signature: string;
+    assetPair: string;
+  }
+  ```
+- [ ] Implement price fetching from Binance
+- [ ] Add response caching (1 second)
+- [ ] Add error handling middleware
+
+### 2.2 Implement Signing Service
+- [ ] Create `/lib/signing/index.ts` for ECDSA operations
+- [ ] Implement message formatting and signing
+- [ ] Add environment variable validation
+- [ ] Create secure key loading mechanism
+
+### 2.3 Add Price Validation Layer
+- [ ] Create price validation middleware
+- [ ] Implement timestamp checks
+- [ ] Add request rate limiting
+
+## 3. Testing Infrastructure
+
+### 3.1 Smart Contract Tests
+- [ ] Test price deviation scenarios
+- [ ] Test signature verification
+- [ ] Test pause functionality
+- [ ] Test proxy upgrade pattern
+- [ ] Test custom error conditions
+
+### 3.2 API Tests
+- [ ] Test price fetching
+- [ ] Test signature generation
+- [ ] Test caching behavior
+- [ ] Test error handling
+- [ ] Test rate limiting
+
+### 3.3 Integration Tests
+- [ ] End-to-end tests with local blockchain
+- [ ] Price deviation scenarios
+- [ ] Error handling scenarios
+
+## 4. Deployment & Configuration
+
+### 4.1 Environment Setup
+- [ ] Add new environment variables to AWS Secrets Manager:
+  ```
+  ORACLE_PRIVATE_KEY=
+  PRICE_UPDATE_INTERVAL=60000
+  MAX_PRICE_DEVIATION_PERCENTAGE=5
+  CACHE_DURATION=300000
+  ```
+
+### 4.2 Docker Configuration
+- [ ] Update Dockerfile to run NextJS server instead of static build
+- [ ] Add healthcheck endpoints
+- [ ] Configure proper Node.js environment
+
+### 4.3 Monitoring Setup
+- [ ] Add price deviation alerts
+- [ ] Monitor API response times
+- [ ] Track signature verification failures
+- [ ] Set up error reporting
+
+## Implementation Order
+1. Start with smart contract modifications
+2. Implement API endpoints
+3. Add signing service
+4. Implement tests
+5. Deploy and configure monitoring
+
+## Security Considerations
+- Ensure private key is properly secured in AWS Secrets Manager
+- Implement rate limiting on API endpoints
+- Add request validation middleware
+- Monitor for suspicious price deviations
+- Implement circuit breakers for extreme market conditions
+
+## Performance Considerations
+- Optimize caching strategy
+- Monitor gas costs
+- Implement proper error handling
+- Consider batch processing if needed in future
