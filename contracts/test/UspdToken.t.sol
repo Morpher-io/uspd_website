@@ -238,30 +238,33 @@ contract USPDTokenTest is Test {
     }
 
     function testBurnWithZeroAmount() public {
+        // Create price attestation
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
+        
         vm.expectRevert("Amount must be greater than 0");
-        uspdToken.burn(0, payable(address(this)));
+        uspdToken.burn(0, payable(address(this)), priceQuery);
     }
 
     function testBurnWithZeroAddress() public {
+        // Create price attestation
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
+        
         vm.expectRevert("Invalid recipient");
-        uspdToken.burn(100, payable(address(0)));
-    }
-
-    function testBurnWithoutOracleCommission() public {
-
-        // Set ETH price to $2800
-        setDataPriceInOracle(1 gwei, PRICE_FEED_ETH_USD);
-        vm.warp(3000000);
-        setOracleData(2500 ether, PRICE_FEED_ETH_USD, address(priceOracle));
-        vm.warp(10000);
-
-        vm.expectRevert("UspdToken: Oracle comission needs to be paid on burn");
-        uspdToken.burn(100, payable(address(this)));
+        uspdToken.burn(100, payable(address(0)), priceQuery);
     }
 
     function testBurnWithInsufficientBalance() public {
         address user = makeAddr("user");
         vm.deal(user, 1 ether);
+
+        // Create price attestation
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
+            block.timestamp * 1000
+        );
 
         vm.prank(user);
         vm.expectRevert(
@@ -272,7 +275,7 @@ contract USPDTokenTest is Test {
                 100 ether
             )
         );
-        uspdToken.burn{value: 0.1 ether}(100 ether, payable(user));
+        uspdToken.burn(100 ether, payable(user), priceQuery);
     }
 
     function testBurnWithRevertingRecipient() public {
