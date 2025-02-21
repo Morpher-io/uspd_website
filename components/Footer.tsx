@@ -5,10 +5,10 @@ export const Footer = () => {
     <div className="flex justify-between min-w-max container">
 
           <div>
-            <p className="">© Permissionless Technologies 2024</p>
+            <p className="">© Permissionless Technologies {new Date().getFullYear()}</p>
           </div>
-          <div className="flex flex-row gap-x-8">
-            <Link href="https://docsend.com/view/ifeip6bksazscjf8" target="_blank" className="px-2">Deck</Link>
+          <div className="flex flex-row gap-x-3">
+            <Link href="https://docsend.com/view/ifeip6bksazscjf8" target="_blank" >Deck</Link>
             <Link href="https://docsend.com/view/hccjyq4i6th6myk4" target="_blank" >Simulation</Link>
             <Link href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank" >Risk Analysis</Link>
             <Link href="https://docsend.com/view/tdqrj9us6hp7dn2b" target="_blank" >Litepaper</Link>

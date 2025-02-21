@@ -11,6 +11,10 @@ import { Inter } from 'next/font/google'
 import type { Metadata } from 'next'
 import { Toaster } from "react-hot-toast";
 import "./globals.css"
+import Image from 'next/image'
+
+
+import UspdLogo from "@/public/images/logo_uspd.svg";
 
 
 
@@ -36,7 +40,7 @@ export const metadata: Metadata = {
 
 const navbar = (
   <Navbar
-    logo={<b>USPD</b>}
+    logo={<Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />}
   // ... Your additional navbar options
   />
 )

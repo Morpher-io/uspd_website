@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.20;
 
-import "../lib/openzeppelin-contracts-upgradeable/contracts/security/PausableUpgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./oracle/OracleEntrypoint.sol";
 import "./PriceOracleStorage.sol";
+import "../lib/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "../lib/v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
 
 error PriceDataTooOld(uint timestamp, uint currentTime);
 error PriceDeviationTooHigh(uint morpherPrice, uint chainlinkPrice, uint uniswapPrice);
@@ -15,10 +17,10 @@ error InvalidDecimals(uint8 expected, uint8 actual);
 error PriceSourceUnavailable(string source);
 
 contract PriceOracle is 
-    PriceOracleStorage, 
     Initializable, 
     PausableUpgradeable,
-    AccessControlUpgradeable
+    AccessControlUpgradeable,
+    PriceOracleStorage
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     uint256 public constant PRICE_PRECISION = 1e18;
@@ -28,21 +30,10 @@ contract PriceOracle is
         uint expenses;
     }
 
-    struct PriceResponse {
-        uint price;
-        uint decimals;
-        uint timestamp;
-    }
-
+   
     // IUniswapV2Router02 public uniswapRouter;
-    // AggregatorV3Interface internal dataFeed;
+    AggregatorV3Interface internal dataFeed;
 
-    address public usdcAddress;
-
-    OracleEntrypoint oracle;
-    address priceProvider;
-
-    bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
 
     //chainlink aggregator: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
     //uniswapRouter02: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
@@ -60,29 +51,25 @@ contract PriceOracle is
     }
 
     function initialize(
-        address _oracleEntrypoint,
         address _priceProvider,
         uint256 _maxPriceDeviation,
         uint256 _priceStalenessPeriod
     ) public initializer {
-        __ERC721_init("USPD Price Oracle", "USPDO");
         __Pausable_init();
         __AccessControl_init();
-        __UUPSUpgradeable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
-        oracleEntrypoint = _oracleEntrypoint;
-        priceProvider = _priceProvider;
-        maxPriceDeviation = _maxPriceDeviation;
-        priceStalenessPeriod = _priceStalenessPeriod;
+        this.config.priceProvider = _priceProvider;
+        this.config.maxPriceDeviation = _maxPriceDeviation;
+        this.config.priceStalenessPeriod = _priceStalenessPeriod;
     }
 
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721Upgradeable, AccessControlUpgradeable)
+        override(AccessControlUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
@@ -107,14 +94,14 @@ contract PriceOracle is
         return 0;
     }
 
-    function getUniswapV2WethUSDPrice(
-        uint ethAmountIn
-    ) public view returns (uint) {
-        address[] memory path = new address[](2);
-        path[0] = uniswapRouter.WETH();
-        path[1] = usdcAddress;
-        return 1e18 * (uniswapRouter.getAmountsOut(ethAmountIn, path)[1] / 1e6); //usdc converted into 18 digits
-    }
+    // function getUniswapV2WethUSDPrice(
+    //     uint ethAmountIn
+    // ) public view returns (uint) {
+    //     address[] memory path = new address[](2);
+    //     path[0] = uniswapRouter.WETH();
+    //     path[1] = usdcAddress;
+    //     return 1e18 * (uniswapRouter.getAmountsOut(ethAmountIn, path)[1] / 1e6); //usdc converted into 18 digits
+    // }
 
     /**
      * Returns the latest answer.
@@ -179,7 +166,7 @@ contract PriceOracle is
         return (r, s, v);
     }
 
-    function getEthUsdPrice() public payable whenNotPaused returns (PriceResponse memory) {
+    function getEthUsdPrice() public payable returns (PriceResponse memory) {
         if (paused()) {
             revert OraclePaused();
         }
