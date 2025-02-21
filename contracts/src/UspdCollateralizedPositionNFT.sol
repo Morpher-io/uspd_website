@@ -80,15 +80,20 @@ contract UspdCollateralizedPositionNFT is
     }
 
     // Transfer ETH back to stabilizer during unallocation
-    function transferCollateral(uint256 tokenId, address payable to, uint256 amount) external {
+    function transferCollateral(
+        uint256 tokenId, 
+        address payable to, 
+        uint256 amount,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external {
         require(ownerOf(tokenId) != address(0), "Position does not exist");
         require(ownerOf(tokenId) == msg.sender, "Not position owner");
         require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
         
         // If position backs no USPD, we can remove any amount of ETH
         if (_positions[tokenId].backedUspd > 0) {
-            // Get current ETH price
-            PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice();
+            // Get current ETH price using attestation service
+            IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
             
             // Calculate new collateral ratio after transfer
             uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
@@ -107,8 +112,7 @@ contract UspdCollateralizedPositionNFT is
         uint256 tokenId, 
         address payable to, 
         uint256 amount,
-        uint256 ethUsdPrice,
-        uint256 priceDecimals
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external onlyRole(TRANSFERCOLLATERAL_ROLE) {
         require(ownerOf(tokenId) != address(0), "Position does not exist");
         require(amount <= _positions[tokenId].allocatedEth, "Insufficient collateral");
@@ -117,7 +121,8 @@ contract UspdCollateralizedPositionNFT is
         if (_positions[tokenId].backedUspd > 0) {
             // Calculate new collateral ratio after transfer using provided price
             uint256 remainingEth = _positions[tokenId].allocatedEth - amount;
-            uint256 ethValue = (remainingEth * ethUsdPrice) / (10**priceDecimals);
+            IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
+            uint256 ethValue = (remainingEth * oracleResponse.price) / (10**oracleResponse.decimals);
             uint256 newRatio = (ethValue * 100) / _positions[tokenId].backedUspd;
             
             require(newRatio >= 110, "Collateral ratio would fall below 110%");
@@ -152,13 +157,13 @@ contract UspdCollateralizedPositionNFT is
         _positions[tokenId].allocatedEth += msg.value;
     }
 
-    function getCollateralizationRatio(uint256 tokenId, uint256 ethUsdPrice, uint8 priceDecimals) 
-        external 
-        view 
-        returns (uint256) 
-    {
+    function getCollateralizationRatio(
+        uint256 tokenId, 
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external returns (uint256) {
         Position memory pos = _positions[tokenId];
-        uint256 ethValue = (pos.allocatedEth * ethUsdPrice) / (10**priceDecimals);
+        IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
+        uint256 ethValue = (pos.allocatedEth * oracleResponse.price) / (10**oracleResponse.decimals);
         return (ethValue * 100) / pos.backedUspd;
     }
 
