@@ -6,6 +6,7 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControl
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./UspdToken.sol";
 import "./interfaces/IStabilizerNFT.sol";
+import "./interfaces/IPriceOracle.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
@@ -166,6 +167,7 @@ contract StabilizerNFT is
             uint256 userEthShare = remainingEth;
             if (toAllocate < stabilizerEthNeeded) {
                 // Calculate maximum user ETH that can be backed by available stabilizer ETH
+                // Add 1% on top for buffer
                 userEthShare =
                     (toAllocate * 100) /
                     (pos.minCollateralRatio - 100);
@@ -348,55 +350,50 @@ contract StabilizerNFT is
                 IUspdCollateralizedPositionNFT.Position
                     memory position = positionNFT.getPosition(positionId);
 
-
                 uint256 uspdToUnallocate = remainingUspd > position.backedUspd
                     ? position.backedUspd
                     : remainingUspd;
+                {
+                    // Calculate ETH to remove and user's share
+                    (uint ethToRemove, uint userShare) = _calculateUnallocation(
+                        positionId,
+                        position,
+                        uspdToUnallocate,
+                        position.backedUspd == uspdToUnallocate,
+                        priceResponse
+                    );
 
-                bool isFullUnallocation = position.backedUspd ==
-                    uspdToUnallocate;
+                    // Update position
+                    positionNFT.modifyAllocation(
+                        positionId,
+                        position.backedUspd == uspdToUnallocate
+                            ? 0
+                            : position.backedUspd - uspdToUnallocate
+                    );
 
-                // Calculate ETH to remove and user's share
-                (uint ethToRemove, uint userShare) = _calculateUnallocation(
-                    positionId,
-                    position,
-                    uspdToUnallocate,
-                    isFullUnallocation,
-                    ethUsdPrice,
-                    priceDecimals
-                );
+                    positionNFT.removeCollateral(
+                        positionId,
+                        payable(address(this)),
+                        ethToRemove,
+                        priceResponse
+                    );
 
-                // Update position
-                positionNFT.modifyAllocation(
-                    positionId,
-                    isFullUnallocation
-                        ? 0
-                        : position.backedUspd - uspdToUnallocate
-                );
+                    if (position.backedUspd == uspdToUnallocate) {
+                        _removeFromAllocatedList(currentId);
+                    }
 
-                positionNFT.removeCollateral(
-                    positionId,
-                    payable(address(this)),
-                    ethToRemove,
-                    priceResponse.price,
-                    priceResponse.decimals
-                );
+                    // Update totals
+                    totalUserEth += userShare;
+                    pos.totalEth += ethToRemove - userShare;
 
-                if (isFullUnallocation) {
-                    _removeFromAllocatedList(currentId);
+                    // Add back to unallocated list if needed
+                    if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
+                        _registerUnallocatedPosition(currentId);
+                    }
+
+                    remainingUspd -= uspdToUnallocate;
+                    emit FundsUnallocated(currentId, ethToRemove, positionId);
                 }
-
-                // Update totals
-                totalUserEth += userShare;
-                pos.totalEth += ethToRemove - userShare;
-
-                // Add back to unallocated list if needed
-                if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
-                    _registerUnallocatedPosition(currentId);
-                }
-
-                remainingUspd -= uspdToUnallocate;
-                emit FundsUnallocated(currentId, ethToRemove, positionId);
             }
 
             currentId = pos.prevAllocated;
@@ -506,8 +503,7 @@ contract StabilizerNFT is
         IUspdCollateralizedPositionNFT.Position memory position,
         uint256 uspdToUnallocate,
         bool isFullUnallocation,
-        uint256 ethUsdPrice,
-        uint256 priceDecimals
+        IPriceOracle.PriceResponse memory priceResponse
     ) internal view returns (uint256 ethToRemove, uint256 userShare) {
         if (isFullUnallocation) {
             ethToRemove = position.allocatedEth;
@@ -515,20 +511,22 @@ contract StabilizerNFT is
                 (position.allocatedEth * 100) /
                 positionNFT.getCollateralizationRatio(
                     positionId,
-                    ethUsdPrice,
-                    uint8(priceDecimals)
+                    priceResponse.price,
+                    priceResponse.decimals
                 );
         } else {
             uint256 currentRatio = positionNFT.getCollateralizationRatio(
                 positionId,
                 priceResponse.price,
-                uint8(priceResponse.decimals)
+                priceResponse.decimals
             );
             uint256 newBackedUspd = position.backedUspd - uspdToUnallocate;
             uint256 newRequiredEth = (currentRatio *
                 newBackedUspd *
-                (10 ** priceDecimals)) / (ethUsdPrice * 100);
+                (10 ** priceResponse.decimals)) / (priceResponse.price * 100);
+
             ethToRemove = position.allocatedEth - newRequiredEth;
+
             userShare = (ethToRemove * 100) / currentRatio;
         }
     }
