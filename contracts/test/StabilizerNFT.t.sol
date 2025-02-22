@@ -304,9 +304,10 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.lowestUnallocatedId(), 3, "ID 3 should now be lowest unallocated");
         assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should now be highest unallocated");
 
+        IPriceOracle.PriceResponse memory response = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
         // Unallocate funds and verify IDs update
         vm.startPrank(address(uspdToken));
-        stabilizerNFT.unallocateStabilizerFunds(2000 ether, 2000 ether, 18);
+        stabilizerNFT.unallocateStabilizerFunds(2000 ether, response);
         vm.stopPrank();
 
         assertEq(stabilizerNFT.lowestAllocatedId(), 1, "ID 1 should still be lowest allocated");
@@ -339,11 +340,11 @@ contract StabilizerNFTTest is Test {
         uint256 initialRatio = positionNFT.getCollateralizationRatio(positionId, 2000 ether, 18);
         assertEq(initialRatio, 200, "Initial ratio should be 200%");
 
+        IPriceOracle.PriceResponse memory resonse = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
         // Unallocate half the USPD (1000 USPD)
         uint256 unallocatedEth = stabilizerNFT.unallocateStabilizerFunds(
             1000 ether,   // Unallocate half the USPD
-            2000 ether,   // ethUsdPrice
-            18           // priceDecimals
+            resonse
         );
         vm.stopPrank();
 

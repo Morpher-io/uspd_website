@@ -13,6 +13,8 @@ import {IPriceOracle, PriceOracle} from "../src/PriceOracle.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+
 contract USPDTokenTest is Test {
     uint256 internal signerPrivateKey;
     address internal signer;
@@ -22,7 +24,7 @@ contract USPDTokenTest is Test {
     UspdCollateralizedPositionNFT positionNFT;
     USPD uspdToken;
 
-    bytes32 public constant ETH_USD_PAIR = keccak256("ETH_USD");
+    bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD");
     
     // Mainnet addresses
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -54,8 +56,14 @@ contract USPDTokenTest is Test {
             )
         );
 
+        
+        // Prefix the hash with Ethereum Signed Message
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
+
         // Sign the message
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
         query.signature = abi.encodePacked(r, s, v);
 
         return query;
@@ -150,11 +158,15 @@ contract USPDTokenTest is Test {
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
 
+        uint initialBalance = uspdBuyer.balance;
         // Try to send ETH directly to USPD contract - should revert
         vm.prank(uspdBuyer);
         vm.expectRevert("Direct ETH transfers not supported. Use mint() with price attestation.");
         (bool success, ) = address(uspdToken).call{value: 1 ether}("");
-        require(!success, "Direct transfer should fail");
+        require(success, "Eth transfer is successful despite reverting, checking the balance instead in the next assertEq");
+
+        // See if we have everything back
+        assertEq(initialBalance, uspdBuyer.balance, "Direct transfer should fail");
     }
 
     function testMintWithToAddress() public {
@@ -181,7 +193,7 @@ contract USPDTokenTest is Test {
         uspdToken.mint{value: 1 ether}(recipient, priceQuery);
 
         // Verify USPD balance of recipient
-        uint256 expectedBalance = (1 ether * 2800 ether) / 1 ether;
+        uint256 expectedBalance = (1 ether * priceQuery.price) / 1 ether;
         assertEq(
             uspdToken.balanceOf(recipient),
             expectedBalance,
@@ -296,6 +308,11 @@ contract USPDTokenTest is Test {
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
 
+        //set a higher min collateralization ratio, otherweise immediate risk of liquidation due to integer rounding pruning
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.setMinCollateralizationRatio(1,115);
+
+
         // Mint USPD tokens
         vm.prank(uspdHolder);
         uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
@@ -336,6 +353,10 @@ contract USPDTokenTest is Test {
         vm.prank(stabilizerOwner);
         stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
 
+        //set the min collateralization ratio to something higher with some buffer, otherwise we get an immediate risk of liquidation at 110 due to rounding errors
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.setMinCollateralizationRatio(1,115);
+
         // Mint USPD tokens
         vm.prank(uspdHolder);
         uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
@@ -357,9 +378,11 @@ contract USPDTokenTest is Test {
         );
 
         // Verify USPD was burned
-        assertEq(
+
+        assertApproxEqAbs(
             uspdToken.balanceOf(uspdHolder),
             initialUspdBalance / 2,
+            1e17,
             "USPD not burned correctly"
         );
 

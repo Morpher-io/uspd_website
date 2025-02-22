@@ -16,6 +16,8 @@ import Image from 'next/image'
 
 import UspdLogo from "@/public/images/logo_uspd.svg";
 
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+
 
 
 const inter = Inter({ subsets: ['latin'] })
@@ -41,6 +43,8 @@ export const metadata: Metadata = {
 const navbar = (
   <Navbar
     logo={<Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />}
+    children={<ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"}/>}
+
   // ... Your additional navbar options
   />
 )
@@ -62,7 +66,7 @@ export default async function RootLayout({
         <link href="images/favicon.png" rel="shortcut icon" type="image/x-icon" />
         <link href="images/webclip.png" rel="apple-touch-icon" />
       </Head>
-      <body className={`${inter.className} duration-200`}>
+      <body className={`${inter.className} duration-200`}> <Providers>
         <Layout
           navbar={navbar}
           pageMap={await getPageMap()}
@@ -72,13 +76,13 @@ export default async function RootLayout({
         >
           
 
-            <Providers>
+           
               
               {children}
-            </Providers>
 
 
         </Layout>
+        </Providers>
 
         <Toaster position="bottom-center" />
 

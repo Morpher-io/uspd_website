@@ -100,8 +100,7 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         // Unallocate funds from stabilizers
         uint256 unallocatedEth = stabilizer.unallocateStabilizerFunds(
             amount,
-            oracleResponse.price,
-            oracleResponse.decimals
+            oracleResponse
         );
 
         emit Payout(to, amount, unallocatedEth, oracleResponse.price);

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./IPriceOracle.sol";
+
 interface IStabilizerNFT {
     struct AllocationResult {
         uint256 allocatedEth;

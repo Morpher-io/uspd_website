@@ -5,11 +5,16 @@ import "./interfaces/IPriceOracle.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+
 import "./oracle/OracleEntrypoint.sol";
 import "../lib/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../lib/v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
 import "../lib/chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+
+
+import "forge-std/console.sol";
 
 error PriceDataTooOld(uint timestamp, uint currentTime);
 error PriceDeviationTooHigh(uint morpherPrice, uint chainlinkPrice, uint uniswapPrice);
@@ -25,6 +30,7 @@ contract PriceOracle is
     AccessControlUpgradeable
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant SIGNER_ROLE = keccak256("SIGNER_ROLE");
     uint256 public constant PRICE_PRECISION = 1e18;
     uint256 public maxDeviationPercentage = 500; // 5% = 500 basis points
 
@@ -40,12 +46,10 @@ contract PriceOracle is
     
     PriceConfig public config;
     
-    bytes32 public constant PRICE_FEED_ETH_USD = keccak256("BINANCE:ETH_USD");
+    bytes32 public constant PRICE_FEED_ETH_USD = keccak256("MORPHER:ETH_USD");
 
     // Mappings
     mapping(bytes32 => PriceResponse) public lastPrices;
-    mapping(address => bool) public authorizedSigners;
-    bytes32 public constant SIGNER_ROLE = keccak256("SIGNER_ROLE");
 
    
     IUniswapV2Router02 public uniswapRouter;
@@ -142,7 +146,7 @@ contract PriceOracle is
 
     function verifySignature(
         uint256 price,
-        uint256 decimals,
+        uint8 decimals,
         uint256 timestamp,
         bytes32 assetPair,
         bytes memory signature
@@ -162,28 +166,10 @@ contract PriceOracle is
             abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
         );
 
-        // Recover the signer address
-        (bytes32 r, bytes32 s, uint8 v) = splitSignature(signature);
-        address signer = ecrecover(prefixedHash, v, r, s);
+      
+        address signer = ECDSA.recover(prefixedHash, signature);
         require(signer != address(0), "Invalid signature");
         return signer;
-    }
-
-    function splitSignature(bytes memory sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
-        require(sig.length == 65, "Invalid signature length");
-
-        assembly {
-            r := mload(add(sig, 32))
-            s := mload(add(sig, 64))
-            v := byte(0, mload(add(sig, 96)))
-        }
-        
-        if (v < 27) {
-            v += 27;
-        }
-
-        require(v == 27 || v == 28, "Invalid signature v value");
-        return (r, s, v);
     }
 
     function attestationService(PriceAttestationQuery calldata priceQuery) public payable returns (PriceResponse memory) {
@@ -194,11 +180,11 @@ contract PriceOracle is
         }
 
         address signer = verifySignature(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp, priceQuery.assetPair, priceQuery.signature);
+
         if (!hasRole(SIGNER_ROLE, signer)) {
             revert InvalidSignature();
         }
         
-       
         if (priceQuery.decimals != 18) {
             revert InvalidDecimals(18, priceQuery.decimals);
         }

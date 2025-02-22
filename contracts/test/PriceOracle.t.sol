@@ -51,14 +51,13 @@ contract PriceOracleTest is Test {
     function testUnauthorizedSigner() public {
         // Create a new private key and address for unauthorized signer
         uint256 unauthorizedPrivateKey = 0xb33f;
-        address unauthorizedSigner = vm.addr(unauthorizedPrivateKey);
         
         // Create price attestation signed by unauthorized signer
         IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
             price: 2000 ether,
             decimals: 18,
             dataTimestamp: block.timestamp,
-            assetPair: keccak256("ETH_USD"),
+            assetPair: keccak256("MORPHER:ETH_USD"),
             signature: bytes("")
         });
 
@@ -71,7 +70,12 @@ contract PriceOracleTest is Test {
                 query.assetPair
             )
         );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(unauthorizedPrivateKey, messageHash);
+
+        // Prefix the hash with Ethereum Signed Message
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(unauthorizedPrivateKey, prefixedHash);
         query.signature = abi.encodePacked(r, s, v);
 
         // Expect revert when using unauthorized signature
