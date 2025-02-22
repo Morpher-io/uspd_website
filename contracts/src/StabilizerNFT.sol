@@ -156,8 +156,8 @@ contract StabilizerNFT is
             if (remainingEth == 0) break;
 
             // Calculate how much stabilizer ETH is needed for this user ETH
-            uint256 stabilizerEthNeeded = (remainingEth *
-                (pos.minCollateralRatio - 100)) / 100; // Check if stabilizer has enough ETH
+            // Multiply first to avoid rounding down
+            uint256 stabilizerEthNeeded = (remainingEth * pos.minCollateralRatio) / 100 - remainingEth;
 
             uint256 toAllocate = stabilizerEthNeeded > pos.totalEth
                 ? pos.totalEth
