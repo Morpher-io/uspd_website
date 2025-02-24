@@ -7,7 +7,7 @@ export const Footer = () => {
           <div>
             <p className="">© Permissionless Technologies {new Date().getFullYear()}</p>
           </div>
-          <div className="flex flex-row gap-x-3">
+          <div className="flex flex-col md:flex-row gap-3 font-semibold">
             <Link href="https://docsend.com/view/ifeip6bksazscjf8" target="_blank" >Deck</Link>
             <Link href="https://docsend.com/view/hccjyq4i6th6myk4" target="_blank" >Simulation</Link>
             <Link href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank" >Risk Analysis</Link>

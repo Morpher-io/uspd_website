@@ -8,6 +8,7 @@ import { getPageMap } from 'nextra/page-map'
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from './providers';
 import { Inter } from 'next/font/google'
+import { Barlow } from 'next/font/google';
 import type { Metadata } from 'next'
 import { Toaster } from "react-hot-toast";
 import "./globals.css"
@@ -21,6 +22,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 
 const inter = Inter({ subsets: ['latin'] })
+const barlow = Barlow({ subsets: ['latin'], weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'] })
 
 export const metadata: Metadata = {
   title: 'USPD Demo',
@@ -43,7 +45,7 @@ export const metadata: Metadata = {
 const navbar = (
   <Navbar
     logo={<Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />}
-    children={<ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"}/>}
+    children={<ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />}
 
   // ... Your additional navbar options
   />
@@ -62,26 +64,24 @@ export default async function RootLayout({
       dir="ltr"
       // Suggested by `next-themes` package https://github.com/pacocoursey/next-themes#with-app
       suppressHydrationWarning>
-      <Head>
-        <link href="images/favicon.png" rel="shortcut icon" type="image/x-icon" />
-        <link href="images/webclip.png" rel="apple-touch-icon" />
-      </Head>
-      <body className={`${inter.className} duration-200`}> <Providers>
-        <Layout
-          navbar={navbar}
-          pageMap={await getPageMap()}
-          docsRepositoryBase="https://github.com/morpher-io/uspd"
-          footer={footer}
-        // ... Your additional layout options
-        >
-          
-
-           
-              
-              {children}
+      <Head />
+      <body className={`${barlow.className} duration-200`}>
+        <Providers>
+          <Layout
+            navbar={navbar}
+            pageMap={await getPageMap()}
+            docsRepositoryBase="https://github.com/morpher-io/uspd"
+            footer={footer}
+          // ... Your additional layout options
+          > 
 
 
-        </Layout>
+
+
+            {children}
+
+
+           </Layout>
         </Providers>
 
         <Toaster position="bottom-center" />
