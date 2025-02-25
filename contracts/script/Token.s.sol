@@ -125,20 +125,14 @@ contract DeployScript is Script {
         // Deploy StabilizerNFT implementation
         deployStabilizerNFTImplementation();
 
-        // For the circular dependency, predict the token address
-        address predictedTokenAddress = predictTokenAddress();
+        // Deploy UspdToken with temporary zero address for stabilizer
+        deployUspdTokenWithTemporaryStabilizer();
 
-        // Deploy StabilizerNFT proxy with the predicted token address
-        deployStabilizerNFTProxy(predictedTokenAddress);
+        // Deploy StabilizerNFT proxy with the actual token address
+        deployStabilizerNFTProxy(tokenAddress);
 
-        // Deploy UspdToken
-        deployUspdToken();
-
-        // Verify that the predicted address matches the actual address
-        require(
-            tokenAddress == predictedTokenAddress,
-            "Token address prediction failed"
-        );
+        // Update the token with the correct stabilizer address
+        updateTokenStabilizer();
 
         // Grant necessary roles for cross-contract interactions
         setupRolesAndPermissions();
@@ -238,45 +232,33 @@ contract DeployScript is Script {
         );
     }
 
-    function predictTokenAddress() internal view returns (address) {
-        // First, predict the stabilizer proxy address
-        bytes memory stabilizerProxyBytecode = abi.encodePacked(
-            type(TransparentUpgradeableProxy).creationCode,
-            abi.encode(
-                stabilizerImplAddress,
-                proxyAdminAddress,
-                abi.encodeCall(
-                    StabilizerNFT.initialize,
-                    (positionNFTProxyAddress, address(0)) // Dummy token address for prediction
-                )
-            )
-        );
-
-        address predictedStabilizerProxy = createX.computeCreate2Address(
-            STABILIZER_PROXY_SALT,
-            keccak256(stabilizerProxyBytecode),
-            CREATE_X_ADDRESS
-        );
-
-        // Then, predict the token address using the predicted stabilizer address
-        bytes memory tokenBytecode = abi.encodePacked(
+    // Deploy token with temporary zero address for stabilizer
+    function deployUspdTokenWithTemporaryStabilizer() internal {
+        // Get the bytecode of UspdToken with constructor arguments
+        bytes memory bytecode = abi.encodePacked(
             type(USPDToken).creationCode,
-            abi.encode(oracleProxyAddress, predictedStabilizerProxy)
+            abi.encode(oracleProxyAddress, address(0)) // Temporary zero address for stabilizer
         );
 
-        return
-            createX.computeCreate2Address(
-                TOKEN_SALT,
-                keccak256(tokenBytecode),
-                CREATE_X_ADDRESS
-            );
+        // Deploy using CREATE2 for deterministic address using CreateX
+        tokenAddress = createX.deployCreate2{value: 0}(TOKEN_SALT, bytecode);
+
+        console2.log("UspdToken deployed at:", tokenAddress);
+        console2.log("(Stabilizer address will be updated later)");
     }
 
-    function deployStabilizerNFTProxy(address predictedTokenAddress) internal {
+    // Update the token with the correct stabilizer address
+    function updateTokenStabilizer() internal {
+        USPDToken token = USPDToken(payable(tokenAddress));
+        token.updateStabilizer(stabilizerProxyAddress);
+        console2.log("Updated token with stabilizer address:", stabilizerProxyAddress);
+    }
+
+    function deployStabilizerNFTProxy(address actualTokenAddress) internal {
         // Prepare initialization data
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (positionNFTProxyAddress, predictedTokenAddress)
+            (positionNFTProxyAddress, actualTokenAddress)
         );
 
         // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
@@ -294,19 +276,6 @@ contract DeployScript is Script {
             "StabilizerNFT proxy deployed at:",
             stabilizerProxyAddress
         );
-    }
-
-    function deployUspdToken() internal {
-        // Get the bytecode of UspdToken with constructor arguments
-        bytes memory bytecode = abi.encodePacked(
-            type(USPDToken).creationCode,
-            abi.encode(oracleProxyAddress, stabilizerProxyAddress)
-        );
-
-        // Deploy using CREATE2 for deterministic address using CreateX
-        tokenAddress = createX.deployCreate2{value: 0}(TOKEN_SALT, bytecode);
-
-        console2.log("UspdToken deployed at:", tokenAddress);
     }
 
     function setupRolesAndPermissions() internal {
