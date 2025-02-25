@@ -23,6 +23,17 @@ contract UpgradeScript is Script {
     
     // No salts needed for implementations as we're using regular CREATE
     
+    // Salt generation function for consistency with deployment script
+    function generateSalt(string memory identifier) internal view returns (bytes32) {
+        // Start with deployer address (20 bytes)
+        bytes32 salt = bytes32(uint256(uint160(deployer)) << 96);
+        // Set 21st byte to 0x00 (no cross-chain protection)
+        // Last 11 bytes will be derived from the identifier
+        bytes32 identifierHash = bytes32(uint256(keccak256(abi.encodePacked(identifier))));
+        // Combine: deployer (20 bytes) + 0x00 (1 byte) + identifier hash (last 11 bytes)
+        return salt | (identifierHash & 0x00000000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFF);
+    }
+    
     // Contract addresses from deployment
     address proxyAdminAddress;
     address oracleProxyAddress;

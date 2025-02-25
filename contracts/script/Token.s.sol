@@ -18,16 +18,24 @@ contract DeployScript is Script {
     uint256 chainId;
     string deploymentPath;
 
-    // Salt for CREATE2 deployments
-    bytes32 constant PROXY_ADMIN_SALT =
-        bytes32(uint256(keccak256("USPD_PROXY_ADMIN_v1")));
-    bytes32 constant ORACLE_PROXY_SALT =
-        bytes32(uint256(keccak256("USPD_ORACLE_PROXY_v1")));
-    bytes32 constant POSITION_NFT_PROXY_SALT =
-        bytes32(uint256(keccak256("USPD_POSITION_NFT_PROXY_v1")));
-    bytes32 constant STABILIZER_PROXY_SALT =
-        bytes32(uint256(keccak256("USPD_STABILIZER_PROXY_v1")));
-    bytes32 constant TOKEN_SALT = bytes32(uint256(keccak256("USPD_TOKEN_v1")));
+    // Salt for CREATE2 deployments - with proper formatting for CreateX
+    // Format: first 20 bytes = deployer address, 21st byte = 0x00 (no cross-chain protection)
+    function generateSalt(string memory identifier) internal view returns (bytes32) {
+        // Start with deployer address (20 bytes)
+        bytes32 salt = bytes32(uint256(uint160(deployer)) << 96);
+        // Set 21st byte to 0x00 (no cross-chain protection)
+        // Last 11 bytes will be derived from the identifier
+        bytes32 identifierHash = bytes32(uint256(keccak256(abi.encodePacked(identifier))));
+        // Combine: deployer (20 bytes) + 0x00 (1 byte) + identifier hash (last 11 bytes)
+        return salt | (identifierHash & 0x00000000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFF);
+    }
+
+    // Define salts for each contract
+    bytes32 PROXY_ADMIN_SALT;
+    bytes32 ORACLE_PROXY_SALT;
+    bytes32 POSITION_NFT_PROXY_SALT;
+    bytes32 STABILIZER_PROXY_SALT;
+    bytes32 TOKEN_SALT;
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; // Example address, replace with actual address
@@ -64,6 +72,13 @@ contract DeployScript is Script {
             vm.toString(chainId),
             ".json"
         );
+
+        // Initialize salts with proper format for CreateX
+        PROXY_ADMIN_SALT = generateSalt("USPD_PROXY_ADMIN_v1");
+        ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
+        POSITION_NFT_PROXY_SALT = generateSalt("USPD_POSITION_NFT_PROXY_v1");
+        STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
+        TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);

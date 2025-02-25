@@ -1,3 +1,6 @@
 [submodule "contracts/lib/openzeppelin-foundry-upgrades"]
 	path = contracts/lib/openzeppelin-foundry-upgrades
 	url = https://github.com/openzeppelin/openzeppelin-foundry-upgrades
+[submodule "contracts/lib/createx"]
+	path = contracts/lib/createx
+	url = https://github.com/pcaversaccio/createx
