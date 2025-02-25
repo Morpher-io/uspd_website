@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {Create2} from "../lib/openzeppelin-contracts/contracts/utils/Create2.sol";
 
 contract DeployHelpers is Script {
     // Compute the address that will be created with CREATE2
@@ -10,7 +10,7 @@ contract DeployHelpers is Script {
         bytes32 salt,
         bytes32 bytecodeHash,
         address deployer
-    ) public pure returns (address) {
+    ) public pure override returns (address) {
         return Create2.computeAddress(salt, bytecodeHash, deployer);
     }
     

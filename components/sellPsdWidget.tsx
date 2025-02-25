@@ -1,4 +1,11 @@
 
+
+import { Dispatch, SetStateAction, useState } from "react";
+interface Props { setIsPurchase: Dispatch<SetStateAction<boolean>> };
+export default function SellPSDWidget({ setIsPurchase }: Props) {
+    return <>Sell widget</>
+}
+
 // "use client";
 
 

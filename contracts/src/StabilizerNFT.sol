@@ -2,6 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
+import {ERC721EnumerableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./UspdToken.sol";
@@ -16,6 +18,7 @@ contract StabilizerNFT is
     IStabilizerNFT,
     Initializable,
     ERC721Upgradeable,
+    ERC721EnumerableUpgradeable,
     AccessControlUpgradeable
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -82,6 +85,7 @@ contract StabilizerNFT is
         address _uspdToken
     ) public initializer {
         __ERC721_init("USPD Stabilizer", "USPDS");
+        __ERC721Enumerable_init();
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -552,15 +556,30 @@ contract StabilizerNFT is
         return string(buffer);
     }
 
-    // Required overrides
-    function supportsInterface(
-        bytes4 interfaceId
-    )
+
+    // The following functions are overrides required by Solidity.
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
+        returns (address)
+    {
+        return super._update(to, tokenId, auth);
+    }
+
+    function _increaseBalance(address account, uint128 value)
+        internal
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
+    {
+        super._increaseBalance(account, value);
+    }
+
+    function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721Upgradeable, AccessControlUpgradeable)
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable, AccessControlUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
     }
+   
 }

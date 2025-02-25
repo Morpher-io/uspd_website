@@ -27,7 +27,7 @@ Monitor your position's collateral ratio to ensure it stays above 110%:
 ```mermaid
 graph TD
     A[Check Position] --> B{Collateral Ratio}
-    B -->|>110%| C[Safe Zone]
+    B -->|\>110%| C[Safe Zone]
     B -->|<=110%| D[Danger Zone]
     C --> E[Can Withdraw Excess]
     D --> F[Risk of Liquidation]

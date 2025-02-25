@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {Options} from "openzeppelin-foundry-upgrades/Options.sol";
+import {Upgrades} from "../lib/openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Options} from "../lib/openzeppelin-foundry-upgrades/Options.sol";
 
 contract UpgradeScript is Script {
     // Configuration

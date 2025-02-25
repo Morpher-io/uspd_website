@@ -1,17 +1,17 @@
 'use client'
 
 import { useAccount } from 'wagmi'
-import { useContractReads } from 'wagmi'
+import { useReadContracts } from 'wagmi'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { abi as stabilizerAbi } from '@/contracts/StabilizerNFT.json'
+import { abi as stabilizerAbi } from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function StabilizerPage() {
   const { address, isConnected } = useAccount()
-  
+
   const stabilizerAddress = process.env.NEXT_PUBLIC_STABILIZER_NFT_ADDRESS as `0x${string}`
-  
-  const { data: nftData } = useContractReads({
+
+  const { data: nftData } = useReadContracts({
     contracts: [
       {
         address: stabilizerAddress,
@@ -19,8 +19,7 @@ export default function StabilizerPage() {
         functionName: 'balanceOf',
         args: [address as `0x${string}`],
       }
-    ],
-    enabled: isConnected && !!address,
+    ]
   })
 
   if (!isConnected) {
@@ -39,9 +38,10 @@ export default function StabilizerPage() {
 
   if (!balance || balance === 0) {
     return (
-      <div className="container flex items-center justify-center min-h-screen">
+      <div className="mt-4 mx-auto container flex x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] flex flex-col items-center gap-10 pb-28 pt-20 sm:gap-14 lg:flex-row">
+
         <Alert>
-          <AlertDescription>
+          <AlertDescription className='text-center'>
             You don't have any Stabilizer NFTs
           </AlertDescription>
         </Alert>
@@ -50,7 +50,8 @@ export default function StabilizerPage() {
   }
 
   return (
-    <div className="container flex items-center justify-center min-h-screen">
+    <div className="mt-4 mx-auto container flex x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] flex flex-col items-center gap-10 pb-28 pt-20 sm:gap-14 lg:flex-row">
+
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle>Your Stabilizer NFTs</CardTitle>

@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
-import {Options} from "openzeppelin-foundry-upgrades/Options.sol";
+import {Create2} from "../lib/openzeppelin-contracts/contracts/utils/Create2.sol";
+import {Upgrades} from "../lib/openzeppelin-foundry-upgrades/Upgrades.sol";
+import {Options} from "../lib/openzeppelin-foundry-upgrades/Options.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
