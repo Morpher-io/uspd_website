@@ -5,6 +5,7 @@ import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {Create2} from "../lib/openzeppelin-contracts/contracts/utils/Create2.sol";
 import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
@@ -91,15 +92,15 @@ contract UpgradeScript is Script {
         ProxyAdmin proxyAdmin = ProxyAdmin(proxyAdminAddress);
         
         // Upgrade PriceOracle
-        proxyAdmin.upgrade(oracleProxyAddress, newOracleImplAddress);
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(oracleProxyAddress), newOracleImplAddress, "");
         console2.log("PriceOracle upgraded successfully");
         
         // Upgrade UspdCollateralizedPositionNFT
-        proxyAdmin.upgrade(positionNFTProxyAddress, newPositionNFTImplAddress);
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(positionNFTProxyAddress), newPositionNFTImplAddress, "");
         console2.log("UspdCollateralizedPositionNFT upgraded successfully");
         
         // Upgrade StabilizerNFT
-        proxyAdmin.upgrade(stabilizerProxyAddress, newStabilizerImplAddress);
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(stabilizerProxyAddress), newStabilizerImplAddress, "");
         console2.log("StabilizerNFT upgraded successfully");
     }
     
