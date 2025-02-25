@@ -4,8 +4,8 @@ pragma solidity ^0.8.20;
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {Create2} from "../lib/openzeppelin-contracts/contracts/utils/Create2.sol";
-import {Upgrades} from "../lib/openzeppelin-foundry-upgrades/Upgrades.sol";
-import {Options} from "../lib/openzeppelin-foundry-upgrades/Options.sol";
+import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
@@ -17,17 +17,32 @@ contract DeployScript is Script {
     address deployer;
     uint256 chainId;
     string deploymentPath;
-    
+
     // Salt for CREATE2 deployments
-    bytes32 constant ORACLE_SALT = bytes32(uint256(keccak256("USPD_ORACLE_v1")));
-    bytes32 constant POSITION_NFT_SALT = bytes32(uint256(keccak256("USPD_POSITION_NFT_v1")));
-    bytes32 constant STABILIZER_SALT = bytes32(uint256(keccak256("USPD_STABILIZER_v1")));
+    bytes32 constant PROXY_ADMIN_SALT =
+        bytes32(uint256(keccak256("USPD_PROXY_ADMIN_v1")));
+    bytes32 constant ORACLE_IMPL_SALT =
+        bytes32(uint256(keccak256("USPD_ORACLE_IMPL_v1")));
+    bytes32 constant ORACLE_PROXY_SALT =
+        bytes32(uint256(keccak256("USPD_ORACLE_PROXY_v1")));
+    bytes32 constant POSITION_NFT_IMPL_SALT =
+        bytes32(uint256(keccak256("USPD_POSITION_NFT_IMPL_v1")));
+    bytes32 constant POSITION_NFT_PROXY_SALT =
+        bytes32(uint256(keccak256("USPD_POSITION_NFT_PROXY_v1")));
+    bytes32 constant STABILIZER_IMPL_SALT =
+        bytes32(uint256(keccak256("USPD_STABILIZER_IMPL_v1")));
+    bytes32 constant STABILIZER_PROXY_SALT =
+        bytes32(uint256(keccak256("USPD_STABILIZER_PROXY_v1")));
     bytes32 constant TOKEN_SALT = bytes32(uint256(keccak256("USPD_TOKEN_v1")));
-    
+
     // Deployed contract addresses
-    address oracleAddress;
-    address positionNFTAddress;
-    address stabilizerAddress;
+    address proxyAdminAddress;
+    address oracleImplAddress;
+    address oracleProxyAddress;
+    address positionNFTImplAddress;
+    address positionNFTProxyAddress;
+    address stabilizerImplAddress;
+    address stabilizerProxyAddress;
     address tokenAddress;
 
     // Configuration for PriceOracle
@@ -41,13 +56,17 @@ contract DeployScript is Script {
         // Get the deployer address and chain ID
         deployer = msg.sender;
         chainId = block.chainid;
-        
+
         // Set the deployment path
-        deploymentPath = string.concat("deployments/", vm.toString(chainId), ".json");
-        
+        deploymentPath = string.concat(
+            "deployments/",
+            vm.toString(chainId),
+            ".json"
+        );
+
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
-        
+
         // Set network-specific configuration
         if (chainId == 1) {
             // Ethereum Mainnet
@@ -61,7 +80,7 @@ contract DeployScript is Script {
             chainlinkAggregator = 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e;
         } else if (chainId == 137) {
             // Polygon
-            usdcAddress = 0x3c499c542cef5e3811e1192ce70d8cc03d5c3359;
+            usdcAddress = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
             chainlinkAggregator = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0;
         } else {
@@ -74,156 +93,306 @@ contract DeployScript is Script {
 
     function run() public {
         vm.startBroadcast();
-        
-        // Deploy contracts in the correct order to handle dependencies
-        deployPriceOracle();
-        deployPositionNFT();
-        
-        // For the circular dependency between StabilizerNFT and UspdToken,
-        // we'll use CREATE2 to predict the address of UspdToken before deploying it
+
+        // Deploy ProxyAdmin
+        deployProxyAdmin();
+
+        // Deploy Oracle contracts
+        deployOracleImplementation();
+        deployOracleProxy();
+
+        // Deploy PositionNFT contracts
+        deployPositionNFTImplementation();
+        deployPositionNFTProxy();
+
+        // Deploy StabilizerNFT implementation
+        deployStabilizerNFTImplementation();
+
+        // For the circular dependency, predict the token address
         address predictedTokenAddress = predictTokenAddress();
-        deployStabilizerNFT(predictedTokenAddress);
+
+        // Deploy StabilizerNFT proxy with the predicted token address
+        deployStabilizerNFTProxy(predictedTokenAddress);
+
+        // Deploy UspdToken
         deployUspdToken();
-        
+
         // Verify that the predicted address matches the actual address
-        require(tokenAddress == predictedTokenAddress, "Token address prediction failed");
-        
+        require(
+            tokenAddress == predictedTokenAddress,
+            "Token address prediction failed"
+        );
+
         // Grant necessary roles for cross-contract interactions
         setupRolesAndPermissions();
-        
+
         // Save deployment information
         saveDeploymentInfo();
-        
+
         vm.stopBroadcast();
     }
-    
-    function deployPriceOracle() internal {
-        // Deploy PriceOracle as an upgradeable contract
-        Options memory opts;
-        
-        // Deploy as transparent proxy
-        oracleAddress = Upgrades.deployTransparentProxy(
-            "PriceOracle.sol",
-            deployer, // Admin of the proxy
-            abi.encodeCall(
-                PriceOracle.initialize,
-                (
-                    maxPriceDeviation,
-                    priceStalenessPeriod,
-                    usdcAddress,
-                    uniswapRouter,
-                    chainlinkAggregator
-                )
-            ),
-            opts
-        );
-        
-        console2.log("PriceOracle deployed at:", oracleAddress);
+
+    function deployProxyAdmin() internal {
+        // Deploy ProxyAdmin with CREATE2
+        bytes memory bytecode = type(ProxyAdmin).creationCode;
+        proxyAdminAddress = Create2.deploy(0, PROXY_ADMIN_SALT, bytecode);
+
+        console2.log("ProxyAdmin deployed at:", proxyAdminAddress);
     }
-    
-    function deployPositionNFT() internal {
-        // Deploy UspdCollateralizedPositionNFT as an upgradeable contract
-        Options memory opts;
-        
-        // Deploy as transparent proxy
-        positionNFTAddress = Upgrades.deployTransparentProxy(
-            "UspdCollateralizedPositionNFT.sol",
-            deployer, // Admin of the proxy
-            abi.encodeCall(
-                UspdCollateralizedPositionNFT.initialize,
-                (oracleAddress)
-            ),
-            opts
+
+    function deployOracleImplementation() internal {
+        // Deploy PriceOracle implementation with CREATE2
+        bytes memory bytecode = type(PriceOracle).creationCode;
+        oracleImplAddress = Create2.deploy(0, ORACLE_IMPL_SALT, bytecode);
+
+        console2.log(
+            "PriceOracle implementation deployed at:",
+            oracleImplAddress
         );
-        
-        console2.log("UspdCollateralizedPositionNFT deployed at:", positionNFTAddress);
     }
-    
-    function predictTokenAddress() internal view returns (address) {
-        // Get the bytecode of UspdToken with constructor arguments
+
+    function deployOracleProxy() internal {
+        // Prepare initialization data
+        bytes memory initData = abi.encodeCall(
+            PriceOracle.initialize,
+            (
+                maxPriceDeviation,
+                priceStalenessPeriod,
+                usdcAddress,
+                uniswapRouter,
+                chainlinkAggregator
+            )
+        );
+
+        // Deploy TransparentUpgradeableProxy with CREATE2
         bytes memory bytecode = abi.encodePacked(
-            type(UspdToken).creationCode,
-            abi.encode(oracleAddress, stabilizerAddress)
+            type(TransparentUpgradeableProxy).creationCode,
+            abi.encode(oracleImplAddress, proxyAdminAddress, initData)
         );
-        
-        // Compute the CREATE2 address
-        return Create2.computeAddress(TOKEN_SALT, keccak256(bytecode), address(this));
+
+        oracleProxyAddress = Create2.deploy(0, ORACLE_PROXY_SALT, bytecode);
+
+        console2.log("PriceOracle proxy deployed at:", oracleProxyAddress);
     }
-    
-    function deployStabilizerNFT(address predictedTokenAddress) internal {
-        // Deploy StabilizerNFT as an upgradeable contract
-        Options memory opts;
-        
-        // Deploy as transparent proxy
-        stabilizerAddress = Upgrades.deployTransparentProxy(
-            "StabilizerNFT.sol",
-            deployer, // Admin of the proxy
-            abi.encodeCall(
-                StabilizerNFT.initialize,
-                (positionNFTAddress, predictedTokenAddress)
-            ),
-            opts
+
+    function deployPositionNFTImplementation() internal {
+        // Deploy UspdCollateralizedPositionNFT implementation with CREATE2
+        bytes memory bytecode = type(UspdCollateralizedPositionNFT)
+            .creationCode;
+        positionNFTImplAddress = Create2.deploy(
+            0,
+            POSITION_NFT_IMPL_SALT,
+            bytecode
         );
-        
-        console2.log("StabilizerNFT deployed at:", stabilizerAddress);
+
+        console2.log(
+            "UspdCollateralizedPositionNFT implementation deployed at:",
+            positionNFTImplAddress
+        );
     }
-    
+
+    function deployPositionNFTProxy() internal {
+        // Prepare initialization data
+        bytes memory initData = abi.encodeCall(
+            UspdCollateralizedPositionNFT.initialize,
+            (oracleProxyAddress)
+        );
+
+        // Deploy TransparentUpgradeableProxy with CREATE2
+        bytes memory bytecode = abi.encodePacked(
+            type(TransparentUpgradeableProxy).creationCode,
+            abi.encode(positionNFTImplAddress, proxyAdminAddress, initData)
+        );
+
+        positionNFTProxyAddress = Create2.deploy(
+            0,
+            POSITION_NFT_PROXY_SALT,
+            bytecode
+        );
+
+        console2.log(
+            "UspdCollateralizedPositionNFT proxy deployed at:",
+            positionNFTProxyAddress
+        );
+    }
+
+    function deployStabilizerNFTImplementation() internal {
+        // Deploy StabilizerNFT implementation with CREATE2
+        bytes memory bytecode = type(StabilizerNFT).creationCode;
+        stabilizerImplAddress = Create2.deploy(
+            0,
+            STABILIZER_IMPL_SALT,
+            bytecode
+        );
+
+        console2.log(
+            "StabilizerNFT implementation deployed at:",
+            stabilizerImplAddress
+        );
+    }
+
+    function predictTokenAddress() internal view returns (address) {
+        // First, predict the stabilizer proxy address
+        bytes memory stabilizerProxyBytecode = abi.encodePacked(
+            type(TransparentUpgradeableProxy).creationCode,
+            abi.encode(
+                stabilizerImplAddress,
+                proxyAdminAddress,
+                abi.encodeCall(
+                    StabilizerNFT.initialize,
+                    (positionNFTProxyAddress, address(0)) // Dummy token address for prediction
+                )
+            )
+        );
+
+        address predictedStabilizerProxy = Create2.computeAddress(
+            STABILIZER_PROXY_SALT,
+            keccak256(stabilizerProxyBytecode),
+            address(this)
+        );
+
+        // Then, predict the token address using the predicted stabilizer address
+        bytes memory tokenBytecode = abi.encodePacked(
+            type(USPDToken).creationCode,
+            abi.encode(oracleProxyAddress, predictedStabilizerProxy)
+        );
+
+        return
+            Create2.computeAddress(
+                TOKEN_SALT,
+                keccak256(tokenBytecode),
+                address(this)
+            );
+    }
+
+    function deployStabilizerNFTProxy(address predictedTokenAddress) internal {
+        // Prepare initialization data
+        bytes memory initData = abi.encodeCall(
+            StabilizerNFT.initialize,
+            (positionNFTProxyAddress, predictedTokenAddress)
+        );
+
+        // Deploy TransparentUpgradeableProxy with CREATE2
+        bytes memory bytecode = abi.encodePacked(
+            type(TransparentUpgradeableProxy).creationCode,
+            abi.encode(stabilizerImplAddress, proxyAdminAddress, initData)
+        );
+
+        stabilizerProxyAddress = Create2.deploy(
+            0,
+            STABILIZER_PROXY_SALT,
+            bytecode
+        );
+
+        console2.log(
+            "StabilizerNFT proxy deployed at:",
+            stabilizerProxyAddress
+        );
+    }
+
     function deployUspdToken() internal {
         // Get the bytecode of UspdToken with constructor arguments
         bytes memory bytecode = abi.encodePacked(
-            type(UspdToken).creationCode,
-            abi.encode(oracleAddress, stabilizerAddress)
+            type(USPDToken).creationCode,
+            abi.encode(oracleProxyAddress, stabilizerProxyAddress)
         );
-        
+
         // Deploy using CREATE2 for deterministic address
         tokenAddress = Create2.deploy(0, TOKEN_SALT, bytecode);
-        
+
         console2.log("UspdToken deployed at:", tokenAddress);
     }
-    
+
     function setupRolesAndPermissions() internal {
         // Grant roles to the PriceOracle
-        PriceOracle oracle = PriceOracle(oracleAddress);
+        PriceOracle oracle = PriceOracle(oracleProxyAddress);
         oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
         oracle.grantRole(oracle.SIGNER_ROLE(), deployer);
-        
+
         // Grant roles to the PositionNFT
-        UspdCollateralizedPositionNFT positionNFT = UspdCollateralizedPositionNFT(positionNFTAddress);
-        positionNFT.grantRole(positionNFT.MINTER_ROLE(), stabilizerAddress);
-        positionNFT.grantRole(positionNFT.TRANSFERCOLLATERAL_ROLE(), stabilizerAddress);
-        positionNFT.grantRole(positionNFT.MODIFYALLOCATION_ROLE(), stabilizerAddress);
-        
+        UspdCollateralizedPositionNFT positionNFT = UspdCollateralizedPositionNFT(
+                payable(positionNFTProxyAddress)
+            );
+        positionNFT.grantRole(
+            positionNFT.MINTER_ROLE(),
+            stabilizerProxyAddress
+        );
+        positionNFT.grantRole(
+            positionNFT.TRANSFERCOLLATERAL_ROLE(),
+            stabilizerProxyAddress
+        );
+        positionNFT.grantRole(
+            positionNFT.MODIFYALLOCATION_ROLE(),
+            stabilizerProxyAddress
+        );
+
         // Grant roles to the StabilizerNFT
-        StabilizerNFT stabilizer = StabilizerNFT(stabilizerAddress);
+        StabilizerNFT stabilizer = StabilizerNFT(payable(stabilizerProxyAddress));
         stabilizer.grantRole(stabilizer.MINTER_ROLE(), deployer);
-        
+
         // Grant roles to the UspdToken
-        UspdToken token = UspdToken(tokenAddress);
+        USPDToken token = USPDToken(payable(tokenAddress));
         token.grantRole(token.EXCESS_COLLATERAL_DRAIN_ROLE(), deployer);
         token.grantRole(token.UPDATE_ORACLE_ROLE(), deployer);
-        token.grantRole(token.STABILIZER_ROLE(), stabilizerAddress);
+        token.grantRole(token.STABILIZER_ROLE(), stabilizerProxyAddress);
     }
-    
+
     function saveDeploymentInfo() internal {
         // Create JSON with deployment information
         string memory json = "";
-        
+
         // Add contract addresses
-        json = vm.serializeAddress("contracts", "oracle", oracleAddress);
-        json = vm.serializeAddress("contracts", "positionNFT", positionNFTAddress);
-        json = vm.serializeAddress("contracts", "stabilizer", stabilizerAddress);
+        json = vm.serializeAddress(
+            "contracts",
+            "proxyAdmin",
+            proxyAdminAddress
+        );
+        json = vm.serializeAddress(
+            "contracts",
+            "oracleImpl",
+            oracleImplAddress
+        );
+        json = vm.serializeAddress("contracts", "oracle", oracleProxyAddress);
+        json = vm.serializeAddress(
+            "contracts",
+            "positionNFTImpl",
+            positionNFTImplAddress
+        );
+        json = vm.serializeAddress(
+            "contracts",
+            "positionNFT",
+            positionNFTProxyAddress
+        );
+        json = vm.serializeAddress(
+            "contracts",
+            "stabilizerImpl",
+            stabilizerImplAddress
+        );
+        json = vm.serializeAddress(
+            "contracts",
+            "stabilizer",
+            stabilizerProxyAddress
+        );
         json = vm.serializeAddress("contracts", "token", tokenAddress);
-        
+
         // Add configuration
         json = vm.serializeAddress("config", "usdcAddress", usdcAddress);
         json = vm.serializeAddress("config", "uniswapRouter", uniswapRouter);
-        json = vm.serializeAddress("config", "chainlinkAggregator", chainlinkAggregator);
-        
+        json = vm.serializeAddress(
+            "config",
+            "chainlinkAggregator",
+            chainlinkAggregator
+        );
+
         // Add metadata
         json = vm.serializeUint("metadata", "chainId", chainId);
-        json = vm.serializeUint("metadata", "deploymentTimestamp", block.timestamp);
+        json = vm.serializeUint(
+            "metadata",
+            "deploymentTimestamp",
+            block.timestamp
+        );
         json = vm.serializeAddress("metadata", "deployer", deployer);
-        
+
         // Write to file
         vm.writeJson(json, deploymentPath);
         console2.log("Deployment information saved to:", deploymentPath);
