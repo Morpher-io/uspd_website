@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {Create2} from "../lib/openzeppelin-contracts/contracts/utils/Create2.sol";
 import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ICreateX} from "../src/interfaces/ICreateX.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
@@ -29,6 +29,10 @@ contract DeployScript is Script {
         bytes32(uint256(keccak256("USPD_STABILIZER_PROXY_v1")));
     bytes32 constant TOKEN_SALT = bytes32(uint256(keccak256("USPD_TOKEN_v1")));
 
+    // CreateX contract address - this should be the deployed CreateX contract on the target network
+    address constant CREATE_X_ADDRESS = 0x998abeb3E57409262aE5b751f60747921B33613E; // Example address, replace with actual address
+    ICreateX createX;
+
     // Deployed contract addresses
     address proxyAdminAddress;
     address oracleImplAddress;
@@ -50,6 +54,9 @@ contract DeployScript is Script {
         // Get the deployer address and chain ID
         deployer = msg.sender;
         chainId = block.chainid;
+        
+        // Initialize CreateX interface
+        createX = ICreateX(CREATE_X_ADDRESS);
 
         // Set the deployment path
         deploymentPath = string.concat(
@@ -60,6 +67,7 @@ contract DeployScript is Script {
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
+        console2.log("Using CreateX at:", CREATE_X_ADDRESS);
 
         // Set network-specific configuration
         if (chainId == 1) {
@@ -127,9 +135,9 @@ contract DeployScript is Script {
     }
 
     function deployProxyAdmin() internal {
-        // Deploy ProxyAdmin with CREATE2
+        // Deploy ProxyAdmin with CREATE2 using CreateX
         bytes memory bytecode = type(ProxyAdmin).creationCode;
-        proxyAdminAddress = Create2.deploy(0, PROXY_ADMIN_SALT, bytecode);
+        proxyAdminAddress = createX.deployCreate2{value: 0}(PROXY_ADMIN_SALT, bytecode);
 
         console2.log("ProxyAdmin deployed at:", proxyAdminAddress);
     }
@@ -158,13 +166,13 @@ contract DeployScript is Script {
             )
         );
 
-        // Deploy TransparentUpgradeableProxy with CREATE2
+        // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
         bytes memory bytecode = abi.encodePacked(
             type(TransparentUpgradeableProxy).creationCode,
             abi.encode(oracleImplAddress, proxyAdminAddress, initData)
         );
 
-        oracleProxyAddress = Create2.deploy(0, ORACLE_PROXY_SALT, bytecode);
+        oracleProxyAddress = createX.deployCreate2{value: 0}(ORACLE_PROXY_SALT, bytecode);
 
         console2.log("PriceOracle proxy deployed at:", oracleProxyAddress);
     }
@@ -187,14 +195,13 @@ contract DeployScript is Script {
             (oracleProxyAddress)
         );
 
-        // Deploy TransparentUpgradeableProxy with CREATE2
+        // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
         bytes memory bytecode = abi.encodePacked(
             type(TransparentUpgradeableProxy).creationCode,
             abi.encode(positionNFTImplAddress, proxyAdminAddress, initData)
         );
 
-        positionNFTProxyAddress = Create2.deploy(
-            0,
+        positionNFTProxyAddress = createX.deployCreate2{value: 0}(
             POSITION_NFT_PROXY_SALT,
             bytecode
         );
@@ -230,10 +237,10 @@ contract DeployScript is Script {
             )
         );
 
-        address predictedStabilizerProxy = Create2.computeAddress(
+        address predictedStabilizerProxy = createX.computeCreate2Address(
             STABILIZER_PROXY_SALT,
             keccak256(stabilizerProxyBytecode),
-            address(this)
+            CREATE_X_ADDRESS
         );
 
         // Then, predict the token address using the predicted stabilizer address
@@ -243,10 +250,10 @@ contract DeployScript is Script {
         );
 
         return
-            Create2.computeAddress(
+            createX.computeCreate2Address(
                 TOKEN_SALT,
                 keccak256(tokenBytecode),
-                address(this)
+                CREATE_X_ADDRESS
             );
     }
 
@@ -257,14 +264,13 @@ contract DeployScript is Script {
             (positionNFTProxyAddress, predictedTokenAddress)
         );
 
-        // Deploy TransparentUpgradeableProxy with CREATE2
+        // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
         bytes memory bytecode = abi.encodePacked(
             type(TransparentUpgradeableProxy).creationCode,
             abi.encode(stabilizerImplAddress, proxyAdminAddress, initData)
         );
 
-        stabilizerProxyAddress = Create2.deploy(
-            0,
+        stabilizerProxyAddress = createX.deployCreate2{value: 0}(
             STABILIZER_PROXY_SALT,
             bytecode
         );
@@ -282,8 +288,8 @@ contract DeployScript is Script {
             abi.encode(oracleProxyAddress, stabilizerProxyAddress)
         );
 
-        // Deploy using CREATE2 for deterministic address
-        tokenAddress = Create2.deploy(0, TOKEN_SALT, bytecode);
+        // Deploy using CREATE2 for deterministic address using CreateX
+        tokenAddress = createX.deployCreate2{value: 0}(TOKEN_SALT, bytecode);
 
         console2.log("UspdToken deployed at:", tokenAddress);
     }

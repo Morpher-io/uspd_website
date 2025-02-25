@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {Create2} from "../lib/openzeppelin-contracts/contracts/utils/Create2.sol";
 import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ICreateX} from "../src/interfaces/ICreateX.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
@@ -16,6 +16,10 @@ contract UpgradeScript is Script {
     address deployer;
     uint256 chainId;
     string deploymentPath;
+    
+    // CreateX contract address - this should be the deployed CreateX contract on the target network
+    address constant CREATE_X_ADDRESS = 0x998abeb3E57409262aE5b751f60747921B33613E; // Example address, replace with actual address
+    ICreateX createX;
     
     // No salts needed for implementations as we're using regular CREATE
     
@@ -35,11 +39,15 @@ contract UpgradeScript is Script {
         deployer = msg.sender;
         chainId = block.chainid;
         
+        // Initialize CreateX interface
+        createX = ICreateX(CREATE_X_ADDRESS);
+        
         // Set the deployment path
         deploymentPath = string.concat("deployments/", vm.toString(chainId), ".json");
         
         console2.log("Upgrading contracts on chain ID:", chainId);
         console2.log("Deployer address:", deployer);
+        console2.log("Using CreateX at:", CREATE_X_ADDRESS);
         
         // Load deployment information
         string memory json = vm.readFile(deploymentPath);
