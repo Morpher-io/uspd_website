@@ -105,20 +105,34 @@ contract UpgradeScript is Script {
     }
     
     function updateDeploymentInfo() internal {
-        // Read existing deployment information
-        string memory json = vm.readFile(deploymentPath);
+        // Check if the file exists
+        bool fileExists = false;
+        try vm.readFile(deploymentPath) {
+            fileExists = true;
+        } catch {
+            console2.log("Deployment file not found, creating new one");
+        }
+
+        string memory json;
+        if (fileExists) {
+            // Read existing deployment information
+            json = vm.readFile(deploymentPath);
+        } else {
+            // Create a new JSON object if file doesn't exist
+            json = '{"contracts":{},"config":{},"metadata":{},"upgrades":{}}';
+        }
         
         // Update implementation addresses
-        json = vm.serializeAddress("contracts", "oracleImpl", newOracleImplAddress, json);
-        json = vm.serializeAddress("contracts", "positionNFTImpl", newPositionNFTImplAddress, json);
-        json = vm.serializeAddress("contracts", "stabilizerImpl", newStabilizerImplAddress, json);
+        json = vm.writeJson(vm.toString(newOracleImplAddress), json, ".contracts.oracleImpl");
+        json = vm.writeJson(vm.toString(newPositionNFTImplAddress), json, ".contracts.positionNFTImpl");
+        json = vm.writeJson(vm.toString(newStabilizerImplAddress), json, ".contracts.stabilizerImpl");
         
         // Add upgrade metadata
-        json = vm.serializeUint("upgrades", "lastUpgradeTimestamp", block.timestamp, json);
-        json = vm.serializeAddress("upgrades", "lastUpgrader", deployer, json);
+        json = vm.writeJson(vm.toString(block.timestamp), json, ".upgrades.lastUpgradeTimestamp");
+        json = vm.writeJson(vm.toString(deployer), json, ".upgrades.lastUpgrader");
         
         // Write to file
-        vm.writeJson(json, deploymentPath);
+        vm.writeFile(deploymentPath, json);
         console2.log("Deployment information updated");
     }
 }

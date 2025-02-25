@@ -323,63 +323,31 @@ contract DeployScript is Script {
     }
 
     function saveDeploymentInfo() internal {
-        // Create JSON with deployment information
-        string memory json = "";
+        // Create a JSON object structure
+        string memory json = '{"contracts":{},"config":{},"metadata":{}}';
 
         // Add contract addresses
-        json = vm.serializeAddress(
-            "contracts",
-            "proxyAdmin",
-            proxyAdminAddress
-        );
-        json = vm.serializeAddress(
-            "contracts",
-            "oracleImpl",
-            oracleImplAddress
-        );
-        json = vm.serializeAddress("contracts", "oracle", oracleProxyAddress);
-        json = vm.serializeAddress(
-            "contracts",
-            "positionNFTImpl",
-            positionNFTImplAddress
-        );
-        json = vm.serializeAddress(
-            "contracts",
-            "positionNFT",
-            positionNFTProxyAddress
-        );
-        json = vm.serializeAddress(
-            "contracts",
-            "stabilizerImpl",
-            stabilizerImplAddress
-        );
-        json = vm.serializeAddress(
-            "contracts",
-            "stabilizer",
-            stabilizerProxyAddress
-        );
-        json = vm.serializeAddress("contracts", "token", tokenAddress);
+        json = vm.writeJson(vm.toString(proxyAdminAddress), json, ".contracts.proxyAdmin");
+        json = vm.writeJson(vm.toString(oracleImplAddress), json, ".contracts.oracleImpl");
+        json = vm.writeJson(vm.toString(oracleProxyAddress), json, ".contracts.oracle");
+        json = vm.writeJson(vm.toString(positionNFTImplAddress), json, ".contracts.positionNFTImpl");
+        json = vm.writeJson(vm.toString(positionNFTProxyAddress), json, ".contracts.positionNFT");
+        json = vm.writeJson(vm.toString(stabilizerImplAddress), json, ".contracts.stabilizerImpl");
+        json = vm.writeJson(vm.toString(stabilizerProxyAddress), json, ".contracts.stabilizer");
+        json = vm.writeJson(vm.toString(tokenAddress), json, ".contracts.token");
 
         // Add configuration
-        json = vm.serializeAddress("config", "usdcAddress", usdcAddress);
-        json = vm.serializeAddress("config", "uniswapRouter", uniswapRouter);
-        json = vm.serializeAddress(
-            "config",
-            "chainlinkAggregator",
-            chainlinkAggregator
-        );
+        json = vm.writeJson(vm.toString(usdcAddress), json, ".config.usdcAddress");
+        json = vm.writeJson(vm.toString(uniswapRouter), json, ".config.uniswapRouter");
+        json = vm.writeJson(vm.toString(chainlinkAggregator), json, ".config.chainlinkAggregator");
 
         // Add metadata
-        json = vm.serializeUint("metadata", "chainId", chainId);
-        json = vm.serializeUint(
-            "metadata",
-            "deploymentTimestamp",
-            block.timestamp
-        );
-        json = vm.serializeAddress("metadata", "deployer", deployer);
+        json = vm.writeJson(vm.toString(chainId), json, ".metadata.chainId");
+        json = vm.writeJson(vm.toString(block.timestamp), json, ".metadata.deploymentTimestamp");
+        json = vm.writeJson(vm.toString(deployer), json, ".metadata.deployer");
 
         // Write to file
-        vm.writeJson(json, deploymentPath);
+        vm.writeFile(deploymentPath, json);
         console2.log("Deployment information saved to:", deploymentPath);
     }
 }
