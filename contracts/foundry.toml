@@ -7,3 +7,12 @@ libs = ["lib"]
 
 optimizer = true
 optimizer_runs = 20_000
+
+# Required for OpenZeppelin Foundry Upgrades
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
+
+# Allow reading the deployments directory
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
