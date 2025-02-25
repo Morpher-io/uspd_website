@@ -27,7 +27,7 @@ contract DeployScript is Script {
         // Last 11 bytes will be derived from the identifier
         bytes32 identifierHash = bytes32(uint256(keccak256(abi.encodePacked(identifier))));
         // Combine: deployer (20 bytes) + 0x00 (1 byte) + identifier hash (last 11 bytes)
-        return salt | (identifierHash & 0x00000000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFF);
+        return salt | (identifierHash & bytes32(uint256(0x00000000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFF)));
     }
 
     // Define salts for each contract
@@ -152,7 +152,7 @@ contract DeployScript is Script {
     function deployProxyAdmin() internal {
         // Deploy ProxyAdmin with CREATE2 using CreateX
         bytes memory bytecode = type(ProxyAdmin).creationCode;
-        proxyAdminAddress = createX.deployCreate2{value: 0}(PROXY_ADMIN_SALT, bytecode);
+        proxyAdminAddress = createX.deployCreate2(PROXY_ADMIN_SALT, abi.encodePacked(bytecode, abi.encode(deployer)));
 
         console2.log("ProxyAdmin deployed at:", proxyAdminAddress);
     }
