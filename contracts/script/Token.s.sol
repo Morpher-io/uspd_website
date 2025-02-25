@@ -5,7 +5,7 @@ import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ICreateX} from "../src/interfaces/ICreateX.sol";
+import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
