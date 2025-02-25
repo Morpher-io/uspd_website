@@ -16,10 +16,7 @@ contract UpgradeScript is Script {
     uint256 chainId;
     string deploymentPath;
     
-    // Salt for CREATE2 deployments for new implementations
-    bytes32 constant ORACLE_IMPL_SALT_V2 = bytes32(uint256(keccak256("USPD_ORACLE_IMPL_v2")));
-    bytes32 constant POSITION_NFT_IMPL_SALT_V2 = bytes32(uint256(keccak256("USPD_POSITION_NFT_IMPL_v2")));
-    bytes32 constant STABILIZER_IMPL_SALT_V2 = bytes32(uint256(keccak256("USPD_STABILIZER_IMPL_v2")));
+    // No salts needed for implementations as we're using regular CREATE
     
     // Contract addresses from deployment
     address proxyAdminAddress;
@@ -72,17 +69,17 @@ contract UpgradeScript is Script {
     }
     
     function deployNewImplementations() internal {
-        // Deploy new PriceOracle implementation with CREATE2
-        bytes memory oracleBytecode = type(PriceOracle).creationCode;
-        newOracleImplAddress = Create2.deploy(0, ORACLE_IMPL_SALT_V2, oracleBytecode);
+        // Deploy new PriceOracle implementation with regular CREATE
+        PriceOracle newOracleImpl = new PriceOracle();
+        newOracleImplAddress = address(newOracleImpl);
         
-        // Deploy new UspdCollateralizedPositionNFT implementation with CREATE2
-        bytes memory positionNFTBytecode = type(UspdCollateralizedPositionNFT).creationCode;
-        newPositionNFTImplAddress = Create2.deploy(0, POSITION_NFT_IMPL_SALT_V2, positionNFTBytecode);
+        // Deploy new UspdCollateralizedPositionNFT implementation with regular CREATE
+        UspdCollateralizedPositionNFT newPositionNFTImpl = new UspdCollateralizedPositionNFT();
+        newPositionNFTImplAddress = address(newPositionNFTImpl);
         
-        // Deploy new StabilizerNFT implementation with CREATE2
-        bytes memory stabilizerBytecode = type(StabilizerNFT).creationCode;
-        newStabilizerImplAddress = Create2.deploy(0, STABILIZER_IMPL_SALT_V2, stabilizerBytecode);
+        // Deploy new StabilizerNFT implementation with regular CREATE
+        StabilizerNFT newStabilizerImpl = new StabilizerNFT();
+        newStabilizerImplAddress = address(newStabilizerImpl);
         
         console2.log("New implementations deployed:");
         console2.log("- PriceOracle:", newOracleImplAddress);

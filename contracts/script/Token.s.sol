@@ -21,16 +21,10 @@ contract DeployScript is Script {
     // Salt for CREATE2 deployments
     bytes32 constant PROXY_ADMIN_SALT =
         bytes32(uint256(keccak256("USPD_PROXY_ADMIN_v1")));
-    bytes32 constant ORACLE_IMPL_SALT =
-        bytes32(uint256(keccak256("USPD_ORACLE_IMPL_v1")));
     bytes32 constant ORACLE_PROXY_SALT =
         bytes32(uint256(keccak256("USPD_ORACLE_PROXY_v1")));
-    bytes32 constant POSITION_NFT_IMPL_SALT =
-        bytes32(uint256(keccak256("USPD_POSITION_NFT_IMPL_v1")));
     bytes32 constant POSITION_NFT_PROXY_SALT =
         bytes32(uint256(keccak256("USPD_POSITION_NFT_PROXY_v1")));
-    bytes32 constant STABILIZER_IMPL_SALT =
-        bytes32(uint256(keccak256("USPD_STABILIZER_IMPL_v1")));
     bytes32 constant STABILIZER_PROXY_SALT =
         bytes32(uint256(keccak256("USPD_STABILIZER_PROXY_v1")));
     bytes32 constant TOKEN_SALT = bytes32(uint256(keccak256("USPD_TOKEN_v1")));
@@ -141,9 +135,9 @@ contract DeployScript is Script {
     }
 
     function deployOracleImplementation() internal {
-        // Deploy PriceOracle implementation with CREATE2
-        bytes memory bytecode = type(PriceOracle).creationCode;
-        oracleImplAddress = Create2.deploy(0, ORACLE_IMPL_SALT, bytecode);
+        // Deploy PriceOracle implementation with regular CREATE
+        PriceOracle oracleImpl = new PriceOracle();
+        oracleImplAddress = address(oracleImpl);
 
         console2.log(
             "PriceOracle implementation deployed at:",
@@ -176,14 +170,9 @@ contract DeployScript is Script {
     }
 
     function deployPositionNFTImplementation() internal {
-        // Deploy UspdCollateralizedPositionNFT implementation with CREATE2
-        bytes memory bytecode = type(UspdCollateralizedPositionNFT)
-            .creationCode;
-        positionNFTImplAddress = Create2.deploy(
-            0,
-            POSITION_NFT_IMPL_SALT,
-            bytecode
-        );
+        // Deploy UspdCollateralizedPositionNFT implementation with regular CREATE
+        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
+        positionNFTImplAddress = address(positionNFTImpl);
 
         console2.log(
             "UspdCollateralizedPositionNFT implementation deployed at:",
@@ -217,13 +206,9 @@ contract DeployScript is Script {
     }
 
     function deployStabilizerNFTImplementation() internal {
-        // Deploy StabilizerNFT implementation with CREATE2
-        bytes memory bytecode = type(StabilizerNFT).creationCode;
-        stabilizerImplAddress = Create2.deploy(
-            0,
-            STABILIZER_IMPL_SALT,
-            bytecode
-        );
+        // Deploy StabilizerNFT implementation with regular CREATE
+        StabilizerNFT stabilizerImpl = new StabilizerNFT();
+        stabilizerImplAddress = address(stabilizerImpl);
 
         console2.log(
             "StabilizerNFT implementation deployed at:",
