@@ -18,7 +18,7 @@ contract UpgradeScript is Script {
     string deploymentPath;
     
     // CreateX contract address - this should be the deployed CreateX contract on the target network
-    address constant CREATE_X_ADDRESS = 0x998abeb3E57409262aE5b751f60747921B33613E; // Example address, replace with actual address
+    address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; // Example address, replace with actual address
     ICreateX createX;
     
     // No salts needed for implementations as we're using regular CREATE
