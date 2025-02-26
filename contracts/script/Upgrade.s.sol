@@ -110,7 +110,8 @@ contract UpgradeScript is Script {
     function upgradeProxies() internal {
         ProxyAdmin proxyAdmin = ProxyAdmin(proxyAdminAddress);
         
-        // Upgrade PriceOracle
+        // Upgrade PriceOracle - no initialization data needed for upgrade
+        // If we were changing the initialize function signature, we would need to include initialization data
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(oracleProxyAddress), newOracleImplAddress, "");
         console2.log("PriceOracle upgraded successfully");
         

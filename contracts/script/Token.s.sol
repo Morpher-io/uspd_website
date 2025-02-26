@@ -171,7 +171,8 @@ contract DeployScript is Script {
                 priceStalenessPeriod,
                 usdcAddress,
                 uniswapRouter,
-                chainlinkAggregator
+                chainlinkAggregator,
+                deployer
             )
         );
 

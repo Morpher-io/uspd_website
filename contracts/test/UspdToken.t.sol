@@ -82,7 +82,8 @@ contract USPDTokenTest is Test {
             300,               // 5 minute staleness period
             USDC,              // USDC address
             UNISWAP_ROUTER,    // Uniswap router
-            CHAINLINK_ETH_USD  // Chainlink ETH/USD feed
+            CHAINLINK_ETH_USD, // Chainlink ETH/USD feed
+            address(this)      // Admin address
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(

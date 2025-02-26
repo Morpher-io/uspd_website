@@ -76,12 +76,13 @@ contract PriceOracle is
         uint256 _priceStalenessPeriod,
         address _usdcAddress,
         address _uniswapRouter,
-        address _chainlinkAggregator
+        address _chainlinkAggregator,
+        address _admin
     ) public initializer {
         __Pausable_init();
         __AccessControl_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         config.maxPriceDeviation = _maxPriceDeviation;
         config.priceStalenessPeriod = _priceStalenessPeriod;
