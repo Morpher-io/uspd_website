@@ -1,6 +1,6 @@
 'use client'
 
-import { useAccount } from 'wagmi'
+import { useAccount, useChainId } from 'wagmi'
 import { useReadContracts, useWriteContract } from 'wagmi'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { abi as stabilizerAbi } from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
@@ -11,44 +11,72 @@ import { Label } from "@/components/ui/label"
 import { useState, useEffect } from "react"
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { getContractAddresses } from '@/lib/contracts'
 
 export default function StabilizerMintPage() {
   const { address, isConnected } = useAccount()
+  const chainId = useChainId()
   const [recipientAddress, setRecipientAddress] = useState<string>('')
   const [tokenId, setTokenId] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [stabilizerAddress, setStabilizerAddress] = useState<`0x${string}` | null>(null)
+  const [deploymentError, setDeploymentError] = useState<string | null>(null)
   const router = useRouter()
 
-  const stabilizerAddress = process.env.NEXT_PUBLIC_STABILIZER_NFT_ADDRESS as `0x${string}`
+  useEffect(() => {
+    if (chainId) {
+      const addresses = getContractAddresses(chainId)
+      if (!addresses) {
+        setDeploymentError(`No deployment found for chain ID ${chainId}`)
+        setStabilizerAddress(null)
+        return
+      }
+      
+      if (!addresses.stabilizer || addresses.stabilizer === '0x0000000000000000000000000000000000000000') {
+        setDeploymentError(`No stabilizer contract deployed on chain ID ${chainId}`)
+        setStabilizerAddress(null)
+        return
+      }
+      
+      setStabilizerAddress(addresses.stabilizer as `0x${string}`)
+      setDeploymentError(null)
+    }
+  }, [chainId])
   const { writeContractAsync } = useWriteContract()
 
   // Check if user has MINTER_ROLE
   const { data, isLoading } = useReadContracts({
-    contracts: [
+    contracts: stabilizerAddress ? [
       {
         address: stabilizerAddress,
         abi: stabilizerAbi,
         functionName: 'MINTER_ROLE',
         args: [],
       }
-    ]
+    ] : [],
+    query: {
+      enabled: !!stabilizerAddress
+    }
   })
 
   const minterRole = data?.[0]?.result
   
   const { data: hasRoleData, isLoading: isRoleLoading } = useReadContracts({
-    contracts: [
+    contracts: stabilizerAddress && minterRole ? [
       {
         address: stabilizerAddress,
         abi: stabilizerAbi,
         functionName: 'hasRole',
         args: [minterRole as `0x${string}`, address as `0x${string}`],
         query: {
-          enabled: !!minterRole && !!address,
+          enabled: !!minterRole && !!address && !!stabilizerAddress,
         }
       }
-    ]
+    ] : [],
+    query: {
+      enabled: !!stabilizerAddress && !!minterRole && !!address
+    }
   })
 
   const hasMinterRole = hasRoleData?.[0]?.result
@@ -64,6 +92,11 @@ export default function StabilizerMintPage() {
     try {
       setError(null)
       setSuccess(null)
+      
+      if (!stabilizerAddress) {
+        setError('No stabilizer contract available on this network')
+        return
+      }
       
       // Validate inputs
       if (!recipientAddress || !tokenId) {
@@ -112,7 +145,22 @@ export default function StabilizerMintPage() {
     )
   }
 
-  if (isLoading || isRoleLoading) {
+  if (deploymentError) {
+    return (
+      <div className="mt-4 mx-auto container flex x:max-w-(--nextra-content-width) x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] flex flex-col items-center gap-10 pb-28 pt-20 sm:gap-14">
+        <Alert variant="destructive">
+          <AlertDescription className='text-center'>
+            {deploymentError}
+          </AlertDescription>
+        </Alert>
+        <Link href="/stabilizer">
+          <Button>Back to Stabilizer Page</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  if (isLoading || isRoleLoading || !stabilizerAddress) {
     return (
       <div className="mt-4 mx-auto container flex x:max-w-(--nextra-content-width) x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] flex flex-col items-center gap-10 pb-28 pt-20 sm:gap-14">
         <p>Loading...</p>
