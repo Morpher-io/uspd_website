@@ -18,21 +18,23 @@ export default function StabilizerPage() {
 
   useEffect(() => {
     if (chainId) {
-      const addresses = getContractAddresses(chainId)
-      if (!addresses) {
-        setDeploymentError(`No deployment found for chain ID ${chainId}`)
-        setStabilizerAddress(null)
-        return
-      }
-      
-      if (!addresses.stabilizer || addresses.stabilizer === '0x0000000000000000000000000000000000000000') {
-        setDeploymentError(`No stabilizer contract deployed on chain ID ${chainId}`)
-        setStabilizerAddress(null)
-        return
-      }
-      
-      setStabilizerAddress(addresses.stabilizer as `0x${string}`)
-      setDeploymentError(null)
+      const addresses = getContractAddresses(chainId).then(addresses => {
+        if (!addresses) {
+          setDeploymentError(`No deployment found for chain ID ${chainId}`)
+          setStabilizerAddress(null)
+          return
+        }
+
+        if (!addresses.stabilizer || addresses.stabilizer === '0x0000000000000000000000000000000000000000') {
+          setDeploymentError(`No stabilizer contract deployed on chain ID ${chainId}`)
+          setStabilizerAddress(null)
+          return
+        }
+
+        setStabilizerAddress(addresses.stabilizer as `0x${string}`)
+        setDeploymentError(null)
+
+      })
     }
   }, [chainId])
 
@@ -59,7 +61,7 @@ export default function StabilizerPage() {
 
   // Get MINTER_ROLE value
   const minterRole = data?.[1]?.result
-  
+
   const { data: hasRoleData } = useReadContracts({
     contracts: stabilizerAddress ? [
       {
@@ -77,7 +79,7 @@ export default function StabilizerPage() {
     }
   })
 
-  const hasMinterRole = hasRoleData?.[0]?.result || false
+  const hasMinterRole = hasRoleData?.[0]?.result || false
 
   if (!isConnected) {
     return (
