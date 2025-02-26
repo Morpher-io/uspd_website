@@ -48,13 +48,13 @@ export default function StabilizerPage() {
     ]
   })
 
-  const hasMinterRole = hasRoleData?.[0]?.result
+  const hasMinterRole = hasRoleData?.[0]?.result || false
 
   if (!isConnected) {
     return (
-      <div className="container flex items-center justify-center min-h-screen">
+      <div className="container flex items-center justify-center min-h-screen mx-auto  x:max-w-(--nextra-content-width) x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] flex flex-col items-center gap-10 pb-28 pt-20 sm:gap-14 lg:flex-row">
         <Alert>
-          <AlertDescription>
+          <AlertDescription className='text-center'>
             Please connect your wallet to view your Stabilizer NFTs
           </AlertDescription>
         </Alert>
