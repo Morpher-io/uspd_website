@@ -115,7 +115,8 @@ contract UpgradeScript is Script {
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(oracleProxyAddress), newOracleImplAddress, "");
         console2.log("PriceOracle upgraded successfully");
         
-        // Upgrade UspdCollateralizedPositionNFT
+        // Upgrade UspdCollateralizedPositionNFT - no initialization data needed for upgrade
+        // If we were changing the initialize function signature, we would need to include initialization data
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(positionNFTProxyAddress), newPositionNFTImplAddress, "");
         console2.log("UspdCollateralizedPositionNFT upgraded successfully");
         

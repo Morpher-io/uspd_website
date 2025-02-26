@@ -59,11 +59,11 @@ contract UspdCollateralizedPositionNFT is
         _disableInitializers();
     }
 
-    function initialize(address _oracle) public initializer {
+    function initialize(address _oracle, address _admin) public initializer {
         __ERC721_init("USPD Collateralized Position", "USPDPOS");
         __AccessControl_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         oracle = PriceOracle(_oracle);
         _nextPositionId = 1; //positionIds start at 1
     }

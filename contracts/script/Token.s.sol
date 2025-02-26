@@ -202,7 +202,7 @@ contract DeployScript is Script {
         // Prepare initialization data
         bytes memory initData = abi.encodeCall(
             UspdCollateralizedPositionNFT.initialize,
-            (oracleProxyAddress)
+            (oracleProxyAddress, deployer)
         );
 
         // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX

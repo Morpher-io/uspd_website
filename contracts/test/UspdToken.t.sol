@@ -102,7 +102,8 @@ contract USPDTokenTest is Test {
         UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
         bytes memory positionInitData = abi.encodeWithSelector(
             UspdCollateralizedPositionNFT.initialize.selector,
-            address(priceOracle)
+            address(priceOracle),
+            address(this) // Test contract as admin
         );
         ERC1967Proxy positionProxy = new ERC1967Proxy(
             address(positionNFTImpl),

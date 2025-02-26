@@ -29,7 +29,8 @@ contract StabilizerNFTTest is Test {
         UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
         bytes memory positionInitData = abi.encodeWithSelector(
             UspdCollateralizedPositionNFT.initialize.selector,
-            address(0) // Mock oracle address for testing
+            address(0), // Mock oracle address for testing
+            address(this) // Test contract as admin
         );
         ERC1967Proxy positionProxy = new ERC1967Proxy(
             address(positionNFTImpl),
