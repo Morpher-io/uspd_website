@@ -23,7 +23,7 @@ contract StabilizerNFTTest is Test {
         user2 = makeAddr("user2");
 
         // Deploy USPD token first (needed for StabilizerNFT initialization)
-        uspdToken = new USPDToken(address(0), address(0)); // Mock addresses for oracle and stabilizer
+        uspdToken = new USPDToken(address(0), address(0), address(this)); // Mock addresses for oracle and stabilizer
 
         // Deploy Position NFT implementation and proxy
         UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
