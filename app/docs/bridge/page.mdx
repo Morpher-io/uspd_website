@@ -1,0 +1,63 @@
+# Cross-Chain Bridge
+
+USPD is designed to be a versatile stablecoin that operates seamlessly across multiple blockchain networks. While USPD is currently deployed natively only on Ethereum mainnet, we are planning to extend its presence to other major blockchains including Polygon and Binance Smart Chain (BSC).
+
+## Cross-Chain Architecture
+
+The cross-chain functionality will allow USPD tokens to move between different blockchain networks while maintaining the same token address across all supported chains. This creates a unified experience for users regardless of which blockchain they prefer to use.
+
+### How It Works
+
+The cross-chain bridge will operate through a secure message passing system:
+
+1. **Lock and Mint**: Users lock USPD tokens on Ethereum mainnet, which triggers a signed message to the destination chain, authorizing the minting of an equivalent amount of USPD tokens on that chain.
+
+2. **Burn and Release**: When users want to move tokens back to Ethereum, they burn USPD tokens on the secondary chain, which generates a signed message to Ethereum mainnet to release the locked tokens.
+
+![Cross-Chain Bridge Diagram](/images/bridge-diagram.svg)
+
+## Key Differences from Mainnet
+
+It's important to note that USPD tokens on secondary chains will have some functional differences from those on Ethereum mainnet:
+
+- **No Stabilizer Functionality**: The liquidity providing functionality through stabilizers will only be available on Ethereum mainnet.
+- **Minting Mechanism**: Instead of minting via stabilizers, tokens on secondary chains will be minted through the cross-chain message passing system.
+- **Reserves Backing**: All USPD tokens across all chains will still be fully backed by the reserves on Ethereum mainnet.
+
+## Security Considerations
+
+The cross-chain bridge will implement several security measures:
+
+- **Cryptographic Verification**: All cross-chain messages will be cryptographically signed and verified.
+- **Attestation Mechanism**: A robust attestation system will ensure that tokens can only be minted on secondary chains when properly locked on Ethereum.
+- **Monitoring System**: Continuous monitoring of bridge operations to detect and prevent potential exploits.
+
+## Implementation Timeline
+
+The cross-chain bridge functionality is on our roadmap for implementation before the final mainnet release. Our team is currently working on:
+
+1. Developing the smart contracts for cross-chain message passing
+2. Building the attestation and verification systems
+3. Testing the bridge functionality in controlled environments
+4. Auditing the entire system for security vulnerabilities
+
+## Technical Architecture
+
+The bridge will use a generic message passing protocol that enables secure communication between different blockchain networks. This involves:
+
+- **Message Attesters**: Entities that verify and attest to the validity of cross-chain messages
+- **Destination Chain Contracts**: Smart contracts on secondary chains that receive and process messages from Ethereum
+- **Origin Chain Contracts**: Smart contracts on Ethereum that lock tokens and initiate cross-chain transfers
+
+## User Experience
+
+From a user perspective, the bridge will be designed to be as seamless as possible:
+
+1. Connect wallet to the USPD bridge interface
+2. Select source and destination chains
+3. Specify the amount of USPD to transfer
+4. Confirm the transaction
+5. Wait for confirmation (typically 5-20 minutes depending on network conditions)
+6. Receive USPD tokens on the destination chain
+
+Stay tuned for more updates as we progress with the development of this feature.
