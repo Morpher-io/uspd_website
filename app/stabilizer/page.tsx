@@ -1,23 +1,17 @@
 'use client'
 
 import { useAccount } from 'wagmi'
-import { useReadContracts, useWriteContract } from 'wagmi'
+import { useReadContracts } from 'wagmi'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { abi as stabilizerAbi } from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useState } from "react"
+import Link from 'next/link'
 
 export default function StabilizerPage() {
   const { address, isConnected } = useAccount()
-  const [recipientAddress, setRecipientAddress] = useState<string>('')
-  const [tokenId, setTokenId] = useState<string>('')
-  const [error, setError] = useState<string | null>(null)
 
   const stabilizerAddress = process.env.NEXT_PUBLIC_STABILIZER_NFT_ADDRESS as `0x${string}`
-  const { writeContractAsync } = useWriteContract()
 
   // Check if user has NFTs and if they have MINTER_ROLE
   const { data, isLoading } = useReadContracts({
@@ -33,17 +27,11 @@ export default function StabilizerPage() {
         abi: stabilizerAbi,
         functionName: 'MINTER_ROLE',
         args: [],
-      },
-      {
-        address: stabilizerAddress,
-        abi: stabilizerAbi,
-        functionName: 'hasRole',
-        args: [null, address as `0x${string}`], // We'll update this after getting MINTER_ROLE
       }
     ]
   })
 
-  // Update the hasRole query once we have the MINTER_ROLE value
+  // Get MINTER_ROLE value
   const minterRole = data?.[1]?.result
   
   const { data: hasRoleData } = useReadContracts({
@@ -61,44 +49,6 @@ export default function StabilizerPage() {
   })
 
   const hasMinterRole = hasRoleData?.[0]?.result
-
-  const handleMint = async () => {
-    try {
-      setError(null)
-      
-      // Validate inputs
-      if (!recipientAddress || !tokenId) {
-        setError('Please provide both recipient address and token ID')
-        return
-      }
-      
-      // Validate address format
-      if (!recipientAddress.startsWith('0x') || recipientAddress.length !== 42) {
-        setError('Invalid recipient address format')
-        return
-      }
-      
-      // Validate token ID is a number
-      if (isNaN(Number(tokenId))) {
-        setError('Token ID must be a number')
-        return
-      }
-
-      await writeContractAsync({
-        address: stabilizerAddress,
-        abi: stabilizerAbi,
-        functionName: 'mint',
-        args: [recipientAddress as `0x${string}`, BigInt(tokenId)],
-      })
-
-      // Clear form after successful mint
-      setRecipientAddress('')
-      setTokenId('')
-    } catch (err: any) {
-      setError(err.message || 'Failed to mint NFT')
-      console.error(err)
-    }
-  }
 
   if (!isConnected) {
     return (
@@ -142,37 +92,17 @@ export default function StabilizerPage() {
       )}
 
       {hasMinterRole && (
-        <Card className="w-[400px]">
+        <Card className="w-[400px] mt-6">
           <CardHeader>
-            <CardTitle>Mint New Stabilizer NFT</CardTitle>
+            <CardTitle>Stabilizer Admin</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="recipient">Recipient Address</Label>
-              <Input 
-                id="recipient" 
-                placeholder="0x..." 
-                value={recipientAddress}
-                onChange={(e) => setRecipientAddress(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tokenId">Token ID</Label>
-              <Input 
-                id="tokenId" 
-                placeholder="1" 
-                value={tokenId}
-                onChange={(e) => setTokenId(e.target.value)}
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          <CardContent>
+            <p className="mb-4">You have admin privileges to mint new Stabilizer NFTs.</p>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleMint} className="w-full">Mint NFT</Button>
+            <Link href="/stabilizer/mint" className="w-full">
+              <Button className="w-full">Go to Minting Page</Button>
+            </Link>
           </CardFooter>
         </Card>
       )}
