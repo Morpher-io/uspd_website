@@ -1,3 +1,4 @@
+"use server"
 import fs from 'fs';
 import path from 'path';
 
@@ -20,7 +21,7 @@ export interface DeploymentInfo {
   };
 }
 
-export function getDeploymentInfo(chainId: number): DeploymentInfo | null {
+export async function getDeploymentInfo(chainId: number): Promise<DeploymentInfo | null> {
   try {
     const filePath = path.join(process.cwd(), 'contracts', 'deployments', `${chainId}.json`);
     if (!fs.existsSync(filePath)) {
@@ -36,8 +37,8 @@ export function getDeploymentInfo(chainId: number): DeploymentInfo | null {
   }
 }
 
-export function getContractAddresses(chainId: number): Record<string, string> | null {
-  const deploymentInfo = getDeploymentInfo(chainId);
+export async function getContractAddresses(chainId: number): Promise<Record<string, string> | null> {
+  const deploymentInfo = await getDeploymentInfo(chainId);
   if (!deploymentInfo) return null;
   
   return {

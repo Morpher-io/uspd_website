@@ -91,10 +91,15 @@ contract DeployScript is Script {
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
             chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         } else if (chainId == 5) {
-            // Goerli Testnet
-            usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
+            // Ethereum Mainnet
+            usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-            chainlinkAggregator = 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e;
+            chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+        } else if (chainId == 112233) {
+            // anvil test network internal (anvil -f )
+            usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+            chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
         } else if (chainId == 137) {
             // Polygon
             usdcAddress = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;

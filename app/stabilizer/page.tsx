@@ -18,7 +18,7 @@ export default function StabilizerPage() {
 
   useEffect(() => {
     if (chainId) {
-      const addresses = getContractAddresses(chainId).then(addresses => {
+      getContractAddresses(chainId).then(addresses => {
         if (!addresses) {
           setDeploymentError(`No deployment found for chain ID ${chainId}`)
           setStabilizerAddress(null)
@@ -54,7 +54,9 @@ export default function StabilizerPage() {
         args: [],
       }
     ] : [],
-    enabled: !!stabilizerAddress && !!address
+    query: {
+      enabled: !!stabilizerAddress && !!address
+    }
   })
 
   // Get MINTER_ROLE value
@@ -69,7 +71,9 @@ export default function StabilizerPage() {
         args: [minterRole as `0x${string}`, address as `0x${string}`],
       }
     ] : [],
-    enabled: !!stabilizerAddress && !!minterRole && !!address
+    query: {
+      enabled: !!stabilizerAddress && !!minterRole && !!address
+    }
   })
 
   const hasMinterRole = hasRoleData?.[0]?.result || false
