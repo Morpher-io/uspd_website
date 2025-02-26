@@ -25,13 +25,14 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
 
     constructor(
         address _oracle,
-        address _stabilizer
+        address _stabilizer,
+        address _admin
     ) ERC20("USPD Demo", "USPDDEMO") ERC20Permit("USPDDEMO") {
         oracle = PriceOracle(_oracle);
         stabilizer = IStabilizerNFT(_stabilizer);
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(EXCESS_COLLATERAL_DRAIN_ROLE, msg.sender);
-        _grantRole(UPDATE_ORACLE_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(EXCESS_COLLATERAL_DRAIN_ROLE, _admin);
+        _grantRole(UPDATE_ORACLE_ROLE, _admin);
     }
 
     function mint(

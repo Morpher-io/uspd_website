@@ -237,7 +237,7 @@ contract DeployScript is Script {
         // Get the bytecode of UspdToken with constructor arguments
         bytes memory bytecode = abi.encodePacked(
             type(USPDToken).creationCode,
-            abi.encode(oracleProxyAddress, address(0)) // Temporary zero address for stabilizer
+            abi.encode(oracleProxyAddress, address(0), deployer) // Temporary zero address for stabilizer, deployer as admin
         );
 
         // Deploy using CREATE2 for deterministic address using CreateX
@@ -307,8 +307,7 @@ contract DeployScript is Script {
 
         // Grant roles to the UspdToken
         USPDToken token = USPDToken(payable(tokenAddress));
-        token.grantRole(token.EXCESS_COLLATERAL_DRAIN_ROLE(), deployer);
-        token.grantRole(token.UPDATE_ORACLE_ROLE(), deployer);
+        // Deployer already has EXCESS_COLLATERAL_DRAIN_ROLE and UPDATE_ORACLE_ROLE from constructor
         token.grantRole(token.STABILIZER_ROLE(), stabilizerProxyAddress);
     }
 
