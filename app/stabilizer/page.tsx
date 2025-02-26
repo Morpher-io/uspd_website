@@ -3,7 +3,7 @@
 import { useAccount } from 'wagmi'
 import { useReadContracts, useWriteContract } from 'wagmi'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { abi as stabilizerAbi } from '../contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
+import { abi as stabilizerAbi } from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
