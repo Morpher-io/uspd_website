@@ -116,7 +116,8 @@ contract USPDTokenTest is Test {
         bytes memory stabilizerInitData = abi.encodeWithSelector(
             StabilizerNFT.initialize.selector,
             address(positionNFT),
-            address(uspdToken)
+            address(uspdToken),
+            address(this)
         );
         ERC1967Proxy stabilizerProxy = new ERC1967Proxy(
             address(stabilizerNFTImpl),
