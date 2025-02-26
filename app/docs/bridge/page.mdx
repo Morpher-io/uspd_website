@@ -14,7 +14,41 @@ The cross-chain bridge will operate through a secure message passing system:
 
 2. **Burn and Release**: When users want to move tokens back to Ethereum, they burn USPD tokens on the secondary chain, which generates a signed message to Ethereum mainnet to release the locked tokens.
 
-![Cross-Chain Bridge Diagram](/images/bridge-diagram.svg)
+sequenceDiagram
+    participant User
+    participant Ethereum as Ethereum Mainnet
+    participant Attesters as Message Attesters
+    participant TargetChain as Target Chain (Polygon/BSC)
+    
+    Note over User,TargetChain: Lock and Mint Process
+    
+    User->>Ethereum: Lock USPD tokens in bridge contract
+    Ethereum->>Ethereum: Emit LockEvent
+    Note right of Ethereum: Wait for block confirmations
+    
+    Attesters->>Ethereum: Monitor for LockEvents
+    Ethereum-->>Attesters: Retrieve event data
+    Attesters->>Attesters: Generate cryptographic signature
+    
+    User->>TargetChain: Submit mint request with signature
+    TargetChain->>TargetChain: Verify signature
+    TargetChain->>TargetChain: Mint equivalent USPD tokens
+    TargetChain-->>User: Receive USPD tokens on target chain
+    
+    Note over User,TargetChain: Burn and Release Process
+    
+    User->>TargetChain: Burn USPD tokens on target chain
+    TargetChain->>TargetChain: Emit BurnEvent
+    Note right of TargetChain: Wait for block confirmations
+    
+    Attesters->>TargetChain: Monitor for BurnEvents
+    TargetChain-->>Attesters: Retrieve event data
+    Attesters->>Attesters: Generate cryptographic signature
+    
+    User->>Ethereum: Submit unlock request with signature
+    Ethereum->>Ethereum: Verify signature
+    Ethereum->>Ethereum: Release locked USPD tokens
+    Ethereum-->>User: Receive USPD tokens on Ethereum
 
 ## Key Differences from Mainnet
 
