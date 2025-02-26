@@ -11,9 +11,18 @@ export default {
       
     },
     demo: {
-      type: 'page',
-      title: 'Demo',
-      
-    },
+      title: 'Demos',
+      type: 'menu',
+      items: {
+        about: {
+          title: 'Minting',
+          href: '/demo'
+        },
+        stabilizer: {
+          title: 'Stabilizer',
+          href: '/stabilizer'
+        }
+      }
+    }
    
   }

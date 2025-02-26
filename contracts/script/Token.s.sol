@@ -316,7 +316,7 @@ contract DeployScript is Script {
     function saveDeploymentInfo() internal {
         // Create a JSON object structure
 
-        string memory jsonObj = '{"contracts":{},"config":{},"metadata":{}}';
+        string memory jsonObj = '{"contracts":{"proxyAdmin":"0x0","oracleImpl":"0x0","oracle":"0x0","positionNFTImpl":"0x0","positionNFT":"0x0","stabilizerImpl":"0x0","stabilizer":"0x0","token":"0x0"},"config":{"usdcAddress":"0x0","uniswapRouter":"0x0","chainlinkAggregator":"0x0"},"metadata":{"chainId":0,"deploymentTimestamp":0,"deployer":"0x0"}}';
         if (!vm.isFile(deploymentPath)) {
             vm.writeFile(deploymentPath, jsonObj);
         }
