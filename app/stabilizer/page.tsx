@@ -54,29 +54,22 @@ export default function StabilizerPage() {
         args: [],
       }
     ] : [],
-    query: {
-      enabled: !!stabilizerAddress && !!address
-    }
+    enabled: !!stabilizerAddress && !!address
   })
 
   // Get MINTER_ROLE value
   const minterRole = data?.[1]?.result
 
   const { data: hasRoleData } = useReadContracts({
-    contracts: stabilizerAddress ? [
+    contracts: stabilizerAddress && minterRole ? [
       {
         address: stabilizerAddress,
         abi: stabilizerAbi,
         functionName: 'hasRole',
         args: [minterRole as `0x${string}`, address as `0x${string}`],
-        query: {
-          enabled: !!minterRole && !!address && !!stabilizerAddress,
-        }
       }
     ] : [],
-    query: {
-      enabled: !!stabilizerAddress && !!minterRole && !!address
-    }
+    enabled: !!stabilizerAddress && !!minterRole && !!address
   })
 
   const hasMinterRole = hasRoleData?.[0]?.result || false

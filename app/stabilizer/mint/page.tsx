@@ -55,9 +55,7 @@ export default function StabilizerMintPage() {
         args: [],
       }
     ] : [],
-    query: {
-      enabled: !!stabilizerAddress
-    }
+    enabled: !!stabilizerAddress
   })
 
   const minterRole = data?.[0]?.result
@@ -69,14 +67,9 @@ export default function StabilizerMintPage() {
         abi: stabilizerAbi,
         functionName: 'hasRole',
         args: [minterRole as `0x${string}`, address as `0x${string}`],
-        query: {
-          enabled: !!minterRole && !!address && !!stabilizerAddress,
-        }
       }
     ] : [],
-    query: {
-      enabled: !!stabilizerAddress && !!minterRole && !!address
-    }
+    enabled: !!stabilizerAddress && !!minterRole && !!address
   })
 
   const hasMinterRole = hasRoleData?.[0]?.result
