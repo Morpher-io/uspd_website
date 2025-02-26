@@ -12,17 +12,42 @@ import {
 import { WagmiConfig, WagmiProvider } from 'wagmi';
 import {
   mainnet,
-  polygon
+  polygon,
+  Chain
 } from 'wagmi/chains';
 import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
 
+// Define a custom Anvil chain for development
+const anvilChain: Chain = {
+  id: 112233,
+  name: 'Anvil',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ethereum',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: { http: ['http://localhost:8545'] },
+    public: { http: ['http://localhost:8545'] },
+  },
+  blockExplorers: {
+    default: { name: 'Local Explorer', url: 'http://localhost:8545' },
+  },
+  testnet: true,
+};
+
+// Determine which chains to use based on environment
+const chains = process.env.NODE_ENV === 'development' 
+  ? [anvilChain, mainnet, polygon]
+  : [mainnet, polygon];
+
 const config = getDefaultConfig({
   appName: 'My RainbowKit App',
   projectId: 'YOUR_PROJECT_ID',
-  chains: [mainnet, polygon],
+  chains: chains,
   ssr: true, // If your dApp uses server side rendering (SSR)
 });
 
