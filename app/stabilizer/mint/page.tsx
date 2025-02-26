@@ -77,14 +77,16 @@ export default function StabilizerMintPage() {
         }
     })
 
-    const hasMinterRole = hasRoleData?.[0]?.result
+    // Explicitly handle the boolean result to avoid undefined being treated as falsy
+    const hasMinterRole = hasRoleData?.[0]?.result === undefined ? undefined : !!hasRoleData?.[0]?.result
 
     // Redirect if user doesn't have minter role
     useEffect(() => {
-        if (!isLoading && !isRoleLoading && !hasMinterRole && isConnected) {
+        // Only redirect if we've completed loading and confirmed they don't have the role
+        if (!isLoading && !isRoleLoading && hasMinterRole === false && isConnected && stabilizerAddress) {
             router.push('/stabilizer')
         }
-    }, [hasMinterRole, isLoading, isRoleLoading, isConnected, router])
+    }, [hasMinterRole, isLoading, isRoleLoading, isConnected, router, stabilizerAddress])
 
     const handleMint = async () => {
         try {

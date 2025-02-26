@@ -76,7 +76,8 @@ export default function StabilizerPage() {
     }
   })
 
-  const hasMinterRole = hasRoleData?.[0]?.result || false
+  // Explicitly handle the boolean result
+  const hasMinterRole = hasRoleData?.[0]?.result === undefined ? undefined : !!hasRoleData?.[0]?.result
 
   if (!isConnected) {
     return (
