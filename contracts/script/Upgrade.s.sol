@@ -118,7 +118,8 @@ contract UpgradeScript is Script {
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(positionNFTProxyAddress), newPositionNFTImplAddress, "");
         console2.log("UspdCollateralizedPositionNFT upgraded successfully");
         
-        // Upgrade StabilizerNFT
+        // Upgrade StabilizerNFT - no initialization data needed for upgrade
+        // If we were changing the initialize function signature, we would need to include initialization data
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(stabilizerProxyAddress), newStabilizerImplAddress, "");
         console2.log("StabilizerNFT upgraded successfully");
     }

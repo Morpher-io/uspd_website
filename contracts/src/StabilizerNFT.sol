@@ -82,13 +82,14 @@ contract StabilizerNFT is
 
     function initialize(
         address _positionNFT,
-        address _uspdToken
+        address _uspdToken,
+        address _admin
     ) public initializer {
         __ERC721_init("USPD Stabilizer", "USPDS");
         __ERC721Enumerable_init();
         __AccessControl_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         positionNFT = IUspdCollateralizedPositionNFT(_positionNFT);
         uspdToken = USPDToken(payable(_uspdToken));
     }

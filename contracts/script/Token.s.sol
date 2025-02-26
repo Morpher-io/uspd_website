@@ -258,7 +258,7 @@ contract DeployScript is Script {
         // Prepare initialization data
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (positionNFTProxyAddress, actualTokenAddress)
+            (positionNFTProxyAddress, actualTokenAddress, deployer)
         );
 
         // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
@@ -303,6 +303,7 @@ contract DeployScript is Script {
 
         // Grant roles to the StabilizerNFT
         StabilizerNFT stabilizer = StabilizerNFT(payable(stabilizerProxyAddress));
+        // Deployer already has DEFAULT_ADMIN_ROLE from initialization
         stabilizer.grantRole(stabilizer.MINTER_ROLE(), deployer);
 
         // Grant roles to the UspdToken
