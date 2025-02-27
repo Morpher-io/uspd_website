@@ -68,7 +68,9 @@ export default function StabilizerPage() {
             <StabilizerCard 
               balance={balance} 
               hasMinterRole={hasMinterRole} 
-              isLoading={isLoading} 
+              isLoading={isLoading}
+              stabilizerAddress={stabilizerAddress}
+              stabilizerAbi={stabilizerAbi}
             />
           )
         }}
