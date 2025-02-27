@@ -159,6 +159,14 @@
    - Document environment variables and configuration
    - Include information about the project structure
 
+3. **USPD Documentation** 
+   - Where appropriate either amend or create new documentation in app/docs
+   - Follow a consistent and self-explanatory folder structure and add corresponding menu points in docs/_meta.tsx
+   - The documentation is generally markdown but with mdx, so it can also contain components
+   - It also understands mermaid diagrams and code fences
+   - The documentation can be written for technical people as well as crypto natives
+   - Bullet points are generally ok, but full short sentences are preferred.
+
 ## Testing
 
 1. **Component Testing**
