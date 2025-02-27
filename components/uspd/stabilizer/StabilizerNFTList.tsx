@@ -18,6 +18,28 @@ export function StabilizerNFTList({
   const [tokenIds, setTokenIds] = useState<number[]>([])
   const [refreshCounter, setRefreshCounter] = useState(0)
 
+  // Define the fetch function outside of useEffect
+  const fetchTokenOfOwnerByIndex = async (index: number) => {
+    if (!address || !stabilizerAddress) return null;
+    
+    try {
+      const { data } = await useReadContracts.fetch({
+        contracts: [
+          {
+            address: stabilizerAddress,
+            abi: stabilizerAbi,
+            functionName: 'tokenOfOwnerByIndex',
+            args: [address as `0x${string}`, BigInt(index)],
+          }
+        ]
+      })
+      return data?.[0]?.result
+    } catch (error) {
+      console.error('Error fetching token by index:', error)
+      return null
+    }
+  }
+
   // Fetch all token IDs owned by the user
   useEffect(() => {
     async function fetchTokenIds() {
@@ -38,27 +60,7 @@ export function StabilizerNFTList({
     }
 
     fetchTokenIds()
-  }, [address, stabilizerAddress, balance, refreshCounter])
-
-  // Helper function to fetch token by index
-  const fetchTokenOfOwnerByIndex = async (index: number) => {
-    try {
-      const { data } = await useReadContracts.fetch({
-        contracts: [
-          {
-            address: stabilizerAddress,
-            abi: stabilizerAbi,
-            functionName: 'tokenOfOwnerByIndex',
-            args: [address as `0x${string}`, BigInt(index)],
-          }
-        ]
-      })
-      return data?.[0]?.result
-    } catch (error) {
-      console.error('Error fetching token by index:', error)
-      return null
-    }
-  }
+  }, [address, stabilizerAddress, balance, refreshCounter, fetchTokenOfOwnerByIndex])
 
   // Fetch position data for all tokens
   const { data: positionsData, isLoading } = useReadContracts({

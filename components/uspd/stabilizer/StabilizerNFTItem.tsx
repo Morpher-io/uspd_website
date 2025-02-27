@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract } from 'wagmi'
+import { useWriteContract, useAccount } from 'wagmi'
 import { parseEther, formatEther } from 'viem'
 
 interface StabilizerNFTItemProps {
@@ -31,6 +31,7 @@ export function StabilizerNFTItem({
   const [isAddingFunds, setIsAddingFunds] = useState(false)
   const [isWithdrawingFunds, setIsWithdrawingFunds] = useState(false)
   
+  const { address } = useAccount()
   const { writeContractAsync } = useWriteContract()
 
   const handleAddFunds = async () => {
@@ -89,7 +90,7 @@ export function StabilizerNFTItem({
         address: stabilizerAddress,
         abi: stabilizerAbi,
         functionName: 'removeUnallocatedFunds',
-        args: [BigInt(tokenId), ethAmount, null] // null will be replaced with the connected wallet address
+        args: [BigInt(tokenId), ethAmount, address] // Use the connected wallet address
       })
 
       setSuccess(`Successfully withdrew ${withdrawAmount} ETH from Stabilizer #${tokenId}`)
