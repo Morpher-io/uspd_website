@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useAccount, useReadContracts, usePublicClient } from 'wagmi'
+import { useAccount, usePublicClient } from 'wagmi'
 import { StabilizerNFTItem } from './StabilizerNFTItem'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { readContract } from 'viem/actions'
@@ -19,12 +19,17 @@ export function StabilizerNFTList({
   const [tokenIds, setTokenIds] = useState<number[]>([])
   const [refreshCounter, setRefreshCounter] = useState(0)
   const publicClient = usePublicClient()
+  const [isLoading, setIsLoading] = useState(true)
 
   // Fetch all token IDs owned by the user
   useEffect(() => {
     async function fetchTokenIds() {
-      if (!address || !stabilizerAddress || balance <= 0 || !publicClient) return
+      if (!address || !stabilizerAddress || balance <= 0 || !publicClient) {
+        setIsLoading(false)
+        return
+      }
 
+      setIsLoading(true)
       const ids = []
       for (let i = 0; i < balance; i++) {
         try {
@@ -44,23 +49,11 @@ export function StabilizerNFTList({
         }
       }
       setTokenIds(ids)
+      setIsLoading(false)
     }
 
     fetchTokenIds()
   }, [address, stabilizerAddress, balance, refreshCounter, publicClient])
-
-  // Fetch position data for all tokens
-  const { data: positionsData, isLoading } = useReadContracts({
-    contracts: tokenIds.map(id => ({
-      address: stabilizerAddress,
-      abi: stabilizerAbi,
-      functionName: 'positions',
-      args: [BigInt(id)],
-    })),
-    query: {
-      enabled: tokenIds.length > 0
-    }
-  })
 
   const handleSuccess = () => {
     // Refresh the list after a successful operation
@@ -83,27 +76,15 @@ export function StabilizerNFTList({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-      {tokenIds.map((tokenId, index) => {
-        const positionData = positionsData?.[index]?.result
-
-        if (!positionData) return null
-
-        // The position struct has these fields in order:
-        // totalEth, minCollateralRatio, prevUnallocated, nextUnallocated, prevAllocated, nextAllocated
-        const [totalEth, minCollateralRatio] = positionData as [bigint, bigint, bigint, bigint, bigint, bigint]
-
-        return (
-          <StabilizerNFTItem
-            key={tokenId}
-            tokenId={tokenId}
-            totalEth={totalEth}
-            minCollateralRatio={Number(minCollateralRatio)}
-            stabilizerAddress={stabilizerAddress}
-            stabilizerAbi={stabilizerAbi}
-            onSuccess={handleSuccess}
-          />
-        )
-      })}
+      {tokenIds.map((tokenId) => (
+        <StabilizerNFTItem
+          key={tokenId}
+          tokenId={tokenId}
+          stabilizerAddress={stabilizerAddress}
+          stabilizerAbi={stabilizerAbi}
+          onSuccess={handleSuccess}
+        />
+      ))}
     </div>
   )
 }
