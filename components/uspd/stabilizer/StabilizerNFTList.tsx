@@ -9,10 +9,10 @@ interface StabilizerNFTListProps {
   balance: number
 }
 
-export function StabilizerNFTList({ 
-  stabilizerAddress, 
-  stabilizerAbi, 
-  balance 
+export function StabilizerNFTList({
+  stabilizerAddress,
+  stabilizerAbi,
+  balance
 }: StabilizerNFTListProps) {
   const { address } = useAccount()
   const [tokenIds, setTokenIds] = useState<number[]>([])
@@ -21,9 +21,9 @@ export function StabilizerNFTList({
   // Define the fetch function outside of useEffect
   const fetchTokenOfOwnerByIndex = async (index: number) => {
     if (!address || !stabilizerAddress) return null;
-    
+
     try {
-      const { data } = await useReadContracts.fetch({
+      const { data } = await useReadContracts({
         contracts: [
           {
             address: stabilizerAddress,
@@ -70,7 +70,9 @@ export function StabilizerNFTList({
       functionName: 'positions',
       args: [BigInt(id)],
     })),
-    enabled: tokenIds.length > 0
+    query: {
+      enabled: tokenIds.length > 0
+    }
   })
 
   const handleSuccess = () => {
@@ -96,13 +98,13 @@ export function StabilizerNFTList({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
       {tokenIds.map((tokenId, index) => {
         const positionData = positionsData?.[index]?.result
-        
+
         if (!positionData) return null
-        
+
         // The position struct has these fields in order:
         // totalEth, minCollateralRatio, prevUnallocated, nextUnallocated, prevAllocated, nextAllocated
         const [totalEth, minCollateralRatio] = positionData as [bigint, bigint, bigint, bigint, bigint, bigint]
-        
+
         return (
           <StabilizerNFTItem
             key={tokenId}
