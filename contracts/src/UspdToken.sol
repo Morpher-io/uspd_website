@@ -1,6 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/***
+ *     /$$$$$$$                                   /$$                    /$$                     /$$                                            
+ *    | $$__  $$                                 |__/                   |__/                    | $$                                            
+ *    | $$  \ $$ /$$$$$$   /$$$$$$  /$$$$$$/$$$$  /$$  /$$$$$$$ /$$$$$$$ /$$  /$$$$$$  /$$$$$$$ | $$        /$$$$$$   /$$$$$$$ /$$$$$$$         
+ *    | $$$$$$$//$$__  $$ /$$__  $$| $$_  $$_  $$| $$ /$$_____//$$_____/| $$ /$$__  $$| $$__  $$| $$       /$$__  $$ /$$_____//$$_____/         
+ *    | $$____/| $$$$$$$$| $$  \__/| $$ \ $$ \ $$| $$|  $$$$$$|  $$$$$$ | $$| $$  \ $$| $$  \ $$| $$      | $$$$$$$$|  $$$$$$|  $$$$$$          
+ *    | $$     | $$_____/| $$      | $$ | $$ | $$| $$ \____  $$\____  $$| $$| $$  | $$| $$  | $$| $$      | $$_____/ \____  $$\____  $$         
+ *    | $$     |  $$$$$$$| $$      | $$ | $$ | $$| $$ /$$$$$$$//$$$$$$$/| $$|  $$$$$$/| $$  | $$| $$$$$$$$|  $$$$$$$ /$$$$$$$//$$$$$$$/         
+ *    |__/      \_______/|__/      |__/ |__/ |__/|__/|_______/|_______/ |__/ \______/ |__/  |__/|________/ \_______/|_______/|_______/          
+ *                                                                                                                                              
+ *                                                                                                                                              
+ *                                                                                                                                              
+ *     /$$   /$$        /$$$$$$        /$$$$$$$        /$$$$$$$        /$$$$$$$$        /$$$$$$        /$$   /$$       /$$$$$$$$       /$$   /$$
+ *    | $$  | $$       /$$__  $$      | $$__  $$      | $$__  $$      |__  $$__/       /$$__  $$      | $$  /$$/      | $$_____/      | $$$ | $$
+ *    | $$  | $$      | $$  \__/      | $$  \ $$      | $$  \ $$         | $$         | $$  \ $$      | $$ /$$/       | $$            | $$$$| $$
+ *    | $$  | $$      |  $$$$$$       | $$$$$$$/      | $$  | $$         | $$         | $$  | $$      | $$$$$/        | $$$$$         | $$ $$ $$
+ *    | $$  | $$       \____  $$      | $$____/       | $$  | $$         | $$         | $$  | $$      | $$  $$        | $$__/         | $$  $$$$
+ *    | $$  | $$       /$$  \ $$      | $$            | $$  | $$         | $$         | $$  | $$      | $$\  $$       | $$            | $$\  $$$
+ *    |  $$$$$$/      |  $$$$$$/      | $$            | $$$$$$$/         | $$         |  $$$$$$/      | $$ \  $$      | $$$$$$$$      | $$ \  $$
+ *     \______/        \______/       |__/            |_______/          |__/          \______/       |__/  \__/      |________/      |__/  \__/
+ *                                                                                                                                              
+ *                                                                                                                                              
+ *                                                                                                                                              
+ */
+ 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
@@ -36,11 +61,12 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
     }
 
     function mint(
-        address to, 
+        address to,
         uint256 maxUspdAmount,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) public payable {
-        IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
+        IPriceOracle.PriceResponse memory oracleResponse = oracle
+            .attestationService(priceQuery);
         uint256 ethForAllocation = msg.value;
 
         // Calculate ETH to stabilize based on maxUspdAmount
@@ -85,7 +111,7 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
     }
 
     function burn(
-        uint amount, 
+        uint amount,
         address payable to,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) public {
@@ -96,7 +122,8 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         _burn(msg.sender, amount);
 
         // Get current ETH price
-        IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
+        IPriceOracle.PriceResponse memory oracleResponse = oracle
+            .attestationService(priceQuery);
 
         // Unallocate funds from stabilizers
         uint256 unallocatedEth = stabilizer.unallocateStabilizerFunds(
@@ -156,6 +183,8 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
 
     // Disabled direct ETH receiving since we need price attestation
     receive() external payable {
-        revert("Direct ETH transfers not supported. Use mint() with price attestation.");
+        revert(
+            "Direct ETH transfers not supported. Use mint() with price attestation."
+        );
     }
 }
