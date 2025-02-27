@@ -1,6 +1,11 @@
 # Compiler files
 cache/
-out/
+# committing the json files as well for the ABIs
+out/*
+!out/StabilizerNFT.sol
+!out/UspdToken.sol
+!out/PriceOracle.sol
+!out/UspdCollateralizedPositionNFT.sol
 
 # Ignores development broadcast logs
 !/broadcast
