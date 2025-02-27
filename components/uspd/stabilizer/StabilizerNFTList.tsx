@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
-import { useAccount, useReadContracts } from 'wagmi'
+import { useAccount, useReadContracts, usePublicClient } from 'wagmi'
 import { StabilizerNFTItem } from './StabilizerNFTItem'
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { readContract } from 'viem/actions'
 
 interface StabilizerNFTListProps {
   stabilizerAddress: `0x${string}`
@@ -17,38 +18,24 @@ export function StabilizerNFTList({
   const { address } = useAccount()
   const [tokenIds, setTokenIds] = useState<number[]>([])
   const [refreshCounter, setRefreshCounter] = useState(0)
-
-  // Define the fetch function outside of useEffect
-  const fetchTokenOfOwnerByIndex = async (index: number) => {
-    if (!address || !stabilizerAddress) return null;
-
-    try {
-      const { data } = await useReadContracts({
-        contracts: [
-          {
-            address: stabilizerAddress,
-            abi: stabilizerAbi,
-            functionName: 'tokenOfOwnerByIndex',
-            args: [address as `0x${string}`, BigInt(index)],
-          }
-        ]
-      })
-      return data?.[0]?.result
-    } catch (error) {
-      console.error('Error fetching token by index:', error)
-      return null
-    }
-  }
+  const publicClient = usePublicClient()
 
   // Fetch all token IDs owned by the user
   useEffect(() => {
     async function fetchTokenIds() {
-      if (!address || !stabilizerAddress || balance <= 0) return
+      if (!address || !stabilizerAddress || balance <= 0 || !publicClient) return
 
       const ids = []
       for (let i = 0; i < balance; i++) {
         try {
-          const result = await fetchTokenOfOwnerByIndex(i)
+          // Use viem's readContract instead of a hook
+          const result = await readContract(publicClient, {
+            address: stabilizerAddress,
+            abi: stabilizerAbi,
+            functionName: 'tokenOfOwnerByIndex',
+            args: [address as `0x${string}`, BigInt(i)],
+          })
+          
           if (result) {
             ids.push(Number(result))
           }
@@ -60,7 +47,7 @@ export function StabilizerNFTList({
     }
 
     fetchTokenIds()
-  }, [address, stabilizerAddress, balance, refreshCounter, fetchTokenOfOwnerByIndex])
+  }, [address, stabilizerAddress, balance, refreshCounter, publicClient])
 
   // Fetch position data for all tokens
   const { data: positionsData, isLoading } = useReadContracts({
@@ -70,9 +57,7 @@ export function StabilizerNFTList({
       functionName: 'positions',
       args: [BigInt(id)],
     })),
-    query: {
-      enabled: tokenIds.length > 0
-    }
+    enabled: tokenIds.length > 0
   })
 
   const handleSuccess = () => {
