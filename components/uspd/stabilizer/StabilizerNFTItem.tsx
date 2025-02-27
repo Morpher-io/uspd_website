@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useWriteContract, useAccount, useReadContract } from 'wagmi'
 import { parseEther, formatEther } from 'viem'
+import { CollateralRatioSlider } from './CollateralRatioSlider'
 
 interface StabilizerNFTItemProps {
   tokenId: number
@@ -144,10 +145,18 @@ export function StabilizerNFTItem({
             <p className="text-xl font-semibold">{formatEther(totalEth as bigint)} ETH</p>
           </div>
           <div>
-            <Label>Min Collateral Ratio</Label>
+            <Label>Current Min Ratio</Label>
             <p className="text-xl font-semibold">{Number(minCollateralRatio)}%</p>
           </div>
         </div>
+        
+        <CollateralRatioSlider
+          tokenId={tokenId}
+          currentRatio={Number(minCollateralRatio)}
+          stabilizerAddress={stabilizerAddress}
+          stabilizerAbi={stabilizerAbi}
+          onSuccess={refetch}
+        />
 
         <div className="pt-4 border-t border-border">
           <Label htmlFor={`add-funds-${tokenId}`}>Add Unallocated Funds (ETH)</Label>

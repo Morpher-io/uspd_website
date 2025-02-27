@@ -1,0 +1,132 @@
+import { useState, useEffect } from "react"
+import { Slider } from "@/components/ui/slider"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useWriteContract } from 'wagmi'
+import { cn } from "@/lib/utils"
+
+interface CollateralRatioSliderProps {
+  tokenId: number
+  currentRatio: number
+  stabilizerAddress: `0x${string}`
+  stabilizerAbi: any
+  onSuccess?: () => void
+}
+
+export function CollateralRatioSlider({
+  tokenId,
+  currentRatio,
+  stabilizerAddress,
+  stabilizerAbi,
+  onSuccess
+}: CollateralRatioSliderProps) {
+  const [ratio, setRatio] = useState<number>(currentRatio)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  
+  const { writeContractAsync } = useWriteContract()
+  
+  // Update local state when prop changes
+  useEffect(() => {
+    setRatio(currentRatio)
+  }, [currentRatio])
+  
+  // Get color based on ratio value
+  const getColorClass = (value: number) => {
+    if (value <= 120) return "bg-red-500"
+    if (value <= 150) return "bg-yellow-500"
+    return "bg-green-500"
+  }
+  
+  // Get risk level text
+  const getRiskLevel = (value: number) => {
+    if (value <= 120) return "High Risk"
+    if (value <= 150) return "Medium Risk"
+    return "Low Risk"
+  }
+  
+  const handleUpdate = async () => {
+    try {
+      setError(null)
+      setSuccess(null)
+      setIsUpdating(true)
+      
+      await writeContractAsync({
+        address: stabilizerAddress,
+        abi: stabilizerAbi,
+        functionName: 'setMinCollateralizationRatio',
+        args: [BigInt(tokenId), BigInt(ratio)]
+      })
+      
+      setSuccess(`Successfully updated collateralization ratio to ${ratio}%`)
+      if (onSuccess) onSuccess()
+    } catch (err: any) {
+      setError(err.message || 'Failed to update ratio')
+      console.error(err)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+  
+  return (
+    <div className="space-y-4 pt-4 border-t border-border">
+      <div className="flex justify-between items-center">
+        <Label>Min Collateralization Ratio</Label>
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "px-2 py-1 rounded text-xs font-medium text-white",
+            getColorClass(ratio)
+          )}>
+            {getRiskLevel(ratio)}
+          </span>
+          <span className="font-semibold">{ratio}%</span>
+        </div>
+      </div>
+      
+      <div className="relative pt-1">
+        <div className="flex h-2 mb-4 overflow-hidden text-xs rounded bg-gray-200 dark:bg-gray-700">
+          <div className="bg-red-500 h-full w-1/3"></div>
+          <div className="bg-yellow-500 h-full w-1/3"></div>
+          <div className="bg-green-500 h-full w-1/3"></div>
+        </div>
+        <Slider
+          value={[ratio]}
+          min={110}
+          max={300}
+          step={5}
+          onValueChange={(value) => setRatio(value[0])}
+          className="z-10"
+        />
+      </div>
+      
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>110% (Min)</span>
+        <span>200%</span>
+        <span>300% (Max)</span>
+      </div>
+      
+      <div className="flex justify-end">
+        <Button 
+          onClick={handleUpdate} 
+          disabled={isUpdating || ratio === currentRatio}
+          size="sm"
+        >
+          {isUpdating ? 'Updating...' : 'Update Ratio'}
+        </Button>
+      </div>
+      
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {success && (
+        <Alert>
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  )
+}
