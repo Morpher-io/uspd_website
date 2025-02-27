@@ -8,9 +8,9 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initiali
 import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 import "./oracle/OracleEntrypoint.sol";
-import "../lib/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "../lib/v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
-import "../lib/chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
+import "../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 
