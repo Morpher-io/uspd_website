@@ -35,7 +35,7 @@ export function StabilizerNFTList({
             functionName: 'tokenOfOwnerByIndex',
             args: [address as `0x${string}`, BigInt(i)],
           })
-          
+
           if (result) {
             ids.push(Number(result))
           }
@@ -57,7 +57,9 @@ export function StabilizerNFTList({
       functionName: 'positions',
       args: [BigInt(id)],
     })),
-    enabled: tokenIds.length > 0
+    query: {
+      enabled: tokenIds.length > 0
+    }
   })
 
   const handleSuccess = () => {

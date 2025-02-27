@@ -90,7 +90,7 @@ export function StabilizerNFTItem({
         address: stabilizerAddress,
         abi: stabilizerAbi,
         functionName: 'removeUnallocatedFunds',
-        args: [BigInt(tokenId), ethAmount, address] // Use the connected wallet address
+        args: [BigInt(tokenId), ethAmount, address as `0x${string}`] // Use the connected wallet address
       })
 
       setSuccess(`Successfully withdrew ${withdrawAmount} ETH from Stabilizer #${tokenId}`)
