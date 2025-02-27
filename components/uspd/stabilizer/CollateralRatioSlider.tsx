@@ -14,7 +14,7 @@ interface CollateralRatioSliderProps {
   onSuccess?: () => void
 }
 
-export function CollateralRatioSlider({
+export default function CollateralRatioSlider({
   tokenId,
   currentRatio,
   stabilizerAddress,
@@ -35,15 +35,15 @@ export function CollateralRatioSlider({
   
   // Get color based on ratio value
   const getColorClass = (value: number) => {
-    if (value <= 120) return "bg-red-500"
-    if (value <= 150) return "bg-yellow-500"
+    if (value <= 125) return "bg-red-500"
+    if (value <= 135) return "bg-yellow-500"
     return "bg-green-500"
   }
   
   // Get risk level text
   const getRiskLevel = (value: number) => {
-    if (value <= 120) return "High Risk"
-    if (value <= 150) return "Medium Risk"
+    if (value <= 125) return "High Risk"
+    if (value <= 135) return "Medium Risk"
     return "Low Risk"
   }
   
@@ -87,15 +87,15 @@ export function CollateralRatioSlider({
       
       <div className="relative pt-1">
         <div className="flex h-2 mb-4 overflow-hidden text-xs rounded bg-gray-200 dark:bg-gray-700">
-          <div className="bg-red-500 h-full w-1/3"></div>
-          <div className="bg-yellow-500 h-full w-1/3"></div>
-          <div className="bg-green-500 h-full w-1/3"></div>
+          <div className="bg-red-500 h-full w-2/7"></div>
+          <div className="bg-yellow-500 h-full w-1/7"></div>
+          <div className="bg-green-500 h-full w-4/7"></div>
         </div>
         <Slider
           value={[ratio]}
           min={110}
-          max={300}
-          step={5}
+          max={200}
+          step={1}
           onValueChange={(value) => setRatio(value[0])}
           className="z-10"
         />
@@ -103,8 +103,10 @@ export function CollateralRatioSlider({
       
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>110% (Min)</span>
+        <span>140%</span>
+        <span></span>
+        <span>175%</span>
         <span>200%</span>
-        <span>300% (Max)</span>
       </div>
       
       <div className="flex justify-end">

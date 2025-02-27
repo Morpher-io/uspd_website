@@ -1,12 +1,16 @@
-
+import { Dispatch, SetStateAction, useState } from "react";
+interface Props { setIsPurchase: Dispatch<SetStateAction<boolean>> };
+export default function BuyPSDWidget({ setIsPurchase }: Props) {
+    return <>Buy widget</>
+}
 // "use client";
 
 
-// import { useAccount, useBalance, useContractRead, useNetwork, usePrepareSendTransaction, useSendTransaction, useWaitForTransaction } from "wagmi";
+// import { useAccount, useBalance, useReadContract, useEstimateGas, useSendTransaction, useWaitForTransaction } from "wagmi";
 // import { ConnectButton, } from "@rainbow-me/rainbowkit";
 // import { useState, Dispatch, SetStateAction } from "react";
 
-// import UspdToken from "../contracts/out/UspdToken.sol/USPD.json";
+// import UspdToken from "../contracts/out/UspdToken.sol/USPDToken.json";
 // import PriceOracle from "../contracts/out/PriceOracle.sol/PriceOracle.json";
 
 // import useDebounce from "./utils/debounce";
@@ -22,7 +26,7 @@
 // export default function BuyPSDWidget({ setIsPurchase }: Props) {
 
 //     const { address, isConnected } = useAccount();
-//     const { chain } = useNetwork();
+//     const { chain } = useAccount();
 //     const [purchaseAmount, setPurchaseAmount] = useState<number>();
 //     const purchaseAmountDebounced = useDebounce(purchaseAmount, 1000);
 
@@ -58,7 +62,7 @@
 //     })
 
 //     const balance = useBalance({ address });
-//     const { config } = usePrepareSendTransaction({
+//     const { data } = useEstimateGas({
 //         to: process.env.NEXT_PUBLIC_TOKEN_ADDRESS,
 //         value: parseEther((purchaseAmount || 0).toString()),
 //     })

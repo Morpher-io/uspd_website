@@ -28,7 +28,9 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
         args: [],
       }
     ],
-    enabled: !!address
+    query: {
+      enabled: !!address
+    }
   })
 
   // Get MINTER_ROLE value
@@ -43,7 +45,9 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
         args: [minterRole as `0x${string}`, address as `0x${string}`],
       }
     ] : [],
-    enabled: !!minterRole && !!address
+    query: {
+      enabled: !!minterRole && !!address
+    }
   })
 
   // Explicitly handle the boolean result
@@ -51,9 +55,9 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
   const balance = data?.[0]?.result as number
 
   return (
-    <StabilizerCard 
-      balance={balance} 
-      hasMinterRole={hasMinterRole} 
+    <StabilizerCard
+      balance={balance}
+      hasMinterRole={hasMinterRole}
       isLoading={isLoading}
       stabilizerAddress={stabilizerAddress}
       stabilizerAbi={stabilizerAbi}

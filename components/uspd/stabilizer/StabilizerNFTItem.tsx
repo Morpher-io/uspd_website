@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useWriteContract, useAccount, useReadContract } from 'wagmi'
 import { parseEther, formatEther } from 'viem'
-import { CollateralRatioSlider } from './CollateralRatioSlider'
+import CollateralRatioSlider from './CollateralRatioSlider'
 
 interface StabilizerNFTItemProps {
   tokenId: number
@@ -15,8 +15,8 @@ interface StabilizerNFTItemProps {
   onSuccess?: () => void
 }
 
-export function StabilizerNFTItem({ 
-  tokenId, 
+export function StabilizerNFTItem({
+  tokenId,
   stabilizerAddress,
   stabilizerAbi,
   onSuccess
@@ -27,10 +27,10 @@ export function StabilizerNFTItem({
   const [success, setSuccess] = useState<string | null>(null)
   const [isAddingFunds, setIsAddingFunds] = useState(false)
   const [isWithdrawingFunds, setIsWithdrawingFunds] = useState(false)
-  
+
   const { address } = useAccount()
   const { writeContractAsync } = useWriteContract()
-  
+
   // Fetch position data for this token
   const { data: positionData, isLoading, refetch } = useReadContract({
     address: stabilizerAddress,
@@ -38,9 +38,9 @@ export function StabilizerNFTItem({
     functionName: 'positions',
     args: [BigInt(tokenId)],
   })
-  
+
   // Extract position data
-  const [totalEth, minCollateralRatio] = positionData || [BigInt(0), 0, BigInt(0), BigInt(0), BigInt(0), BigInt(0)]
+  const [totalEth, minCollateralRatio] = (positionData || [BigInt(0), BigInt(0)]) as [bigint, bigint];
 
   const handleAddFunds = async () => {
     try {
@@ -66,10 +66,10 @@ export function StabilizerNFTItem({
 
       setSuccess(`Successfully added ${addAmount} ETH to Stabilizer #${tokenId}`)
       setAddAmount('')
-      
+
       // Refetch the position data
       await refetch()
-      
+
       if (onSuccess) onSuccess()
     } catch (err: any) {
       setError(err.message || 'Failed to add funds')
@@ -107,10 +107,10 @@ export function StabilizerNFTItem({
 
       setSuccess(`Successfully withdrew ${withdrawAmount} ETH from Stabilizer #${tokenId}`)
       setWithdrawAmount('')
-      
+
       // Refetch the position data
       await refetch()
-      
+
       if (onSuccess) onSuccess()
     } catch (err: any) {
       setError(err.message || 'Failed to withdraw funds')
@@ -149,7 +149,7 @@ export function StabilizerNFTItem({
             <p className="text-xl font-semibold">{Number(minCollateralRatio)}%</p>
           </div>
         </div>
-        
+
         <CollateralRatioSlider
           tokenId={tokenId}
           currentRatio={Number(minCollateralRatio)}
@@ -170,8 +170,8 @@ export function StabilizerNFTItem({
               value={addAmount}
               onChange={(e) => setAddAmount(e.target.value)}
             />
-            <Button 
-              onClick={handleAddFunds} 
+            <Button
+              onClick={handleAddFunds}
               disabled={isAddingFunds || !addAmount}
               className="whitespace-nowrap"
             >
@@ -193,8 +193,8 @@ export function StabilizerNFTItem({
               value={withdrawAmount}
               onChange={(e) => setWithdrawAmount(e.target.value)}
             />
-            <Button 
-              onClick={handleWithdrawFunds} 
+            <Button
+              onClick={handleWithdrawFunds}
               disabled={isWithdrawingFunds || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseEther(withdrawAmount) > totalEth}
               className="whitespace-nowrap"
               variant="outline"

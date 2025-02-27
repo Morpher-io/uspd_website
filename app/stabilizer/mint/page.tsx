@@ -1,14 +1,13 @@
 'use client'
 
 import { useAccount } from 'wagmi'
-import { abi as stabilizerAbi } from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
+import  stabilizerAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 import { MintData } from '@/components/uspd/stabilizer/MintData'
 
 export default function StabilizerMintPage() {
-    const { address, isConnected } = useAccount()
-    const router = useRouter()
+    const { isConnected } = useAccount()
 
     if (!isConnected) {
         return (
@@ -28,10 +27,11 @@ export default function StabilizerMintPage() {
                 {(stabilizerAddress) => (
                     <MintData 
                         stabilizerAddress={stabilizerAddress}
-                        stabilizerAbi={stabilizerAbi}
+                        stabilizerAbi={stabilizerAbiJson.abi}
                     />
                 )}
             </ContractLoader>
+            
         </div>
     )
 }

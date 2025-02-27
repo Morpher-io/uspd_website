@@ -6,9 +6,10 @@ const nextConfig: NextConfig = {
     webpack: (config) => {
         config.externals.push('pino-pretty', 'lokijs', 'encoding');
         config.resolve.fallback = { fs: false }
+      
         return config;
     },
-    reactStrictMode: true
+    reactStrictMode: true,
 }
 
 
@@ -19,13 +20,13 @@ nextConfig.webpack = (config, options) => {
     //    processAllImages();
     // }
     if (!options.isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false
-      };
+        config.resolve.fallback = {
+            ...config.resolve.fallback,
+            fs: false
+        };
     }
     return originalBuild(config, options)
-  }
+}
 
 const withNextra = nextra({
     mdxOptions: {

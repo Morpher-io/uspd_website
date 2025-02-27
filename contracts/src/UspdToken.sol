@@ -22,10 +22,11 @@ pragma solidity ^0.8.20;
  *    |  $$$$$$/      |  $$$$$$/      | $$            | $$$$$$$/         | $$         |  $$$$$$/      | $$ \  $$      | $$$$$$$$      | $$ \  $$
  *     \______/        \______/       |__/            |_______/          |__/          \______/       |__/  \__/      |________/      |__/  \__/
  *                                                                                                                                              
- *                                                                                                                                              
+ *    Copyright Permissionless 2025
+ *    https://uspd.io                                                                                                                                               
  *                                                                                                                                              
  */
- 
+
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
