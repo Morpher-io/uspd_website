@@ -70,7 +70,10 @@ export function PositionNFTItem({
     }
 
     try {
-      const result = await useReadContract.fetchData({
+      // Import readContract from viem
+      const { readContract } = await import('viem')
+      
+      const result = await readContract({
         address: positionNFTAddress,
         abi: positionNFTAbi,
         functionName: 'getCollateralizationRatio',
