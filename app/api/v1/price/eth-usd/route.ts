@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PriceResponse, BinanceResponse } from '@/app/api/types/price';
 import { signingService } from '@/lib/signing';
+import { keccak256, stringToHex } from 'viem';
 
 // Cache duration in milliseconds (5 seconds)
 const CACHE_DURATION = 5000;
@@ -41,7 +42,7 @@ export async function GET() {
         
         // Create asset pair hash
         const assetPairString = 'MORPHER:ETH_USD';
-        const assetPairHash = '0x' + Buffer.from(assetPairString).toString('hex');
+        const assetPairHash = keccak256(stringToHex(assetPairString));
         
         // Create and sign response
         const priceResponse: PriceResponse = {
