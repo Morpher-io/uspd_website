@@ -1,9 +1,9 @@
 import { privateKeyToAccount } from 'viem/accounts'
-import { keccak256, toHex, stringToHex, numberToHex, concat } from 'viem'
+import { keccak256, toHex, stringToHex, numberToHex, concat, encodePacked } from 'viem'
 
 export class SigningService {
     private account;
-    
+
     constructor() {
         const privateKey = process.env.ORACLE_PRIVATE_KEY;
         if (!privateKey) {
@@ -16,22 +16,25 @@ export class SigningService {
         // Create the message hash that matches the contract's verification
         // The contract expects: keccak256(abi.encodePacked(price, decimals, timestamp, assetPair))
         const decimals = 18; // Using 18 decimals for price
-        
+
         // Create the message hash that matches the contract's verification logic
         const messageHash = keccak256(
-            concat([
-                stringToHex(price),
-                numberToHex(decimals),
-                numberToHex(dataTimestamp),
-                keccak256(stringToHex(assetPair)) // The assetPair is hashed in the contract
-            ])
+            encodePacked(
+                ['uint256', 'uint8', 'uint256', 'bytes32'],
+                [
+                    BigInt(price),
+                    decimals,
+                    BigInt(dataTimestamp),
+                    keccak256(stringToHex(assetPair))
+                ]
+            )
         );
-        
+        console.log(messageHash.length);
         // Sign the message - this will automatically add the Ethereum Signed Message prefix
         const signature = await this.account.signMessage({
             message: { raw: messageHash }
         });
-        
+
         return signature;
     }
 }

@@ -21,6 +21,10 @@ export default {
         stabilizer: {
           title: 'Stabilizer',
           href: '/stabilizer'
+        },
+        position: {
+          title: 'Position',
+          href: '/position'
         }
       }
     }
