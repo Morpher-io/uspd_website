@@ -151,7 +151,7 @@ export function MintBurnWidget({
       // Create price attestation query from the price data
       const priceQuery: IPriceOracle.PriceAttestationQueryStruct = {
         assetPair: freshPriceData.assetPair as `0x${string}`,
-        price: BigInt(freshPriceData.price), // Price should be a string that can be converted to BigInt
+        price: BigInt(freshPriceData.price),
         decimals: freshPriceData.decimals,
         dataTimestamp: BigInt(freshPriceData.dataTimestamp),
         requestTimestamp: BigInt(freshPriceData.requestTimestamp),
@@ -213,7 +213,7 @@ export function MintBurnWidget({
       // Create price attestation query from the price data
       const priceQuery: IPriceOracle.PriceAttestationQueryStruct = {
         assetPair: freshPriceData.assetPair as `0x${string}`,
-        price: BigInt(freshPriceData.price), // Price should be a string that can be converted to BigInt
+        price: BigInt(freshPriceData.price),
         decimals: freshPriceData.decimals,
         dataTimestamp: BigInt(freshPriceData.dataTimestamp),
         requestTimestamp: BigInt(freshPriceData.requestTimestamp),

@@ -40,16 +40,15 @@ export async function GET() {
         // Use a more precise conversion to avoid scientific notation issues
         const priceInWei = BigInt(Math.round(parseFloat(binanceData.price) * 10**PRICE_DECIMALS)).toString();
         
-        // Create asset pair hash
+        // Create asset pair string - this will be hashed in the contract
         const assetPairString = 'MORPHER:ETH_USD';
-        const assetPairHash = keccak256(stringToHex(assetPairString));
         
         // Create and sign response
         const priceResponse: PriceResponse = {
             price: priceInWei,
             dataTimestamp: binanceData.timestamp,
             requestTimestamp: now,
-            assetPair: assetPairHash,
+            assetPair: keccak256(stringToHex(assetPairString)),
             signature: await signingService.signPriceData(
                 priceInWei,
                 binanceData.timestamp,

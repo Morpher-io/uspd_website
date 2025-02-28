@@ -13,17 +13,21 @@ export class SigningService {
     }
 
     async signPriceData(price: string, dataTimestamp: number, assetPair: string): Promise<string> {
-        // Convert parameters to hex and concatenate
-        const priceHex = stringToHex(price);
-        const timestampHex = numberToHex(dataTimestamp);
-        const assetPairHex = stringToHex(assetPair);
+        // Create the message hash that matches the contract's verification
+        // The contract expects: keccak256(abi.encodePacked(price, decimals, timestamp, assetPair))
+        const decimals = 18; // Using 18 decimals for price
         
-        // Create message hash
+        // Create the message hash that matches the contract's verification logic
         const messageHash = keccak256(
-            concat([priceHex, timestampHex, assetPairHex])
+            concat([
+                stringToHex(price),
+                numberToHex(decimals),
+                numberToHex(dataTimestamp),
+                keccak256(stringToHex(assetPair)) // The assetPair is hashed in the contract
+            ])
         );
         
-        // Sign the message
+        // Sign the message - this will automatically add the Ethereum Signed Message prefix
         const signature = await this.account.signMessage({
             message: { raw: messageHash }
         });
