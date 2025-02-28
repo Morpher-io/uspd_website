@@ -165,7 +165,7 @@ export function PositionNFTItem({
       // Create price attestation query from the price data
       const priceQuery: IPriceOracle.PriceAttestationQueryStruct = {
         assetPair: freshPriceData.assetPair,
-        price: BigInt(freshPriceData.price), // Price is already in correct decimals
+        price: BigInt(freshPriceData.price), // Price should be a string that can be converted to BigInt
         decimals: freshPriceData.decimals,
         dataTimestamp: BigInt(freshPriceData.dataTimestamp),
         requestTimestamp: BigInt(freshPriceData.requestTimestamp),

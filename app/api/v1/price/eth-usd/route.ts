@@ -36,7 +36,8 @@ export async function GET() {
         const binanceData = await fetchBinancePrice();
         
         // Convert price to 18 decimals (multiply by 10^18)
-        const priceInWei = (parseFloat(binanceData.price) * 10**PRICE_DECIMALS).toString();
+        // Use a more precise conversion to avoid scientific notation issues
+        const priceInWei = BigInt(Math.round(parseFloat(binanceData.price) * 10**PRICE_DECIMALS)).toString();
         
         // Create and sign response
         const priceResponse: PriceResponse = {
