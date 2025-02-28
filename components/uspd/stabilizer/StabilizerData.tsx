@@ -2,7 +2,10 @@
 
 import { useAccount } from 'wagmi'
 import { useReadContracts } from 'wagmi'
-import { StabilizerCard } from './StabilizerCard'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { StabilizerNFTList } from './StabilizerNFTList'
+import { StabilizerAdminCard } from './StabilizerAdminCard'
 
 interface StabilizerDataProps {
   stabilizerAddress: `0x${string}`
@@ -12,7 +15,7 @@ interface StabilizerDataProps {
 export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerDataProps) {
   const { address } = useAccount()
 
-  // Check if user has NFTs and if they have MINTER_ROLE
+  // Check if user has NFTs
   const { data, isLoading } = useReadContracts({
     contracts: [
       {
@@ -20,12 +23,6 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
         abi: stabilizerAbi,
         functionName: 'balanceOf',
         args: [address as `0x${string}`],
-      },
-      {
-        address: stabilizerAddress,
-        abi: stabilizerAbi,
-        functionName: 'MINTER_ROLE',
-        args: [],
       }
     ],
     query: {
@@ -33,34 +30,45 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
     }
   })
 
-  // Get MINTER_ROLE value
-  const minterRole = data?.[1]?.result
-
-  const { data: hasRoleData } = useReadContracts({
-    contracts: minterRole ? [
-      {
-        address: stabilizerAddress,
-        abi: stabilizerAbi,
-        functionName: 'hasRole',
-        args: [minterRole as `0x${string}`, address as `0x${string}`],
-      }
-    ] : [],
-    query: {
-      enabled: !!minterRole && !!address
-    }
-  })
-
-  // Explicitly handle the boolean result
-  const hasMinterRole = hasRoleData?.[0]?.result === undefined ? undefined : !!hasRoleData?.[0]?.result
   const balance = data?.[0]?.result as number
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6 w-full items-center">
+        <p>Loading...</p>
+      </div>
+    )
+  }
+
   return (
-    <StabilizerCard
-      balance={balance}
-      hasMinterRole={hasMinterRole}
-      isLoading={isLoading}
-      stabilizerAddress={stabilizerAddress}
-      stabilizerAbi={stabilizerAbi}
-    />
+    <div className="flex flex-col gap-6 w-full items-center">
+      {!balance || balance === 0 ? (
+        <Alert>
+          <AlertDescription className='text-center'>
+            You don't have any Stabilizer NFTs
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Card className="w-full max-w-[800px]">
+          <CardHeader>
+            <CardTitle>Your Stabilizer NFTs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-6">You have {balance} Stabilizer NFT(s)</p>
+            
+            <StabilizerNFTList 
+              stabilizerAddress={stabilizerAddress}
+              stabilizerAbi={stabilizerAbi}
+              balance={balance}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      <StabilizerAdminCard 
+        stabilizerAddress={stabilizerAddress}
+        stabilizerAbi={stabilizerAbi}
+      />
+    </div>
   )
 }
