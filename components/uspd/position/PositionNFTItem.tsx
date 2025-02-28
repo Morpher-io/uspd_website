@@ -114,7 +114,8 @@ export function PositionNFTItem({
       // Calculate max withdrawable (current allocation - minimum required)
       if (position.allocatedEth > minRequiredEth) {
         const maxWithdraw = position.allocatedEth - minRequiredEth;
-        setMaxWithdrawable(formatEther(maxWithdraw));
+        // Format to 4 decimal places for better readability
+        setMaxWithdrawable(parseFloat(formatEther(maxWithdraw)).toFixed(4));
       } else {
         setMaxWithdrawable('0');
       }
