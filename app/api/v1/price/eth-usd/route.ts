@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { PriceResponse, BinanceResponse } from '@/app/api/types/price';
 import { signingService } from '@/lib/signing';
 
-// Cache duration in milliseconds (1 second)
-const CACHE_DURATION = 1000;
+// Cache duration in milliseconds (5 seconds)
+const CACHE_DURATION = 5000;
 let cachedResponse: PriceResponse | null = null;
 let lastFetchTime = 0;
 
