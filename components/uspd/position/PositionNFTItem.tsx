@@ -32,6 +32,7 @@ export function PositionNFTItem({
   const [priceData, setPriceData] = useState<any>(null)
   const [isLoadingPrice, setIsLoadingPrice] = useState(false)
   const [collateralizationRatio, setCollateralizationRatio] = useState<number | null>(null)
+  const [maxWithdrawable, setMaxWithdrawable] = useState<string>('0')
 
   const { address } = useAccount()
   const { writeContractAsync } = useWriteContract()
@@ -93,12 +94,43 @@ export function PositionNFTItem({
     return () => clearInterval(interval)
   }, [])
 
+  // Calculate maximum withdrawable ETH based on minimum collateralization ratio (110%)
+  const calculateMaxWithdrawable = () => {
+    if (!position || !priceData || position.backedUspd === BigInt(0)) {
+      setMaxWithdrawable('0');
+      return;
+    }
+
+    try {
+      // Get current ETH price in USD (with proper decimals)
+      const ethPriceInUsd = BigInt(priceData.price);
+      
+      // Calculate minimum ETH required for 110% collateralization
+      // Formula: (backedUspd * 110) / (100 * ethPriceInUsd)
+      const backedUspdValue = position.backedUspd;
+      const minRequiredEth = (backedUspdValue * BigInt(110) * BigInt(10 ** priceData.decimals)) / 
+                             (BigInt(100) * ethPriceInUsd);
+      
+      // Calculate max withdrawable (current allocation - minimum required)
+      if (position.allocatedEth > minRequiredEth) {
+        const maxWithdraw = position.allocatedEth - minRequiredEth;
+        setMaxWithdrawable(formatEther(maxWithdraw));
+      } else {
+        setMaxWithdrawable('0');
+      }
+    } catch (err) {
+      console.error('Failed to calculate max withdrawable amount:', err);
+      setMaxWithdrawable('0');
+    }
+  };
+
   // Update collateralization ratio when position or price data changes
   useEffect(() => {
     if (position && priceData) {
-      fetchCollateralizationRatio()
+      fetchCollateralizationRatio();
+      calculateMaxWithdrawable();
     }
-  }, [position, priceData, tokenId])
+  }, [position, priceData, tokenId]);
 
   const handleAddCollateral = async () => {
     try {
@@ -128,6 +160,8 @@ export function PositionNFTItem({
       // Refetch the position data
       await refetch()
       fetchCollateralizationRatio()
+      calculateMaxWithdrawable()
+      calculateMaxWithdrawable()
 
       if (onSuccess) onSuccess()
     } catch (err: any) {
@@ -274,23 +308,34 @@ export function PositionNFTItem({
         <div className="pt-4 border-t border-border">
           <Label htmlFor={`withdraw-collateral-${tokenId}`}>Withdraw Collateral (ETH)</Label>
           <div className="flex gap-2 mt-2">
-            <Input
-              id={`withdraw-collateral-${tokenId}`}
-              type="number"
-              step="0.01"
-              min="0"
-              max={formatEther(position.allocatedEth)}
-              placeholder={`Max: ${formatEther(position.allocatedEth)}`}
-              value={withdrawAmount}
-              onChange={(e) => setWithdrawAmount(e.target.value)}
-            />
+            <div className="relative flex-1">
+              <Input
+                id={`withdraw-collateral-${tokenId}`}
+                type="number"
+                step="0.01"
+                min="0"
+                max={maxWithdrawable}
+                placeholder={`Max: ${maxWithdrawable} ETH`}
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 px-2 text-xs"
+                onClick={() => setWithdrawAmount(maxWithdrawable)}
+                disabled={parseFloat(maxWithdrawable) <= 0}
+              >
+                MAX
+              </Button>
+            </div>
             <Button
               onClick={handleWithdrawCollateral}
               disabled={
                 isWithdrawingFunds || 
                 !withdrawAmount || 
                 parseFloat(withdrawAmount) <= 0 || 
-                parseEther(withdrawAmount) > position.allocatedEth ||
+                parseFloat(withdrawAmount) > parseFloat(maxWithdrawable) ||
                 isLoadingPrice
               }
               className="whitespace-nowrap"
@@ -299,9 +344,10 @@ export function PositionNFTItem({
               {isWithdrawingFunds ? 'Withdrawing...' : 'Withdraw'}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Note: Withdrawal is limited by minimum collateralization ratio (110%)
-          </p>
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>Note: Withdrawal is limited by minimum collateralization ratio (110%)</span>
+            <span>Max: {maxWithdrawable} ETH</span>
+          </div>
         </div>
 
         {error && (
