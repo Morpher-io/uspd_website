@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useWriteContract } from 'wagmi'
 import { cn } from "@/lib/utils"
+import { getRiskLevel, getColorClass, getColorBarWidths } from "./utils"
 
 interface CollateralRatioSliderProps {
   tokenId: number
@@ -33,19 +34,8 @@ export default function CollateralRatioSlider({
     setRatio(currentRatio)
   }, [currentRatio])
   
-  // Get color based on ratio value
-  const getColorClass = (value: number) => {
-    if (value <= 125) return "bg-red-500"
-    if (value <= 135) return "bg-yellow-500"
-    return "bg-green-500"
-  }
-  
-  // Get risk level text
-  const getRiskLevel = (value: number) => {
-    if (value <= 125) return "High Risk"
-    if (value <= 135) return "Medium Risk"
-    return "Low Risk"
-  }
+  // Get color bar widths
+  const colorBarWidths = getColorBarWidths()
   
   const handleUpdate = async () => {
     try {
@@ -87,9 +77,9 @@ export default function CollateralRatioSlider({
       
       <div className="relative pt-1">
         <div className="flex h-2 mb-4 overflow-hidden text-xs rounded bg-gray-200 dark:bg-gray-700">
-          <div className="bg-red-500 h-full w-2/7"></div>
-          <div className="bg-yellow-500 h-full w-1/7"></div>
-          <div className="bg-green-500 h-full w-4/7"></div>
+          <div className={cn("bg-red-500 h-full", colorBarWidths.red)}></div>
+          <div className={cn("bg-yellow-500 h-full", colorBarWidths.yellow)}></div>
+          <div className={cn("bg-green-500 h-full", colorBarWidths.green)}></div>
         </div>
         <Slider
           value={[ratio]}
@@ -103,8 +93,8 @@ export default function CollateralRatioSlider({
       
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>110% (Min)</span>
-        <span>140%</span>
-        <span></span>
+        <span>130%</span>
+        <span>150%</span>
         <span>175%</span>
         <span>200%</span>
       </div>
