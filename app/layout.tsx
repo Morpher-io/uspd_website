@@ -64,7 +64,9 @@ export default async function RootLayout({
       dir="ltr"
       // Suggested by `next-themes` package https://github.com/pacocoursey/next-themes#with-app
       suppressHydrationWarning>
-      <Head />
+      <Head>
+        <link rel="icon" href="/icon?<generated>" type="image/png" sizes="32x32" />
+      </Head>
       <body className={`${barlow.className} duration-200`}>
         <Providers>
           <Layout
@@ -73,7 +75,7 @@ export default async function RootLayout({
             docsRepositoryBase="https://github.com/morpher-io/uspd"
             footer={footer}
           // ... Your additional layout options
-          > 
+          >
 
 
 
@@ -81,7 +83,7 @@ export default async function RootLayout({
             {children}
 
 
-           </Layout>
+          </Layout>
         </Providers>
 
         <Toaster position="bottom-center" />
