@@ -1,6 +1,6 @@
 export namespace IPriceOracle {
   export interface PriceAttestationQueryStruct {
-    assetPair: string;
+    assetPair: `0x${string}`;
     price: bigint;
     decimals: number;
     dataTimestamp: bigint;

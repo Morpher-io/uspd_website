@@ -39,16 +39,20 @@ export async function GET() {
         // Use a more precise conversion to avoid scientific notation issues
         const priceInWei = BigInt(Math.round(parseFloat(binanceData.price) * 10**PRICE_DECIMALS)).toString();
         
+        // Create asset pair hash
+        const assetPairString = 'MORPHER:ETH_USD';
+        const assetPairHash = '0x' + Buffer.from(assetPairString).toString('hex');
+        
         // Create and sign response
         const priceResponse: PriceResponse = {
             price: priceInWei,
             dataTimestamp: binanceData.timestamp,
             requestTimestamp: now,
-            assetPair: 'MORPHER:ETH_USD',
+            assetPair: assetPairHash,
             signature: await signingService.signPriceData(
                 priceInWei,
                 binanceData.timestamp,
-                'MORPHER:ETH_USD'
+                assetPairString
             ),
             decimals: PRICE_DECIMALS
         };
