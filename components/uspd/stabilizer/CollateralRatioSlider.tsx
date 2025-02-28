@@ -93,9 +93,7 @@ export default function CollateralRatioSlider({
       
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>110% (Min)</span>
-        <span>130%</span>
-        <span>150%</span>
-        <span>175%</span>
+        
         <span>200%</span>
       </div>
       

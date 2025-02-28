@@ -49,20 +49,14 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
           </AlertDescription>
         </Alert>
       ) : (
-        <Card className="w-full max-w-[800px]">
-          <CardHeader>
-            <CardTitle>Your Stabilizer NFTs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-6">You have {balance} Stabilizer NFT(s)</p>
-            
+        
+            <div className='flex flex-row gap-4'>
             <StabilizerNFTList 
               stabilizerAddress={stabilizerAddress}
               stabilizerAbi={stabilizerAbi}
               balance={balance}
             />
-          </CardContent>
-        </Card>
+            </div>
       )}
 
       <StabilizerAdminCard 
