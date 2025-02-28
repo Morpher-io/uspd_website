@@ -4,6 +4,7 @@ export type PriceResponse = {
     requestTimestamp: number;
     signature: string;
     assetPair: string;
+    decimals: number;
 }
 
 export type BinanceResponse = {

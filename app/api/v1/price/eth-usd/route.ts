@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { PriceResponse, BinanceResponse } from '@/app/api/types/price';
 import { signingService } from '@/lib/signing';
-import { keccak256, stringToHex } from 'viem';
 
 // Cache duration in milliseconds (5 seconds)
 const CACHE_DURATION = 5000;
 let cachedResponse: PriceResponse | null = null;
 let lastFetchTime = 0;
+
+// Price decimals to use (18 for Ethereum standard)
+const PRICE_DECIMALS = 18;
 
 async function fetchBinancePrice(): Promise<BinanceResponse> {
     const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT');
@@ -33,17 +35,21 @@ export async function GET() {
         // Fetch new price
         const binanceData = await fetchBinancePrice();
         
+        // Convert price to 18 decimals (multiply by 10^18)
+        const priceInWei = (parseFloat(binanceData.price) * 10**PRICE_DECIMALS).toString();
+        
         // Create and sign response
         const priceResponse: PriceResponse = {
-            price: binanceData.price,
+            price: priceInWei,
             dataTimestamp: binanceData.timestamp,
             requestTimestamp: now,
-            assetPair: keccak256(stringToHex('MORPHER:ETH_USD')),
+            assetPair: 'MORPHER:ETH_USD',
             signature: await signingService.signPriceData(
-                binanceData.price,
+                priceInWei,
                 binanceData.timestamp,
                 'MORPHER:ETH_USD'
-            )
+            ),
+            decimals: PRICE_DECIMALS
         };
 
         // Update cache

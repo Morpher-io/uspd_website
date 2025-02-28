@@ -82,7 +82,9 @@ export function MintBurnWidget({
     if (activeTab === 'mint' && debouncedEthAmount && priceData) {
       const ethValue = parseFloat(debouncedEthAmount)
       if (!isNaN(ethValue) && ethValue > 0) {
-        const uspdValue = ethValue * parseFloat(priceData.price)
+        // Convert price from wei to ETH/USD rate
+        const priceInUsd = parseFloat(priceData.price) / (10 ** priceData.decimals)
+        const uspdValue = ethValue * priceInUsd
         setUspdAmount(uspdValue.toFixed(6))
       }
     }
@@ -93,7 +95,9 @@ export function MintBurnWidget({
     if (activeTab === 'burn' && debouncedUspdAmount && priceData) {
       const uspdValue = parseFloat(debouncedUspdAmount)
       if (!isNaN(uspdValue) && uspdValue > 0) {
-        const ethValue = uspdValue / parseFloat(priceData.price)
+        // Convert price from wei to ETH/USD rate
+        const priceInUsd = parseFloat(priceData.price) / (10 ** priceData.decimals)
+        const ethValue = uspdValue / priceInUsd
         setEthAmount(ethValue.toFixed(6))
       }
     }
@@ -147,8 +151,8 @@ export function MintBurnWidget({
       // Create price attestation query from the price data
       const priceQuery: IPriceOracle.PriceAttestationQueryStruct = {
         assetPair: freshPriceData.assetPair,
-        price: BigInt(parseFloat(freshPriceData.price) * 10**8), // Convert to 8 decimals
-        decimals: 8,
+        price: BigInt(freshPriceData.price), // Price is already in correct decimals
+        decimals: freshPriceData.decimals,
         dataTimestamp: BigInt(freshPriceData.dataTimestamp),
         requestTimestamp: BigInt(freshPriceData.requestTimestamp),
         signature: freshPriceData.signature as `0x${string}`
@@ -209,8 +213,8 @@ export function MintBurnWidget({
       // Create price attestation query from the price data
       const priceQuery: IPriceOracle.PriceAttestationQueryStruct = {
         assetPair: freshPriceData.assetPair,
-        price: BigInt(parseFloat(freshPriceData.price) * 10**8), // Convert to 8 decimals
-        decimals: 8,
+        price: BigInt(freshPriceData.price), // Price is already in correct decimals
+        decimals: freshPriceData.decimals,
         dataTimestamp: BigInt(freshPriceData.dataTimestamp),
         requestTimestamp: BigInt(freshPriceData.requestTimestamp),
         signature: freshPriceData.signature as `0x${string}`
@@ -277,7 +281,7 @@ export function MintBurnWidget({
               
               {priceData && (
                 <div className="text-xs text-muted-foreground text-right">
-                  Rate: 1 ETH = {parseFloat(priceData.price).toFixed(2)} USPD
+                  Rate: 1 ETH = {(parseFloat(priceData.price) / (10 ** priceData.decimals)).toFixed(2)} USPD
                 </div>
               )}
               
@@ -325,7 +329,7 @@ export function MintBurnWidget({
               
               {priceData && (
                 <div className="text-xs text-muted-foreground text-right">
-                  Rate: 1 USPD = {(1 / parseFloat(priceData.price)).toFixed(6)} ETH
+                  Rate: 1 USPD = {(1 / (parseFloat(priceData.price) / (10 ** priceData.decimals))).toFixed(6)} ETH
                 </div>
               )}
               

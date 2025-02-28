@@ -74,7 +74,7 @@ export function PositionNFTItem({
         address: positionNFTAddress,
         abi: positionNFTAbi,
         functionName: 'getCollateralizationRatio',
-        args: [BigInt(tokenId), BigInt(parseFloat(priceData.price) * 10**8), 8],
+        args: [BigInt(tokenId), BigInt(priceData.price), priceData.decimals],
       })
       
       setCollateralizationRatio(Number(result))
@@ -165,8 +165,8 @@ export function PositionNFTItem({
       // Create price attestation query from the price data
       const priceQuery: IPriceOracle.PriceAttestationQueryStruct = {
         assetPair: freshPriceData.assetPair,
-        price: BigInt(parseFloat(freshPriceData.price) * 10**8), // Convert to 8 decimals
-        decimals: 8,
+        price: BigInt(freshPriceData.price), // Price is already in correct decimals
+        decimals: freshPriceData.decimals,
         dataTimestamp: BigInt(freshPriceData.dataTimestamp),
         requestTimestamp: BigInt(freshPriceData.requestTimestamp),
         signature: freshPriceData.signature as `0x${string}`
