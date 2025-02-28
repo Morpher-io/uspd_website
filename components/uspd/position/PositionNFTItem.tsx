@@ -4,10 +4,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract, useAccount, useReadContract } from 'wagmi'
+import { useWriteContract, useAccount, useReadContract, usePublicClient } from 'wagmi'
 import { parseEther, formatEther } from 'viem'
 import { CollateralRatioDisplay } from './CollateralRatioDisplay'
 import { IPriceOracle } from '@/types/contracts'
+
 
 interface PositionNFTItemProps {
   tokenId: number
@@ -34,6 +35,7 @@ export function PositionNFTItem({
 
   const { address } = useAccount()
   const { writeContractAsync } = useWriteContract()
+  const publicClient = usePublicClient();
 
   // Fetch position data for this token
   const { data: positionData, isLoading: isLoadingPosition, refetch } = useReadContract({
@@ -70,10 +72,8 @@ export function PositionNFTItem({
     }
 
     try {
-      // Import readContract from viem
-      const { readContract } = await import('viem')
       
-      const result = await readContract({
+      const result = await publicClient.readContract({
         address: positionNFTAddress,
         abi: positionNFTAbi,
         functionName: 'getCollateralizationRatio',
