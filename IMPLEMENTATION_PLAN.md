@@ -23,22 +23,27 @@ The user's USPD balance will be calculated based on their `poolShares` held in t
 
 *   **Shares Represent Initial Value:** When a user mints USPD, they receive `poolShares` where the *number* of shares corresponds to the initial USD value minted (e.g., depositing 1 ETH @ $2000 results in `2000 * 1e18` shares).
 *   **Yield Factor:** The increase in `stETH` per share due to rebasing represents the yield. We track this relative to the initial state.
-*   **Calculation:**
-    `USPD_Balance = Shares_Held * (Current_stETH_per_Share / Initial_stETH_per_Share)`
-    Where:
-    *   `Shares_Held = ETHStakingPool.balanceOf(account)`
-    *   `Current_stETH_per_Share = ETHStakingPool.totalAssets() / ETHStakingPool.totalSupply()`
-    *   `Initial_stETH_per_Share = GlobalInitialTotalAssets / GlobalInitialTotalSupply` (These global initial values are stored from the very first mint).
-*   **Example:**
+*   **Calculation (Integer Math):**
+    The core idea is that the USPD balance reflects the initial value represented by the shares, scaled by the yield factor. The yield factor is the ratio of current `stETH` per share to the initial `stETH` per share.
+    `YieldFactorRatio = (CurrentTotalAssets * GlobalInitialTotalSupply) / (CurrentTotalSupply * GlobalInitialTotalAssets)`
+    `USPD_Balance = (Shares_Held * YieldFactorRatio * 1e18) / 1e18` (Scaling by 1e18 assumes shares also use 18 decimals)
+    Simplified:
+    `USPD_Balance = (Shares_Held * CurrentTotalAssets * GlobalInitialTotalSupply) / (CurrentTotalSupply * GlobalInitialTotalAssets)`
+    *   Perform multiplication first to maintain precision.
+    *   Handle potential division by zero if `CurrentTotalSupply` or `GlobalInitialTotalAssets` is zero.
+    *   Assumes `stETH` (assets) and `poolShares` (shares) use 18 decimals. Adjust scaling factor if decimals differ.
+*   **Example (Integer Math):**
     1.  **First Mint:** 1 ETH @ $2000 deposited. Stakes to 1 `stETH`. User gets `2000e18` shares.
         *   `GlobalInitialTotalAssets = 1e18` (`stETH`)
         *   `GlobalInitialTotalSupply = 2000e18` (shares)
-        *   `Initial_stETH_per_Share = 1e18 / 2000e18 = 0.0005`
-    2.  **Rebase +5%:** `ETHStakingPool.totalAssets()` becomes `1.05e18` `stETH`. `totalSupply()` remains `2000e18`.
-        *   `Current_stETH_per_Share = 1.05e18 / 2000e18 = 0.000525`
+    2.  **Rebase +5%:** `ETHStakingPool.totalAssets()` becomes `1.05e18` `stETH` (`CurrentTotalAssets`). `totalSupply()` remains `2000e18` (`CurrentTotalSupply`).
     3.  **`balanceOf(user)`:**
         *   `Shares_Held = 2000e18`
-        *   `Balance = 2000e18 * (0.000525 / 0.0005) = 2000e18 * 1.05 = 2100e18` (representing 2100 USPD).
+        *   `Numerator = Shares_Held * CurrentTotalAssets * GlobalInitialTotalSupply`
+        *   `Numerator = 2000e18 * 1.05e18 * 2000e18 = 4200e54`
+        *   `Denominator = CurrentTotalSupply * GlobalInitialTotalAssets`
+        *   `Denominator = 2000e18 * 1e18 = 2000e36`
+        *   `Balance = Numerator / Denominator = 4200e54 / 2000e36 = 2.1e18 = 2100e18` (representing 2100 USPD).
 
 ## 4. Implementation Steps
 
@@ -51,13 +56,26 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
     *   Add Lido staking interface (`ILido.sol` containing `submit()`).
     *   Define `IETHStakingPool.sol` based on ERC4626 (`asset`, `totalAssets`, `deposit`, `withdraw`, `mint`, `redeem`, `balanceOf`, `totalSupply`, etc.).
     *   Ensure `IPriceOracle` interface is sufficient (needs `attestationService`).
-*   **Task 1.2: Implement `ETHStakingPool.sol`**
-    *   Create contract inheriting ERC4626Upgradeable (or implement ERC4626).
+*   **Task 1.2: Implement `ETHStakingPool.sol` (Modified ERC4626)**
+    *   Create contract inheriting necessary components (e.g., ERC20 for shares, Ownable/AccessControl). It will *partially* implement the ERC4626 interface.
     *   `asset()`: Returns `stETH` address.
-    *   `totalAssets()`: Returns `IERC20(stETH).balanceOf(address(this))`.
-    *   Implement core ERC4626 functions (`deposit`, `withdraw`, `mint`, `redeem`).
-    *   **Access Control:** Ensure only `UspdToken` contract (or designated minter role) can call deposit/mint/withdraw/redeem functions.
-    *   Initialize with `stETH` address during deployment.
+    *   `totalAssets()`: Returns `IERC20(stETH).balanceOf(address(this))`. (Standard ERC4626)
+    *   Implement standard ERC4626 `redeem(uint256 shares, address receiver, address owner)` and `withdraw(uint256 assets, address receiver, address owner)` functions. These calculate `stETH` based on shares using the current `totalAssets`/`totalSupply` ratio.
+    *   **Custom Minting Logic:** Implement a **custom function** instead of standard `deposit` or `mint`. Example:
+        ```solidity
+        // Minter role (e.g., UspdToken) must have approved stETH transfer beforehand
+        function depositAndMintShares(uint256 stETHAmount, address receiver, uint256 sharesToMint) external onlyMinter {
+            // Pull stETH from UspdToken (which approved it)
+            IERC20(stETH).transferFrom(msg.sender, address(this), stETHAmount);
+            // Mint the shares calculated by UspdToken based on initial USD value
+            _mint(receiver, sharesToMint);
+            emit Deposit(msg.sender, receiver, stETHAmount, sharesToMint); // Emit standard event if desired
+        }
+        ```
+    *   **Do NOT implement standard ERC4626 `deposit` or `mint` functions** as their internal share calculation conflicts with Option B's goal.
+    *   Implement standard `balanceOf`, `totalSupply` for the share token (likely inheriting ERC20Upgradeable).
+    *   **Access Control:** Ensure only `UspdToken` contract (via `onlyMinter` modifier or similar) can call `depositAndMintShares`.
+    *   Initialize with `stETH` address and `UspdToken` address during deployment.
 
 **Phase 2: Modify Stabilizer & Position Contracts for `stETH`**
 
@@ -103,45 +121,59 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
     *   Modify constructor/initializer to accept and set these addresses.
 *   **Task 3.2: Implement `UspdToken.mint(...)`**
     *   Receive user ETH (`msg.value`).
-    *   Call `oracle.attestationService` to get current ETH/USD price (`oracleResponse`).
+    *   Call `oracle.attestationService` to get current ETH/USD price (`oracleResponse`). Use integer math: `ethValueUSD = (msg.value * oracleResponse.price) / (10 ** oracleResponse.decimals)`.
     *   Stake ETH: Call `Lido.submit{value: msg.value}` -> receive `userStETHReceived`. Handle failures.
-    *   Calculate initial USPD value: `initialUSPD = (userStETHReceived * oracleResponse.price) / (10 ** oracleResponse.decimals)`.
-    *   Calculate shares to mint: `sharesToMint = initialUSPD` (assuming 1 share = 1 initial USD value, adjust decimals as needed, e.g., `initialUSPD * 1e18 / 1e18`).
-    *   **First Mint Logic:** If `!initialValuesSet`, set `globalInitialTotalAssets = userStETHReceived`, `globalInitialTotalSupply = sharesToMint`, `initialValuesSet = true`.
+    *   Calculate initial USPD value represented by the deposit (should match `ethValueUSD` if staking is 1:1): `initialUSPD = (userStETHReceived * oracleResponse.price) / (10 ** oracleResponse.decimals)`.
+    *   Calculate shares to mint based on initial value: `sharesToMint = initialUSPD` (assuming USPD and shares use 18 decimals; adjust if not). `sharesToMint = initialUSPD * 1e18 / 1e18`.
+    *   **First Mint Logic:** If `!initialValuesSet`:
+        *   Set `globalInitialTotalAssets = userStETHReceived`.
+        *   Set `globalInitialTotalSupply = sharesToMint`.
+        *   Set `initialValuesSet = true`.
+        *   Handle potential division by zero in `balanceOf` if the first mint involves zero shares or assets (should not happen with valid inputs).
     *   Approve pool: `IERC20(stETH).approve(address(ETHStakingPool), userStETHReceived)`.
-    *   Deposit to pool: `ETHStakingPool.deposit(userStETHReceived, to)` (or `mint(sharesToMint, to)` if pool calculates required deposit). This mints shares to the user (`to`).
+    *   **Deposit to Pool (Custom Logic):** Call the custom pool function: `ETHStakingPool.depositAndMintShares(userStETHReceived, to, sharesToMint)`. This transfers the `stETH` and mints the pre-calculated `sharesToMint` to the user (`to`).
     *   Trigger stabilizer: Call `StabilizerNFT.allocateStabilizerFunds(...)` passing necessary info (e.g., `initialUSPD`, `oracleResponse.price`, etc.) for stabilizer calculation.
-    *   Handle any leftover ETH if applicable (e.g., due to `maxUspdAmount`).
+    *   Handle any leftover ETH if applicable (e.g., due to `maxUspdAmount` or if staking returned slightly less `stETH` than expected).
 *   **Task 3.3: Implement `UspdToken.burn(...)`**
     *   User specifies `uspdAmountToBurn`.
-    *   **Calculate Shares:** Determine `sharesToBurn` using the inverse of the `balanceOf` calculation:
-        *   `currentYieldFactor = (ETHStakingPool.totalAssets() * globalInitialTotalSupply) / (ETHStakingPool.totalSupply() * globalInitialTotalAssets)` (Handle division by zero if pool is empty).
-        *   `sharesToBurn = uspdAmountToBurn * 1e18 / currentYieldFactor` (Adjust decimals).
-    *   **Withdraw User `stETH`:** Call `ETHStakingPool.withdraw(stETHAmount, address(this), msg.sender)` or `redeem(sharesToBurn, address(this), msg.sender)`. This burns user's shares and sends their `stETH` portion to this `UspdToken` contract. Let the received amount be `userStETHWithdrawn`.
-    *   **Unallocate Stabilizer `stETH`:** Call `StabilizerNFT.unallocateStabilizerFunds(uspdAmountToBurn, ...)` - this triggers `PositionNFT` to send stabilizer `stETH` back to `StabilizerNFT`.
+    *   **Calculate Shares to Burn:** Determine `sharesToBurn` using the inverse of the `balanceOf` calculation, ensuring integer math:
+        *   Require `initialValuesSet == true` and handle empty pool edge cases (`totalSupply == 0` or `globalInitialAssets == 0`).
+        *   `numerator = uspdAmountToBurn * ETHStakingPool.totalSupply() * globalInitialTotalAssets`
+        *   `denominator = ETHStakingPool.totalAssets() * globalInitialTotalSupply`
+        *   `sharesToBurn = numerator / denominator` (Perform multiplication first).
+    *   **Withdraw User `stETH`:** Call the standard ERC4626 `redeem` function on the pool: `ETHStakingPool.redeem(sharesToBurn, address(this), msg.sender)`. This burns the user's `sharesToBurn` and sends the proportional amount of `stETH` (calculated as `sharesToBurn * pool.totalAssets() / pool.totalSupply()`) to this `UspdToken` contract. Let the received amount be `userStETHWithdrawn`.
+    *   **Unallocate Stabilizer `stETH`:** Call `StabilizerNFT.unallocateStabilizerFunds(uspdAmountToBurn, ...)` - this triggers `PositionNFT` to send stabilizer `stETH` back to `StabilizerNFT`. (This function will need the oracle price to determine the equivalent `stETH` value of the `uspdAmountToBurn` for stabilizer calculations).
     *   **Return User `stETH`:** Transfer the withdrawn user `stETH`: `IERC20(stETH).transfer(to, userStETHWithdrawn)`. (`to` address is not payable).
-*   **Task 3.4: Implement `UspdToken.balanceOf(account)` (Oracle-Free)**
-    *   Require `initialValuesSet == true`. Handle case where pool might be empty (`totalSupply == 0`).
+*   **Task 3.4: Implement `UspdToken.balanceOf(account)` (Oracle-Free, Integer Math)**
+    *   Require `initialValuesSet == true`.
     *   `shares = ETHStakingPool.balanceOf(account)`
+    *   If `shares == 0`, return 0.
     *   `currentTotalAssets = ETHStakingPool.totalAssets()`
     *   `currentTotalSupply = ETHStakingPool.totalSupply()`
-    *   If `currentTotalSupply == 0` or `globalInitialTotalAssets == 0`, return 0.
-    *   `currentYieldFactor = (currentTotalAssets * globalInitialTotalSupply) / (currentTotalSupply * globalInitialTotalAssets)` (Using high precision math).
-    *   `balance = shares * currentYieldFactor / 1e18` (Adjust for decimals used in shares).
+    *   If `currentTotalSupply == 0` or `globalInitialTotalAssets == 0`, return 0; // Avoid division by zero (shouldn't happen if shares > 0 and initialValuesSet)
+    *   `numerator = shares * currentTotalAssets * globalInitialTotalSupply`
+    *   `denominator = currentTotalSupply * globalInitialTotalAssets`
+    *   `balance = numerator / denominator` // Result assumes USPD uses same decimals as shares (e.g., 18)
     *   Return `balance`.
-*   **Task 3.5: Implement `UspdToken.totalSupply()` (Oracle-Free)**
-    *   Require `initialValuesSet == true`. Handle empty pool case.
+*   **Task 3.5: Implement `UspdToken.totalSupply()` (Oracle-Free, Integer Math)**
+    *   Require `initialValuesSet == true`.
     *   `currentTotalAssets = ETHStakingPool.totalAssets()`
     *   `currentTotalSupply = ETHStakingPool.totalSupply()`
-    *   If `currentTotalSupply == 0` or `globalInitialTotalAssets == 0`, return 0.
-    *   `currentYieldFactor = (currentTotalAssets * globalInitialTotalSupply) / (currentTotalSupply * globalInitialTotalAssets)` (Using high precision math).
-    *   `totalUSPD = currentTotalSupply * currentYieldFactor / 1e18` (Adjust for decimals).
+    *   If `currentTotalSupply == 0` or `globalInitialTotalAssets == 0`, return 0; // Avoid division by zero
+    *   `numerator = currentTotalSupply * currentTotalAssets * globalInitialTotalSupply`
+    *   `denominator = currentTotalSupply * globalInitialTotalAssets` // Note: currentTotalSupply cancels, simplifies
+    *   `totalUSPD = (currentTotalAssets * globalInitialTotalSupply) / globalInitialTotalAssets` // Simplified calculation
     *   Return `totalUSPD`.
 *   **Task 3.6: Implement `UspdToken.transfer(to, uspdAmount)`**
-    *   Calculate `sharesToTransfer` using the inverse logic from `burn`:
-        *   `currentYieldFactor = ...` (as in `balanceOf`)
-        *   `sharesToTransfer = uspdAmount * 1e18 / currentYieldFactor` (Adjust decimals).
-    *   Call `ETHStakingPool.transferFrom(msg.sender, to, sharesToTransfer)`. **Requires user to approve `UspdToken` on `ETHStakingPool`**.
+    *   Calculate `sharesToTransfer` using the inverse logic from `burn` (integer math):
+        *   Require `initialValuesSet == true` and handle empty pool edge cases.
+        *   `currentTotalAssets = ETHStakingPool.totalAssets()`
+        *   `currentTotalSupply = ETHStakingPool.totalSupply()`
+        *   If `currentTotalSupply == 0` or `globalInitialTotalAssets == 0`, revert or handle appropriately.
+        *   `numerator = uspdAmount * currentTotalSupply * globalInitialTotalAssets`
+        *   `denominator = currentTotalAssets * globalInitialTotalSupply`
+        *   `sharesToTransfer = numerator / denominator`
+    *   Call `ETHStakingPool.transferFrom(msg.sender, to, sharesToTransfer)`. **Requires user to approve `UspdToken` (or the actual spender) on `ETHStakingPool`**.
 *   **Task 3.7: Handle ERC20 `approve`, `allowance`, `transferFrom`**
     *   Decide if `UspdToken` needs these. It's cleaner if users interact directly with `ETHStakingPool` for allowances related to `poolShares`. `UspdToken`'s `transfer` uses `transferFrom` on the pool. Consider removing `approve`/`allowance`/`transferFrom` from `UspdToken` itself to avoid confusion, or make them revert/noop.
 
