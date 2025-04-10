@@ -177,6 +177,27 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
 *   **Task 3.7: Handle ERC20 `approve`, `allowance`, `transferFrom`**
     *   Decide if `UspdToken` needs these. It's cleaner if users interact directly with `ETHStakingPool` for allowances related to `poolShares`. `UspdToken`'s `transfer` uses `transferFrom` on the pool. Consider removing `approve`/`allowance`/`transferFrom` from `UspdToken` itself to avoid confusion, or make them revert/noop.
 
+**Phase 3.5: Multi-Chain Deployment & Bridging Strategy**
+
+*   **Task 3.8: Implement Chain-Specific Logic**
+    *   **Requirement:** The `UspdToken` (and potentially supporting contracts like `ETHStakingPool`) needs to be deployed across multiple chains using `CREATE2` for deterministic addresses. This requires identical bytecode on all chains.
+    *   **Strategy:** Incorporate conditional logic within the contracts based on `block.chainid`.
+        *   **Ethereum Mainnet (Chain ID 1):** Full functionality enabled, including `mint` (via `UspdToken`), `burn` (via `UspdToken`), stabilizer interactions, and `stETH` staking/management.
+        *   **Other Chains (Non-Chain ID 1):**
+            *   Disable native `mint` and `burn` functions in `UspdToken`. These actions should only occur on mainnet where the primary collateral pool resides. Attempting to call them should revert with an appropriate error (e.g., `error WrongChain();`).
+            *   The `UspdToken` contract on other chains will primarily serve as the bridged representation of the token.
+            *   Standard ERC20 functions (`transfer`, `balanceOf`, `approve`, etc.) must work identically across all chains. The `balanceOf` calculation (Task 3.4) relies on `ETHStakingPool` state, which will only be fully populated on mainnet. This needs careful consideration - bridged tokens might need a different balance mechanism or rely on bridge oracle updates. **Decision Needed:** How will balances be represented/updated on non-mainnet chains? (Option: Bridged tokens might just be standard ERC20 without the dynamic balance calculation, relying on the bridge mechanism to lock/unlock corresponding mainnet tokens).
+            *   The `ETHStakingPool` might not be deployed or fully functional on other chains, or it might exist solely to provide the `balanceOf` interface if required by a shared `UspdToken` bytecode.
+    *   **Implementation:**
+        *   Use `if (block.chainid == 1) { ... } else { revert WrongChain(); }` guards in functions like `UspdToken.mint`, `UspdToken.burn`.
+        *   Consider using immutable variables set during construction/initialization for chain-dependent parameters if possible, but runtime checks via `block.chainid` are necessary for function gating.
+*   **Task 3.9: Prepare for CREATE2 Deployment**
+    *   Ensure the constructor logic is minimal and identical across chains. Use initializers for setting chain-specific *configurations* (like oracle addresses, which might differ) if absolutely necessary, but strive to keep the core bytecode identical.
+    *   Plan the salt generation strategy for `CREATE2` deployments to ensure predictable addresses.
+    *   Factor `CREATE2` deployment costs and processes into the deployment plan (Task 4.2).
+*   **Task 3.10: Define Bridging Interface (High-Level)**
+    *   While the full bridge implementation is separate, the `UspdToken` might need specific functions to interact with a chosen bridge protocol (e.g., functions callable only by the bridge contract to mint/burn tokens on the destination/source chain upon receiving messages). Define placeholders or interfaces for these interactions.
+
 **Phase 4: Testing & Deployment**
 
 *   **Task 4.1: Unit & Integration Testing**
