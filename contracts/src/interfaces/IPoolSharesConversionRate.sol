@@ -29,7 +29,7 @@ interface IPoolSharesConversionRate {
 
      /**
      * @notice Returns the address of the stETH token being tracked.
-     * @return tokenAddress The address of the stETH token.
+     * @return tokenInstance The IERC20 instance of the stETH token.
      */
-    function stETH() external view returns (address tokenAddress);
+    function stETH() external view returns (IERC20 tokenInstance);
 }
