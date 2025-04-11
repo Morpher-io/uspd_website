@@ -36,13 +36,24 @@ contract MockStETH is ERC20, Ownable {
         uint256 factor = (_newTotalSupply * REBASE_PRECISION) / oldTotalSupply;
 
         // Adjust balances for all holders
-        for (uint256 i = 0; i < _holders.length; i++) {
-            address holder = _holders[i];
-            if (holder != address(0)) { // Check if holder was removed
+        // Create a copy of holders array to avoid potential issues if _update modifies it during iteration
+        address[] memory currentHolders = new address[](_holders.length);
+        for(uint k=0; k < _holders.length; k++){
+            currentHolders[k] = _holders[k];
+        }
+
+        for (uint256 i = 0; i < currentHolders.length; i++) {
+            address holder = currentHolders[i];
+            // Check if holder still exists in original mapping in case _update removed it
+             if (_holderIndex[holder] > 0) {
                 uint256 oldBalance = balanceOf(holder);
                 if (oldBalance > 0) {
                     uint256 newBalance = (oldBalance * factor) / REBASE_PRECISION;
-                    _update(holder, holder, newBalance); // Use internal _update for flexibility
+                    if (newBalance > oldBalance) {
+                        uint256 increase = newBalance - oldBalance;
+                        _mint(holder, increase); // Mint the difference to increase balance
+                    }
+                    // Note: We don't handle decreases here as stETH yield only increases
                 }
             }
         }
