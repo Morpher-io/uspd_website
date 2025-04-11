@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../../../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "../../../lib/openzeppelin-contracts/contracts/access/Ownable.sol"; // To control rebasing
+import "../../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "../../lib/openzeppelin-contracts/contracts/access/Ownable.sol"; // To control rebasing
 
 /**
  * @title MockStETH
