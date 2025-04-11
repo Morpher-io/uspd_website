@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/interfaces/IPoolSharesConversionRate.sol";
 import "forge-std/console.sol";
 import "../src/interfaces/IPoolSharesConversionRate.sol";
 import "./mocks/MockStETH.sol";

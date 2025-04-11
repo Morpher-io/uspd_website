@@ -15,7 +15,7 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate {
     /**
      * @dev The stETH token contract being tracked.
      */
-    IERC20 public immutable override stETH;
+    address public immutable override stETH;
 
     /**
      * @dev The initial balance of stETH held by this contract at the end of deployment.
@@ -45,8 +45,8 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate {
         if (_stETH == address(0)) {
             revert StEthAddressZero();
         }
-        stETH = IERC20(_stETH);
-        uint256 balance = stETH.balanceOf(address(this));
+        stETH = _stETH;
+        uint256 balance = IERC20(stETH).balanceOf(address(this));
         if (balance == 0) {
             revert InitialBalanceZero();
         }
@@ -69,7 +69,7 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate {
             return FACTOR_PRECISION;
         }
 
-        uint256 currentBalance = stETH.balanceOf(address(this));
+        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
 
         // Calculate factor using integer math (multiply first)
         // factor = current / initial * precision
