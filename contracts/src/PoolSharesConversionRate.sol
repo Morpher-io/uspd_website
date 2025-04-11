@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
+import "./interfaces/ILido.sol"; // Import Lido interface
 
 /**
  * @title PoolSharesConversionRate
@@ -30,26 +31,50 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate {
     // --- Errors ---
     error InitialBalanceZero();
     error StEthAddressZero();
+    error LidoAddressZero();
+    error NoEthSent();
+    error LidoSubmitFailed();
 
     // --- Constructor ---
 
     /**
      * @dev Sets the stETH address and records the initial balance.
-     * @param _stETH The address of the stETH token contract.
+     * @param _stETHAddress The address of the stETH token contract.
+     * @param _lidoAddress The address of the Lido staking pool contract.
      * Requirements:
-     * - `_stETH` cannot be the zero address.
-     * - This contract MUST hold a non-zero balance of `_stETH` when the constructor finishes.
-     *   This initial balance should be transferred by the deployment script/process.
+     * - `_stETHAddress` cannot be the zero address.
+     * - `_lidoAddress` cannot be the zero address.
+     * - `msg.value` (ETH sent during deployment) must be greater than zero.
+     * - The Lido submit call must succeed and result in a non-zero stETH balance.
      */
-    constructor(address _stETH) {
-        if (_stETH == address(0)) {
+    constructor(address _stETHAddress, address _lidoAddress) payable {
+        if (_stETHAddress == address(0)) {
             revert StEthAddressZero();
         }
-        stETH = _stETH;
+        if (_lidoAddress == address(0)) {
+            revert LidoAddressZero();
+        }
+        if (msg.value == 0) {
+            revert NoEthSent();
+        }
+
+        stETH = _stETHAddress; // Store stETH address
+
+        // Call Lido's submit function to stake the received ETH
+        // The stETH will be minted to this contract's address
+        uint256 receivedStEth = ILido(_lidoAddress).submit{value: msg.value}(
+            address(0) // No referral
+        );
+
+        // Check the actual balance after the submit call
         uint256 balance = IERC20(stETH).balanceOf(address(this));
+
+        // Ensure Lido call resulted in stETH balance
         if (balance == 0) {
+            // Could also check receivedStEth, but balance check is more direct
             revert InitialBalanceZero();
         }
+
         initialStEthBalance = balance;
     }
 

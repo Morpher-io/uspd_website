@@ -5,15 +5,17 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../src/interfaces/IPoolSharesConversionRate.sol";
 import "./mocks/MockStETH.sol";
+import "./mocks/MockLido.sol"; // Import MockLido
 import "../src/PoolSharesConversionRate.sol"; // Now implemented
 
 contract PoolSharesConversionRateTest is Test {
     // --- Constants ---
     uint256 internal constant FACTOR_PRECISION = 1e18;
-    uint256 internal constant INITIAL_STETH_DEPOSIT = 0.001 ether; // 1e15 wei
+    uint256 internal constant INITIAL_ETH_DEPOSIT = 0.001 ether; // ETH to send to constructor
 
     // --- Mock Contracts ---
     MockStETH internal mockStETH;
+    MockLido internal mockLido;
 
     // --- Contract Under Test ---
     PoolSharesConversionRate internal rateContract; // Now implemented
@@ -31,60 +33,31 @@ contract PoolSharesConversionRateTest is Test {
         // Grant ownership to deployer for rebase calls
         mockStETH.transferOwnership(deployer);
 
-        // 2. Mint initial stETH to deployer/test contract FIRST
-        mockStETH.mint(deployer, INITIAL_STETH_DEPOSIT);
-        assertEq(mockStETH.balanceOf(deployer), INITIAL_STETH_DEPOSIT, "Initial mint failed");
+        // 2. Deploy MockLido, linking it to MockStETH
+        mockLido = new MockLido(address(mockStETH));
 
-        // 3. Deploy PoolSharesConversionRate - Constructor needs initial balance PRESENT
-        // To achieve this, we can deploy the contract and *then* transfer,
-        // OR a factory pattern, OR send stETH in the deployment transaction if constructor was payable (not ideal).
-        // Let's use the deploy-then-transfer pattern, which requires modifying the constructor slightly
-        // OR we simulate the deployment script action: transfer first, then deploy.
-        // Let's try deploying first and modifying constructor to read balance *after* transfer.
-        // --- Correction: Constructor reads balance AT DEPLOYMENT. Must transfer first. ---
-
-        // --- Simulating Deployment Script ---
-        // Create a temporary address that will hold the stETH before deployment
-        address preTransferHolder = address(0xBAD); // Just a placeholder address
-        mockStETH.transfer(preTransferHolder, INITIAL_STETH_DEPOSIT);
-        assertEq(mockStETH.balanceOf(preTransferHolder), INITIAL_STETH_DEPOSIT, "Pre-transfer failed");
-
-        // Now, deploy the contract using vm.prank to simulate it receiving the stETH
-        // This is tricky. A simpler way for testing is to modify the constructor slightly
-        // to accept the initial balance, or have an initialize function.
-        // Let's stick to the plan: constructor reads balance. We need the contract to *have* the balance.
-
-        // --- Alternative Setup: Deploy contract, then transfer and set initial balance ---
-        // This deviates slightly from the plan's constructor logic but is easier to test.
-        // Let's modify the contract slightly for testability.
-        // --- Reverting to Plan: Constructor reads balance. Test must ensure balance exists. ---
-
-        // We need the contract address *before* deployment to send funds? No.
-        // The deployment script would:
-        // 1. Calculate the future address (using CREATE2 or predictDeterministicAddress).
-        // 2. Send stETH to that future address.
-        // 3. Deploy the contract to that address.
-        // Let's simulate this in the test:
-
-        // Predict address (using default salt for simplicity in test)
-        address predictedAddress = vm.computeCreateAddress(deployer, 0); // Nonce 0 for deployer
-        rateContractAddress = predictedAddress;
-
-        // Transfer stETH to the predicted address
-        mockStETH.transfer(predictedAddress, INITIAL_STETH_DEPOSIT);
-        assertEq(mockStETH.balanceOf(predictedAddress), INITIAL_STETH_DEPOSIT, "Transfer to predicted address failed");
-        assertEq(mockStETH.balanceOf(deployer), 0, "Deployer balance not zero after transfer");
-
-        // Deploy the contract - it should now read the balance correctly
-        vm.expectEmit(true, true, true, true, predictedAddress); // Check for constructor events if any
-        rateContract = new PoolSharesConversionRate(address(mockStETH));
-        assertEq(address(rateContract), predictedAddress, "Contract deployed at wrong address");
-
+        // 3. Deploy PoolSharesConversionRate with ETH value
+        // The constructor is payable and calls mockLido.submit()
+        vm.expectEmit(true, true, true, true); // Expect Submitted event from MockLido
+        rateContract = new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(
+            address(mockStETH),
+            address(mockLido)
+        );
+        rateContractAddress = address(rateContract);
         rateContractInterface = IPoolSharesConversionRate(rateContractAddress);
 
-        // Verify initial balance was set correctly in constructor
-        assertEq(rateContract.initialStEthBalance(), INITIAL_STETH_DEPOSIT, "Constructor failed to set initial balance");
-
+        // Verify initial balance was set correctly in constructor (should equal ETH sent)
+        assertEq(
+            rateContract.initialStEthBalance(),
+            INITIAL_ETH_DEPOSIT, // Assuming 1:1 minting in MockLido
+            "Constructor failed to set initial balance"
+        );
+        // Verify stETH balance of the contract
+        assertEq(
+            mockStETH.balanceOf(rateContractAddress),
+            INITIAL_ETH_DEPOSIT,
+            "Rate contract stETH balance mismatch"
+        );
     }
 
     // --- Test Cases (Task 5.2) ---
@@ -94,7 +67,7 @@ contract PoolSharesConversionRateTest is Test {
     function testDeployment() public {
         // Test values set in setUp
         assertEq(rateContractInterface.stETH(), address(mockStETH), "Incorrect stETH address");
-        assertEq(rateContractInterface.initialStEthBalance(), INITIAL_STETH_DEPOSIT, "Incorrect initial balance");
+        assertEq(rateContractInterface.initialStEthBalance(), INITIAL_ETH_DEPOSIT, "Incorrect initial balance");
         assertEq(rateContractInterface.FACTOR_PRECISION(), FACTOR_PRECISION, "Incorrect precision");
     }
 
@@ -113,8 +86,8 @@ contract PoolSharesConversionRateTest is Test {
         mockStETH.rebase(newTotalSupply);
 
         // Calculate expected factor
-        uint256 expectedBalanceAfterRebase = (INITIAL_STETH_DEPOSIT * 105) / 100;
-        uint256 expectedFactor = (expectedBalanceAfterRebase * FACTOR_PRECISION) / INITIAL_STETH_DEPOSIT;
+        uint256 expectedBalanceAfterRebase = (INITIAL_ETH_DEPOSIT * 105) / 100; // Based on initial ETH deposit
+        uint256 expectedFactor = (expectedBalanceAfterRebase * FACTOR_PRECISION) / INITIAL_ETH_DEPOSIT; // Use initial ETH deposit as base
 
         assertEq(mockStETH.balanceOf(rateContractAddress), expectedBalanceAfterRebase, "Balance after rebase mismatch");
         assertEq(rateContractInterface.getYieldFactor(), expectedFactor, "Yield factor after rebase incorrect");
@@ -124,15 +97,15 @@ contract PoolSharesConversionRateTest is Test {
         // Simulate 5% yield
         vm.prank(deployer);
         mockStETH.rebase((mockStETH.totalSupply() * 105) / 100);
-        uint256 expectedBalance1 = (INITIAL_STETH_DEPOSIT * 105) / 100;
-        uint256 expectedFactor1 = (expectedBalance1 * FACTOR_PRECISION) / INITIAL_STETH_DEPOSIT;
+        uint256 expectedBalance1 = (INITIAL_ETH_DEPOSIT * 105) / 100;
+        uint256 expectedFactor1 = (expectedBalance1 * FACTOR_PRECISION) / INITIAL_ETH_DEPOSIT;
         assertEq(rateContractInterface.getYieldFactor(), expectedFactor1, "Yield factor after first rebase incorrect");
 
         // Simulate another 10% yield on top
         vm.prank(deployer);
         mockStETH.rebase((mockStETH.totalSupply() * 110) / 100);
         uint256 expectedBalance2 = (expectedBalance1 * 110) / 100;
-        uint256 expectedFactor2 = (expectedBalance2 * FACTOR_PRECISION) / INITIAL_STETH_DEPOSIT;
+        uint256 expectedFactor2 = (expectedBalance2 * FACTOR_PRECISION) / INITIAL_ETH_DEPOSIT;
         assertEq(rateContractInterface.getYieldFactor(), expectedFactor2, "Yield factor after second rebase incorrect");
     }
 
@@ -145,11 +118,12 @@ contract PoolSharesConversionRateTest is Test {
     }
 
     function testRevertIfInitialBalanceZero_DeployTime() public {
-         // Test constructor revert if balance is zero
+         // Test constructor revert if no ETH is sent
          MockStETH localMockStETH = new MockStETH();
-         // Try deploying without sending stETH first
-         vm.expectRevert(PoolSharesConversionRate.InitialBalanceZero.selector);
-         new PoolSharesConversionRate(address(localMockStETH));
+         MockLido localMockLido = new MockLido(address(localMockStETH));
+         // Try deploying without sending ETH value
+         vm.expectRevert(PoolSharesConversionRate.NoEthSent.selector);
+         new PoolSharesConversionRate(address(localMockStETH), address(localMockLido));
     }
 
      function testRevertIfInitialBalanceZero_GetFactor() public {

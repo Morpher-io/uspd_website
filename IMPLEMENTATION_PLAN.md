@@ -60,10 +60,10 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
         *   `IERC20 public immutable stETH;`
         *   `uint256 public immutable initialStEthBalance;`
         *   `uint256 public constant FACTOR_PRECISION = 1e18;` // Or desired precision
-    *   **Constructor:** Takes `_stETH` address. Deposits a small, known amount of `stETH` (e.g., 0.001 `stETH`, sent during deployment script) and records `initialStEthBalance = stETH.balanceOf(address(this))`. Revert if initial balance is zero.
+    *   **Constructor:** Make `payable`. Takes `_stETHAddress` and `_lidoAddress`. Requires `msg.value > 0`. Calls `Lido.submit{value: msg.value}`. Reads `stETH.balanceOf(address(this))` *after* the submit call and stores it in `initialStEthBalance`. Reverts if final balance is zero.
     *   **`getYieldFactor()` function:**
-        *   `currentBalance = stETH.balanceOf(address(this))`
-        *   If `initialStEthBalance == 0`, return `FACTOR_PRECISION` (or handle error).
+        *   `currentBalance = IERC20(stETH).balanceOf(address(this))`
+        *   If `initialStEthBalance == 0` (should be prevented by constructor), return `FACTOR_PRECISION`.
         *   Return `(currentBalance * FACTOR_PRECISION) / initialStEthBalance`.
 
 **Phase 2: Modify Stabilizer & Position Contracts for `stETH`**
@@ -207,10 +207,10 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
         *   `MockLido.sol`: Simple contract with a `submit()` function that mints `MockStETH` 1:1 for received ETH.
         *   `MockPriceOracle.sol`: Returns configurable prices for ETH/USD via a `setPrice()` function.
 *   **Task 5.2: Write Tests for `PoolSharesConversionRate.sol`**
-    *   Test deployment: Initial `stETH` balance set correctly.
-    *   Test `getYieldFactor()`: Returns 1e18 initially.
-    *   Test `getYieldFactor()` after `MockStETH.rebase()`: Returns correct scaled factor (e.g., 1.05e18 after 5% rebase).
-    *   Test edge case: Initial balance zero (should revert or handle).
+    *   Test deployment: Constructor reverts if no ETH sent. Constructor calls `MockLido.submit`. `initialStEthBalance` set correctly based on ETH sent.
+    *   Test `getYieldFactor()`: Returns `FACTOR_PRECISION` initially.
+    *   Test `getYieldFactor()` after `MockStETH.rebase()`: Returns correct scaled factor.
+    *   Test edge case: `getYieldFactor` handling if `initialStEthBalance` somehow became zero (should return `FACTOR_PRECISION`).
 *   **Task 5.3: Write Tests for `UspdCollateralizedPositionNFT.sol`**
     *   Test deployment and initialization.
     *   Test `addCollateralAndTrackShares`: Correctly updates `totalStEth` and `backedPoolShares`. Reverts if not called by `StabilizerNFT`.
@@ -268,7 +268,7 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
 
 *   **Task 6.1: Deployment Scripting**
     *   Write deployment scripts (e.g., using Hardhat Deploy or Foundry scripts).
-    *   Script must handle deploying all contracts, including `PoolSharesConversionRate` and sending initial `stETH` to it.
+    *   Script must handle deploying all contracts, including `PoolSharesConversionRate` and **sending ETH value** to its constructor.
     *   Script must configure addresses and grant roles across contracts.
     *   Script must handle `CREATE2` deployment logic for relevant contracts.
 *   **Task 6.2: Mainnet & Testnet Deployment**
