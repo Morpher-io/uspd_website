@@ -13,6 +13,8 @@ import "../src/UspdToken.sol";
 import "../src/UspdCollateralizedPositionNFT.sol";
 import "../src/PoolSharesConversionRate.sol"; // Import the new contract
 import "../src/interfaces/ILido.sol"; // Import Lido interface
+import "../test/mocks/MockStETH.sol";
+import "../test/mocks/MockLido.sol";
 
 contract DeployScript is Script {
     // Configuration
