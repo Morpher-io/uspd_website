@@ -24,9 +24,10 @@ User U1 wants to mint USPD by depositing 1 ETH.
 3.  **`UspdToken` - Internal Accounting & Events:**
     *   Updates internal balance: `_poolShareBalances[U1]` becomes `2000e18`.
     *   Updates internal total supply: `_totalPoolShares` becomes `2000e18`.
-    *   Emits standard `Transfer(address(0), U1, poolSharesToMint)` event (representing the transfer of internal poolShares).
-    *   *(Optional)* Emits custom `TransferPoolShares(address(0), U1, initialUSPDValue, poolSharesToMint, YieldFactor)` event for enhanced off-chain tracking.
-    *   *(Note:* `balanceOf` returns `poolShares * YieldFactor / FACTOR_PRECISION`. `totalSupply` returns `_totalPoolShares * YieldFactor / FACTOR_PRECISION`. `transfer(to, uspdAmount)` calculates `poolSharesToTransfer = uspdAmount * FACTOR_PRECISION / YieldFactor` and transfers internal shares.)*
+    *   Calculates USPD amount at current yield: `uspdAmountMinted = (poolSharesToMint * YieldFactor) / FACTOR_PRECISION = (2000e18 * 1e18) / 1e18 = 2000e18`.
+    *   Emits standard ERC20 `Transfer(address(0), U1, uspdAmountMinted)` event (representing the USPD value minted).
+    *   *(Optional)* Emits custom `MintPoolShares(address(0), U1, uspdAmountMinted, poolSharesToMint, YieldFactor)` event for detailed tracking.
+    *   *(Note:* `balanceOf` returns `poolShares * YieldFactor / FACTOR_PRECISION`. `totalSupply` returns `_totalPoolShares * YieldFactor / FACTOR_PRECISION`. `transfer(to, uspdAmount)` calculates `poolSharesToTransfer = uspdAmount * FACTOR_PRECISION / YieldFactor` and transfers internal shares, emitting `Transfer` with `uspdAmount`.)*
 4.  **`UspdToken` - Allocate Call:**
     *   Calls `StabilizerNFT.allocateStabilizerFunds{value: 1 ether}(poolSharesToMint, priceResponse)`. (Sends user's ETH directly).
 5.  **`StabilizerNFT` - Allocation & Staking:**
@@ -83,8 +84,8 @@ User U1 wants to burn 1100 USPD (half of their current value). Assume Oracle Pri
     *   Checks `_poolShareBalances[U1]` (2000e18) >= `poolSharesToBurn` (1000e18). OK.
     *   `_poolShareBalances[U1]` becomes `1000e18`.
     *   `_totalPoolShares` becomes `1000e18`.
-    *   Emits `Transfer(U1, address(0), 1000e18)` (poolShares).
-    *   *(Optional)* Emits `TransferPoolShares(U1, address(0), 1100e18, 1000e18, 1.1e18)`.
+    *   Emits standard ERC20 `Transfer(U1, address(0), uspdAmountToBurn)` event (representing the USPD value burned).
+    *   *(Optional)* Emits custom `BurnPoolShares(U1, address(0), uspdAmountToBurn, poolSharesToBurn, YieldFactor)` event for detailed tracking.
 4.  **`UspdToken` - Unallocate Call:**
     *   Calls `StabilizerNFT.unallocateStabilizerFunds(1000e18 poolShares, priceResponse)`.
 5.  **`StabilizerNFT` - Unallocation:**

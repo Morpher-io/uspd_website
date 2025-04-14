@@ -152,22 +152,24 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
     *   Stake ETH: Call `Lido.submit{value: msg.value}` -> `userStETHReceived`. Handle failures.
     *   Calculate initial USPD value: `initialUSPD = (userStETHReceived * oracleResponse.price) / (10 ** oracleResponse.decimals)`.
     *   Calculate `poolSharesToMint = initialUSPD` (adjust for decimals).
-    *   **Internal Accounting:**
+    *   **Internal Accounting & Events:**
         *   `_poolShareBalances[to] += poolSharesToMint;`
         *   `_totalPoolShares += poolSharesToMint;`
-        *   Emit standard ERC20 `Transfer(address(0), to, poolSharesToMint)` event (representing poolShares).
-    *   Approve `StabilizerNFT` to spend `userStETHReceived`.
-    *   Trigger stabilizer: Call `StabilizerNFT.allocateStabilizerFunds(userStETHReceived, poolSharesToMint, oracleResponse)`.
+        *   Calculate `uspdAmountMinted = (poolSharesToMint * YieldFactor) / FACTOR_PRECISION` (using current yield factor).
+        *   Emit standard ERC20 `Transfer(address(0), to, uspdAmountMinted)` event.
+        *   *(Optional)* Emit custom `MintPoolShares(...)` event.
+    *   Trigger stabilizer: Call `StabilizerNFT.allocateStabilizerFunds{value: msg.value}(poolSharesToMint, oracleResponse)`. (Pass ETH value directly).
     *   Handle leftover ETH.
 *   **Task 3.3: Implement `UspdToken.burn(...)`**
     *   User specifies `uspdAmountToBurn`.
     *   Get `YieldFactor` from `PoolSharesConversionRate`.
     *   **Calculate PoolShares to Burn:** `poolSharesToBurn = (uspdAmountToBurn * 1e18) / YieldFactor` (adjust for decimals/precision).
     *   Check `_poolShareBalances[msg.sender] >= poolSharesToBurn`.
-    *   **Internal Accounting:**
+    *   **Internal Accounting & Events:**
         *   `_poolShareBalances[msg.sender] -= poolSharesToBurn;`
         *   `_totalPoolShares -= poolSharesToBurn;`
-        *   Emit standard ERC20 `Transfer(msg.sender, address(0), poolSharesToBurn)` event.
+        *   Emit standard ERC20 `Transfer(msg.sender, address(0), uspdAmountToBurn)` event.
+        *   *(Optional)* Emit custom `BurnPoolShares(...)` event.
     *   Call `StabilizerNFT.unallocateStabilizerFunds(poolSharesToBurn, oracleResponse)`.
     *   **Receive User `stETH`:** Add a callback function `receiveUserStETH(address originalBurner, uint256 amount)` callable only by `StabilizerNFT`.
     *   **Return User `stETH`:** Inside `receiveUserStETH`, transfer the received `stETH` to the `originalBurner`: `IERC20(stETH).transfer(originalBurner, amount)`.
@@ -187,15 +189,16 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
     *   Get `YieldFactor` from `PoolSharesConversionRate`.
     *   Calculate `poolSharesToTransfer = (uspdAmount * 1e18) / YieldFactor`.
     *   Check `_poolShareBalances[msg.sender] >= poolSharesToTransfer`.
-    *   **Internal Accounting:**
+    *   **Internal Accounting & Events:**
         *   `_poolShareBalances[msg.sender] -= poolSharesToTransfer;`
         *   `_poolShareBalances[to] += poolSharesToTransfer;`
-        *   Emit `Transfer(msg.sender, to, poolSharesToTransfer)` event.
+        *   Emit standard ERC20 `Transfer(msg.sender, to, uspdAmount)` event.
+        *   *(Optional)* Emit custom `TransferPoolShares(...)` event.
 *   **Task 3.7: Implement `approve`, `allowance`, `transferFrom`**
     *   These now operate on the internal `_poolShareBalances` and `_poolShareAllowances`.
-    *   `approve(spender, uspdAmount)`: Calculate `poolSharesToApprove` using `YieldFactor`. Store this in `_poolShareAllowances[msg.sender][spender]`. Emit `Approval` event with `poolSharesToApprove`.
+    *   `approve(spender, uspdAmount)`: Calculate `poolSharesToApprove` using `YieldFactor`. Store this in `_poolShareAllowances[msg.sender][spender]`. Emit standard ERC20 `Approval(msg.sender, spender, uspdAmount)` event.
     *   `allowance(owner, spender)`: Get `poolShareAllowance`. Calculate equivalent `uspdAllowance` using `YieldFactor`. Return `uspdAllowance`.
-    *   `transferFrom(from, to, uspdAmount)`: Calculate `poolSharesToTransfer`. Check `poolShareAllowance`. Update balances and allowance. Emit `Transfer` event.
+    *   `transferFrom(from, to, uspdAmount)`: Calculate `poolSharesToTransfer`. Check `poolShareAllowance`. Update balances and allowance. Emit standard ERC20 `Transfer(from, to, uspdAmount)` event.
 
 **Phase 4: Multi-Chain Deployment & Bridging Strategy**
 
@@ -289,17 +292,17 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
         *   Calculates correct `poolSharesToMint`.
         *   Updates internal balances (`_poolShareBalances`, `_totalPoolShares`).
         *   Calls `StabilizerNFT.allocateStabilizerFunds` correctly.
-        *   Emits `Transfer` event (for poolShares).
+        *   Emits standard `Transfer` event with correct USPD amount.
     *   Test `burn`:
         *   Calculates correct `poolSharesToBurn` using `YieldFactor`.
         *   Updates internal balances.
         *   Calls `StabilizerNFT.unallocateStabilizerFunds`.
         *   Test `receiveUserStETH` callback and final `stETH` transfer to user.
-        *   Emits `Transfer` event (for poolShares).
+        *   Emits standard `Transfer` event with correct USPD amount.
     *   Test `balanceOf`: Returns correct USPD value based on internal shares and `YieldFactor`. Test before and after rebase.
     *   Test `totalSupply`: Returns correct total USPD value based on total shares and `YieldFactor`. Test before and after rebase.
-    *   Test `transfer`: Calculates correct shares, updates internal balances, emits `Transfer` event (for poolShares).
-    *   Test `approve`, `allowance`, `transferFrom`: Correctly handle allowances based on poolShares, convert to/from USPD amounts using `YieldFactor`. Emit `Approval` event (for poolShares).
+    *   Test `transfer`: Calculates correct shares, updates internal balances, emits standard `Transfer` event with correct USPD amount.
+    *   Test `approve`, `allowance`, `transferFrom`: Correctly handle allowances based on poolShares, convert to/from USPD amounts using `YieldFactor`. Emit standard `Approval` event with correct USPD amount.
     *   Test chain ID guards for `mint`/`burn`.
 *   **Task 5.6: Integration Tests**
     *   Test full mint flow: User ETH -> `UspdToken` -> `StabilizerNFT` -> `PositionNFT`. Verify all states.
