@@ -168,20 +168,24 @@ contract UspdCollateralizedPositionNFTTest is Test {
         uint256 poolSharesToBack = 2000e18; // Represents $2000 initial value
 
         // Assume addCollateralAndTrackShares sets the state (will fail until implemented)
-        // vm.prank(stabilizerContract);
+        vm.prank(stabilizerContract);
         // positionNFT.addCollateralAndTrackShares(TEST_TOKEN_ID, userStEth, stabilizerStEth, poolSharesToBack);
+        // --- Mocking state until addCollateralAndTrackShares exists ---
+        // Directly setting state is hard with proxies/storage slots.
+        // For now, this test will fail because getCollateralizationRatio doesn't exist or work.
+        // We'll implement addCollateralAndTrackShares later to properly set state.
 
         // --- Get Ratio ---
         IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice); // $2000
-        // uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
 
         // --- Assertions ---
         // Expected: (Collateral Value * 100) / Liability Value
         // Liability Value = $2000 (since yield factor is 1)
         // Collateral Value = 1.1 * $2000 = $2200
         // Expected Ratio = ($2200 * 100) / $2000 = 110
-        // assertEq(ratio, 110, "Ratio mismatch (no yield)");
-        assertTrue(true, "Placeholder: Uncomment when functions exist");
+        assertEq(ratio, 110, "Ratio mismatch (no yield)");
+        // assertTrue(true, "Placeholder: Uncomment when functions exist"); // Remove placeholder
     }
 
     function test_GetCollateralizationRatio_WithYield() public {
@@ -192,8 +196,9 @@ contract UspdCollateralizedPositionNFTTest is Test {
         uint256 poolSharesToBack = 2000e18; // $2000 initial value
 
         // Assume addCollateralAndTrackShares sets the state
-        // vm.prank(stabilizerContract);
+        vm.prank(stabilizerContract);
         // positionNFT.addCollateralAndTrackShares(TEST_TOKEN_ID, userStEth, stabilizerStEth, poolSharesToBack);
+        // --- Mocking state until addCollateralAndTrackShares exists ---
 
         // --- Simulate Yield (5% rebase) ---
         vm.prank(deployer);
@@ -203,7 +208,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
         // --- Get Ratio ---
         IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice); // $2000
-        // uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
 
         // --- Assertions ---
         // Expected: (Collateral Value * 100) / Liability Value
@@ -213,14 +218,14 @@ contract UspdCollateralizedPositionNFTTest is Test {
         // Note: Ratio stays the same if collateral and liability grow proportionally
         // Let's test with a price change *after* yield
         price = createPriceResponse(1800 ether); // Price drops to $1800
-        // ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+        ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
 
         // Expected: (Collateral Value * 100) / Liability Value
         // Liability Value = ~2100e18 ($2100 - based on initial value + yield)
         // Collateral Value = totalStEth * ethPrice = 1.155 * $1800 = $2079
         // Expected Ratio = ($2079 * 100) / $2100 = 99
-        // assertEq(ratio, 99, "Ratio mismatch (with yield and price drop)");
-        assertTrue(true, "Placeholder: Uncomment when functions exist");
+        assertEq(ratio, 99, "Ratio mismatch (with yield and price drop)");
+        // assertTrue(true, "Placeholder: Uncomment when functions exist"); // Remove placeholder
     }
 
     function test_GetCollateralizationRatio_ZeroLiability() public {
@@ -230,14 +235,14 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
         // --- Get Ratio ---
         IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice);
-        // uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
 
         // --- Assertions ---
         // Expect 0 or type(uint256).max depending on implementation choice
-        // assertEq(ratio, 0, "Ratio should be 0 for zero liability");
+        assertEq(ratio, 0, "Ratio should be 0 for zero liability");
         // OR
         // assertEq(ratio, type(uint256).max, "Ratio should be max for zero liability");
-        assertTrue(true, "Placeholder: Uncomment when function exists");
+        // assertTrue(true, "Placeholder: Uncomment when function exists"); // Remove placeholder
     }
 
     // --- unallocate ---
