@@ -16,21 +16,22 @@ This document describes the flow of minting USPD with ETH, experiencing a `stETH
 User U1 wants to mint USPD by depositing 1 ETH.
 
 1.  **User Call:** U1 calls `UspdToken.mint{value: 1 ether}(U1, priceQuery)` (where `priceQuery` contains the signed attestation for 1 ETH = $2000).
-2.  **`UspdToken` - Price & Shares:**
+2.  **`UspdToken` - Price & Shares Calculation:**
     *   Calls `oracle.attestationService(priceQuery)` -> gets `priceResponse` (price=2000e18, decimals=18).
-    *   Calculates initial USPD value: `initialUSPD = (1e18 * 2000e18) / 1e18 = 2000e18`.
-    *   Gets `YieldFactor` from `PoolSharesConversionRate` -> returns `1e18`.
-    *   Calculates `poolSharesToMint = (initialUSPD * 1e18) / YieldFactor = (2000e18 * 1e18) / 1e18 = 2000e18`.
-3.  **`UspdToken` - Internal Accounting:**
-    *   `_poolShareBalances[U1]` becomes `2000e18`.
-    *   `_totalPoolShares` becomes `2000e18`.
-    *   Emits `Transfer(address(0), U1, 2000e18)`.
-4.  **`UspdToken` - Stake ETH:**
-    *   Calls `Lido.submit{value: 1 ether}(address(0))` -> receives `userStETHReceived = 1e18` `stETH`.
-5.  **`UspdToken` - Allocate Call:**
-    *   Approves `StabilizerNFT` to spend `1e18` `stETH`.
-    *   Calls `StabilizerNFT.allocateStabilizerFunds(1e18 stETH, 2000e18 poolShares, priceResponse)`.
-6.  **`StabilizerNFT` - Allocation:**
+    *   Calculates initial USPD value per ETH (assuming 18 decimals from oracle): `initialUSPDValue = (1e18 * priceResponse.price) / (10**uint256(priceResponse.decimals)) = 2000e18`.
+    *   Gets `YieldFactor` from `PoolSharesConversionRate` -> returns `1e18` (FACTOR_PRECISION).
+    *   Calculates `poolSharesToMint = (initialUSPDValue * FACTOR_PRECISION) / YieldFactor = (2000e18 * 1e18) / 1e18 = 2000e18`.
+3.  **`UspdToken` - Internal Accounting & Events:**
+    *   Updates internal balance: `_poolShareBalances[U1]` becomes `2000e18`.
+    *   Updates internal total supply: `_totalPoolShares` becomes `2000e18`.
+    *   Emits standard `Transfer(address(0), U1, poolSharesToMint)` event (representing the transfer of internal poolShares).
+    *   *(Optional)* Emits custom `TransferPoolShares(address(0), U1, initialUSPDValue, poolSharesToMint, YieldFactor)` event for enhanced off-chain tracking.
+    *   *(Note:* `balanceOf` returns `poolShares * YieldFactor / FACTOR_PRECISION`. `totalSupply` returns `_totalPoolShares * YieldFactor / FACTOR_PRECISION`. `transfer(to, uspdAmount)` calculates `poolSharesToTransfer = uspdAmount * FACTOR_PRECISION / YieldFactor` and transfers internal shares.)*
+4.  **`UspdToken` - Allocate Call:**
+    *   Calls `StabilizerNFT.allocateStabilizerFunds{value: 1 ether}(poolSharesToMint, priceResponse)`. (Sends user's ETH directly).
+5.  **`StabilizerNFT` - Allocation & Staking:**
+    *   Function is now `payable`. Receives `msg.value = 1 ether` (user's ETH).
+    *   **Stake User ETH:** Calls `Lido.submit{value: msg.value}(address(0))` -> receives `userStETHReceived = 1e18 stETH`. Handles potential failure.
     *   Finds unallocated Stabilizer S1 (NFT #1).
     *   Gets `YieldFactor` = `1e18`.
     *   Calculates `stabilizerStEthNeeded`:
@@ -40,15 +41,15 @@ User U1 wants to mint USPD by depositing 1 ETH.
         *   `stabilizerStEthNeeded = Required Total stETH - userStETHAmount = 1.1e18 - 1e18 = 0.1e18 stETH`.
     *   Takes `0.1e18 stETH` from S1's unallocated `totalStEth`.
     *   Finds/creates `positionId` for S1 (e.g., Position NFT #101 is minted for S1 if they didn't have one).
-    *   Approves `PositionNFT` #101 to spend `1.1e18 stETH` (1 user + 0.1 stabilizer).
-    *   Calls `PositionNFT.addCollateral(101, 1.1e18 stETH)`.
+    *   Approves `PositionNFT` #101 to spend `1.1e18 stETH` (`userStETHReceived` + `stabilizerStEthNeeded`).
+    *   Calls `PositionNFT.addCollateral(101, 1.1e18 stETH)`. (Requires `addCollateral` to accept stETH transfer).
     *   Calls `PositionNFT.modifyAllocation(101, 2000e18 poolShares)`.
     *   Updates internal lists (removes S1 from unallocated if `totalStEth` becomes 0, adds to allocated).
-7.  **`UspdCollateralizedPositionNFT` (Position #101) - State Update:**
+6.  **`UspdCollateralizedPositionNFT` (Position #101) - State Update:**
     *   `_positions[101].totalStEth` becomes `1.1e18`.
     *   `_positions[101].backedPoolShares` becomes `2000e18`.
 
-**Result:** User U1 has an internal balance of 2000e18 `poolShares` in `UspdToken`. Position NFT #101 holds 1.1 `stETH` backing a liability of 2000e18 `poolShares`.
+**Result:** User U1 has an internal balance of 2000e18 `poolShares` in `UspdToken`. `UspdToken.balanceOf(U1)` returns 2000e18 USPD. Position NFT #101 holds 1.1 `stETH` backing a liability of 2000e18 `poolShares`.
 
 ## 2. Rebase Event (+10% Yield)
 
@@ -68,7 +69,7 @@ User U1 wants to mint USPD by depositing 1 ETH.
     *   Reads `_poolShareBalances[U1]` = `2000e18`.
     *   Gets `YieldFactor` from `PoolSharesConversionRate` -> returns `1.1e18`.
     *   Calculates `USPD_Balance = (2000e18 * 1.1e18) / 1e18 = 2200e18`.
-3.  **Result:** The function returns `2200e18`, representing $2200 USD.
+3.  **Result:** The function returns `2200e18`, representing $2200 USPD.
 
 ## 4. Burn Process
 
@@ -82,7 +83,8 @@ User U1 wants to burn 1100 USPD (half of their current value). Assume Oracle Pri
     *   Checks `_poolShareBalances[U1]` (2000e18) >= `poolSharesToBurn` (1000e18). OK.
     *   `_poolShareBalances[U1]` becomes `1000e18`.
     *   `_totalPoolShares` becomes `1000e18`.
-    *   Emits `Transfer(U1, address(0), 1000e18)`.
+    *   Emits `Transfer(U1, address(0), 1000e18)` (poolShares).
+    *   *(Optional)* Emits `TransferPoolShares(U1, address(0), 1100e18, 1000e18, 1.1e18)`.
 4.  **`UspdToken` - Unallocate Call:**
     *   Calls `StabilizerNFT.unallocateStabilizerFunds(1000e18 poolShares, priceResponse)`.
 5.  **`StabilizerNFT` - Unallocation:**
@@ -123,4 +125,4 @@ User U1 wants to burn 1100 USPD (half of their current value). Assume Oracle Pri
     *   `receiveUserStETH` callback is triggered.
     *   Transfers `0.55e18 stETH` to User U1.
 
-**Result:** User U1 burned 1100 USPD, their internal `poolShare` balance is reduced by 1000e18, and they received 0.55 `stETH`. Position NFT #101 now holds 0.605 `stETH` backing 1000e18 `poolShares`. Stabilizer S1 has 0.055 `stETH` returned to their unallocated balance.
+**Result:** User U1 burned 1100 USPD, their internal `poolShare` balance is reduced by 1000e18 (now 1000e18), and they received 0.55 `stETH`. `UspdToken.balanceOf(U1)` now returns `1000e18 * 1.1e18 / 1e18 = 1100e18` USPD. Position NFT #101 now holds 0.605 `stETH` backing 1000e18 `poolShares`. Stabilizer S1 has 0.055 `stETH` returned to their unallocated balance.
