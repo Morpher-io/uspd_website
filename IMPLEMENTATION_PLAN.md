@@ -45,7 +45,7 @@ The user's USPD balance will be calculated based on their internally tracked `po
 
 ## 4. Implementation Steps
 
-This plan assumes a fresh deployment with no existing positions. Contracts referenced are `UspdToken`, `StabilizerNFT`, `UspdCollateralizedPositionNFT`, `PriceOracle`. A new `ETHStakingPool` contract will be created.
+This plan assumes a fresh deployment with no existing positions. Contracts referenced are `UspdToken`, `StabilizerNFT`, `UspdCollateralizedPositionNFT`, `PriceOracle`. A new `PoolSharesConversionRate` contract will be created. The `ETHStakingPool` contract is **not** used in this design.
 
 **Phase 1: Setup & Yield Tracking Contract**
 
@@ -54,13 +54,13 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
     *   Add Lido staking interface (`ILido.sol` containing `submit()`).
     *   Define `IPoolSharesConversionRate.sol` with a function like `getYieldFactor() returns (uint256)`.
     *   Ensure `IPriceOracle` interface is sufficient (needs `attestationService`).
-    *   Ensure `IUspdCollateralizedPositionNFT` interface includes necessary functions (e.g., `addCollateralAndTrackShares`, `unallocate`).
+    *   Ensure `IUspdCollateralizedPositionNFT` interface includes necessary functions (e.g., `addCollateral`, `modifyAllocation`, `removeCollateral`).
 *   **Task 1.2: Implement `PoolSharesConversionRate.sol`**
     *   **State:**
-        *   `IERC20 public immutable stETH;`
+        *   `address public immutable stETH;`
         *   `uint256 public immutable initialStEthBalance;`
         *   `uint256 public constant FACTOR_PRECISION = 1e18;` // Or desired precision
-    *   **Constructor:** Make `payable`. Takes `_stETHAddress` and `_lidoAddress`. Requires `msg.value > 0`. Calls `Lido.submit{value: msg.value}`. Reads `stETH.balanceOf(address(this))` *after* the submit call and stores it in `initialStEthBalance`. Reverts if final balance is zero.
+    *   **Constructor:** Make `payable`. Takes `_stETHAddress` and `_lidoAddress`. Requires `msg.value > 0`. Calls `Lido.submit{value: msg.value}`. Reads `IERC20(stETH).balanceOf(address(this))` *after* the submit call and stores it in `initialStEthBalance`. Reverts if final balance is zero.
     *   **`getYieldFactor()` function:**
         *   `currentBalance = IERC20(stETH).balanceOf(address(this))`
         *   If `initialStEthBalance == 0` (should be prevented by constructor), return `FACTOR_PRECISION`.
