@@ -86,14 +86,14 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
         *   Update allocated/unallocated lists.
     *   **`removeUnallocatedFunds(tokenId, amount, to)`:** Transfer `stETH` using `IERC20(stETH).transfer(to, amount)`. `to` address is not payable. Ensure caller is owner.
 *   **Task 2.2: Modify `UspdCollateralizedPositionNFT.sol`**
-    *   **State:** Rename `Position.allocatedEth` to `totalStEth`. Add `backedPoolShares`. Store `stETH` address, `StabilizerNFT` address, `PoolSharesConversionRate` address, `PriceOracle` address.
+    *   **State:** Rename `Position.allocatedEth` to `totalStEth`. Add `backedPoolShares`. Store `stETH` address, `Lido` address, `StabilizerNFT` address, `PoolSharesConversionRate` address, `PriceOracle` address.
     *   **Remove `backedUspd` from `Position` struct.**
-    *   **New Function `addCollateralAndTrackShares(uint256 tokenId, uint256 userStEthAmount, uint256 stabilizerStEthAmount, uint256 poolSharesToBack)`:**
+    *   **New Function `addCollateralAndTrackShares(uint256 tokenId, uint256 userStEthAmount, uint256 stabilizerStEthAmount, uint256 poolSharesToBack)`:** (Called by `StabilizerNFT` during allocation)
         *   Role check: only `StabilizerNFT`.
         *   Use `IERC20(stETH).transferFrom(msg.sender, address(this), userStEthAmount + stabilizerStEthAmount)`.
         *   Update `_positions[tokenId].totalStEth += userStEthAmount + stabilizerStEthAmount`.
         *   Update `_positions[tokenId].backedPoolShares += poolSharesToBack`.
-    *   **New Function `unallocate(uint256 tokenId, uint256 poolSharesToUnallocate, IPriceOracle.PriceResponse memory priceResponse)`:**
+    *   **New Function `unallocate(uint256 tokenId, uint256 poolSharesToUnallocate, IPriceOracle.PriceResponse memory priceResponse)`:** (Called by `StabilizerNFT` during burn)
         *   Role check: only `StabilizerNFT`.
         *   Get current `YieldFactor` from `PoolSharesConversionRate`.
         *   Calculate `stETHValuePerPoolShare` based on initial rate and `YieldFactor`.
@@ -105,16 +105,28 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
         *   **Ratio Check:** Calculate ratio *after* removal: `(totalStEth - totalStEthToRelease) * price >= 1.10 * (backedPoolShares - poolSharesToUnallocate) * stETHValuePerPoolShare * price`. Revert if violated.
         *   Update `_positions[tokenId].totalStEth -= totalStEthToRelease`.
         *   Update `_positions[tokenId].backedPoolShares -= poolSharesToUnallocate`.
-        *   Transfer `targetUserStETH` to `msg.sender` (`StabilizerNFT`, which forwards to `UspdToken`).
+        *   Transfer `targetUserStETH` to `msg.sender` (`StabilizerNFT`).
         *   Transfer `stabilizerStEthToRelease` to `msg.sender` (`StabilizerNFT`).
+    *   **New Function `addStabilizerCollateral(uint256 tokenId)`:** (Called by Stabilizer/NFT Owner)
+        *   Make `payable`. Check `msg.sender == ownerOf(tokenId)`.
+        *   Receive ETH, call `Lido.submit{value: msg.value}` to get `stETH`.
+        *   Update `_positions[tokenId].totalStEth += receivedStEth`.
+        *   Does *not* change `backedPoolShares`.
+    *   **New Function `removeExcessStabilizerCollateral(uint256 tokenId, uint256 stEthAmountToRemove, IPriceOracle.PriceResponse memory priceResponse)`:** (Called by Stabilizer/NFT Owner)
+        *   Check `msg.sender == ownerOf(tokenId)`.
+        *   Require `stEthAmountToRemove <= _positions[tokenId].totalStEth`.
+        *   **Ratio Check:** Calculate ratio *after* removing `stEthAmountToRemove` (using `priceResponse` and `YieldFactor`) and ensure it remains `>= 110%`. Revert if violated.
+        *   Update `_positions[tokenId].totalStEth -= stEthAmountToRemove`.
+        *   Transfer `stEthAmountToRemove` to `msg.sender`.
+        *   Does *not* change `backedPoolShares`.
     *   **Modify `getCollateralizationRatio(...)`:**
         *   Needs `priceResponse` (ETH/USD).
         *   Needs `YieldFactor` from `PoolSharesConversionRate`.
         *   Calculate `stETHValuePerPoolShare`.
         *   Calculate `totalLiabilityValueUSD = backedPoolShares * stETHValuePerPoolShare * priceResponse.price / 1e18`.
         *   Calculate `totalCollateralValueUSD = totalStEth * priceResponse.price / 1e18`.
-        *   Return `(totalCollateralValueUSD * 100) / totalLiabilityValueUSD`.
-    *   **Remove `addCollateral`, `removeCollateral`, `transferCollateral`, `modifyAllocation` functions.**
+        *   Return `(totalCollateralValueUSD * 100) / totalLiabilityValueUSD`. Handle division by zero if `totalLiabilityValueUSD == 0`.
+    *   **Remove Old Functions:** Remove the original `addCollateral`, `removeCollateral`, `transferCollateral`, `modifyAllocation`.
     *   **Remove `receive()` fallback.**
 
 **Phase 3: Modify `UspdToken` for Core Logic & PoolShare Tracking**
@@ -212,16 +224,35 @@ This plan assumes a fresh deployment with no existing positions. Contracts refer
     *   Test `getYieldFactor()` after `MockStETH.rebase()`: Returns correct scaled factor.
     *   Test edge case: `getYieldFactor` handling if `initialStEthBalance` somehow became zero (should return `FACTOR_PRECISION`).
 *   **Task 5.3: Write Tests for `UspdCollateralizedPositionNFT.sol`**
-    *   Test deployment and initialization.
-    *   Test `addCollateralAndTrackShares`: Correctly updates `totalStEth` and `backedPoolShares`. Reverts if not called by `StabilizerNFT`.
-    *   Test `getCollateralizationRatio`: Calculates correctly based on `stETH`, `backedPoolShares`, oracle price, and yield factor. Test with yield factor = 1 and > 1.
+    *   Test deployment and initialization (including setting addresses).
+    *   Test `addCollateralAndTrackShares`:
+        *   Updates `totalStEth` and `backedPoolShares` correctly.
+        *   Reverts if not called by `StabilizerNFT` role.
+        *   Handles `stETH` transfer correctly.
+    *   Test `getCollateralizationRatio`:
+        *   Calculates correctly with yield factor = 1 and > 1.
+        *   Handles zero liability case.
     *   Test `unallocate`:
-        *   Reverts if not called by `StabilizerNFT`.
-        *   Calculates correct `stETH` amounts (user, stabilizer).
-        *   Performs ratio check correctly (test cases where it should pass/fail).
+        *   Reverts if not called by `StabilizerNFT` role.
+        *   Calculates correct `stETH` amounts (user, stabilizer) with yield factor = 1 and > 1.
+        *   Performs safety check (`totalStEthToRelease <= totalStEth`).
+        *   Performs ratio check correctly (pass/fail cases).
         *   Updates state (`totalStEth`, `backedPoolShares`) correctly.
-        *   Transfers correct `stETH` amounts to `StabilizerNFT`.
-    *   Test access control roles.
+        *   Transfers correct `stETH` amounts to caller (`StabilizerNFT`).
+    *   Test `addStabilizerCollateral`:
+        *   Reverts if not called by NFT owner.
+        *   Correctly converts ETH to `stETH` via mock Lido.
+        *   Updates `totalStEth` correctly.
+        *   `backedPoolShares` remains unchanged.
+    *   Test `removeExcessStabilizerCollateral`:
+        *   Reverts if not called by NFT owner.
+        *   Reverts if removing too much `stETH`.
+        *   Performs ratio check correctly (pass/fail cases).
+        *   Updates `totalStEth` correctly.
+        *   Transfers correct `stETH` amount to owner.
+        *   `backedPoolShares` remains unchanged.
+    *   Test Removed Functions: Ensure calls to old functions (`addCollateral`, `removeCollateral`, etc.) revert.
+    *   Test access control roles (DEFAULT_ADMIN_ROLE).
 *   **Task 5.4: Write Tests for `StabilizerNFT.sol`**
     *   Test deployment and initialization.
     *   Test `addUnallocatedFunds`: Converts ETH to `stETH`, updates `totalStEth`, registers in unallocated list.
