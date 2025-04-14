@@ -18,6 +18,7 @@ import "../src/interfaces/IUspdCollateralizedPositionNFT.sol"; // TODO: Update t
 import "../src/UspdCollateralizedPositionNFT.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
+import {IAccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/IAccessControlUpgradeable.sol"; // Import correct interface
 
 contract UspdCollateralizedPositionNFTTest is Test {
     // --- Constants ---
@@ -146,7 +147,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
         // Expect revert because user1 doesn't have STABILIZER_NFT_ROLE
         vm.expectRevert(
             abi.encodeWithSelector(
-                AccessControlUpgradeable.AccessControlUnauthorizedAccount.selector,
+                IAccessControlUpgradeable.AccessControlUnauthorizedAccount.selector, // Use interface selector
                 user1, // account
                 positionNFT.STABILIZER_NFT_ROLE() // required role
             )

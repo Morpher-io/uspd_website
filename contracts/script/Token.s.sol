@@ -6,6 +6,7 @@ import {Vm} from "forge-std/Vm.sol";
 import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ICreateX} from "../lib/createx/src/ICreateX.sol";
+import {IAccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/IAccessControlUpgradeable.sol"; // Import interface for error selector
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
@@ -146,21 +147,27 @@ contract DeployScript is Script {
         // Deploy PoolSharesConversionRate contract (needs Lido and stETH addresses)
         deployPoolSharesConversionRate();
 
-        // Deploy PositionNFT contracts
+        // Deploy Implementations first
+        deployOracleImplementation();
         deployPositionNFTImplementation();
-        deployPositionNFTProxy();
-
-        // Deploy StabilizerNFT implementation
         deployStabilizerNFTImplementation();
 
-        // Deploy UspdToken with temporary zero address for stabilizer
-        deployUspdTokenWithTemporaryStabilizer();
+        // Deploy Proxies and Token (order matters for dependencies)
+        deployProxyAdmin();
+        deployOracleProxy(); // Needs ProxyAdmin
 
-        // Deploy StabilizerNFT proxy with the actual token address
-        deployStabilizerNFTProxy(tokenAddress);
+        // Deploy UspdToken (needs Oracle)
+        deployUspdToken(); // Modified to not need temporary address
 
-        // Update the token with the correct stabilizer address
-        updateTokenStabilizer();
+        // Deploy StabilizerNFT proxy (needs PositionNFT, Token, ProxyAdmin)
+        // We need PositionNFT address first, so deploy it next
+        deployPositionNFTProxy(); // Needs Oracle, stETH, Lido, RateContract, StabilizerNFT (will be deployed next), Admin
+
+        // Deploy StabilizerNFT proxy (needs PositionNFT, Token, ProxyAdmin)
+        deployStabilizerNFTProxy(); // Needs PositionNFT, Token, ProxyAdmin
+
+        // Update the token with the correct stabilizer address (now done in deployUspdToken)
+        // updateTokenStabilizer(); // No longer needed if passed in constructor/initializer
 
         // Update other contracts with necessary addresses (e.g., RateContract address)
         // Note: Check if initializers need the RateContract address. If so, adjust deployment order.
@@ -233,10 +240,20 @@ contract DeployScript is Script {
     }
 
     function deployPositionNFTProxy() internal {
-        // Prepare initialization data
+        // Prepare initialization data - requires stabilizerProxyAddress which is deployed later
+        // Re-order needed. Assuming stabilizerProxyAddress is available now.
+        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed yet"); // Safety check
+
         bytes memory initData = abi.encodeCall(
             UspdCollateralizedPositionNFT.initialize,
-            (oracleProxyAddress, deployer)
+            (
+                oracleProxyAddress,
+                stETHAddress,
+                lidoAddress,
+                rateContractAddress,
+                stabilizerProxyAddress, // Pass the actual stabilizer address
+                deployer // Admin
+            )
         );
 
         // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
@@ -267,12 +284,15 @@ contract DeployScript is Script {
         );
     }
 
-    // Deploy token with temporary zero address for stabilizer
-    function deployUspdTokenWithTemporaryStabilizer() internal {
+    // Deploy token with actual stabilizer address
+    function deployUspdToken() internal {
+        // Requires stabilizerProxyAddress to be deployed first.
+        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed yet"); // Safety check
+
         // Get the bytecode of UspdToken with constructor arguments
         bytes memory bytecode = abi.encodePacked(
             type(USPDToken).creationCode,
-            abi.encode(oracleProxyAddress, address(0), deployer) // Temporary zero address for stabilizer, deployer as admin
+            abi.encode(oracleProxyAddress, stabilizerProxyAddress, deployer) // Pass actual stabilizer address
         );
 
         // Deploy using CREATE2 for deterministic address using CreateX
@@ -282,18 +302,17 @@ contract DeployScript is Script {
         console2.log("(Stabilizer address will be updated later)");
     }
 
-    // Update the token with the correct stabilizer address
-    function updateTokenStabilizer() internal {
-        USPDToken token = USPDToken(payable(tokenAddress));
-        token.updateStabilizer(stabilizerProxyAddress);
-        console2.log("Updated token with stabilizer address:", stabilizerProxyAddress);
-    }
+    // Update the token with the correct stabilizer address - Removed as it's done in deployUspdToken now
 
-    function deployStabilizerNFTProxy(address actualTokenAddress) internal {
+    function deployStabilizerNFTProxy() internal {
+        // Requires positionNFTProxyAddress and tokenAddress to be deployed first.
+        require(positionNFTProxyAddress != address(0), "PositionNFT proxy not deployed yet");
+        require(tokenAddress != address(0), "Token not deployed yet");
+
         // Prepare initialization data
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (positionNFTProxyAddress, actualTokenAddress, deployer)
+            (positionNFTProxyAddress, tokenAddress, deployer)
         );
 
         // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
