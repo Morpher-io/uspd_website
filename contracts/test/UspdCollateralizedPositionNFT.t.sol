@@ -12,7 +12,7 @@ import "../src/PoolSharesConversionRate.sol";
 import "../src/interfaces/IPoolSharesConversionRate.sol";
 import "../src/interfaces/IPriceOracle.sol";
 import "../src/interfaces/ILido.sol";
-import "../src/interfaces/IUspdCollateralizedPositionNFT.sol"; // Assuming this will be updated
+import "../src/interfaces/IUspdCollateralizedPositionNFT.sol"; // TODO: Update this interface later
 
 // Contract Under Test (Implementation and Proxy)
 import "../src/UspdCollateralizedPositionNFT.sol";
@@ -90,22 +90,21 @@ contract UspdCollateralizedPositionNFTTest is Test {
         UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
         bytes memory positionInitData = abi.encodeWithSelector(
             UspdCollateralizedPositionNFT.initialize.selector,
-            address(priceOracle), // Pass PriceOracle address
+            address(priceOracle),
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            stabilizerContract, // Address authorized to call restricted functions
             deployer // Admin
-            // Add other addresses needed by initializer based on Task 2.2 (stETH, Lido, RateContract, StabilizerNFT)
-            // address(mockStETH),
-            // address(mockLido),
-            // address(rateContract),
-            // stabilizerContract // Assuming initializer needs these
         );
         ERC1967Proxy positionProxy = new ERC1967Proxy(address(positionNFTImpl), positionInitData);
         positionNFT = UspdCollateralizedPositionNFT(payable(address(positionProxy)));
 
-        // 5. Grant Roles (assuming roles defined in implementation)
-        // Grant role needed by StabilizerNFTContract to call restricted functions
-        // positionNFT.grantRole(positionNFT.STABILIZER_NFT_ROLE(), stabilizerContract); // Example role name
-        // Grant admin role if needed for specific tests
-        positionNFT.grantRole(positionNFT.DEFAULT_ADMIN_ROLE(), deployer);
+        // 5. Grant Roles
+        // Grant STABILIZER_NFT_ROLE to the mock stabilizer contract address
+        positionNFT.grantRole(positionNFT.STABILIZER_NFT_ROLE(), stabilizerContract);
+        // Grant admin role (already done in initializer)
+        // positionNFT.grantRole(positionNFT.DEFAULT_ADMIN_ROLE(), deployer);
 
         // 6. Mint a test NFT owned by stabilizerOwner
         // Need MINTER_ROLE - grant it to deployer for setup
@@ -129,24 +128,33 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
     // --- Deployment & Initialization ---
     function testInitialState() public {
-        // Test addresses set in initializer (add checks once initializer is updated)
-        // assertEq(address(positionNFT.oracle()), address(priceOracle), "Oracle address mismatch");
-        // assertEq(positionNFT.stETH(), address(mockStETH), "stETH address mismatch");
-        // assertEq(positionNFT.lido(), address(mockLido), "Lido address mismatch");
-        // assertEq(positionNFT.rateContract(), address(rateContract), "RateContract address mismatch");
-        // assertEq(positionNFT.stabilizerNFTContract(), stabilizerContract, "StabilizerNFT address mismatch");
-        assertTrue(true, "Placeholder: Add checks for initialized addresses");
+        // Test addresses set in initializer
+        assertEq(address(positionNFT.oracle()), address(priceOracle), "Oracle address mismatch");
+        assertEq(address(positionNFT.stETH()), address(mockStETH), "stETH address mismatch");
+        assertEq(address(positionNFT.lido()), address(mockLido), "Lido address mismatch");
+        assertEq(address(positionNFT.rateContract()), address(rateContract), "RateContract address mismatch");
+        assertEq(positionNFT.stabilizerNFTContract(), stabilizerContract, "StabilizerNFT address mismatch");
     }
 
     // --- addCollateralAndTrackShares ---
     function test_AddCollateralAndTrackShares_Success() public {
-        // TODO: Implement test
-        assertTrue(true, "Test not implemented");
+        // TODO: Implement test logic for success case
+        assertTrue(true, "Test not implemented: Success case");
     }
 
     function test_AddCollateralAndTrackShares_Revert_NotStabilizerRole() public {
-        // TODO: Implement test
-        assertTrue(true, "Test not implemented");
+        // Expect revert because user1 doesn't have STABILIZER_NFT_ROLE
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AccessControlUpgradeable.AccessControlUnauthorizedAccount.selector,
+                user1, // account
+                positionNFT.STABILIZER_NFT_ROLE() // required role
+            )
+        );
+        // Call the function (which doesn't exist yet) from user1
+        vm.prank(user1);
+        // positionNFT.addCollateralAndTrackShares(TEST_TOKEN_ID, 1 ether, 0.1 ether, 2000e18);
+        assertTrue(true, "Placeholder: Uncomment function call when it exists"); // Keep test failing until function exists
     }
 
     // --- getCollateralizationRatio ---
@@ -201,13 +209,17 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
     // --- addStabilizerCollateral ---
     function test_AddStabilizerCollateral_Success() public {
-        // TODO: Implement test
-        assertTrue(true, "Test not implemented");
+        // TODO: Implement test logic for success case
+        assertTrue(true, "Test not implemented: Success case");
     }
 
     function test_AddStabilizerCollateral_Revert_NotOwner() public {
-        // TODO: Implement test
-        assertTrue(true, "Test not implemented");
+        // Expect revert because user1 is not the owner of TEST_TOKEN_ID
+        vm.expectRevert(UspdCollateralizedPositionNFT.NotOwner.selector);
+        // Call the function (which doesn't exist yet) from user1
+        vm.prank(user1);
+        // positionNFT.addStabilizerCollateral{value: 0.1 ether}(TEST_TOKEN_ID);
+        assertTrue(true, "Placeholder: Uncomment function call when it exists"); // Keep test failing until function exists
     }
 
     // --- removeExcessStabilizerCollateral ---

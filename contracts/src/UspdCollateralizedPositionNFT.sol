@@ -6,6 +6,9 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721U
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
+import "./interfaces/IPoolSharesConversionRate.sol"; // Add Rate Contract interface
+import "./interfaces/ILido.sol"; // Add Lido interface
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"; // Add ERC20 interface
 import "./PriceOracle.sol";
 
 contract UspdCollateralizedPositionNFT is
@@ -15,19 +18,31 @@ contract UspdCollateralizedPositionNFT is
     AccessControlUpgradeable
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant TRANSFERCOLLATERAL_ROLE =
+    bytes32 public constant TRANSFERCOLLATERAL_ROLE = // To be removed
         keccak256("TRANSFERCOLLATERAL_ROLE");
-    bytes32 public constant MODIFYALLOCATION_ROLE =
+    bytes32 public constant MODIFYALLOCATION_ROLE = // To be removed
         keccak256("MODIFYALLOCATION_ROLE");
+    bytes32 public constant STABILIZER_NFT_ROLE = keccak256("STABILIZER_NFT_ROLE"); // New role
 
     // Oracle contract for price feeds
     PriceOracle public oracle;
+    // stETH token contract
+    IERC20 public stETH;
+    // Lido staking pool contract
+    ILido public lido;
+    // PoolSharesConversionRate contract
+    IPoolSharesConversionRate public rateContract;
+    // StabilizerNFT contract address (for role checks)
+    address public stabilizerNFTContract;
 
     // Mapping from NFT ID to position
     mapping(uint256 => Position) private _positions;
 
     // Mapping from owner address to token ID
     mapping(address => uint256) private _ownerToken;
+
+    // Custom Errors
+    error NotOwner();
 
     function getPosition(
         uint256 tokenId
@@ -60,12 +75,24 @@ contract UspdCollateralizedPositionNFT is
         _disableInitializers();
     }
 
-    function initialize(address _oracle, address _admin) public initializer {
+    function initialize(
+        address _oracleAddress,
+        address _stETHAddress,
+        address _lidoAddress,
+        address _rateContractAddress,
+        address _stabilizerNFTAddress,
+        address _admin
+    ) public initializer {
         __ERC721_init("USPD Collateralized Position", "USPDPOS");
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        oracle = PriceOracle(_oracle);
+        oracle = PriceOracle(_oracleAddress);
+        stETH = IERC20(_stETHAddress);
+        lido = ILido(_lidoAddress);
+        rateContract = IPoolSharesConversionRate(_rateContractAddress);
+        stabilizerNFTContract = _stabilizerNFTAddress;
+
         _nextPositionId = 1; //positionIds start at 1
     }
 
