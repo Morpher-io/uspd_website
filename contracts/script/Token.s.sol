@@ -11,6 +11,8 @@ import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol";
 import "../src/UspdCollateralizedPositionNFT.sol";
+import "../src/PoolSharesConversionRate.sol"; // Import the new contract
+import "../src/interfaces/ILido.sol"; // Import Lido interface
 
 contract DeployScript is Script {
     // Configuration
@@ -36,6 +38,7 @@ contract DeployScript is Script {
     bytes32 POSITION_NFT_PROXY_SALT;
     bytes32 STABILIZER_PROXY_SALT;
     bytes32 TOKEN_SALT;
+    bytes32 RATE_CONTRACT_SALT; // Salt for the rate contract
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; // Example address, replace with actual address
@@ -50,6 +53,7 @@ contract DeployScript is Script {
     address stabilizerImplAddress;
     address stabilizerProxyAddress;
     address tokenAddress;
+    address rateContractAddress; // Address for the rate contract
 
     // Configuration for PriceOracle
     uint256 maxPriceDeviation = 500; // 5%
@@ -57,6 +61,9 @@ contract DeployScript is Script {
     address usdcAddress;
     address uniswapRouter;
     address chainlinkAggregator;
+    address lidoAddress; // Lido staking pool address
+    address stETHAddress; // stETH token address
+    uint256 initialRateContractDeposit = 0.001 ether; // ETH to deposit into rate contract
 
     function setUp() public {
         // Get the deployer address and chain ID
@@ -79,6 +86,7 @@ contract DeployScript is Script {
         POSITION_NFT_PROXY_SALT = generateSalt("USPD_POSITION_NFT_PROXY_v1");
         STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
         TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
+        RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1"); // Initialize salt
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
@@ -87,29 +95,39 @@ contract DeployScript is Script {
         // Set network-specific configuration
         if (chainId == 1) {
             // Ethereum Mainnet
-            usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-            chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-        } else if (chainId == 5) {
             // Ethereum Mainnet
             usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
             chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-        } else if (chainId == 112233) {
-            // anvil test network internal (anvil -f )
-            usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-            chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+            lidoAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+            stETHAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // stETH is same as Lido contract
+        } else if (chainId == 5 || chainId == 11155111) { // Goerli or Sepolia
+            // Note: Lido might not be fully functional on testnets, use appropriate addresses if available
+            // Using placeholders - replace with actual testnet addresses if needed
+            usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Goerli USDC example
+            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Goerli Uniswap example
+            chainlinkAggregator = 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e; // Goerli ETH/USD example
+            lidoAddress = address(0x1); // Placeholder - Deploy MockLido on testnet?
+            stETHAddress = address(0x2); // Placeholder - Deploy MockStETH on testnet?
         } else if (chainId == 137) {
             // Polygon
             usdcAddress = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-            chainlinkAggregator = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0;
+            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Check Polygon Uniswap Router
+            chainlinkAggregator = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0; // Polygon ETH/USD
+            lidoAddress = address(0x3); // Placeholder - Lido might not be on Polygon directly
+            stETHAddress = address(0x4); // Placeholder - stETH might be bridged
         } else {
-            // Local development - use mock addresses
-            usdcAddress = address(0x1);
-            uniswapRouter = address(0x2);
-            chainlinkAggregator = address(0x3);
+            // Local development (Anvil/Hardhat) - Deploy Mocks
+            // Deploy MockStETH
+            MockStETH mockStETH = new MockStETH();
+            stETHAddress = address(mockStETH);
+            // Deploy MockLido
+            MockLido mockLido = new MockLido(stETHAddress);
+            lidoAddress = address(mockLido);
+            // Use placeholder addresses for others
+            usdcAddress = address(0x5);
+            uniswapRouter = address(0x6);
+            chainlinkAggregator = address(0x7);
         }
     }
 
@@ -122,6 +140,9 @@ contract DeployScript is Script {
         // Deploy Oracle contracts
         deployOracleImplementation();
         deployOracleProxy();
+
+        // Deploy PoolSharesConversionRate contract (needs Lido and stETH addresses)
+        deployPoolSharesConversionRate();
 
         // Deploy PositionNFT contracts
         deployPositionNFTImplementation();
@@ -139,6 +160,10 @@ contract DeployScript is Script {
         // Update the token with the correct stabilizer address
         updateTokenStabilizer();
 
+        // Update other contracts with necessary addresses (e.g., RateContract address)
+        // Note: Check if initializers need the RateContract address. If so, adjust deployment order.
+        // Based on plan, UspdToken needs it, but likely set via a function post-deployment.
+
         // Grant necessary roles for cross-contract interactions
         setupRolesAndPermissions();
 
@@ -147,6 +172,8 @@ contract DeployScript is Script {
 
         vm.stopBroadcast();
     }
+
+    // --- Deployment Functions ---
 
     function deployProxyAdmin() internal {
         // Deploy ProxyAdmin with CREATE2 using CreateX
@@ -284,6 +311,23 @@ contract DeployScript is Script {
         );
     }
 
+    function deployPoolSharesConversionRate() internal {
+        // Get the bytecode of PoolSharesConversionRate with constructor arguments
+        bytes memory bytecode = abi.encodePacked(
+            type(PoolSharesConversionRate).creationCode,
+            abi.encode(stETHAddress, lidoAddress)
+        );
+
+        // Deploy using CREATE2, sending initial ETH value to the constructor
+        rateContractAddress = createX.deployCreate2{value: initialRateContractDeposit}(
+            RATE_CONTRACT_SALT,
+            bytecode
+        );
+
+        console2.log("PoolSharesConversionRate deployed at:", rateContractAddress);
+        console2.log("Initial ETH deposit:", initialRateContractDeposit);
+    }
+
     function setupRolesAndPermissions() internal {
         // Grant roles to the PriceOracle
         PriceOracle oracle = PriceOracle(oracleProxyAddress);
@@ -314,16 +358,42 @@ contract DeployScript is Script {
 
         // Grant roles to the UspdToken
         USPDToken token = USPDToken(payable(tokenAddress));
-        // Deployer already has EXCESS_COLLATERAL_DRAIN_ROLE and UPDATE_ORACLE_ROLE from constructor
+        // Deployer already has roles from constructor
         token.grantRole(token.STABILIZER_ROLE(), stabilizerProxyAddress);
+
+        // Note: PoolSharesConversionRate does not require specific roles.
     }
 
     function saveDeploymentInfo() internal {
-        // Create a JSON object structure
+        // Create a JSON object structure if file doesn't exist
+        string memory initialJson = '{'
+            '"contracts": {'
+                '"proxyAdmin": "0x0",'
+                '"oracleImpl": "0x0",'
+                '"oracle": "0x0",'
+                '"positionNFTImpl": "0x0",'
+                '"positionNFT": "0x0",'
+                '"stabilizerImpl": "0x0",'
+                '"stabilizer": "0x0",'
+                '"token": "0x0",'
+                '"rateContract": "0x0"' // Add rateContract field
+            '},'
+            '"config": {'
+                '"usdcAddress": "0x0",'
+                '"uniswapRouter": "0x0",'
+                '"chainlinkAggregator": "0x0",'
+                '"lidoAddress": "0x0",' // Add lidoAddress field
+                '"stETHAddress": "0x0"' // Add stETHAddress field
+            '},'
+            '"metadata": {'
+                '"chainId": 0,'
+                '"deploymentTimestamp": 0,'
+                '"deployer": "0x0"'
+            '}'
+        '}';
 
-        string memory jsonObj = '{"contracts":{"proxyAdmin":"0x0","oracleImpl":"0x0","oracle":"0x0","positionNFTImpl":"0x0","positionNFT":"0x0","stabilizerImpl":"0x0","stabilizer":"0x0","token":"0x0"},"config":{"usdcAddress":"0x0","uniswapRouter":"0x0","chainlinkAggregator":"0x0"},"metadata":{"chainId":0,"deploymentTimestamp":0,"deployer":"0x0"}}';
         if (!vm.isFile(deploymentPath)) {
-            vm.writeFile(deploymentPath, jsonObj);
+            vm.writeFile(deploymentPath, initialJson);
         }
 
         // Add contract addresses
@@ -335,11 +405,14 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
         vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
         vm.writeJson(vm.toString(tokenAddress), deploymentPath, ".contracts.token");
+        vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract"); // Save rate contract address
 
         // Add configuration
         vm.writeJson(vm.toString(usdcAddress), deploymentPath, ".config.usdcAddress");
         vm.writeJson(vm.toString(uniswapRouter), deploymentPath, ".config.uniswapRouter");
         vm.writeJson(vm.toString(chainlinkAggregator), deploymentPath, ".config.chainlinkAggregator");
+        vm.writeJson(vm.toString(lidoAddress), deploymentPath, ".config.lidoAddress"); // Save Lido address
+        vm.writeJson(vm.toString(stETHAddress), deploymentPath, ".config.stETHAddress"); // Save stETH address
 
         // Add metadata
         vm.writeJson(vm.toString(chainId), deploymentPath, ".metadata.chainId");
