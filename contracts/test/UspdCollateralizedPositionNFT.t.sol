@@ -177,7 +177,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
         // --- Get Ratio ---
         IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice); // $2000
-        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price.price, price.decimals); // Pass price and decimals separately
 
         // --- Assertions ---
         // Expected: (Collateral Value * 100) / Liability Value
@@ -208,7 +208,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
         // --- Get Ratio ---
         IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice); // $2000
-        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price.price, price.decimals); // Pass price and decimals separately
 
         // --- Assertions ---
         // Expected: (Collateral Value * 100) / Liability Value
@@ -218,7 +218,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
         // Note: Ratio stays the same if collateral and liability grow proportionally
         // Let's test with a price change *after* yield
         price = createPriceResponse(1800 ether); // Price drops to $1800
-        ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+        ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price.price, price.decimals); // Pass price and decimals separately
 
         // Expected: (Collateral Value * 100) / Liability Value
         // Liability Value = ~2100e18 ($2100 - based on initial value + yield)
@@ -235,7 +235,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
         // --- Get Ratio ---
         IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice);
-        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+        uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price.price, price.decimals); // Pass price and decimals separately
 
         // --- Assertions ---
         // Expect 0 or type(uint256).max depending on implementation choice
