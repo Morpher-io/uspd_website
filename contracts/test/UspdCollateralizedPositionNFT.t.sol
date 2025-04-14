@@ -160,18 +160,84 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
     // --- getCollateralizationRatio ---
     function test_GetCollateralizationRatio_NoYield() public {
-        // TODO: Implement test
-        assertTrue(true, "Test not implemented");
+        // --- Setup ---
+        // Simulate allocation (needs addCollateralAndTrackShares to exist)
+        uint256 userStEth = 1 ether;
+        uint256 stabilizerStEth = 0.1 ether; // 10% overcollateralization initially
+        uint256 totalStEth = userStEth + stabilizerStEth; // 1.1 ether
+        uint256 poolSharesToBack = 2000e18; // Represents $2000 initial value
+
+        // Assume addCollateralAndTrackShares sets the state (will fail until implemented)
+        // vm.prank(stabilizerContract);
+        // positionNFT.addCollateralAndTrackShares(TEST_TOKEN_ID, userStEth, stabilizerStEth, poolSharesToBack);
+
+        // --- Get Ratio ---
+        IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice); // $2000
+        // uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+
+        // --- Assertions ---
+        // Expected: (Collateral Value * 100) / Liability Value
+        // Liability Value = $2000 (since yield factor is 1)
+        // Collateral Value = 1.1 * $2000 = $2200
+        // Expected Ratio = ($2200 * 100) / $2000 = 110
+        // assertEq(ratio, 110, "Ratio mismatch (no yield)");
+        assertTrue(true, "Placeholder: Uncomment when functions exist");
     }
 
     function test_GetCollateralizationRatio_WithYield() public {
-        // TODO: Implement test
-        assertTrue(true, "Test not implemented");
+         // --- Setup ---
+        uint256 userStEth = 1 ether;
+        uint256 stabilizerStEth = 0.1 ether;
+        uint256 totalStEthInitial = userStEth + stabilizerStEth; // 1.1 ether
+        uint256 poolSharesToBack = 2000e18; // $2000 initial value
+
+        // Assume addCollateralAndTrackShares sets the state
+        // vm.prank(stabilizerContract);
+        // positionNFT.addCollateralAndTrackShares(TEST_TOKEN_ID, userStEth, stabilizerStEth, poolSharesToBack);
+
+        // --- Simulate Yield (5% rebase) ---
+        vm.prank(deployer);
+        mockStETH.rebase((mockStETH.totalSupply() * 105) / 100);
+        uint256 yieldFactor = rateContract.getYieldFactor(); // Should be ~1.05e18
+        assertApproxEqAbs(yieldFactor, 1.05e18, 100, "Yield factor calculation error"); // Check yield factor itself
+
+        // --- Get Ratio ---
+        IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice); // $2000
+        // uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+
+        // --- Assertions ---
+        // Expected: (Collateral Value * 100) / Liability Value
+        // Liability Value = poolShares * YieldFactor = 2000e18 * ~1.05e18 / 1e18 = ~2100e18 ($2100)
+        // Collateral Value = totalStEth * ethPrice = (1.1 * 1.05) * $2000 = 1.155 * $2000 = $2310
+        // Expected Ratio = ($2310 * 100) / $2100 = 110
+        // Note: Ratio stays the same if collateral and liability grow proportionally
+        // Let's test with a price change *after* yield
+        price = createPriceResponse(1800 ether); // Price drops to $1800
+        // ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+
+        // Expected: (Collateral Value * 100) / Liability Value
+        // Liability Value = ~2100e18 ($2100 - based on initial value + yield)
+        // Collateral Value = totalStEth * ethPrice = 1.155 * $1800 = $2079
+        // Expected Ratio = ($2079 * 100) / $2100 = 99
+        // assertEq(ratio, 99, "Ratio mismatch (with yield and price drop)");
+        assertTrue(true, "Placeholder: Uncomment when functions exist");
     }
 
     function test_GetCollateralizationRatio_ZeroLiability() public {
-        // TODO: Implement test
-        assertTrue(true, "Test not implemented");
+        // --- Setup ---
+        // NFT is minted in setUp, but no shares allocated yet.
+        // backedPoolShares should be 0.
+
+        // --- Get Ratio ---
+        IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice);
+        // uint256 ratio = positionNFT.getCollateralizationRatio(TEST_TOKEN_ID, price); // Will fail until implemented
+
+        // --- Assertions ---
+        // Expect 0 or type(uint256).max depending on implementation choice
+        // assertEq(ratio, 0, "Ratio should be 0 for zero liability");
+        // OR
+        // assertEq(ratio, type(uint256).max, "Ratio should be max for zero liability");
+        assertTrue(true, "Placeholder: Uncomment when function exists");
     }
 
     // --- unallocate ---
