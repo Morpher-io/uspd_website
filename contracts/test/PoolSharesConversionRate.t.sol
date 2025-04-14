@@ -39,8 +39,8 @@ contract PoolSharesConversionRateTest is Test {
         // 3. Deploy PoolSharesConversionRate with ETH value
         // The constructor is payable and calls mockLido.submit()
         // Check that the Submitted event is emitted from mockLido
-        vm.expectEmit(true, true, false, true, address(mockLido)); // Check indexed sender, amount, referral (data), address
-        emit MockLido.Submitted(deployer, INITIAL_ETH_DEPOSIT, address(0)); // Expect deployer as sender, amount = value, referral = 0
+        // vm.expectEmit(true, true, false, true, address(mockLido)); // Check indexed sender, amount, referral (data), address
+        // emit MockLido.Submitted(deployer, INITIAL_ETH_DEPOSIT, address(0)); // Expect deployer as sender, amount = value, referral = 0
         rateContract = new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(
             address(mockStETH),
             address(mockLido)

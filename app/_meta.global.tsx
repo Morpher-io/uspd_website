@@ -15,8 +15,8 @@ export default {
       type: 'menu',
       items: {
         about: {
-          title: 'Minting',
-          href: '/demo'
+          title: 'Minting/Burning',
+          href: '/uspd'
         },
         stabilizer: {
           title: 'Stabilizer',

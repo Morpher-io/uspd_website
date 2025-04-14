@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
+
 /**
  * @title IPoolSharesConversionRate Interface
  * @dev Interface for the contract responsible for tracking the stETH yield factor.
@@ -31,5 +34,5 @@ interface IPoolSharesConversionRate {
      * @notice Returns the address of the stETH token being tracked.
      * @return tokenInstance The IERC20 instance of the stETH token.
      */
-    function stETH() external view returns (IERC20 tokenInstance);
+    function stETH() external view returns (address tokenInstance);
 }

@@ -29,7 +29,6 @@ export class SigningService {
                 ]
             )
         );
-        console.log(messageHash.length);
         // Sign the message - this will automatically add the Ethereum Signed Message prefix
         const signature = await this.account.signMessage({
             message: { raw: messageHash }

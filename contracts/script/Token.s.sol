@@ -6,7 +6,6 @@ import {Vm} from "forge-std/Vm.sol";
 import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ICreateX} from "../lib/createx/src/ICreateX.sol";
-import {IAccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/IAccessControlUpgradeable.sol"; // Import interface for error selector
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";

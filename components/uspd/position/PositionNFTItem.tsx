@@ -74,7 +74,7 @@ export function PositionNFTItem({
 
     try {
       
-      const result = await publicClient.readContract({
+      const result = await publicClient?.readContract({
         address: positionNFTAddress,
         abi: positionNFTAbi,
         functionName: 'getCollateralizationRatio',
@@ -214,7 +214,7 @@ export function PositionNFTItem({
         address: positionNFTAddress,
         abi: positionNFTAbi,
         functionName: 'transferCollateral',
-        args: [BigInt(tokenId), address as `0x${string}`, ethAmount, priceQuery]
+        args: [BigInt(tokenId), address as `0x${string}`, ethAmount, priceQuery as any]
       })
 
       setSuccess(`Successfully withdrew ${withdrawAmount} ETH from Position #${tokenId}`)

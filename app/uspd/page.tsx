@@ -6,7 +6,6 @@ import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 import { MintBurnWidget } from '@/components/uspd/token/MintBurnWidget'
 import tokenJson from '../../contracts/out/UspdToken.sol/USPDToken.json'
 import positionNFTJson from '../../contracts/out/UspdCollateralizedPositionNFT.sol/UspdCollateralizedPositionNFT.json'
-import priceOracleJson from '../../contracts/out/PriceOracle.sol/PriceOracle.json'
 
 export default function UspdPage() {
   const { isConnected } = useAccount()
