@@ -210,6 +210,32 @@ contract UspdCollateralizedPositionNFT is
         _positions[tokenId].backedUspd = newBackedUspd;
     }
 
+    /**
+     * @notice Allows the stabilizer owner to add more collateral by sending ETH.
+     * @param tokenId The ID of the position NFT.
+     */
+    function addStabilizerCollateral(uint256 tokenId) external payable {
+        // require(msg.sender == ownerOf(tokenId), "NotOwner"); // Check to be added later
+        // Logic to convert ETH to stETH and call internal addCollateral to be added later
+        revert("Not implemented"); // Placeholder revert
+    }
+
+    /**
+     * @notice Allows the stabilizer owner to remove excess collateral.
+     * @param tokenId The ID of the position NFT.
+     * @param stEthAmountToRemove The amount of stETH to remove.
+     * @param priceResponse The current oracle price response.
+     */
+    function removeExcessStabilizerCollateral(
+        uint256 tokenId,
+        uint256 stEthAmountToRemove,
+        IPriceOracle.PriceResponse memory priceResponse
+    ) external {
+         // require(msg.sender == ownerOf(tokenId), "NotOwner"); // Check to be added later
+         // Logic for ratio check and transfer to be added later
+         revert("Not implemented"); // Placeholder revert
+    }
+
     receive() external payable {
         uint256 tokenId = _ownerToken[msg.sender];
         require(tokenId != 0, "No position found for sender");
