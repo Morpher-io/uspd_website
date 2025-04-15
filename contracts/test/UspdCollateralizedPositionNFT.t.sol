@@ -155,8 +155,32 @@ contract UspdCollateralizedPositionNFTTest is Test {
         // Call the function (which doesn't exist yet) from user1
         vm.prank(user1);
         // positionNFT.addCollateralAndTrackShares(TEST_TOKEN_ID, 1 ether, 0.1 ether, 2000e18);
-        assertTrue(true, "Placeholder: Uncomment function call when it exists"); // Keep test failing until function exists
+        // Call the function (which exists now but lacks the check) from user1
+        vm.prank(user1);
+        positionNFT.addCollateral(TEST_TOKEN_ID, 1 ether); // Use the correct addCollateral function
+        // assertTrue(true, "Placeholder: Uncomment function call when it exists"); // Remove placeholder
     }
+
+    // --- modifyAllocation ---
+    function test_ModifyAllocation_Success() public {
+        // TODO: Implement test logic for success case
+        assertTrue(true, "Test not implemented: Success case");
+    }
+
+    function test_ModifyAllocation_Revert_NotStabilizerRole() public {
+        // Expect revert because user1 doesn't have STABILIZER_NFT_ROLE
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, // Use interface selector
+                user1, // account
+                positionNFT.STABILIZER_NFT_ROLE() // required role
+            )
+        );
+        // Call the function (which exists now but lacks the check) from user1
+        vm.prank(user1);
+        positionNFT.modifyAllocation(TEST_TOKEN_ID, 1000e18); // Call the actual function
+    }
+
 
     // --- getCollateralizationRatio ---
     function test_GetCollateralizationRatio_NoYield() public {
@@ -288,10 +312,10 @@ contract UspdCollateralizedPositionNFTTest is Test {
     function test_AddStabilizerCollateral_Revert_NotOwner() public {
         // Expect revert because user1 is not the owner of TEST_TOKEN_ID
         vm.expectRevert(UspdCollateralizedPositionNFT.NotOwner.selector);
-        // Call the function (which doesn't exist yet) from user1
+        // Call the function (which exists now but lacks the check) from user1
         vm.prank(user1);
-        // positionNFT.addStabilizerCollateral{value: 0.1 ether}(TEST_TOKEN_ID);
-        assertTrue(true, "Placeholder: Uncomment function call when it exists"); // Keep test failing until function exists
+        positionNFT.addStabilizerCollateral{value: 0.1 ether}(TEST_TOKEN_ID); // Call the actual function
+        // assertTrue(true, "Placeholder: Uncomment function call when it exists"); // Remove placeholder
     }
 
     // --- removeExcessStabilizerCollateral ---
