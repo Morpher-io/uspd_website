@@ -174,9 +174,16 @@ contract UspdCollateralizedPositionNFT is
         require(success, "stETH transfer failed");
     }
 
-    function removeCollateral(
+    /**
+     * @notice Removes collateral during unallocation process. Called by StabilizerNFT.
+     * @param tokenId The ID of the position NFT.
+     * @param recipient The address to send the stETH to (StabilizerNFT contract).
+     * @param userStEthToRemove The portion of stETH corresponding to the user's burned shares.
+     * @param priceResponse The current oracle price response.
+     */
+    function removeCollateral( // Kept name, but logic significantly changed
         uint256 tokenId,
-        address payable to,
+        address recipient, // Changed from payable, recipient is StabilizerNFT
         uint256 userStEthToRemove,
         IPriceOracle.PriceResponse memory priceResponse // Changed from calldata
     ) external onlyRole(STABILIZER_NFT_ROLE) { // Role check updated
