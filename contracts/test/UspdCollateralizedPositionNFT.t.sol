@@ -318,28 +318,32 @@ contract UspdCollateralizedPositionNFTTest is Test {
         // assertTrue(true, "Placeholder: Uncomment function call when it exists"); // Remove placeholder
     }
 
-    // --- removeExcessStabilizerCollateral ---
-    function test_RemoveExcessStabilizerCollateral_Success() public {
+    // --- removeExcessCollateral (Owner Action) ---
+    function test_RemoveExcessCollateral_Success() public {
         // TODO: Implement test
         assertTrue(true, "Test not implemented");
     }
 
-    function test_RemoveExcessStabilizerCollateral_Revert_NotOwner() public {
+    function test_RemoveExcessCollateral_Revert_NotOwner() public {
+        // Expect revert because user1 is not the owner of TEST_TOKEN_ID
+        vm.expectRevert(UspdCollateralizedPositionNFT.NotOwner.selector);
+        // Call the function from user1
+        vm.prank(user1);
+        IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice);
+        positionNFT.removeExcessCollateral(TEST_TOKEN_ID, 0.01 ether, price); // Call the actual function
+    }
+
+    function test_RemoveExcessCollateral_Revert_InsufficientStEth() public {
         // TODO: Implement test
         assertTrue(true, "Test not implemented");
     }
 
-    function test_RemoveExcessStabilizerCollateral_Revert_InsufficientStEth() public {
+    function test_RemoveExcessCollateral_Revert_RatioCheckFail() public {
         // TODO: Implement test
         assertTrue(true, "Test not implemented");
     }
 
-    function test_RemoveExcessStabilizerCollateral_Revert_RatioCheckFail() public {
-        // TODO: Implement test
-        assertTrue(true, "Test not implemented");
-    }
-
-     function test_RemoveExcessStabilizerCollateral_RatioCheckPass() public {
+     function test_RemoveExcessCollateral_RatioCheckPass() public {
         // TODO: Implement test
         assertTrue(true, "Test not implemented");
     }
