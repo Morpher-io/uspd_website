@@ -40,34 +40,34 @@ contract StabilizerEscrow {
      * @param _owner The address of the Stabilizer NFT owner.
      * @param _stETH The address of the stETH token.
      * @param _lido The address of the Lido staking pool.
-     * @dev Requires msg.value > 0 for the initial deposit. Stakes the ETH into stETH.
+     * @dev Sets immutable addresses. Initial deposit happens via separate `deposit` call.
      */
     constructor(
         address _stabilizerNFT,
         address _owner,
         address _stETH,
         address _lido
-    ) payable {
+    ) /* removed payable */ {
         if (_stabilizerNFT == address(0) || _owner == address(0) || _stETH == address(0) || _lido == address(0)) {
             revert ZeroAddress();
         }
-        if (msg.value == 0) revert ZeroAmount(); // Require initial deposit
+        // if (msg.value == 0) revert ZeroAmount(); // Removed check - constructor is not payable
 
         stabilizerNFTContract = _stabilizerNFT;
         stabilizerOwner = _owner;
         stETH = _stETH;
         lido = _lido;
 
-        // Stake initial ETH
-        try ILido(lido).submit{value: msg.value}(address(0)) {}
-        catch {
-            revert DepositFailed();
-        }
+        // // Stake initial ETH - Removed from constructor
+        // try ILido(lido).submit{value: msg.value}(address(0)) {}
+        // catch {
+        //     revert DepositFailed();
+        // }
 
-        // Verify stETH received
-        if (IERC20(stETH).balanceOf(address(this)) == 0) {
-            revert InitialDepositFailed();
-        }
+        // // Verify stETH received - Removed from constructor
+        // if (IERC20(stETH).balanceOf(address(this)) == 0) {
+        //     revert InitialDepositFailed();
+        // }
 
         allocatedStETH = 0; // Explicitly initialize
     }
