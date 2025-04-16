@@ -57,8 +57,57 @@ contract StabilizerNFTTest is Test {
         positionNFT.grantRole(positionNFT.TRANSFERCOLLATERAL_ROLE(), address(stabilizerNFT));
         positionNFT.grantRole(positionNFT.MODIFYALLOCATION_ROLE(), address(stabilizerNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
-        uspdToken.updateStabilizer(address(stabilizerNFT));
+        // uspdToken.updateStabilizer(address(stabilizerNFT)); // Update if uspdToken is deployed
     }
+
+    // --- Mint Tests ---
+
+    function testMintDeploysEscrow() public {
+        uint256 tokenId = 1;
+        address expectedOwner = user1;
+
+        // Predict Escrow address (using CREATE for simplicity in test, replace with CREATE2 if used)
+        // Note: Predicting CREATE address depends on deployer nonce.
+        // Using vm.expectEmit is often easier than precise address prediction for CREATE.
+        // Let's use expectEmit for the deployment event from StabilizerNFT (needs to be added).
+
+        // --- Action ---
+        vm.prank(owner); // Assuming owner has MINTER_ROLE
+        // Expect an event indicating Escrow deployment (to be added to StabilizerNFT)
+        // vm.expectEmit(true, true, true, true, address(stabilizerNFT));
+        // emit EscrowDeployed(tokenId, expectedEscrowAddress);
+        stabilizerNFT.mint(expectedOwner, tokenId);
+
+        // --- Assertions ---
+        // 1. Check NFT ownership
+        assertEq(stabilizerNFT.ownerOf(tokenId), expectedOwner, "NFT Owner mismatch");
+
+        // 2. Check Escrow address stored
+        address deployedEscrowAddress = stabilizerNFT.stabilizerEscrows(tokenId);
+        assertTrue(deployedEscrowAddress != address(0), "Escrow address not stored");
+
+        // 3. Check code exists at deployed address
+        assertTrue(deployedEscrowAddress.code.length > 0, "No code at deployed Escrow address");
+
+        // 4. Check Escrow state (owner, controller)
+        StabilizerEscrow escrow = StabilizerEscrow(payable(deployedEscrowAddress));
+        assertEq(escrow.stabilizerOwner(), expectedOwner, "Escrow owner mismatch");
+        assertEq(escrow.stabilizerNFTContract(), address(stabilizerNFT), "Escrow controller mismatch");
+        assertEq(escrow.stETH(), address(mockStETH), "Escrow stETH mismatch");
+        assertEq(escrow.lido(), address(mockLido), "Escrow lido mismatch");
+        assertEq(escrow.allocatedStETH(), 0, "Escrow initial allocated mismatch");
+        assertEq(mockStETH.balanceOf(deployedEscrowAddress), 0, "Escrow initial stETH balance should be 0");
+
+    }
+
+    function testMintRevert_NotMinter() public {
+         uint256 tokenId = 1;
+         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, stabilizerNFT.MINTER_ROLE()));
+         vm.prank(user1); // user1 doesn't have MINTER_ROLE
+         stabilizerNFT.mint(user1, tokenId);
+    }
+
+    // --- Funding Tests ---
 
     function testAddUnallocatedFundsToNonExistentToken() public {
         vm.expectRevert(

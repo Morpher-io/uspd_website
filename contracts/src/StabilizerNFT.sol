@@ -10,6 +10,8 @@ import "./UspdToken.sol";
 import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IPriceOracle.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
+import "./interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
+import "./StabilizerEscrow.sol"; // Import Escrow implementation for deployment
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
 import {console} from "forge-std/console.sol";
@@ -49,6 +51,15 @@ contract StabilizerNFT is
     // Position NFT contract
     IUspdCollateralizedPositionNFT public positionNFT;
 
+    // Addresses needed for Escrow deployment/interaction
+    address public stETH;
+    address public lido;
+    // Optional: CREATE2 factory address if used
+    // ICreateX public createX;
+
+    // Mapping from NFT ID to its dedicated Escrow contract address
+    mapping(uint256 => address) public stabilizerEscrows;
+
     // Minimum gas required for allocation loop
     uint256 public constant MIN_GAS = 100000;
 
@@ -83,6 +94,9 @@ contract StabilizerNFT is
     function initialize(
         address _positionNFT,
         address _uspdToken,
+        address _stETH,
+        address _lido,
+        // address _createX, // Uncomment if using CREATE2 factory
         address _admin
     ) public initializer {
         __ERC721_init("USPD Stabilizer", "USPDS");
@@ -92,6 +106,9 @@ contract StabilizerNFT is
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         positionNFT = IUspdCollateralizedPositionNFT(_positionNFT);
         uspdToken = USPDToken(payable(_uspdToken));
+        stETH = _stETH;
+        lido = _lido;
+        // createX = ICreateX(_createX); // Uncomment if using CREATE2 factory
     }
 
     function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
@@ -106,6 +123,22 @@ contract StabilizerNFT is
 
         _safeMint(to, tokenId);
         emit StabilizerPositionCreated(tokenId, to, 0);
+
+        // Deploy the dedicated Escrow contract
+        // Using standard CREATE here for simplicity. Replace with CREATE2 if needed.
+        StabilizerEscrow escrow = new StabilizerEscrow(
+            address(this), // This StabilizerNFT contract is the controller
+            to,            // The NFT owner is the beneficiary
+            stETH,         // stETH address
+            lido           // Lido address
+        );
+        require(address(escrow) != address(0), "Escrow deployment failed");
+
+        // Store the Escrow address
+        stabilizerEscrows[tokenId] = address(escrow);
+
+        // Optional: Emit an event for deployment tracking
+        // emit EscrowDeployed(tokenId, address(escrow));
     }
 
     function _registerUnallocatedPosition(uint256 tokenId) internal {
