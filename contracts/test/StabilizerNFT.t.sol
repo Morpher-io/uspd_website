@@ -7,8 +7,26 @@ import "../src/UspdToken.sol";
 import "../src/UspdCollateralizedPositionNFT.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+
+
+// Mocks & Interfaces
+import "./mocks/MockStETH.sol";
+import "./mocks/MockLido.sol";
+import "../src/PriceOracle.sol"; // Using actual for attestations if needed later
+import "../src/PoolSharesConversionRate.sol";
+import "../src/StabilizerEscrow.sol"; // Import Escrow
+import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 
 contract StabilizerNFTTest is Test {
+    // --- Mocks ---
+    MockStETH internal mockStETH;
+    MockLido internal mockLido;
+    PriceOracle internal priceOracle; // May not be needed for these specific tests
+    PoolSharesConversionRate internal rateContract; // May not be needed for these specific tests
+
+    // --- Contracts Under Test ---
     StabilizerNFT public stabilizerNFT;
     USPDToken public uspdToken;
     address public owner;
@@ -109,88 +127,174 @@ contract StabilizerNFTTest is Test {
 
     // --- Funding Tests ---
 
-    function testAddUnallocatedFundsToNonExistentToken() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IERC721Errors.ERC721NonexistentToken.selector,
-                1
-            )
-        );
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
+    // --- addUnallocatedFundsEth ---
+
+    function testAddUnallocatedFundsEth_Success() public {
+        uint256 tokenId = 1;
+        uint256 depositAmount = 1 ether;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId); // Mint first
+        address escrowAddr = stabilizerNFT.stabilizerEscrows(tokenId);
+
+        // Action
+        vm.startPrank(user1); // Owner calls
+        vm.expectEmit(true, true, true, true, escrowAddr); // Expect Deposit event from Escrow
+        emit IStabilizerEscrow.Deposited(depositAmount); // Check amount
+        vm.expectEmit(true, true, true, true, address(stabilizerNFT)); // Expect event from StabilizerNFT
+        emit StabilizerNFT.UnallocatedFundsAdded(tokenId, address(0), depositAmount); // Check args
+        stabilizerNFT.addUnallocatedFundsEth{value: depositAmount}(tokenId);
+        vm.stopPrank();
+
+        // Assertions
+        assertEq(mockStETH.balanceOf(escrowAddr), depositAmount, "Escrow stETH balance mismatch");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), tokenId, "Should be lowest ID");
+        assertEq(stabilizerNFT.highestUnallocatedId(), tokenId, "Should be highest ID");
     }
 
-    function testAddUnallocatedFundsWithZeroAmount() public {
-        // Mint token first
-        stabilizerNFT.mint(user1, 1);
+     function testAddUnallocatedFundsEth_Multiple() public {
+        uint256 tokenId = 1;
+        uint256 deposit1 = 1 ether;
+        uint256 deposit2 = 2 ether;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
+        address escrowAddr = stabilizerNFT.stabilizerEscrows(tokenId);
+
+        // First deposit
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: deposit1}(tokenId);
+        assertEq(mockStETH.balanceOf(escrowAddr), deposit1, "Escrow balance after 1st deposit");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), tokenId, "Should be lowest ID after 1st");
+
+        // Second deposit
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: deposit2}(tokenId);
+        assertEq(mockStETH.balanceOf(escrowAddr), deposit1 + deposit2, "Escrow balance after 2nd deposit");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), tokenId, "Should still be lowest ID after 2nd"); // Should not re-register
+    }
+
+    function testAddUnallocatedFundsEth_Revert_NotOwner() public {
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId); // user1 owns tokenId 1
+
+        vm.expectRevert("Not token owner");
+        vm.prank(user2); // user2 tries to add funds
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId);
+    }
+
+    function testAddUnallocatedFundsEth_Revert_ZeroAmount() public {
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
 
         vm.expectRevert("No ETH sent");
-        stabilizerNFT.addUnallocatedFunds(1);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0}(tokenId);
     }
 
-    function testAddUnallocatedFundsSuccess() public {
-        // Mint tokens
-        stabilizerNFT.mint(user1, 1);
-
-        // Add funds to first token
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
-
-        // Check position details
-        (uint256 totalEth, uint256 minCollateralRatio, , , , ) = stabilizerNFT.positions(1);
-        assertEq(totalEth, 1 ether, "Total ETH should match sent amount");
-        assertEq(minCollateralRatio, 110, "Min Collateralization Ration should be 110");
-        assertEq(stabilizerNFT.lowestUnallocatedId(), 1, "Should be lowest ID");
-        assertEq(
-            stabilizerNFT.highestUnallocatedId(),
-            1,
-            "Should be highest ID"
-        );
+    function testAddUnallocatedFundsEth_Revert_NonExistentToken() public {
+        vm.expectRevert(IERC721Errors.ERC721NonexistentToken.selector);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(99); // Token 99 doesn't exist
     }
 
-    function testAddUnallocatedFundsOrdering() public {
-        // Mint three tokens
-        stabilizerNFT.mint(user1, 1);
-        stabilizerNFT.mint(user1, 2);
-        stabilizerNFT.mint(user1, 3);
+    // --- addUnallocatedFundsStETH ---
 
-        // Add funds to tokens in different order
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(2);
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(3);
+    function testAddUnallocatedFundsStETH_Success() public {
+        uint256 tokenId = 1;
+        uint256 amount = 1 ether;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId); // user1 owns tokenId 1
+        address escrowAddr = stabilizerNFT.stabilizerEscrows(tokenId);
 
-        // Check ordering
-        assertEq(stabilizerNFT.lowestUnallocatedId(), 1, "Wrong lowest ID");
-        assertEq(stabilizerNFT.highestUnallocatedId(), 3, "Wrong highest ID");
+        // Setup stETH for user1 and approve StabilizerNFT
+        vm.startPrank(user1);
+        mockStETH.mint(user1, amount);
+        mockStETH.approve(address(stabilizerNFT), amount);
+        vm.stopPrank();
 
-        // Verify linked list connections
-        (, , , uint256 next1, , ) = stabilizerNFT.positions(1);
-        (, , uint256 prev2, uint256 next2, ,) = stabilizerNFT.positions(2);
-        (, , uint256 prev3, , , ) = stabilizerNFT.positions(3);
+        // Action
+        vm.startPrank(user1);
+        vm.expectEmit(true, true, true, true, address(stabilizerNFT)); // Expect event from StabilizerNFT
+        emit StabilizerNFT.UnallocatedFundsAdded(tokenId, address(mockStETH), amount); // Check args
+        stabilizerNFT.addUnallocatedFundsStETH(tokenId, amount);
+        vm.stopPrank();
 
-        assertEq(next1, 2, "Wrong next for ID 1");
-        assertEq(prev2, 1, "Wrong prev for ID 2");
-        assertEq(next2, 3, "Wrong next for ID 2");
-        assertEq(prev3, 2, "Wrong prev for ID 3");
+        // Assertions
+        assertEq(mockStETH.balanceOf(escrowAddr), amount, "Escrow stETH balance mismatch");
+        assertEq(mockStETH.balanceOf(user1), 0, "User stETH balance mismatch");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), tokenId, "Should be lowest ID");
     }
 
-    function testAddMoreUnallocatedFunds() public {
-        // Mint token
-        stabilizerNFT.mint(user1, 1);
+    function testAddUnallocatedFundsStETH_Revert_NotOwner() public {
+        uint256 tokenId = 1;
+        uint256 amount = 1 ether;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId); // user1 owns tokenId 1
 
-        // Add initial funds
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
+        // Setup stETH for user2 and approve StabilizerNFT
+        vm.startPrank(user2);
+        mockStETH.mint(user2, amount);
+        mockStETH.approve(address(stabilizerNFT), amount);
+        vm.stopPrank();
 
-        // Add more funds to same token
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        // Action: user2 tries to add funds to user1's token
+        vm.expectRevert("Not token owner");
+        vm.prank(user2);
+        stabilizerNFT.addUnallocatedFundsStETH(tokenId, amount);
+    }
 
-        // Check updated amounts
-        (uint256 totalEth, uint256 minCollateralRatio, , , , ) = stabilizerNFT.positions(1);
-        assertEq(
-            totalEth,
-            3 ether,
-            "Total ETH should be sum of both additions"
-        );
+     function testAddUnallocatedFundsStETH_Revert_ZeroAmount() public {
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
 
-        assertEq(minCollateralRatio, 110, "Min Collateralization Ration should be 110");
+        vm.expectRevert("Amount must be positive");
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsStETH(tokenId, 0);
+    }
+
+    function testAddUnallocatedFundsStETH_Revert_InsufficientAllowance() public {
+        uint256 tokenId = 1;
+        uint256 amount = 1 ether;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
+
+        // Setup stETH for user1 but approve less
+        vm.startPrank(user1);
+        mockStETH.mint(user1, amount);
+        mockStETH.approve(address(stabilizerNFT), amount / 2); // Approve only half
+        vm.stopPrank();
+
+        // Action
+        vm.expectRevert(ERC20.ERC20InsufficientAllowance.selector);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsStETH(tokenId, amount);
+    }
+
+     function testAddUnallocatedFundsStETH_Revert_InsufficientBalance() public {
+        uint256 tokenId = 1;
+        uint256 amountToTransfer = 2 ether;
+        uint256 userBalance = 1 ether;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
+
+        // Setup stETH for user1 but less than amountToTransfer
+        vm.startPrank(user1);
+        mockStETH.mint(user1, userBalance);
+        mockStETH.approve(address(stabilizerNFT), amountToTransfer); // Approve more than balance
+        vm.stopPrank();
+
+        // Action
+        vm.expectRevert(ERC20.ERC20InsufficientBalance.selector);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsStETH(tokenId, amountToTransfer);
+    }
+
+    function testAddUnallocatedFundsStETH_Revert_NonExistentToken() public {
+         vm.expectRevert(IERC721Errors.ERC721NonexistentToken.selector);
+         vm.prank(user1);
+         stabilizerNFT.addUnallocatedFundsStETH(99, 1 ether); // Token 99 doesn't exist
     }
 
     function testAllocationAndPositionNFT() public {
