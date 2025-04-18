@@ -76,10 +76,11 @@ contract StabilizerNFT is
     );
     event FundsUnallocated(
         uint256 indexed tokenId,
-        uint256 amount,
+        uint256 amount, // Amount of stETH returned to Escrow
         uint256 positionId
     );
-    event UnallocatedFundsAdded(uint256 indexed tokenId, uint256 amount);
+    // Updated event to specify asset type and potentially stETH amount
+    event UnallocatedFundsAdded(uint256 indexed tokenId, address asset, uint256 amount);
     event MinCollateralRatioUpdated(
         uint256 indexed tokenId,
         uint256 oldRatio,
@@ -141,10 +142,52 @@ contract StabilizerNFT is
         // emit EscrowDeployed(tokenId, address(escrow));
     }
 
+    /**
+     * @dev Registers a position in the unallocated list if it's not already there.
+     * Maintains sorted order by tokenId.
+     */
     function _registerUnallocatedPosition(uint256 tokenId) internal {
-        if (lowestUnallocatedId == 0 || highestUnallocatedId == 0) {
-            // First position
-            lowestUnallocatedId = tokenId;
+        StabilizerPosition storage pos = positions[tokenId];
+        // Only register if it's not already linked (prevents messing up existing links)
+        // And ensure it's not the only element already (handles edge case of adding funds multiple times)
+        if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0 && lowestUnallocatedId != tokenId) {
+             if (lowestUnallocatedId == 0) { // List is empty
+                lowestUnallocatedId = tokenId;
+                highestUnallocatedId = tokenId;
+            } else if (tokenId > highestUnallocatedId) {
+                // New highest
+                pos.prevUnallocated = highestUnallocatedId;
+                positions[highestUnallocatedId].nextUnallocated = tokenId;
+                highestUnallocatedId = tokenId;
+            } else if (tokenId < lowestUnallocatedId) {
+                // New lowest
+                pos.nextUnallocated = lowestUnallocatedId;
+                positions[lowestUnallocatedId].prevUnallocated = tokenId;
+                lowestUnallocatedId = tokenId;
+            } else {
+                // Find insertion point by scanning through IDs
+                uint256 currentId = lowestUnallocatedId;
+                // Find the node *before* where the new node should be inserted
+                while (positions[currentId].nextUnallocated != 0 && positions[currentId].nextUnallocated < tokenId) {
+                    currentId = positions[currentId].nextUnallocated;
+                }
+                // Insert tokenId after currentId
+                uint256 nextId = positions[currentId].nextUnallocated;
+                pos.prevUnallocated = currentId;
+                pos.nextUnallocated = nextId;
+                positions[currentId].nextUnallocated = tokenId;
+                if (nextId != 0) { // Check if not inserting at the end
+                    positions[nextId].prevUnallocated = tokenId;
+                } else {
+                    // This case should be covered by the tokenId > highestUnallocatedId check, but included for completeness
+                    highestUnallocatedId = tokenId;
+                }
+            }
+        }
+        // If already in the list (pos.prev/next != 0 or it's the only element), do nothing.
+    }
+
+    function allocateStabilizerFunds(
             highestUnallocatedId = tokenId;
         } else if (tokenId > highestUnallocatedId) {
             // New highest
@@ -280,8 +323,53 @@ contract StabilizerNFT is
             _registerUnallocatedPosition(tokenId);
         }
 
-        emit UnallocatedFundsAdded(tokenId, msg.value);
+        // emit UnallocatedFundsAdded(tokenId, msg.value); // Removed old event emission
     }
+
+    /**
+     * @notice Adds unallocated funds by depositing ETH, which is staked into stETH in the Escrow.
+     * @param tokenId The ID of the stabilizer NFT.
+     */
+    function addUnallocatedFundsEth(uint256 tokenId) external payable {
+        require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        require(msg.value > 0, "No ETH sent");
+
+        address escrowAddress = stabilizerEscrows[tokenId];
+        require(escrowAddress != address(0), "Escrow not found");
+
+        // Forward ETH to Escrow's deposit function
+        IStabilizerEscrow(escrowAddress).deposit{value: msg.value}();
+
+        // Register position if it now has funds (Escrow handles staking)
+        _registerUnallocatedPosition(tokenId);
+
+        // Emit event indicating ETH was added (amount is msg.value)
+        emit UnallocatedFundsAdded(tokenId, address(0), msg.value); // Use address(0) for ETH
+    }
+
+    /**
+     * @notice Adds unallocated funds by depositing stETH.
+     * @param tokenId The ID of the stabilizer NFT.
+     * @param stETHAmount The amount of stETH to deposit.
+     * @dev Caller must have approved this contract to spend stETHAmount.
+     */
+    function addUnallocatedFundsStETH(uint256 tokenId, uint256 stETHAmount) external {
+        require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        require(stETHAmount > 0, "Amount must be positive");
+
+        address escrowAddress = stabilizerEscrows[tokenId];
+        require(escrowAddress != address(0), "Escrow not found");
+
+        // Transfer stETH from owner to Escrow
+        IERC20(stETH).transferFrom(msg.sender, escrowAddress, stETHAmount);
+
+        // Register position if it now has funds
+        _registerUnallocatedPosition(tokenId);
+
+        // Emit event indicating stETH was added
+        emit UnallocatedFundsAdded(tokenId, stETH, stETHAmount);
+    }
+
 
     function _registerAllocatedPosition(uint256 tokenId) internal {
         if (lowestAllocatedId == 0 || highestAllocatedId == 0) {
