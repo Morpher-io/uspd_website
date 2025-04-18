@@ -19,8 +19,8 @@ contract UspdCollateralizedPositionNFT is
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     // bytes32 public constant TRANSFERCOLLATERAL_ROLE = keccak256("TRANSFERCOLLATERAL_ROLE"); // Removed
-    // bytes32 public constant MODIFYALLOCATION_ROLE = keccak256("MODIFYALLOCATION_ROLE"); // Replaced by STABILIZER_NFT_ROLE check
     bytes32 public constant STABILIZER_NFT_ROLE = keccak256("STABILIZER_NFT_ROLE"); // New role
+    bytes32 public constant MODIFYALLOCATION_ROLE = keccak256("MODIFYALLOCATION_ROLE"); // New role
 
     // Oracle contract for price feeds
     PriceOracle public oracle;
@@ -302,11 +302,6 @@ contract UspdCollateralizedPositionNFT is
     //     require(ownerOf(tokenId) == msg.sender, "Not position owner");
     //     _positions[tokenId].allocatedEth += msg.value;
     // }
-        uint256 tokenId = _ownerToken[msg.sender];
-        require(tokenId != 0, "No position found for sender");
-        require(ownerOf(tokenId) == msg.sender, "Not position owner");
-        _positions[tokenId].allocatedEth += msg.value;
-    }
 
     function getCollateralizationRatio(
         uint256 tokenId,
