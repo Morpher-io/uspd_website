@@ -187,6 +187,7 @@ contract StabilizerNFT is
         // If already in the list (pos.prev/next != 0 or it's the only element), do nothing.
     }
 
+
     function allocateStabilizerFunds(
             highestUnallocatedId = tokenId;
         } else if (tokenId > highestUnallocatedId) {
@@ -306,25 +307,8 @@ contract StabilizerNFT is
         return result;
     }
 
-    // Add more unallocated funds to an existing position
-    function addUnallocatedFunds(uint256 tokenId) external payable {
-        require(ownerOf(tokenId) != address(0), "Token does not exist");
-        require(msg.value > 0, "No ETH sent");
-
-        StabilizerPosition storage pos = positions[tokenId];
-
-        bool hadNoFunds = pos.totalEth == 0;
-
-        // Update position amounts
-        pos.totalEth += msg.value;
-
-        // Only add to list if position went from 0 to having funds
-        if (hadNoFunds) {
-            _registerUnallocatedPosition(tokenId);
-        }
-
-        // emit UnallocatedFundsAdded(tokenId, msg.value); // Removed old event emission
-    }
+    // // Old addUnallocatedFunds function - Removed in favor of specific Eth/StETH versions
+    // function addUnallocatedFunds(uint256 tokenId) external payable { ... }
 
     /**
      * @notice Adds unallocated funds by depositing ETH, which is staked into stETH in the Escrow.
