@@ -41,6 +41,7 @@ contract UspdCollateralizedPositionNFT is
 
     // Custom Errors
     error NotOwner();
+    error ZeroLiability(); // Add declaration for the custom error
 
     function getPosition(
         uint256 tokenId
