@@ -8,11 +8,19 @@ import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol"; // Import 
 import "./PriceOracle.sol";
 import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contract interface
+import "./interfaces/IERC20WithRate.sol"; // Import custom interface if needed for events
 
-contract USPDToken is ERC20, ERC20Permit, AccessControl {
-    PriceOracle oracle;
-    IStabilizerNFT stabilizer;
-    IPoolSharesConversionRate public rateContract; // Add Rate Contract
+contract USPDToken is ERC20, ERC20Permit, AccessControl, IERC20WithRate { // Inherit custom interface if created
+    PriceOracle public oracle; // Made public for easier access if needed elsewhere
+    IStabilizerNFT public stabilizer; // Made public
+    IPoolSharesConversionRate public rateContract; // Keep public
+
+    // --- Pool Share State ---
+    mapping(address => uint256) private _poolShareBalances;
+    uint256 private _totalPoolShares;
+    uint256 public constant FACTOR_PRECISION = 1e18; // Assuming rate contract uses 1e18
+
+    // --- Roles ---
     bytes32 public constant EXCESS_COLLATERAL_DRAIN_ROLE =
         keccak256("EXCESS_COLLATERAL_DRAIN_ROLE");
     bytes32 public constant UPDATE_ORACLE_ROLE =
@@ -51,49 +59,58 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
 
         // --- Pool Share Calculation ---
         uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 factorPrecision = rateContract.FACTOR_PRECISION();
         // poolShares = initialValue * factorPrecision / yieldFactor
-        uint256 poolSharesToMint = (initialUSDValue * factorPrecision) / yieldFactor;
+        uint256 poolSharesToMint = (initialUSDValue * FACTOR_PRECISION) / yieldFactor;
 
         // --- Internal Accounting (Optimistic) ---
-        _poolShareBalances[to] += poolSharesToMint;
-        _totalPoolShares += poolSharesToMint;
+        // Note: _update handles the actual balance changes and event emission
+        // We calculate the shares here to pass to the stabilizer.
 
         // Allocate funds through stabilizer NFTs
         // Pass poolSharesToMint as the liability amount to back
-        IStabilizerNFT.AllocationResult memory result = stabilizer
-            .allocateStabilizerFunds{value: ethForAllocation}(
-            poolSharesToMint, // Pass pool shares as liability
-            oracleResponse.price,
-            oracleResponse.decimals
-        );
+        IStabilizerNFT.AllocationResult memory result;
+        if (address(stabilizer) != address(0)) {
+             result = stabilizer.allocateStabilizerFunds{value: ethForAllocation}(
+                poolSharesToMint, // Pass pool shares as liability
+                oracleResponse.price,
+                oracleResponse.decimals
+            );
+        } else {
+            // Handle bridged scenario - no allocation, use all ETH sent
+            result.allocatedEth = ethForAllocation;
+        }
 
-        // If allocation was partial, adjust minted pool shares proportionally
+
+        uint256 actualPoolSharesMinted;
+        uint256 uspdAmountMinted;
+
+        // If allocation was partial or failed (or bridged), adjust minted pool shares proportionally
         if (result.allocatedEth < ethForAllocation) {
             uint256 allocatedUSDValue = (result.allocatedEth * oracleResponse.price) / (10 ** oracleResponse.decimals);
-            uint256 allocatedPoolShares = (allocatedUSDValue * factorPrecision) / yieldFactor;
-            uint256 unallocatedPoolShares = poolSharesToMint - allocatedPoolShares;
-
-            // Reduce internal balances for the unallocated portion
-            _poolShareBalances[to] -= unallocatedPoolShares;
-            _totalPoolShares -= unallocatedPoolShares;
-            poolSharesToMint = allocatedPoolShares; // Update for event emission
+            actualPoolSharesMinted = (allocatedUSDValue * FACTOR_PRECISION) / yieldFactor;
+        } else {
+            actualPoolSharesMinted = poolSharesToMint;
         }
+
+        // Calculate actual USPD amount based on *actually minted* shares and current yield
+        uspdAmountMinted = (actualPoolSharesMinted * yieldFactor) / FACTOR_PRECISION;
+
+        // --- Update Balances and Emit Events using _update ---
+        // _update handles internal share balances and emits the standard Transfer event with USPD value
+        if (actualPoolSharesMinted > 0) {
+            _update(address(0), to, uspdAmountMinted); // This will calculate shares internally and update balances
+            emit MintPoolShares(address(0), to, uspdAmountMinted, actualPoolSharesMinted, yieldFactor); // Emit custom event
+        }
+
 
         // Return any unallocated ETH
         uint256 leftover = msg.value - result.allocatedEth;
         if (leftover > 0) {
             payable(msg.sender).transfer(leftover);
         }
-
-        // --- Emit Events ---
-        // Calculate actual USPD amount based on minted shares and current yield
-        uint256 uspdAmountMinted = (poolSharesToMint * yieldFactor) / factorPrecision;
-        emit Transfer(address(0), to, uspdAmountMinted); // Standard ERC20 event with USPD value
-        emit MintPoolShares(address(0), to, uspdAmountMinted, poolSharesToMint, yieldFactor); // Custom event
     }
 
-    // Fallback mint function removed as maxUspdAmount is removed.
+    // Fallback mint function removed.
     // Users must always call the primary mint function.
 
     function burn(
@@ -101,30 +118,47 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
         address payable to,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) public {
-        require(amount > 0, "Amount must be greater than 0");
+        require(amount > 0, "Amount must be greater than 0"); // amount is USPD value
         require(to != address(0), "Invalid recipient");
 
-        // Burn USPD tokens first
-        _burn(msg.sender, amount);
+        // --- Pool Share Calculation ---
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        // poolShares = uspdAmount * factorPrecision / yieldFactor
+        uint256 poolSharesToBurn = (amount * FACTOR_PRECISION) / yieldFactor;
 
-        // Get current ETH price
+        // --- Update Balances and Emit Events using _update ---
+        // _update handles internal share balances and emits the standard Transfer event with USPD value
+        _update(msg.sender, address(0), amount); // This calculates shares internally and updates balances
+        emit BurnPoolShares(msg.sender, address(0), amount, poolSharesToBurn, yieldFactor); // Emit custom event
+
+        // Get current ETH price (needed for unallocation value calculation within stabilizer)
         IPriceOracle.PriceResponse memory oracleResponse = oracle
             .attestationService(priceQuery);
 
-        // Unallocate funds from stabilizers
-        uint256 unallocatedEth = stabilizer.unallocateStabilizerFunds(
-            amount,
-            oracleResponse
-        );
+        // Unallocate funds from stabilizers, passing the pool shares being burned
+        uint256 unallocatedEth = 0;
+         if (address(stabilizer) != address(0)) {
+            unallocatedEth = stabilizer.unallocateStabilizerFunds(
+                poolSharesToBurn, // Pass pool shares representing the liability reduction
+                oracleResponse
+            );
+         } else {
+             // Handle bridged scenario - no stabilizer to unallocate from
+             // Maybe revert, or handle differently depending on requirements
+             revert("Burning not supported in bridged mode without stabilizer");
+         }
+
 
         emit Payout(to, amount, unallocatedEth, oracleResponse.price);
 
         // Transfer unallocated ETH to recipient
-        (bool success, ) = to.call{value: unallocatedEth}("");
-        require(success, "ETH transfer failed");
+        if (unallocatedEth > 0) {
+            (bool success, ) = to.call{value: unallocatedEth}("");
+            require(success, "ETH transfer failed");
+        }
     }
 
-    // function getCollateralization() public view returns (uint) {
+    // function getCollateralization() public view returns (uint) { // Needs update for pool shares
     //     //returns collateralization in percent, 3 digits: 1*1e6 = 100%
     //      PriceOracle.PriceResponse memory oracleResponse = oracle.getEthUsdPrice{
     //         value: oracle.getOracleCommission()
