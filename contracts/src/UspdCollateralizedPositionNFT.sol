@@ -267,18 +267,30 @@ contract UspdCollateralizedPositionNFT is
     }
 
     function burn(uint256 tokenId) external {
-        require(ownerOf(tokenId) == msg.sender, "Not position owner");
-        require(
-            _positions[tokenId].allocatedEth == 0,
-            "Position still has collateral"
-        );
+        // Ensure the caller owns the NFT
+        address owner = ownerOf(tokenId); // Get owner first
+        if (owner != msg.sender) revert NotOwner(); // Use custom error
 
-        Position memory pos = _positions[tokenId];
+        // Use storage pointer for checks
+        Position storage pos = _positions[tokenId];
+
+        // Require both allocated collateral and backed USPD to be zero before burning
+        if (pos.allocatedEth != 0) revert InsufficientCollateral(); // Cannot burn with collateral
+        if (pos.backedUspd != 0) revert ZeroLiability(); // Cannot burn while backing USPD (Added check)
+
+        // Store values before deleting for the event
+        uint256 allocatedEth = pos.allocatedEth;
+        uint256 backedUspd = pos.backedUspd;
+
+        // Delete state associated with the token
         delete _positions[tokenId];
-        delete _ownerToken[msg.sender];
+        delete _ownerToken[owner]; // Use the stored owner address
 
+        // Burn the ERC721 token
         _burn(tokenId);
-        emit PositionBurned(tokenId, msg.sender, allocatedEth, backedUspd);
+
+        // Emit the event with the stored values
+        emit PositionBurned(tokenId, owner, allocatedEth, backedUspd);
     }
 
     function modifyAllocation(
