@@ -40,53 +40,61 @@ contract USPDToken is ERC20, ERC20Permit, AccessControl {
 
     function mint(
         address to,
-        uint256 maxUspdAmount,
+        // uint256 maxUspdAmount, // Removed maxUspdAmount - minting based on ETH value
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) public payable {
+        require(msg.value > 0, "Must send ETH to mint");
         IPriceOracle.PriceResponse memory oracleResponse = oracle
             .attestationService(priceQuery);
         uint256 ethForAllocation = msg.value;
+        uint256 initialUSDValue = (ethForAllocation * oracleResponse.price) / (10 ** oracleResponse.decimals);
 
-        // Calculate ETH to stabilize based on maxUspdAmount
-        if (maxUspdAmount > 0) {
-            // Calculate ETH needed for maxUspdAmount
-            // Attention: this can lead to rounding errors
-            uint256 ethNeeded = (maxUspdAmount *
-                (10 ** oracleResponse.decimals)) / oracleResponse.price;
-            if (ethNeeded < ethForAllocation) {
-                ethForAllocation = ethNeeded;
-            }
-        }
+        // --- Pool Share Calculation ---
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 factorPrecision = rateContract.FACTOR_PRECISION();
+        // poolShares = initialValue * factorPrecision / yieldFactor
+        uint256 poolSharesToMint = (initialUSDValue * factorPrecision) / yieldFactor;
+
+        // --- Internal Accounting (Optimistic) ---
+        _poolShareBalances[to] += poolSharesToMint;
+        _totalPoolShares += poolSharesToMint;
 
         // Allocate funds through stabilizer NFTs
+        // Pass poolSharesToMint as the liability amount to back
         IStabilizerNFT.AllocationResult memory result = stabilizer
             .allocateStabilizerFunds{value: ethForAllocation}(
-            ethForAllocation,
+            poolSharesToMint, // Pass pool shares as liability
             oracleResponse.price,
             oracleResponse.decimals
         );
 
-        // Calculate USPD amount based on allocated ETH
-        uint uspdToMint = (result.allocatedEth * oracleResponse.price) /
-            (10 ** oracleResponse.decimals);
+        // If allocation was partial, adjust minted pool shares proportionally
+        if (result.allocatedEth < ethForAllocation) {
+            uint256 allocatedUSDValue = (result.allocatedEth * oracleResponse.price) / (10 ** oracleResponse.decimals);
+            uint256 allocatedPoolShares = (allocatedUSDValue * factorPrecision) / yieldFactor;
+            uint256 unallocatedPoolShares = poolSharesToMint - allocatedPoolShares;
 
-        // Mint USPD based on allocated amount
-        _mint(to, uspdToMint);
+            // Reduce internal balances for the unallocated portion
+            _poolShareBalances[to] -= unallocatedPoolShares;
+            _totalPoolShares -= unallocatedPoolShares;
+            poolSharesToMint = allocatedPoolShares; // Update for event emission
+        }
 
         // Return any unallocated ETH
         uint256 leftover = msg.value - result.allocatedEth;
         if (leftover > 0) {
             payable(msg.sender).transfer(leftover);
         }
+
+        // --- Emit Events ---
+        // Calculate actual USPD amount based on minted shares and current yield
+        uint256 uspdAmountMinted = (poolSharesToMint * yieldFactor) / factorPrecision;
+        emit Transfer(address(0), to, uspdAmountMinted); // Standard ERC20 event with USPD value
+        emit MintPoolShares(address(0), to, uspdAmountMinted, poolSharesToMint, yieldFactor); // Custom event
     }
 
-    // Fallback to mint without max amount when ETH is sent directly
-    function mint(
-        address to,
-        IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) public payable {
-        mint(to, 0, priceQuery); // 0 means no maximum
-    }
+    // Fallback mint function removed as maxUspdAmount is removed.
+    // Users must always call the primary mint function.
 
     function burn(
         uint amount,
