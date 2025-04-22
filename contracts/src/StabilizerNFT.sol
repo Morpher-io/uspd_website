@@ -189,33 +189,6 @@ contract StabilizerNFT is
 
 
     function allocateStabilizerFunds(
-            highestUnallocatedId = tokenId;
-        } else if (tokenId > highestUnallocatedId) {
-            // New highest
-            positions[tokenId].prevUnallocated = highestUnallocatedId;
-            positions[highestUnallocatedId].nextUnallocated = tokenId;
-            highestUnallocatedId = tokenId;
-        } else if (tokenId < lowestUnallocatedId) {
-            // New lowest
-            positions[tokenId].nextUnallocated = lowestUnallocatedId;
-            positions[lowestUnallocatedId].prevUnallocated = tokenId;
-            lowestUnallocatedId = tokenId;
-        } else {
-            // Find insertion point by scanning through IDs
-            uint256 nextId = lowestUnallocatedId;
-            while (nextId != 0 && nextId < tokenId) {
-                nextId = positions[nextId].nextUnallocated;
-            }
-
-            uint256 prevId = positions[nextId].prevUnallocated;
-            positions[tokenId].prevUnallocated = prevId;
-            positions[tokenId].nextUnallocated = nextId;
-            positions[prevId].nextUnallocated = tokenId;
-            positions[nextId].prevUnallocated = tokenId;
-        }
-    }
-
-    function allocateStabilizerFunds(
         uint256 ethAmount,
         uint256 ethUsdPrice,
         uint256 priceDecimals
@@ -307,8 +280,6 @@ contract StabilizerNFT is
         return result;
     }
 
-    // // Old addUnallocatedFunds function - Removed in favor of specific Eth/StETH versions
-    // function addUnallocatedFunds(uint256 tokenId) external payable { ... }
 
     /**
      * @notice Adds unallocated funds by depositing ETH, which is staked into stETH in the Escrow.

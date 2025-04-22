@@ -227,6 +227,7 @@ contract StabilizerNFTTest is Test {
         uint256 tokenId = 1;
         uint256 deposit1 = 1 ether;
         uint256 deposit2 = 2 ether;
+        vm.deal(user1, deposit1 + deposit2);
         vm.prank(owner);
         stabilizerNFT.mint(user1, tokenId);
         address escrowAddr = stabilizerNFT.stabilizerEscrows(tokenId);
@@ -265,7 +266,11 @@ contract StabilizerNFTTest is Test {
     }
 
     function testAddUnallocatedFundsEth_Revert_NonExistentToken() public {
-        vm.expectRevert(IERC721Errors.ERC721NonexistentToken.selector);
+        vm.deal(user1, 1 ether);
+        vm.expectRevert(abi.encodeWithSelector(
+               IERC721Errors.ERC721NonexistentToken.selector, // Use IERC20 interface
+              uint256(99) // tokenId
+        ));
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(99); // Token 99 doesn't exist
     }

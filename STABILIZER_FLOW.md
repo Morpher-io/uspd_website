@@ -45,7 +45,7 @@ This document outlines the key processes for a Stabilizer interacting with the U
 
 ## 2. Depositing Additional Unallocated Funds
 
-*   **Action:** Stabilizer calls `StabilizerNFT.addUnallocatedFunds{value: ethAmount}(tokenId)`.
+*   **Action:** Stabilizer calls `StabilizerNFT.addUnallocatedFundsEth{value: ethAmount}(tokenId)`.
 *   **`StabilizerNFT` Contract:**
     *   Verifies the caller (`msg.sender`) is the owner of `tokenId`.
     *   Retrieves the address of the associated `StabilizerEscrow` contract for `tokenId`.

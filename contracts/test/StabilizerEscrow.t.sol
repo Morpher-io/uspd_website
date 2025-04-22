@@ -54,7 +54,7 @@ contract StabilizerEscrowTest is Test {
 
     // --- Test Constructor ---
 
-    function test_Constructor_Success() public {
+    function test_Constructor_Success() public view {
         // Already tested implicitly in setUp, but add explicit checks
         assertEq(escrow.stabilizerNFTContract(), stabilizerNFT, "StabilizerNFT address mismatch");
         assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch");

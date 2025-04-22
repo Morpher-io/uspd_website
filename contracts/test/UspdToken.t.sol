@@ -135,10 +135,10 @@ contract USPDTokenTest is Test {
             positionNFT.MINTER_ROLE(),
             address(stabilizerNFT)
         );
-        positionNFT.grantRole(
-            positionNFT.TRANSFERCOLLATERAL_ROLE(),
-            address(stabilizerNFT)
-        );
+        // positionNFT.grantRole(
+        //     positionNFT.TRANSFERCOLLATERAL_ROLE(),
+        //     address(stabilizerNFT)
+        // );
         positionNFT.grantRole(
             positionNFT.MODIFYALLOCATION_ROLE(),
             address(stabilizerNFT)
@@ -166,7 +166,7 @@ contract USPDTokenTest is Test {
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
 
         uint initialBalance = uspdBuyer.balance;
         // Try to send ETH directly to USPD contract - should revert
@@ -196,7 +196,7 @@ contract USPDTokenTest is Test {
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
 
         // Mint USPD tokens to a specific address
         vm.prank(uspdBuyer);
@@ -232,7 +232,7 @@ contract USPDTokenTest is Test {
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
 
         // Calculate initial balance
         uint256 initialBalance = uspdBuyer.balance;
@@ -316,7 +316,7 @@ contract USPDTokenTest is Test {
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
 
         //set a higher min collateralization ratio, otherweise immediate risk of liquidation due to integer rounding pruning
         vm.prank(stabilizerOwner);
@@ -361,7 +361,7 @@ contract USPDTokenTest is Test {
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
 
         //set the min collateralization ratio to something higher with some buffer, otherwise we get an immediate risk of liquidation at 110 due to rounding errors
         vm.prank(stabilizerOwner);
@@ -422,7 +422,7 @@ contract USPDTokenTest is Test {
 
         // Add unallocated funds to stabilizer as stabilizerOwner
         vm.startPrank(stabilizerOwner);
-        stabilizerNFT.addUnallocatedFunds{value: 2 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
         vm.stopPrank();
 
         // Mint USPD tokens as uspdBuyer

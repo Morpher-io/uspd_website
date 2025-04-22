@@ -339,7 +339,6 @@ contract UspdCollateralizedPositionNFT is
         uint256 ethUsdPrice,
         uint8 priceDecimals
     ) external view returns (uint256) {
-        Position memory pos = _positions[tokenId];
         Position memory pos = _positions[tokenId]; // Use allocatedEth and backedUspd
 
         if (pos.backedUspd == 0) {

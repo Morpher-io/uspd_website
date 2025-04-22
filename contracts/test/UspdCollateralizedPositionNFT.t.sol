@@ -157,7 +157,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
         // positionNFT.addCollateralAndTrackShares(TEST_TOKEN_ID, 1 ether, 0.1 ether, 2000e18);
         // Call the function (which exists now but lacks the check) from user1
         vm.prank(user1);
-        positionNFT.addCollateral(TEST_TOKEN_ID, 1 ether); // Use the correct addCollateral function
+        positionNFT.addCollateral{value: 1 ether}(TEST_TOKEN_ID); // Use the correct addCollateral function
         // assertTrue(true, "Placeholder: Uncomment function call when it exists"); // Remove placeholder
     }
 
