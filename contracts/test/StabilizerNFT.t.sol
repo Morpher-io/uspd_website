@@ -140,8 +140,8 @@ contract StabilizerNFTTest is Test {
 
         // Action
         vm.startPrank(user1); // Owner calls
-        vm.expectEmit(true, true, true, true, escrowAddr); // Expect Deposit event from Escrow
-        emit IStabilizerEscrow.Deposited(depositAmount); // Check amount
+        vm.expectEmit(true, true, true, true, escrowAddr); // Expect DepositReceived event from Escrow
+        emit IStabilizerEscrow.DepositReceived(depositAmount); // Check amount - Corrected event name
         vm.expectEmit(true, true, true, true, address(stabilizerNFT)); // Expect event from StabilizerNFT
         emit StabilizerNFT.UnallocatedFundsAdded(tokenId, address(0), depositAmount); // Check args
         stabilizerNFT.addUnallocatedFundsEth{value: depositAmount}(tokenId);
