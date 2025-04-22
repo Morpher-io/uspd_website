@@ -128,7 +128,14 @@ contract StabilizerEscrow is IStabilizerEscrow {
 
     // --- View Functions ---
 
-    // unallocatedStETH view function removed
+    /**
+     * @notice Returns the current stETH balance of this contract.
+     * @dev Renamed from the previous logic which subtracted allocated amount. Now just returns total balance.
+     * @return The amount of stETH held by the escrow.
+     */
+    function unallocatedStETH() external view override returns (uint256) {
+        return IERC20(stETH).balanceOf(address(this));
+    }
 
     // --- Fallback ---
     // Accept ETH transfers directly (e.g., if StabilizerNFT sends back ETH during unallocation)

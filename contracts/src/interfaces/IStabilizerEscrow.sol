@@ -29,5 +29,9 @@ interface IStabilizerEscrow is IERC20Errors {
     function withdrawUnallocated(uint256 amount) external;
 
     // --- View Functions ---
-    // function unallocatedStETH() external view returns (uint256); // Removed as escrow doesn't track allocation state
+    /**
+     * @notice Returns the current stETH balance of the escrow contract.
+     * @return The amount of stETH held by the escrow.
+     */
+    function unallocatedStETH() external view returns (uint256); // Re-added view function
 }

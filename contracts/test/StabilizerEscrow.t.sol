@@ -49,7 +49,7 @@ contract StabilizerEscrowTest is Test {
 
         // Check stETH balance after the deposit call
         assertEq(mockStETH.balanceOf(address(escrow)), INITIAL_DEPOSIT, "stETH balance after initial deposit mismatch");
-        // assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT, "Unallocated stETH after initial deposit mismatch"); // View function removed
+        assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT, "Unallocated stETH after initial deposit mismatch"); // Check view function
     }
 
     // --- Test Constructor ---
@@ -61,7 +61,10 @@ contract StabilizerEscrowTest is Test {
         assertEq(escrow.stETH(), address(mockStETH), "stETH address mismatch");
         assertEq(escrow.lido(), address(mockLido), "Lido address mismatch");
         // allocatedStETH state variable removed
-        // unallocatedStETH view function removed
+        // Check initial unallocated (should be 0 before deposit in setUp)
+        // We need to deploy a separate instance for this check as setUp deposits.
+        StabilizerEscrow newEscrow = new StabilizerEscrow(stabilizerNFT, stabilizerOwner, address(mockStETH), address(mockLido));
+        assertEq(newEscrow.unallocatedStETH(), 0, "Initial unallocatedStETH should be 0");
     }
 
     function test_Constructor_Revert_ZeroStabilizerNFT() public {
@@ -109,8 +112,8 @@ contract StabilizerEscrowTest is Test {
 
         uint256 expectedTotalStETH = INITIAL_DEPOSIT + depositAmount;
         assertEq(mockStETH.balanceOf(address(escrow)), expectedTotalStETH, "stETH balance after deposit mismatch");
-        // assertEq(escrow.unallocatedStETH(), expectedTotalStETH, "Unallocated stETH after deposit mismatch"); // View function removed
-        // assertEq(escrow.allocatedStETH(), 0, "Allocated stETH should remain 0"); // State variable removed
+        assertEq(escrow.unallocatedStETH(), expectedTotalStETH, "Unallocated stETH after deposit mismatch"); // Check view function
+        // allocatedStETH state variable removed
     }
 
     function test_Deposit_Revert_ZeroAmount() public {
@@ -186,8 +189,8 @@ contract StabilizerEscrowTest is Test {
 
         assertEq(mockStETH.balanceOf(stabilizerOwner), initialOwnerBalance + withdrawAmount, "Owner stETH balance mismatch after withdrawal");
         assertEq(mockStETH.balanceOf(address(escrow)), initialEscrowBalance - withdrawAmount, "Escrow stETH balance mismatch after withdrawal");
-        // assertEq(escrow.unallocatedStETH(), initialUnallocated - withdrawAmount, "Unallocated stETH mismatch after withdrawal"); // View function removed
-        // assertEq(escrow.allocatedStETH(), 0, "Allocated stETH should remain 0"); // State variable removed
+        assertEq(escrow.unallocatedStETH(), initialEscrowBalance - withdrawAmount, "Unallocated stETH mismatch after withdrawal"); // Check view function
+        // allocatedStETH state variable removed
     }
 
     function test_WithdrawUnallocated_Revert_ZeroAmount() public {
@@ -212,7 +215,31 @@ contract StabilizerEscrowTest is Test {
         escrow.withdrawUnallocated(0.1 ether);
     }
 
-    // --- unallocatedStETH() view tests removed ---
+    // --- Test unallocatedStETH() View ---
+
+    function test_UnallocatedStETH_MatchesBalance() public {
+        // Initial check
+        assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Initial unallocated mismatch");
+
+        // Deposit ETH -> stETH
+        uint256 depositAmount = 0.5 ether;
+        vm.deal(stabilizerNFT, depositAmount);
+        vm.prank(stabilizerNFT);
+        escrow.deposit{value: depositAmount}();
+        assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Unallocated mismatch after deposit");
+
+        // Approve allocation (should not change balance or unallocated view)
+        uint256 approveAmount = 0.2 ether;
+        vm.prank(stabilizerNFT);
+        escrow.approveAllocation(approveAmount, positionNFT);
+        assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Unallocated mismatch after approval");
+
+        // Withdraw stETH
+        uint256 withdrawAmount = 0.3 ether;
+        vm.prank(stabilizerNFT);
+        escrow.withdrawUnallocated(withdrawAmount);
+        assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Unallocated mismatch after withdrawal");
+    }
 
 
     // --- Test receive() Fallback ---
