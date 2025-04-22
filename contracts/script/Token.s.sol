@@ -43,7 +43,7 @@ contract DeployScript is Script {
     bytes32 RATE_CONTRACT_SALT; // Salt for the rate contract
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
-    address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; // Example address, replace with actual address
+    address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
     ICreateX createX;
 
     // Deployed contract addresses
@@ -95,9 +95,7 @@ contract DeployScript is Script {
         console2.log("Using CreateX at:", CREATE_X_ADDRESS);
 
         // Set network-specific configuration
-        if (chainId == 1) {
-            // Ethereum Mainnet
-            // Ethereum Mainnet
+        if (chainId == 1) { // Ethereum Mainnet
             usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
             chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
