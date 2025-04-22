@@ -253,55 +253,40 @@ contract UspdCollateralizedPositionNFT is
         require(ownerOf(tokenId) != address(0), "Position does not exist");
         Position storage pos = _positions[tokenId]; // Get storage reference
 
-        uint256 userStEthToRemove = amount; // Use interface parameter name internally
-        if (userStEthToRemove == 0) revert InvalidAmount();
+        if (amount == 0) revert InvalidAmount();
 
         // Calculate current liability value based on shares and yield factor
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 liabilityValueUSD_wei = (pos.backedPoolShares * yieldFactor) / rateContract.FACTOR_PRECISION(); // Use backedPoolShares
-        if (liabilityValueUSD_wei == 0) revert ZeroLiability(); // Cannot unallocate if nothing is backed
+        uint256 currentLiabilityValueUSD_wei = (pos.backedPoolShares * rateContract.getYieldFactor()) / rateContract.FACTOR_PRECISION();
+        if (currentLiabilityValueUSD_wei == 0) revert ZeroLiability(); // Cannot unallocate if nothing is backed
 
         // Calculate current collateral value in USD wei
-        // Assuming priceResponse.price is stETH price in USD scaled by 10^decimals
-        uint256 collateralValueUSD_wei = (pos.allocatedEth * priceResponse.price) / (10**uint256(priceResponse.decimals)); // Use allocatedEth
+        uint256 currentCollateralValueUSD_wei = (pos.allocatedEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
 
         // Calculate current ratio = (Collateral Value / Liability Value) * 100
-        uint256 scaledCollateralValue = collateralValueUSD_wei * (10**18); // Scale collateral to 18 decimals
-        uint256 currentRatio = (scaledCollateralValue * 100) / liabilityValueUSD_wei; // liability is already 18 decimals
+        uint256 currentRatio = ((currentCollateralValueUSD_wei * (10**18)) * 100) / currentLiabilityValueUSD_wei;
 
-        // Calculate total stETH to release based on user share and current ratio
-        // This distributes the over-collateralization proportionally.
-        uint256 totalStEthToRelease = (userStEthToRemove * currentRatio) / 100;
-
-        // Calculate stabilizer's share (the excess beyond the user's par value share)
-        // Ensure no underflow if currentRatio < 100 (should be prevented by liquidation/stabilizer logic)
-        uint256 stabilizerStEthToRelease = 0;
-        if (totalStEthToRelease > userStEthToRemove) {
-             stabilizerStEthToRelease = totalStEthToRelease - userStEthToRemove;
-        }
-        // Consider edge case: if currentRatio < 100, totalStEthToRelease < userStEthToRemove.
-        // This implies undercollateralization. How should this be handled?
-        // StabilizerNFT logic should likely prevent calling this if undercollateralized.
-        // Add a check here? Or rely on StabilizerNFT? Let's assume StabilizerNFT ensures ratio >= 100 before calling.
+        // Calculate total stETH to release based on user share (amount) and current ratio
+        uint256 totalStEthToRelease = (amount * currentRatio) / 100;
 
         // Safety Check: Ensure we don't try to remove more stETH than allocated
         if (totalStEthToRelease > pos.allocatedEth) revert InsufficientCollateral();
 
-        // Ratio Check (After Removal): This is complex because `backedUspd` isn't updated here.
-        // The check should ideally happen in StabilizerNFT *before* calling removeCollateral and modifyAllocation.
-        // Skipping the ratio check here, relying on the caller (StabilizerNFT).
+        // Calculate stabilizer's share (the excess beyond the user's par value share)
+        uint256 stabilizerStEthToRelease = 0;
+        if (totalStEthToRelease > amount) {
+             stabilizerStEthToRelease = totalStEthToRelease - amount;
+        }
+        // Note: Relying on StabilizerNFT to ensure currentRatio >= 100 before calling.
 
         // Update state (reduce allocated stETH)
         pos.allocatedEth -= totalStEthToRelease;
 
         // Transfer stETH portions to the recipient (`to`, which is the StabilizerNFT contract)
         // StabilizerNFT will then handle withdrawal/distribution.
-        bool successUser = stETH.transfer(to, userStEthToRemove);
-        if (!successUser) revert TransferFailed(); // Use custom error
+        require(stETH.transfer(to, amount), "User stETH transfer failed"); // Inline transfer and check
 
         if (stabilizerStEthToRelease > 0) {
-             bool successStabilizer = stETH.transfer(to, stabilizerStEthToRelease);
-             if (!successStabilizer) revert TransferFailed();
+             require(stETH.transfer(to, stabilizerStEthToRelease), "Stabilizer stETH transfer failed"); // Inline transfer and check
         }
         // Note: pos.backedPoolShares is updated separately via modifyAllocation call from StabilizerNFT
     }
