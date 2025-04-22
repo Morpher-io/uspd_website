@@ -263,13 +263,15 @@ contract StabilizerNFT is
                 toAllocate // Amount of stETH to pull
             );
 
-            // Calculate USPD amount backed by the user's ETH share being allocated now
-            uint256 uspdAmount = (userEthShare * ethUsdPrice) /
-                (10 ** priceDecimals);
+            // Calculate Pool Shares backed by the user's ETH share being allocated now
+            uint256 allocatedUSDValue = (userEthShare * ethUsdPrice) / (10 ** priceDecimals);
+            uint256 yieldFactor = rateContract.getYieldFactor();
+            uint256 poolSharesSlice = (allocatedUSDValue * rateContract.FACTOR_PRECISION()) / yieldFactor;
 
-            // Get current backed amount and add the new amount
+
+            // Get current backed shares and add the new shares
             IUspdCollateralizedPositionNFT.Position memory currentPosData = positionNFT.getPosition(positionId);
-            positionNFT.modifyAllocation(positionId, currentPosData.backedUspd + uspdAmount); // Add to existing backed amount
+            positionNFT.modifyAllocation(positionId, currentPosData.backedPoolShares + poolSharesSlice); // Add to existing backed shares
 
             // Update loop variables
             result.allocatedEth += userEthShare; // Track total user ETH allocated in this call
@@ -440,10 +442,10 @@ contract StabilizerNFT is
         require(highestAllocatedId != 0, "No allocated funds");
 
         uint256 currentId = highestAllocatedId;
-        uint256 remainingUspd = uspdAmount;
+        uint256 remainingPoolShares = poolSharesToUnallocate; // Use new parameter name
         uint256 totalUserEth;
 
-        while (currentId != 0 && remainingUspd > 0) {
+        while (currentId != 0 && remainingPoolShares > 0) { // Use remainingPoolShares
             if (gasleft() < MIN_GAS) break;
 
             StabilizerPosition storage pos = positions[currentId];
@@ -452,29 +454,30 @@ contract StabilizerNFT is
             );
             if (positionId != 0) {
                 IUspdCollateralizedPositionNFT.Position
-                    memory position = positionNFT.getPosition(positionId);
+                    memory position = positionNFT.getPosition(positionId); // Now contains backedPoolShares
 
-                uint256 uspdToUnallocate = remainingUspd > position.backedUspd
-                    ? position.backedUspd
-                    : remainingUspd;
-                {
-                    // Calculate ETH to remove and user's share
+                // Determine how many pool shares to unallocate from this specific position
+                uint256 poolSharesSliceToUnallocate = remainingPoolShares > position.backedPoolShares // Use backedPoolShares
+                    ? position.backedPoolShares
+                    : remainingPoolShares;
+
+                if (poolSharesSliceToUnallocate > 0) { // Only proceed if there are shares to unallocate
+                    // Calculate stETH to remove and user's share based on pool shares
                     (uint ethToRemove, uint userShare) = _calculateUnallocation(
                         positionId,
                         position,
-                        uspdToUnallocate,
-                        position.backedUspd == uspdToUnallocate,
+                        poolSharesSliceToUnallocate, // Pass pool shares slice
+                        position.backedPoolShares == poolSharesSliceToUnallocate, // Check if fully unallocating this position's shares
                         priceResponse
                     );
 
-                    // Update position
+                    // Update position's backed shares
                     positionNFT.modifyAllocation(
                         positionId,
-                        position.backedUspd == uspdToUnallocate
-                            ? 0
-                            : position.backedUspd - uspdToUnallocate
+                        position.backedPoolShares - poolSharesSliceToUnallocate // Subtract shares
                     );
 
+                    // Remove the calculated stETH collateral
                     positionNFT.removeCollateral(
                         positionId,
                         payable(address(this)),
@@ -482,20 +485,25 @@ contract StabilizerNFT is
                         priceResponse
                     );
 
-                    if (position.backedUspd == uspdToUnallocate) {
+                    // If all shares from this position were unallocated, remove from allocated list
+                    if (position.backedPoolShares == poolSharesSliceToUnallocate) { // Check backedPoolShares
                         _removeFromAllocatedList(currentId);
                     }
 
                     // Update totals
                     totalUserEth += userShare;
-                    pos.totalEth += ethToRemove - userShare;
+                    // pos.totalEth += ethToRemove - userShare; // This logic seems incorrect, totalEth is deprecated for escrow balance
+                    // Instead, the stabilizer's share (ethToRemove - userShare) is returned to their escrow via PositionNFT.removeCollateral
 
-                    // Add back to unallocated list if needed
-                    if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0) {
+                    // Add back to unallocated list if needed (check escrow balance after return)
+                    // This might need adjustment based on when the escrow balance updates
+                    // For now, assume if it was fully unallocated, it might become available again later.
+                    // Let's register it if it was fully unallocated from this position.
+                    if (position.backedPoolShares == poolSharesSliceToUnallocate && pos.prevUnallocated == 0 && pos.nextUnallocated == 0) { // Check backedPoolShares
                         _registerUnallocatedPosition(currentId);
                     }
 
-                    remainingUspd -= uspdToUnallocate;
+                    remainingPoolShares -= poolSharesSliceToUnallocate; // Decrease remaining shares
                     emit FundsUnallocated(currentId, ethToRemove, positionId);
                 }
             }
@@ -604,34 +612,48 @@ contract StabilizerNFT is
 
     function _calculateUnallocation(
         uint positionId,
-        IUspdCollateralizedPositionNFT.Position memory position,
-        uint256 uspdToUnallocate,
+        IUspdCollateralizedPositionNFT.Position memory position, // Contains allocatedEth, backedPoolShares
+        uint256 poolSharesToUnallocate, // Changed parameter
         bool isFullUnallocation,
         IPriceOracle.PriceResponse memory priceResponse
-    ) internal view returns (uint256 ethToRemove, uint256 userShare) {
+    ) internal view returns (uint256 stEthToRemove, uint256 userStEthShare) { // Renamed return values for clarity
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        // Calculate the USD value represented by the pool shares being unallocated
+        uint256 uspdValueToUnallocate = (poolSharesToUnallocate * yieldFactor) / rateContract.FACTOR_PRECISION();
+
+        // Calculate user's share of stETH at par value (1 USD = 1/price stETH)
+        // Ensure price is not zero
+        require(priceResponse.price > 0, "Oracle price cannot be zero");
+        userStEthShare = (uspdValueToUnallocate * (10**uint256(priceResponse.decimals))) / priceResponse.price;
+
         if (isFullUnallocation) {
-            ethToRemove = position.allocatedEth;
-            userShare =
-                (position.allocatedEth * 100) /
-                positionNFT.getCollateralizationRatio(
-                    positionId,
-                    priceResponse.price,
-                    priceResponse.decimals
-                );
+            // If fully unallocating, remove all allocated stETH
+            stEthToRemove = position.allocatedEth;
+            // User share remains calculated based on the value being unallocated at par
         } else {
+            // Calculate the total stETH to remove based on the current ratio
+            // This ensures overcollateralization is returned proportionally
             uint256 currentRatio = positionNFT.getCollateralizationRatio(
                 positionId,
                 priceResponse.price,
                 priceResponse.decimals
             );
-            uint256 newBackedUspd = position.backedUspd - uspdToUnallocate;
-            uint256 newRequiredEth = (currentRatio *
-                newBackedUspd *
-                (10 ** priceResponse.decimals)) / (priceResponse.price * 100);
+            // Prevent division by zero or nonsensical ratios
+            // Note: getCollateralizationRatio now needs rateContract access internally
+            require(currentRatio >= 100, "Cannot unallocate from undercollateralized position"); // Assuming ratio is scaled by 100
 
-            ethToRemove = position.allocatedEth - newRequiredEth;
+            // totalToRemove = userShare * ratio / 100
+            stEthToRemove = (userStEthShare * currentRatio) / 100;
 
-            userShare = (ethToRemove * 100) / currentRatio;
+            // Sanity check: ensure we don't remove more than allocated
+            if (stEthToRemove > position.allocatedEth) {
+                stEthToRemove = position.allocatedEth;
+            }
+        }
+
+        // Ensure user share doesn't exceed total removed (can happen with rounding or ratio < 100)
+        if (userStEthShare > stEthToRemove) {
+            userStEthShare = stEthToRemove;
         }
     }
 

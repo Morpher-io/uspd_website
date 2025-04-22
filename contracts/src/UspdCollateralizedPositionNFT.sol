@@ -100,11 +100,11 @@ contract UspdCollateralizedPositionNFT is
 
         uint256 tokenId = _nextPositionId++;
 
-        _positions[tokenId] = Position({allocatedEth: 0, backedUspd: 0});
+        _positions[tokenId] = Position({allocatedEth: 0, backedPoolShares: 0}); // Use backedPoolShares
 
         _ownerToken[to] = tokenId;
         _safeMint(to, tokenId);
-        emit PositionCreated(tokenId, to, 0, 0);
+        emit PositionCreated(tokenId, to, 0, 0); // Emit with 0 shares initially
 
        return tokenId;
    }
@@ -201,18 +201,18 @@ contract UspdCollateralizedPositionNFT is
         Position storage pos = _positions[tokenId]; // Get position storage reference
 
         if (stEthAmountToRemove == 0) revert InvalidAmount();
-        if (stEthAmountToRemove > pos.allocatedEth) revert InsufficientCollateral(); // Use allocatedEth
+        if (stEthAmountToRemove > pos.allocatedEth) revert InsufficientCollateral();
 
-        // If position backs USPD, check the ratio *after* removal
-        if (pos.backedUspd > 0) {
-            uint256 remainingStEth = pos.allocatedEth - stEthAmountToRemove; // Use allocatedEth
+        // If position backs Pool Shares, check the ratio *after* removal
+        if (pos.backedPoolShares > 0) { // Check backedPoolShares
+            uint256 remainingStEth = pos.allocatedEth - stEthAmountToRemove;
 
-            // Liability is the amount of USPD backed (assuming 1 USPD = $1, 18 decimals)
-            uint256 liabilityValueUSD_wei = pos.backedUspd; // Use backedUspd (assuming 18 decimals)
-            if (liabilityValueUSD_wei == 0) revert ZeroLiability(); // Should not happen if backedUspd > 0
+            // Calculate current liability value based on shares and yield factor
+            uint256 yieldFactor = rateContract.getYieldFactor();
+            uint256 liabilityValueUSD_wei = (pos.backedPoolShares * yieldFactor) / rateContract.FACTOR_PRECISION(); // Use backedPoolShares
+            if (liabilityValueUSD_wei == 0) revert ZeroLiability(); // Should not happen if backedPoolShares > 0
 
             // Calculate collateral value after removal in USD wei
-            // collateralValue = stETH_amount * (ETH_price / 10^price_decimals) * (stETH_price / ETH_price)
             // Assuming priceResponse.price is stETH/USD directly for simplicity here. Needs clarification.
             // Let's assume priceResponse.price is stETH price in USD scaled by 10^decimals
             uint256 collateralValueUSD_wei_after_removal = (remainingStEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
@@ -224,12 +224,12 @@ contract UspdCollateralizedPositionNFT is
 
             // Check if ratio remains above minimum (e.g., 110%)
             // TODO: Make minimum ratio configurable? For now, hardcode 110.
-            if (newRatio < 110) revert BelowMinimumRatio(); // Use custom error
+            if (newRatio < 110) revert BelowMinimumRatio();
         }
-        // If pos.backedUspd is 0, allow removing any amount up to the total allocatedEth.
+        // If pos.backedPoolShares is 0, allow removing any amount up to the total allocatedEth.
 
         // Update state
-        pos.allocatedEth -= stEthAmountToRemove; // Use allocatedEth
+        pos.allocatedEth -= stEthAmountToRemove;
 
         // Transfer stETH to the owner (msg.sender)
         bool success = stETH.transfer(msg.sender, stEthAmountToRemove);
@@ -256,8 +256,9 @@ contract UspdCollateralizedPositionNFT is
         uint256 userStEthToRemove = amount; // Use interface parameter name internally
         if (userStEthToRemove == 0) revert InvalidAmount();
 
-        // Liability is the amount of USPD backed (assuming 1 USPD = $1, 18 decimals)
-        uint256 liabilityValueUSD_wei = pos.backedUspd; // Use backedUspd
+        // Calculate current liability value based on shares and yield factor
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 liabilityValueUSD_wei = (pos.backedPoolShares * yieldFactor) / rateContract.FACTOR_PRECISION(); // Use backedPoolShares
         if (liabilityValueUSD_wei == 0) revert ZeroLiability(); // Cannot unallocate if nothing is backed
 
         // Calculate current collateral value in USD wei
@@ -313,13 +314,13 @@ contract UspdCollateralizedPositionNFT is
         // Use storage pointer for checks
         Position storage pos = _positions[tokenId];
 
-        // Require both allocated collateral and backed USPD to be zero before burning
-        if (pos.allocatedEth != 0) revert InsufficientCollateral(); // Cannot burn with collateral
-        if (pos.backedUspd != 0) revert ZeroLiability(); // Cannot burn while backing USPD (Added check)
+        // Require both allocated collateral and backed Pool Shares to be zero before burning
+        if (pos.allocatedEth != 0) revert InsufficientCollateral();
+        if (pos.backedPoolShares != 0) revert ZeroLiability(); // Check backedPoolShares
 
         // Store values before deleting for the event
         uint256 allocatedEth = pos.allocatedEth;
-        uint256 backedUspd = pos.backedUspd;
+        uint256 backedPoolShares = pos.backedPoolShares; // Store shares
 
         // Delete state associated with the token
         delete _positions[tokenId];
@@ -329,15 +330,15 @@ contract UspdCollateralizedPositionNFT is
         _burn(tokenId);
 
         // Emit the event with the stored values
-        emit PositionBurned(tokenId, owner, allocatedEth, backedUspd);
+        emit PositionBurned(tokenId, owner, allocatedEth, backedPoolShares); // Emit shares
     }
 
     function modifyAllocation(
         uint256 tokenId,
-        uint256 newBackedUspd
-    ) external onlyRole(MODIFYALLOCATION_ROLE) {
+        uint256 newBackedPoolShares // Parameter name changed
+    ) external override onlyRole(MODIFYALLOCATION_ROLE) { // Added override
         require(ownerOf(tokenId) != address(0), "Position does not exist");
-        _positions[tokenId].backedUspd = newBackedUspd;
+        _positions[tokenId].backedPoolShares = newBackedPoolShares; // Update backedPoolShares
     }
 
     /**
@@ -375,15 +376,14 @@ contract UspdCollateralizedPositionNFT is
 
     function getCollateralizationRatio(
         uint256 tokenId,
-        uint256 ethUsdPrice,
+        uint256 ethUsdPrice, // Note: This price should ideally be stETH/USD
         uint8 priceDecimals
-    ) external view returns (uint256) {
-        Position memory pos = _positions[tokenId]; // Use allocatedEth and backedUspd
+    ) external view override returns (uint256) { // Added override
+        Position memory pos = _positions[tokenId]; // Use allocatedEth and backedPoolShares
 
-        if (pos.backedUspd == 0) {
-             // If there's no liability (backed USPD), the ratio is effectively infinite or undefined.
-             // Returning type(uint256).max could signify this. Or revert? Let's return max.
-             // Alternatively, if allocatedEth is also 0, return 0? Let's return max if liability is 0.
+        if (pos.backedPoolShares == 0) { // Check backedPoolShares
+             // If there's no liability (backed Pool Shares), the ratio is effectively infinite or undefined.
+             // Returning type(uint256).max could signify this.
              return type(uint256).max;
         }
         if (pos.allocatedEth == 0) {
@@ -392,13 +392,14 @@ contract UspdCollateralizedPositionNFT is
 
         // Calculate collateral value in USD wei
         // Assuming ethUsdPrice is stETH price in USD scaled by 10^priceDecimals
-        uint256 collateralValueUSD_wei = (pos.allocatedEth * ethUsdPrice) / (10**priceDecimals);
+        uint256 collateralValueUSD_wei = (pos.allocatedEth * ethUsdPrice) / (10**uint256(priceDecimals));
 
-        // Liability value in USD wei (assuming backedUspd has 18 decimals)
-        uint256 liabilityValueUSD_wei = pos.backedUspd;
+        // Calculate liability value in USD wei based on shares and yield factor
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 liabilityValueUSD_wei = (pos.backedPoolShares * yieldFactor) / rateContract.FACTOR_PRECISION(); // Use backedPoolShares
 
         // Calculate ratio = (Collateral Value / Liability Value) * 100
-        // Ensure consistent decimals (scale collateral to 18 decimals)
+        // Ensure consistent decimals (scale collateral to 18 decimals if needed, but both are wei here)
         uint256 scaledCollateralValue = collateralValueUSD_wei * (10**18);
         uint256 ratio = (scaledCollateralValue * 100) / liabilityValueUSD_wei;
 
