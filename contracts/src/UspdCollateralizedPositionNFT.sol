@@ -70,12 +70,14 @@ contract UspdCollateralizedPositionNFT is
     event PositionBurned(
         uint256 indexed tokenId,
         address indexed owner,
-        uint256 allocatedEth,
-        uint256 backedUspd
-    );
+       uint256 allocatedEth,
+       uint256 backedUspd
+   );
+   event CollateralAdded(uint256 indexed tokenId, uint256 userStEthAmount, uint256 stabilizerStEthAmount);
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+
+   /// @custom:oz-upgrades-unsafe-allow constructor
+   constructor() {
         _disableInitializers();
     }
 
@@ -111,11 +113,55 @@ contract UspdCollateralizedPositionNFT is
         _safeMint(to, tokenId);
         emit PositionCreated(tokenId, to, 0, 0);
 
-        return tokenId;
-    }
+       return tokenId;
+   }
 
-    // Add ETH to further collateralize a position
-    function addCollateral(uint256 tokenId) external payable {
+   /**
+    * @notice Adds collateral from both user (ETH) and stabilizer (stETH from escrow).
+    * @param tokenId The ID of the position NFT.
+    * @param escrowAddress The address of the stabilizer's escrow contract holding stETH.
+    * @param stabilizerStEthAmount The amount of stETH to pull from the escrow.
+    * @dev Called by StabilizerNFT during allocation. Stakes user ETH, pulls stabilizer stETH.
+    *      Requires StabilizerNFT to have approved this contract to spend stETH from escrow.
+    */
+   function addCollateralFromStabilizer(
+       uint256 tokenId,
+       address escrowAddress,
+       uint256 stabilizerStEthAmount
+   ) external payable {
+       // Ensure caller is the registered StabilizerNFT contract
+       require(msg.sender == stabilizerNFTContract, "Caller is not StabilizerNFT");
+       require(ownerOf(tokenId) != address(0), "Position does not exist");
+       if (msg.value == 0) revert InvalidAmount(); // User must send ETH
+       if (stabilizerStEthAmount == 0) revert InvalidAmount(); // Stabilizer must contribute stETH
+       if (escrowAddress == address(0)) revert ZeroAddress();
+
+       Position storage pos = _positions[tokenId];
+
+       // 1. Stake User's ETH via Lido
+       uint256 userStEthAmount;
+       try lido.submit{value: msg.value}(address(0)) returns (uint256 receivedStEth) {
+           userStEthAmount = receivedStEth;
+           // We trust Lido's return value, but could double-check balance diff if needed
+           if (userStEthAmount == 0) revert TransferFailed(); // Lido submit should return > 0 stETH
+       } catch {
+           revert TransferFailed(); // Lido submit failed
+       }
+
+       // 2. Pull Stabilizer's stETH from Escrow
+       // Requires StabilizerNFT to have called escrow.approveAllocation(stabilizerStEthAmount, address(this))
+       bool success = stETH.transferFrom(escrowAddress, address(this), stabilizerStEthAmount);
+       if (!success) revert TransferFailed(); // stETH transferFrom failed (check allowance!)
+
+       // 3. Update Position's allocated ETH (which is actually stETH)
+       pos.allocatedEth += userStEthAmount + stabilizerStEthAmount;
+
+       emit CollateralAdded(tokenId, userStEthAmount, stabilizerStEthAmount);
+   }
+
+
+   // Add ETH to further collateralize a position
+   function addCollateral(uint256 tokenId) external payable {
         require(ownerOf(tokenId) != address(0), "Position does not exist"); // Consider checking owner == msg.sender?
         if (msg.value == 0) revert InvalidAmount(); // Use custom error
 

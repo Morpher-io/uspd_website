@@ -20,11 +20,25 @@ interface IUspdCollateralizedPositionNFT {
         uint256 ethUsdPrice, 
         uint8 priceDecimals
     ) external view returns (uint256);
+   ) external view returns (uint256);
 
-    function getPosition(uint256 tokenId) external view returns (Position memory);
+   function getPosition(uint256 tokenId) external view returns (Position memory);
 
-    function transferCollateral(
-        uint256 tokenId,
+   /**
+    * @notice Adds collateral from both user (ETH) and stabilizer (stETH from escrow).
+    * @param tokenId The ID of the position NFT.
+    * @param escrowAddress The address of the stabilizer's escrow contract holding stETH.
+    * @param stabilizerStEthAmount The amount of stETH to pull from the escrow.
+    * @dev Called by StabilizerNFT during allocation. Stakes user ETH, pulls stabilizer stETH.
+    */
+   function addCollateralFromStabilizer(
+       uint256 tokenId,
+       address escrowAddress,
+       uint256 stabilizerStEthAmount
+   ) external payable;
+
+   function transferCollateral(
+       uint256 tokenId,
         address payable to,
         uint256 amount,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
