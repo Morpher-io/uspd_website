@@ -72,10 +72,12 @@ contract StabilizerNFTTest is Test {
 
         // Setup roles
         positionNFT.grantRole(positionNFT.MINTER_ROLE(), address(stabilizerNFT));
-        positionNFT.grantRole(positionNFT.TRANSFERCOLLATERAL_ROLE(), address(stabilizerNFT));
+        // Grant STABILIZER_NFT_ROLE for removeCollateral
+        positionNFT.grantRole(positionNFT.STABILIZER_NFT_ROLE(), address(stabilizerNFT));
         positionNFT.grantRole(positionNFT.MODIFYALLOCATION_ROLE(), address(stabilizerNFT));
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
-        // uspdToken.updateStabilizer(address(stabilizerNFT)); // Update if uspdToken is deployed
+        // Grant STABILIZER_ROLE on USPDToken to StabilizerNFT
+        uspdToken.grantRole(uspdToken.STABILIZER_ROLE(), address(stabilizerNFT));
     }
 
     // --- Mint Tests ---
