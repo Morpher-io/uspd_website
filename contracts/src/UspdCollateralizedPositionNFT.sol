@@ -33,7 +33,7 @@ contract UspdCollateralizedPositionNFT is
     // StabilizerNFT contract address (for role checks)
     address public stabilizerNFTContract;
 
-    // Mapping from NFT ID to position struct
+    // Mapping from NFT ID to position struct (tracks stETH and pool shares)
     mapping(uint256 => Position) private _positions;
 
     // Mapping from owner address to token ID (assuming one position per owner)
@@ -58,13 +58,13 @@ contract UspdCollateralizedPositionNFT is
         uint256 indexed tokenId,
         address indexed owner,
         uint256 allocatedEth,
-        uint256 backedUspd
+        uint256 backedPoolShares // Changed parameter name
     );
     event PositionBurned(
         uint256 indexed tokenId,
         address indexed owner,
-       uint256 allocatedEth,
-       uint256 backedUspd
+        uint256 allocatedEth,
+        uint256 backedPoolShares // Changed parameter name
    );
    event CollateralAdded(uint256 indexed tokenId, uint256 userStEthAmount, uint256 stabilizerStEthAmount);
 
@@ -291,7 +291,7 @@ contract UspdCollateralizedPositionNFT is
         // Skipping the ratio check here, relying on the caller (StabilizerNFT).
 
         // Update state (reduce allocated stETH)
-        pos.allocatedEth -= totalStEthToRelease; // Use allocatedEth
+        pos.allocatedEth -= totalStEthToRelease;
 
         // Transfer stETH portions to the recipient (`to`, which is the StabilizerNFT contract)
         // StabilizerNFT will then handle withdrawal/distribution.
@@ -300,9 +300,9 @@ contract UspdCollateralizedPositionNFT is
 
         if (stabilizerStEthToRelease > 0) {
              bool successStabilizer = stETH.transfer(to, stabilizerStEthToRelease);
-             if (!successStabilizer) revert TransferFailed(); // Use custom error
+             if (!successStabilizer) revert TransferFailed();
         }
-        // Note: pos.backedUspd is updated separately via modifyAllocation call from StabilizerNFT
+        // Note: pos.backedPoolShares is updated separately via modifyAllocation call from StabilizerNFT
     }
 
     function burn(uint256 tokenId) external {

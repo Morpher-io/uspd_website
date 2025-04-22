@@ -15,7 +15,7 @@ interface IStabilizerNFT {
     ) external payable returns (AllocationResult memory);
 
     function unallocateStabilizerFunds(
-        uint256 uspdAmount,
+        uint256 poolSharesToUnallocate, // Changed parameter name
         IPriceOracle.PriceResponse memory priceResponse
     ) external returns (uint256 unallocatedEth);
 }
