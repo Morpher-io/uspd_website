@@ -272,7 +272,7 @@ contract StabilizerNFTTest is Test {
        // Expect revert with specific error arguments using IERC20 interface for error selector
        vm.expectRevert(
            abi.encodeWithSelector(
-               IERC20.ERC20InsufficientAllowance.selector, // Use IERC20 interface
+               IERC20Errors.ERC20InsufficientAllowance.selector, // Use IERC20 interface
                address(stabilizerNFT), // spender
                amount / 2,             // allowance
                amount                  // needed
@@ -298,7 +298,7 @@ contract StabilizerNFTTest is Test {
        // Expect revert with specific error arguments
        vm.expectRevert(
            abi.encodeWithSelector(
-               ERC20.ERC20InsufficientBalance.selector,
+               IERC20Errors.ERC20InsufficientBalance.selector,
                user1,           // sender
                userBalance,     // balance
                amountToTransfer // needed
@@ -319,7 +319,7 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.mint(user1, 1);
         vm.deal(user1, 5 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFunds{value: 5 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 5 ether}(1);
 
         // Mock as USPD token to test allocation
         vm.deal(address(uspdToken), 1 ether);
@@ -346,7 +346,7 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.mint(user1, 1);
         vm.deal(user1, 0.5 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFunds{value: 0.5 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(1);
         vm.prank(user1);
         stabilizerNFT.setMinCollateralizationRatio(1, 200);
         
@@ -354,7 +354,7 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.mint(user2, 2);
         vm.deal(user2, 4 ether);
         vm.prank(user2);
-        stabilizerNFT.addUnallocatedFunds{value: 4 ether}(2);
+        stabilizerNFT.addUnallocatedFundsEth{value: 4 ether}(2);
         vm.prank(user2);
         stabilizerNFT.setMinCollateralizationRatio(2, 110);
         
@@ -435,7 +435,7 @@ contract StabilizerNFTTest is Test {
         vm.deal(user2, 5 ether);
         
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(3);
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(3);
         assertEq(stabilizerNFT.lowestUnallocatedId(), 3, "ID 3 should be lowest unallocated");
         assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should be highest unallocated");
 
@@ -447,12 +447,12 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.setMinCollateralizationRatio(2, 200);
 
         vm.prank(user2);
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(2);
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(2);
         assertEq(stabilizerNFT.lowestUnallocatedId(), 2, "ID 2 should be lowest unallocated");
         assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should still be highest unallocated");
 
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFunds{value: 1 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(1);
         assertEq(stabilizerNFT.lowestUnallocatedId(), 1, "ID 1 should be lowest unallocated");
         assertEq(stabilizerNFT.highestUnallocatedId(), 3, "ID 3 should still be highest unallocated");
 
@@ -492,7 +492,7 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.mint(user1, 1);
         vm.deal(user1, 5 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFunds{value: 5 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 5 ether}(1);
         vm.prank(user1);
         stabilizerNFT.setMinCollateralizationRatio(1, 200);
 
