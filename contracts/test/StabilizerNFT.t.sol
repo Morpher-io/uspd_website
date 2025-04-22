@@ -543,9 +543,9 @@ contract StabilizerNFTTest is Test {
             "Position should have correct ETH after allocation (user + stabilizer)"
         );
         assertEq(
-            position.backedUspd,
-            2000 ether,
-            "Position should back correct USPD after allocation"
+            position.backedPoolShares, // Check pool shares
+            2000 ether, // Expected shares = 2000e18 (1 ETH * 2000 price / 1 yieldFactor)
+            "Position should back correct Pool Shares after allocation"
         );
     }
 
@@ -592,9 +592,9 @@ contract StabilizerNFTTest is Test {
             "First position should have 1 ETH total (0.5 user + 0.5 stabilizer)"
         );
         assertEq(
-            position1.backedUspd,
-            1400 ether,
-            "First position should back 1400 USPD (0.5 ETH * 2800)"
+            position1.backedPoolShares, // Check pool shares
+            1400 ether, // Expected shares = 1400e18 (0.5 ETH * 2800 price / 1 yieldFactor)
+            "First position should back 1400 Pool Shares (0.5 ETH * 2800)"
         );
 
         // Verify second position (110% collateralization)
@@ -609,9 +609,9 @@ contract StabilizerNFTTest is Test {
             "Second position should have 1.65 ETH total (1.5 user + 0.15 stabilizer)"
         );
         assertEq(
-            position2.backedUspd,
-            4200 ether,
-            "Second position should back 4200 USPD (1.5 ETH * 2800)"
+            position2.backedPoolShares, // Check pool shares
+            4200 ether, // Expected shares = 4200e18 (1.5 ETH * 2800 price / 1 yieldFactor)
+            "Second position should back 4200 Pool Shares (1.5 ETH * 2800)"
         );
 
         // Verify total allocation - only user's ETH
@@ -841,9 +841,9 @@ contract StabilizerNFTTest is Test {
             "Position should have 2 ETH total (1 user + 1 stabilizer)"
         );
         assertEq(
-            position.backedUspd,
-            2000 ether,
-            "Position should back 2000 USPD (1 ETH * 2000)"
+            position.backedPoolShares, // Check pool shares
+            2000 ether, // Expected shares = 2000e18 (1 ETH * 2000 price / 1 yieldFactor)
+            "Position should back 2000 Pool Shares (1 ETH * 2000)"
         );
 
         // Get initial collateralization ratio
@@ -859,9 +859,11 @@ contract StabilizerNFTTest is Test {
             18,
             block.timestamp * 1000
         );
-        // Unallocate half the USPD (1000 USPD)
+        // Unallocate half the liability (1000 Pool Shares)
+        // Since yieldFactor is 1e18, 1000 USPD burn corresponds to 1000 Pool Shares
+        uint256 poolSharesToUnallocate = 1000 ether;
         uint256 unallocatedEth = stabilizerNFT.unallocateStabilizerFunds(
-            1000 ether, // Unallocate half the USPD
+            poolSharesToUnallocate, // Pass Pool Shares to unallocate
             resonse
         );
         vm.stopPrank();
@@ -877,9 +879,9 @@ contract StabilizerNFTTest is Test {
             "Position should have 1 ETH remaining"
         );
         assertEq(
-            position.backedUspd,
-            1000 ether,
-            "Position should back 1000 USPD"
+            position.backedPoolShares, // Check pool shares
+            1000 ether, // Expected remaining shares = 2000 - 1000 = 1000e18
+            "Position should back 1000 Pool Shares"
         );
 
         // Verify collateralization ratio remains the same
