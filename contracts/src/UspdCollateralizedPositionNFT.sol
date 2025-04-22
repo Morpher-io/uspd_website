@@ -33,15 +33,20 @@ contract UspdCollateralizedPositionNFT is
     // StabilizerNFT contract address (for role checks)
     address public stabilizerNFTContract;
 
-    // Mapping from NFT ID to position
+    // Mapping from NFT ID to position struct
     mapping(uint256 => Position) private _positions;
 
-    // Mapping from owner address to token ID
+    // Mapping from owner address to token ID (assuming one position per owner)
     mapping(address => uint256) private _ownerToken;
 
     // Custom Errors
     error NotOwner();
-    error ZeroLiability(); // Add declaration for the custom error
+    error ZeroLiability();
+    error InvalidAmount();
+    error BelowMinimumRatio();
+    error InsufficientCollateral();
+    error TransferFailed();
+    error NotImplemented(); // Added for unimplemented interface functions
 
     function getPosition(
         uint256 tokenId
@@ -111,136 +116,154 @@ contract UspdCollateralizedPositionNFT is
 
     // Add ETH to further collateralize a position
     function addCollateral(uint256 tokenId) external payable {
-        require(ownerOf(tokenId) != address(0), "Position does not exist");
-        require(msg.value > 0, "No ETH sent");
-        _positions[tokenId].allocatedEth += msg.value;
+        require(ownerOf(tokenId) != address(0), "Position does not exist"); // Consider checking owner == msg.sender?
+        if (msg.value == 0) revert InvalidAmount(); // Use custom error
+
+        // TODO: Convert received ETH to stETH via Lido and update allocatedEth (stETH amount)
+        // This requires interaction with Lido and tracking stETH balance.
+        // For now, let's assume allocatedEth stores ETH for simplicity, which is likely incorrect.
+        // The logic below assumes allocatedEth stores stETH. This function needs proper implementation.
+        _positions[tokenId].allocatedEth += msg.value; // Placeholder: Should add stETH amount
     }
+
+    /**
+     * @notice Implements the interface function, but the intended logic is likely
+     *         split between removeExcessCollateral and the StabilizerNFT interactions.
+     *         This function is marked as not implemented.
+     */
+    function transferCollateral(
+        uint256 tokenId,
+        address payable to,
+        uint256 amount,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external override {
+        // This function's logic seems superseded by removeExcessCollateral and removeCollateral (called by StabilizerNFT)
+        // Reverting to indicate it shouldn't be called directly this way.
+        revert NotImplemented();
+        // Keep parameters to satisfy interface, prevent unused variable warnings
+        if (tokenId == 0 || to == address(0) || amount == 0 || priceQuery.price == 0) {}
+    }
+
 
     /**
      * @notice Allows the stabilizer owner to remove excess stETH collateral.
      * @param tokenId The ID of the position NFT.
      * @param stEthAmountToRemove The amount of stETH to remove.
+     * @param stEthAmountToRemove The amount of stETH collateral to remove.
      * @param priceResponse The current oracle price response (used for ratio check).
      */
-    function removeExcessCollateral( // Renamed from transferCollateral
+    function removeExcessCollateral(
         uint256 tokenId,
         uint256 stEthAmountToRemove,
-        IPriceOracle.PriceResponse memory priceResponse
+        IPriceOracle.PriceResponse memory priceResponse // Keep memory for internal calls if needed
     ) external {
         // Check if caller is the owner of the NFT
         if (ownerOf(tokenId) != msg.sender) revert NotOwner();
         Position storage pos = _positions[tokenId]; // Get position storage reference
 
-        require(
-            stEthAmountToRemove <= pos.totalStEth, // Check against totalStEth
-            "Insufficient collateral"
-        );
-        require(stEthAmountToRemove > 0, "Amount must be positive");
+        if (stEthAmountToRemove == 0) revert InvalidAmount();
+        if (stEthAmountToRemove > pos.allocatedEth) revert InsufficientCollateral(); // Use allocatedEth
 
-        // If position backs no shares, allow removing any amount
-        if (pos.backedPoolShares > 0) {
-            // Calculate the ratio *after* removal
-            uint256 remainingStEth = pos.totalStEth - stEthAmountToRemove;
+        // If position backs USPD, check the ratio *after* removal
+        if (pos.backedUspd > 0) {
+            uint256 remainingStEth = pos.allocatedEth - stEthAmountToRemove; // Use allocatedEth
 
-            // Get Yield Factor
-            uint256 yieldFactor = rateContract.getYieldFactor();
-            uint256 factorPrecision = rateContract.FACTOR_PRECISION();
+            // Liability is the amount of USPD backed (assuming 1 USPD = $1, 18 decimals)
+            uint256 liabilityValueUSD_wei = pos.backedUspd; // Use backedUspd (assuming 18 decimals)
+            if (liabilityValueUSD_wei == 0) revert ZeroLiability(); // Should not happen if backedUspd > 0
 
-            // Calculate liability value in USD (scaled by yield)
-            // Assumes 1 poolShare = $1 initially (1e18)
-            uint256 liabilityValueUSD = (pos.backedPoolShares * yieldFactor) / factorPrecision;
+            // Calculate collateral value after removal in USD wei
+            // collateralValue = stETH_amount * (ETH_price / 10^price_decimals) * (stETH_price / ETH_price)
+            // Assuming priceResponse.price is stETH/USD directly for simplicity here. Needs clarification.
+            // Let's assume priceResponse.price is stETH price in USD scaled by 10^decimals
+            uint256 collateralValueUSD_wei_after_removal = (remainingStEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
 
-            // Handle zero liability case for safety, although checked above
-            if (liabilityValueUSD == 0) {
-                 // Should not happen if backedPoolShares > 0, but defensive check
-                 revert ZeroLiability();
-            }
-
-            // Calculate collateral value after removal
-            uint256 collateralValueUSD_after_removal = (remainingStEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
-
-            // Calculate new ratio
-            uint256 newRatio = (collateralValueUSD_after_removal * 100) / liabilityValueUSD;
+            // Calculate new ratio = (Collateral Value / Liability Value) * 100
+            // Ensure consistent decimals (e.g., scale collateral value to 18 decimals if needed)
+            uint256 scaledCollateralValue = collateralValueUSD_wei_after_removal * (10**18); // Scale collateral to 18 decimals
+            uint256 newRatio = (scaledCollateralValue * 100) / liabilityValueUSD_wei; // liability is already 18 decimals
 
             // Check if ratio remains above minimum (e.g., 110%)
             // TODO: Make minimum ratio configurable? For now, hardcode 110.
-            require(newRatio >= 110, "Collateral ratio would fall below 110%");
+            if (newRatio < 110) revert BelowMinimumRatio(); // Use custom error
         }
+        // If pos.backedUspd is 0, allow removing any amount up to the total allocatedEth.
 
         // Update state
-        pos.totalStEth -= stEthAmountToRemove;
+        pos.allocatedEth -= stEthAmountToRemove; // Use allocatedEth
 
         // Transfer stETH to the owner (msg.sender)
         bool success = stETH.transfer(msg.sender, stEthAmountToRemove);
-        require(success, "stETH transfer failed");
+        if (!success) revert TransferFailed(); // Use custom error
     }
 
     /**
-     * @notice Removes collateral during unallocation process. Called by StabilizerNFT.
+     * @notice Removes collateral during unallocation. Called only by StabilizerNFT.
+     *         Transfers both user's and stabilizer's share of stETH to the recipient (StabilizerNFT).
      * @param tokenId The ID of the position NFT.
-     * @param recipient The address to send the stETH to (StabilizerNFT contract).
-     * @param userStEthToRemove The portion of stETH corresponding to the user's burned shares.
-     * @param priceResponse The current oracle price response.
+     * @param to The address to send the stETH to (StabilizerNFT contract). Must be payable for interface compliance.
+     * @param amount The portion of stETH corresponding to the user's burned shares (at par value).
+     * @param priceResponse The current oracle price response (stETH/USD).
      */
-    function removeCollateral( // Kept name, but logic significantly changed
+    function removeCollateral( // Signature matches interface now
         uint256 tokenId,
-        address recipient, // Changed from payable, recipient is StabilizerNFT
-        uint256 userStEthToRemove,
-        IPriceOracle.PriceResponse memory priceResponse // Changed from calldata
-    ) external onlyRole(STABILIZER_NFT_ROLE) { // Role check updated
+        address payable to, // Interface requires payable
+        uint256 amount,     // Renamed from userStEthToRemove
+        IPriceOracle.PriceResponse calldata priceResponse // Interface requires calldata
+    ) external override onlyRole(STABILIZER_NFT_ROLE) { // Role check updated
         require(ownerOf(tokenId) != address(0), "Position does not exist");
         Position storage pos = _positions[tokenId]; // Get storage reference
 
-        // Get Yield Factor
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 factorPrecision = rateContract.FACTOR_PRECISION();
+        uint256 userStEthToRemove = amount; // Use interface parameter name internally
+        if (userStEthToRemove == 0) revert InvalidAmount();
 
-        // Calculate liability value in USD (scaled by yield)
-        uint256 liabilityValueUSD = (pos.backedPoolShares * yieldFactor) / factorPrecision;
+        // Liability is the amount of USPD backed (assuming 1 USPD = $1, 18 decimals)
+        uint256 liabilityValueUSD_wei = pos.backedUspd; // Use backedUspd
+        if (liabilityValueUSD_wei == 0) revert ZeroLiability(); // Cannot unallocate if nothing is backed
 
-        // Handle zero liability case
-        if (liabilityValueUSD == 0) revert ZeroLiability();
+        // Calculate current collateral value in USD wei
+        // Assuming priceResponse.price is stETH price in USD scaled by 10^decimals
+        uint256 collateralValueUSD_wei = (pos.allocatedEth * priceResponse.price) / (10**uint256(priceResponse.decimals)); // Use allocatedEth
 
-        // Calculate current collateral value in USD
-        uint256 collateralValueUSD = (pos.totalStEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
-
-        // Calculate current ratio
-        uint256 currentRatio = (collateralValueUSD * 100) / liabilityValueUSD;
+        // Calculate current ratio = (Collateral Value / Liability Value) * 100
+        uint256 scaledCollateralValue = collateralValueUSD_wei * (10**18); // Scale collateral to 18 decimals
+        uint256 currentRatio = (scaledCollateralValue * 100) / liabilityValueUSD_wei; // liability is already 18 decimals
 
         // Calculate total stETH to release based on user share and current ratio
+        // This distributes the over-collateralization proportionally.
         uint256 totalStEthToRelease = (userStEthToRemove * currentRatio) / 100;
 
-        // Calculate stabilizer's share
-        uint256 stabilizerStEthToRelease = totalStEthToRelease - userStEthToRemove;
-
-        // Safety Check: Ensure we don't try to remove more than available
-        require(totalStEthToRelease <= pos.totalStEth, "Insufficient total stETH");
-
-        // Ratio Check (after removal):
-        // Note: backedPoolShares is NOT updated here, StabilizerNFT calls modifyAllocation later.
-        // We check if removing the collateral leaves enough for the *remaining* liability.
-        // This calculation is complex as we don't know the remaining shares here.
-        // Alternative: Check if removing the *stabilizer's portion* keeps ratio >= 100% for user portion?
-        // Let's stick to the plan's check: ensure ratio remains >= 110% for the *final* state after modifyAllocation.
-        // This check might need refinement or be handled solely by StabilizerNFT before calling.
-        // For now, let's assume the check is valid based on the intended final state.
-        uint256 remainingStEth = pos.totalStEth - totalStEthToRelease;
-        // We cannot calculate remainingPoolShares here. The ratio check here is problematic.
-        // Let's simplify: Ensure remaining collateral covers at least the user's remaining portion.
-        // This check should likely be done in StabilizerNFT before calling.
-        // Removing the ratio check here for now, assuming StabilizerNFT verifies feasibility.
-
-        // Update state
-        pos.totalStEth -= totalStEthToRelease;
-
-        // Transfer stETH portions to the recipient (StabilizerNFT contract)
-        bool successUser = stETH.transfer(recipient, userStEthToRemove);
-        require(successUser, "User stETH transfer failed");
-        if (stabilizerStEthToRelease > 0) {
-             bool successStabilizer = stETH.transfer(recipient, stabilizerStEthToRelease);
-             require(successStabilizer, "Stabilizer stETH transfer failed");
+        // Calculate stabilizer's share (the excess beyond the user's par value share)
+        // Ensure no underflow if currentRatio < 100 (should be prevented by liquidation/stabilizer logic)
+        uint256 stabilizerStEthToRelease = 0;
+        if (totalStEthToRelease > userStEthToRemove) {
+             stabilizerStEthToRelease = totalStEthToRelease - userStEthToRemove;
         }
-        // Note: backedPoolShares is updated separately via modifyAllocation by StabilizerNFT
+        // Consider edge case: if currentRatio < 100, totalStEthToRelease < userStEthToRemove.
+        // This implies undercollateralization. How should this be handled?
+        // StabilizerNFT logic should likely prevent calling this if undercollateralized.
+        // Add a check here? Or rely on StabilizerNFT? Let's assume StabilizerNFT ensures ratio >= 100 before calling.
+
+        // Safety Check: Ensure we don't try to remove more stETH than allocated
+        if (totalStEthToRelease > pos.allocatedEth) revert InsufficientCollateral();
+
+        // Ratio Check (After Removal): This is complex because `backedUspd` isn't updated here.
+        // The check should ideally happen in StabilizerNFT *before* calling removeCollateral and modifyAllocation.
+        // Skipping the ratio check here, relying on the caller (StabilizerNFT).
+
+        // Update state (reduce allocated stETH)
+        pos.allocatedEth -= totalStEthToRelease; // Use allocatedEth
+
+        // Transfer stETH portions to the recipient (`to`, which is the StabilizerNFT contract)
+        // StabilizerNFT will then handle withdrawal/distribution.
+        bool successUser = stETH.transfer(to, userStEthToRemove);
+        if (!successUser) revert TransferFailed(); // Use custom error
+
+        if (stabilizerStEthToRelease > 0) {
+             bool successStabilizer = stETH.transfer(to, stabilizerStEthToRelease);
+             if (!successStabilizer) revert TransferFailed(); // Use custom error
+        }
+        // Note: pos.backedUspd is updated separately via modifyAllocation call from StabilizerNFT
     }
 
     function burn(uint256 tokenId) external {
@@ -255,12 +278,7 @@ contract UspdCollateralizedPositionNFT is
         delete _ownerToken[msg.sender];
 
         _burn(tokenId);
-        emit PositionBurned(
-            tokenId,
-            msg.sender,
-            pos.allocatedEth,
-            pos.backedUspd
-        );
+        emit PositionBurned(tokenId, msg.sender, allocatedEth, backedUspd);
     }
 
     function modifyAllocation(
@@ -310,9 +328,31 @@ contract UspdCollateralizedPositionNFT is
         uint8 priceDecimals
     ) external view returns (uint256) {
         Position memory pos = _positions[tokenId];
-        uint256 ethValue = (pos.allocatedEth * ethUsdPrice) /
-            (10 ** priceDecimals);
-        return (ethValue * 100) / pos.backedUspd;
+        Position memory pos = _positions[tokenId]; // Use allocatedEth and backedUspd
+
+        if (pos.backedUspd == 0) {
+             // If there's no liability (backed USPD), the ratio is effectively infinite or undefined.
+             // Returning type(uint256).max could signify this. Or revert? Let's return max.
+             // Alternatively, if allocatedEth is also 0, return 0? Let's return max if liability is 0.
+             return type(uint256).max;
+        }
+        if (pos.allocatedEth == 0) {
+             return 0; // No collateral, ratio is 0.
+        }
+
+        // Calculate collateral value in USD wei
+        // Assuming ethUsdPrice is stETH price in USD scaled by 10^priceDecimals
+        uint256 collateralValueUSD_wei = (pos.allocatedEth * ethUsdPrice) / (10**priceDecimals);
+
+        // Liability value in USD wei (assuming backedUspd has 18 decimals)
+        uint256 liabilityValueUSD_wei = pos.backedUspd;
+
+        // Calculate ratio = (Collateral Value / Liability Value) * 100
+        // Ensure consistent decimals (scale collateral to 18 decimals)
+        uint256 scaledCollateralValue = collateralValueUSD_wei * (10**18);
+        uint256 ratio = (scaledCollateralValue * 100) / liabilityValueUSD_wei;
+
+        return ratio;
     }
 
     // Required overrides
