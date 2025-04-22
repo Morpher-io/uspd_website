@@ -101,25 +101,17 @@ contract DeployScript is Script {
             usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
             chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-            lidoAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+            lidoAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // Lido contract
             stETHAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // stETH is same as Lido contract
-        } else if (chainId == 5 || chainId == 11155111) { // Goerli or Sepolia
-            // Note: Lido might not be fully functional on testnets, use appropriate addresses if available
-            // Using placeholders - replace with actual testnet addresses if needed
-            usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Goerli USDC example
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Goerli Uniswap example
-            chainlinkAggregator = 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e; // Goerli ETH/USD example
-            lidoAddress = address(0x1); // Placeholder - Deploy MockLido on testnet?
-            stETHAddress = address(0x2); // Placeholder - Deploy MockStETH on testnet?
-        } else if (chainId == 137) {
-            // Polygon
-            usdcAddress = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Check Polygon Uniswap Router
-            chainlinkAggregator = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0; // Polygon ETH/USD
-            lidoAddress = address(0x3); // Placeholder - Lido might not be on Polygon directly
-            stETHAddress = address(0x4); // Placeholder - stETH might be bridged
-        } else {
-            // Local development (Anvil/Hardhat) - Deploy Mocks
+        } else if (chainId == 11155111) { // Sepolia
+            usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Using Goerli USDC example, update if specific Sepolia USDC exists
+            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Using Goerli Uniswap example, update if specific Sepolia Router exists
+            chainlinkAggregator = 0x694AA1769357215DE4FAC081bf1f309aDC325306; // Sepolia ETH/USD
+            // Use Sepolia Lido addresses from https://docs.lido.fi/deployed-contracts/sepolia/
+            lidoAddress = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Lido & stETH token proxy
+            stETHAddress = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Lido & stETH token proxy
+        } else if (chainId == 31337) { // Local development (Anvil/Hardhat) - Deploy Mocks
+            console2.log("Local development detected (chainId 31337), deploying mocks...");
             // Deploy MockStETH
             MockStETH mockStETH = new MockStETH();
             stETHAddress = address(mockStETH);
@@ -128,60 +120,90 @@ contract DeployScript is Script {
             lidoAddress = address(mockLido);
             // Use placeholder addresses for others
             usdcAddress = address(0x5);
-            uniswapRouter = address(0x6);
-            chainlinkAggregator = address(0x7);
+            uniswapRouter = address(0x6); // Placeholder
+            chainlinkAggregator = address(0x7); // Placeholder
+        } else {
+            // Other networks (e.g., Polygon) - Prepare for bridged token
+            console2.log("Deploying for bridged token scenario on chain ID:", chainId);
+            // Set addresses required by Oracle if it's deployed, otherwise 0x0
+            // Assuming Oracle might still be needed for some price info or bridged functionality
+            if (chainId == 137) { // Polygon specific example
+                 usdcAddress = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
+                 uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Check Polygon Uniswap Router
+                 chainlinkAggregator = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0; // Polygon ETH/USD
+            } else {
+                 // Default placeholders for other networks if Oracle is needed
+                 usdcAddress = address(0xdead); // Placeholder - replace if Oracle used
+                 uniswapRouter = address(0xbeef); // Placeholder - replace if Oracle used
+                 chainlinkAggregator = address(0xcafe); // Placeholder - replace if Oracle used
+            }
+            // Stabilizer system components are not deployed
+            lidoAddress = address(0);
+            stETHAddress = address(0);
+            initialRateContractDeposit = 0; // No rate contract deposit needed
         }
     }
 
     function run() public {
         vm.startBroadcast();
 
-        // Deploy ProxyAdmin
+        // --- Always Deployed ---
         deployProxyAdmin();
-
-        // Deploy Oracle contracts
         deployOracleImplementation();
-        deployOracleProxy();
+        deployOracleProxy(); // Needs ProxyAdmin, initializes Oracle
 
-        // Deploy PoolSharesConversionRate contract (needs Lido and stETH addresses)
-        deployPoolSharesConversionRate();
+        // --- Conditional Deployment ---
+        bool deployFullSystem = (chainId == 1 || chainId == 11155111 || chainId == 31337);
 
-        // Deploy Implementations first
-        deployOracleImplementation();
-        deployPositionNFTImplementation();
-        deployStabilizerNFTImplementation();
+        if (deployFullSystem) {
+            console2.log("Deploying Full System...");
+            // 1. Deploy Implementations (Oracle already done)
+            deployPositionNFTImplementation();
+            deployStabilizerNFTImplementation();
+            // 2. Deploy Rate Contract
+            deployPoolSharesConversionRate();
+            // 3. Deploy Proxies (Admin, Oracle already done) - No Init Data
+            deployStabilizerNFTProxy_NoInit(); // Deploy proxy, get address
+            deployPositionNFTProxy_NoInit(); // Deploy proxy, get address
+            // 4. Deploy Token (Needs Oracle, Stabilizer Proxy Address)
+            deployUspdToken(); // Pass stabilizerProxyAddress
+            // 5. Initialize Proxies
+            initializeStabilizerNFTProxy(); // Pass positionNFTProxyAddress, tokenAddress, stETH, lido, admin
+            initializePositionNFTProxy(); // Pass oracleProxyAddress, stETHAddress, lidoAddress, rateContractAddress, stabilizerProxyAddress, admin
+            // 6. Setup Roles
+            setupRolesAndPermissions();
+        } else {
+            console2.log("Deploying Bridged Token Only...");
+            // --- Bridged Token Deployment ---
+            // Set placeholder addresses for non-deployed contracts
+            positionNFTImplAddress = address(0);
+            positionNFTProxyAddress = address(0);
+            stabilizerImplAddress = address(0);
+            stabilizerProxyAddress = address(0);
+            rateContractAddress = address(0);
 
-        // Deploy Proxies and Token (order matters for dependencies)
-        deployProxyAdmin();
-        deployOracleProxy(); // Needs ProxyAdmin
+            // Deploy Token with address(0) for stabilizer
+            deployUspdToken_Bridged();
+            // Setup minimal roles for Token
+            setupRolesAndPermissions_Bridged();
+        }
 
-        // Deploy UspdToken (needs Oracle)
-        deployUspdToken(); // Modified to not need temporary address
-
-        // Deploy StabilizerNFT proxy (needs PositionNFT, Token, ProxyAdmin)
-        // We need PositionNFT address first, so deploy it next
-        deployPositionNFTProxy(); // Needs Oracle, stETH, Lido, RateContract, StabilizerNFT (will be deployed next), Admin
-
-        // Deploy StabilizerNFT proxy (needs PositionNFT, Token, ProxyAdmin)
-        deployStabilizerNFTProxy(); // Needs PositionNFT, Token, ProxyAdmin
-
-        // Update the token with the correct stabilizer address (now done in deployUspdToken)
-        // updateTokenStabilizer(); // No longer needed if passed in constructor/initializer
-
-        // Update other contracts with necessary addresses (e.g., RateContract address)
-        // Note: Check if initializers need the RateContract address. If so, adjust deployment order.
-        // Based on plan, UspdToken needs it, but likely set via a function post-deployment.
-
-        // Grant necessary roles for cross-contract interactions
-        setupRolesAndPermissions();
-
-        // Save deployment information
-        saveDeploymentInfo();
+        // --- Always Save ---
+        saveDeploymentInfo(); // Adapt to save 0x0 for non-deployed contracts
 
         vm.stopBroadcast();
     }
 
     // --- Deployment Functions ---
+
+    // --- Helper: Deploy Proxy without Init Data ---
+    function deployProxy_NoInit(bytes32 salt, address implementationAddress) internal returns (address proxyAddress) {
+         bytes memory bytecode = abi.encodePacked(
+            type(TransparentUpgradeableProxy).creationCode,
+            abi.encode(implementationAddress, proxyAdminAddress, bytes("")) // Empty init data
+        );
+        proxyAddress = createX.deployCreate2{value: 0}(salt, bytecode);
+    }
 
     function deployProxyAdmin() internal {
         // Deploy ProxyAdmin with CREATE2 using CreateX
@@ -229,6 +251,7 @@ contract DeployScript is Script {
 
     function deployPositionNFTImplementation() internal {
         // Deploy UspdCollateralizedPositionNFT implementation with regular CREATE
+        console2.log("Deploying PositionNFT implementation...");
         UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
         positionNFTImplAddress = address(positionNFTImpl);
 
@@ -238,42 +261,57 @@ contract DeployScript is Script {
         );
     }
 
-    function deployPositionNFTProxy() internal {
-        // Prepare initialization data - requires stabilizerProxyAddress which is deployed later
-        // Re-order needed. Assuming stabilizerProxyAddress is available now.
-        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed yet"); // Safety check
+    // Deploy PositionNFT Proxy without initializing
+    function deployPositionNFTProxy_NoInit() internal {
+        console2.log("Deploying PositionNFT proxy (no init)...");
+        require(positionNFTImplAddress != address(0), "PositionNFT implementation not deployed");
+        positionNFTProxyAddress = deployProxy_NoInit(POSITION_NFT_PROXY_SALT, positionNFTImplAddress);
+        console2.log(
+            "UspdCollateralizedPositionNFT proxy (uninitialized) deployed at:",
+            positionNFTProxyAddress
+        );
+    }
 
-        bytes memory initData = abi.encodeCall(
+    // Initialize PositionNFT Proxy
+    function initializePositionNFTProxy() internal {
+         console2.log("Initializing PositionNFT proxy at:", positionNFTProxyAddress);
+         require(positionNFTProxyAddress != address(0), "PositionNFT proxy not deployed");
+         require(oracleProxyAddress != address(0), "Oracle proxy not deployed");
+         require(stETHAddress != address(0), "stETH address not set");
+         require(lidoAddress != address(0), "Lido address not set");
+         require(rateContractAddress != address(0), "Rate contract address not set");
+         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
+
+         // Prepare initialization data
+         bytes memory initData = abi.encodeCall(
             UspdCollateralizedPositionNFT.initialize,
             (
                 oracleProxyAddress,
                 stETHAddress,
                 lidoAddress,
                 rateContractAddress,
-                stabilizerProxyAddress, // Pass the actual stabilizer address
+                stabilizerProxyAddress,
                 deployer // Admin
             )
         );
 
-        // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
-        bytes memory bytecode = abi.encodePacked(
-            type(TransparentUpgradeableProxy).creationCode,
-            abi.encode(positionNFTImplAddress, proxyAdminAddress, initData)
-        );
-
-        positionNFTProxyAddress = createX.deployCreate2{value: 0}(
-            POSITION_NFT_PROXY_SALT,
-            bytecode
-        );
-
-        console2.log(
-            "UspdCollateralizedPositionNFT proxy deployed at:",
-            positionNFTProxyAddress
-        );
+        // Call initialize via the proxy
+        (bool success, bytes memory result) = positionNFTProxyAddress.call(initData);
+        if (!success) {
+             // Try to decode revert reason
+             if (result.length < 68) { // Not a standard error signature
+                 revert("PositionNFT Proxy initialization failed with no reason");
+             }
+             bytes memory reason = abi.decode(result[4:], (string)); // Skip selector
+             revert(string(abi.encodePacked("PositionNFT Proxy initialization failed: ", reason)));
+        }
+         console2.log("PositionNFT proxy initialized.");
     }
+
 
     function deployStabilizerNFTImplementation() internal {
         // Deploy StabilizerNFT implementation with regular CREATE
+        console2.log("Deploying StabilizerNFT implementation...");
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
         stabilizerImplAddress = address(stabilizerImpl);
 
@@ -283,9 +321,10 @@ contract DeployScript is Script {
         );
     }
 
-    // Deploy token with actual stabilizer address
+    // Deploy token for full system
     function deployUspdToken() internal {
-        // Requires stabilizerProxyAddress to be deployed first.
+        console2.log("Deploying UspdToken for full system...");
+        require(oracleProxyAddress != address(0), "Oracle proxy not deployed yet");
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed yet"); // Safety check
 
         // Get the bytecode of UspdToken with constructor arguments
@@ -298,40 +337,73 @@ contract DeployScript is Script {
         tokenAddress = createX.deployCreate2{value: 0}(TOKEN_SALT, bytecode);
 
         console2.log("UspdToken deployed at:", tokenAddress);
-        console2.log("(Stabilizer address will be updated later)");
     }
 
-    // Update the token with the correct stabilizer address - Removed as it's done in deployUspdToken now
+    // Deploy token for bridged scenario
+    function deployUspdToken_Bridged() internal {
+        console2.log("Deploying UspdToken for bridged scenario...");
+        require(oracleProxyAddress != address(0), "Oracle proxy not deployed yet");
 
-    function deployStabilizerNFTProxy() internal {
-        // Requires positionNFTProxyAddress and tokenAddress to be deployed first.
-        require(positionNFTProxyAddress != address(0), "PositionNFT proxy not deployed yet");
-        require(tokenAddress != address(0), "Token not deployed yet");
-
-        // Prepare initialization data
-        bytes memory initData = abi.encodeCall(
-            StabilizerNFT.initialize,
-            (positionNFTProxyAddress, tokenAddress, deployer)
-        );
-
-        // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
+        // Get the bytecode of UspdToken with constructor arguments
         bytes memory bytecode = abi.encodePacked(
-            type(TransparentUpgradeableProxy).creationCode,
-            abi.encode(stabilizerImplAddress, proxyAdminAddress, initData)
+            type(USPDToken).creationCode,
+            abi.encode(oracleProxyAddress, address(0), deployer) // Pass address(0) for stabilizer
         );
 
-        stabilizerProxyAddress = createX.deployCreate2{value: 0}(
-            STABILIZER_PROXY_SALT,
-            bytecode
-        );
+        // Deploy using CREATE2 for deterministic address using CreateX
+        tokenAddress = createX.deployCreate2{value: 0}(TOKEN_SALT, bytecode);
 
+        console2.log("UspdToken (bridged) deployed at:", tokenAddress);
+    }
+
+
+    // Deploy StabilizerNFT Proxy without initializing
+    function deployStabilizerNFTProxy_NoInit() internal {
+        console2.log("Deploying StabilizerNFT proxy (no init)...");
+        require(stabilizerImplAddress != address(0), "StabilizerNFT implementation not deployed");
+        stabilizerProxyAddress = deployProxy_NoInit(STABILIZER_PROXY_SALT, stabilizerImplAddress);
         console2.log(
-            "StabilizerNFT proxy deployed at:",
+            "StabilizerNFT proxy (uninitialized) deployed at:",
             stabilizerProxyAddress
         );
     }
 
+    // Initialize StabilizerNFT Proxy
+    function initializeStabilizerNFTProxy() internal {
+        console2.log("Initializing StabilizerNFT proxy at:", stabilizerProxyAddress);
+        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
+        require(positionNFTProxyAddress != address(0), "PositionNFT proxy not deployed");
+        require(tokenAddress != address(0), "Token not deployed");
+        require(stETHAddress != address(0), "stETH address not set");
+        require(lidoAddress != address(0), "Lido address not set");
+
+        // Prepare initialization data
+        // StabilizerNFT.initialize(address _positionNFT, address _uspdToken, address _stETH, address _lido, address _admin)
+        bytes memory initData = abi.encodeCall(
+            StabilizerNFT.initialize,
+            (positionNFTProxyAddress, tokenAddress, stETHAddress, lidoAddress, deployer)
+        );
+
+         // Call initialize via the proxy
+        (bool success, bytes memory result) = stabilizerProxyAddress.call(initData);
+        if (!success) {
+             // Try to decode revert reason
+             if (result.length < 68) { // Not a standard error signature
+                 revert("StabilizerNFT Proxy initialization failed with no reason");
+             }
+             bytes memory reason = abi.decode(result[4:], (string)); // Skip selector
+             revert(string(abi.encodePacked("StabilizerNFT Proxy initialization failed: ", reason)));
+        }
+        console2.log("StabilizerNFT proxy initialized.");
+    }
+
+
     function deployPoolSharesConversionRate() internal {
+        console2.log("Deploying PoolSharesConversionRate...");
+        require(stETHAddress != address(0), "stETH address not set for RateContract");
+        require(lidoAddress != address(0), "Lido address not set for RateContract");
+        require(initialRateContractDeposit > 0, "Initial rate contract deposit must be > 0");
+
         // Get the bytecode of PoolSharesConversionRate with constructor arguments
         bytes memory bytecode = abi.encodePacked(
             type(PoolSharesConversionRate).creationCode,
@@ -348,57 +420,98 @@ contract DeployScript is Script {
         console2.log("Initial ETH deposit:", initialRateContractDeposit);
     }
 
+    // Setup roles for the full system deployment
     function setupRolesAndPermissions() internal {
+        console2.log("Setting up roles for full system...");
+
         // Grant roles to the PriceOracle
+        console2.log("Granting Oracle roles...");
         PriceOracle oracle = PriceOracle(oracleProxyAddress);
         oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
-        oracle.grantRole(oracle.SIGNER_ROLE(), deployer);
+        oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
 
         // Grant roles to the PositionNFT
+        console2.log("Granting PositionNFT roles...");
         UspdCollateralizedPositionNFT positionNFT = UspdCollateralizedPositionNFT(
                 payable(positionNFTProxyAddress)
             );
+        // Grant MINTER_ROLE to StabilizerNFT
         positionNFT.grantRole(
             positionNFT.MINTER_ROLE(),
             stabilizerProxyAddress
         );
+        // Grant STABILIZER_NFT_ROLE to StabilizerNFT (for removeCollateral)
         positionNFT.grantRole(
-            positionNFT.TRANSFERCOLLATERAL_ROLE(),
+            positionNFT.STABILIZER_NFT_ROLE(),
             stabilizerProxyAddress
         );
+        // Grant MODIFYALLOCATION_ROLE to StabilizerNFT
         positionNFT.grantRole(
             positionNFT.MODIFYALLOCATION_ROLE(),
             stabilizerProxyAddress
         );
+        // Grant DEFAULT_ADMIN_ROLE to deployer (already done in initializer)
 
         // Grant roles to the StabilizerNFT
+        console2.log("Granting StabilizerNFT roles...");
         StabilizerNFT stabilizer = StabilizerNFT(payable(stabilizerProxyAddress));
         // Deployer already has DEFAULT_ADMIN_ROLE from initialization
+        // Grant MINTER_ROLE to deployer (or a dedicated minter address)
         stabilizer.grantRole(stabilizer.MINTER_ROLE(), deployer);
 
         // Grant roles to the UspdToken
+        console2.log("Granting Token roles...");
         USPDToken token = USPDToken(payable(tokenAddress));
-        // Deployer already has roles from constructor
+        // Deployer already has DEFAULT_ADMIN_ROLE, EXCESS_COLLATERAL_DRAIN_ROLE, UPDATE_ORACLE_ROLE from constructor
+        // Grant STABILIZER_ROLE to StabilizerNFT
         token.grantRole(token.STABILIZER_ROLE(), stabilizerProxyAddress);
 
-        // Note: PoolSharesConversionRate does not require specific roles.
+        console2.log("Roles setup complete.");
     }
 
+    // Setup minimal roles for the bridged token scenario
+    function setupRolesAndPermissions_Bridged() internal {
+        console2.log("Setting up roles for bridged token...");
+
+        // Grant roles to the PriceOracle (if needed for bridged functionality)
+        console2.log("Granting Oracle roles...");
+        PriceOracle oracle = PriceOracle(oracleProxyAddress);
+        oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
+        oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
+
+        // Grant roles to the UspdToken
+        console2.log("Granting Token roles...");
+        USPDToken token = USPDToken(payable(tokenAddress));
+        // Deployer already has DEFAULT_ADMIN_ROLE, EXCESS_COLLATERAL_DRAIN_ROLE, UPDATE_ORACLE_ROLE from constructor
+        // No STABILIZER_ROLE to grant as stabilizer is address(0)
+
+        console2.log("Bridged roles setup complete.");
+    }
+
+
     function saveDeploymentInfo() internal {
+        console2.log("Saving deployment info to:", deploymentPath);
         // Create a JSON object structure if file doesn't exist
         string memory initialJson = '{'
             '"contracts": {'
-                '"proxyAdmin": "0x0",'
-                '"oracleImpl": "0x0",'
-                '"oracle": "0x0",'
-                '"positionNFTImpl": "0x0",'
-                '"positionNFT": "0x0",'
-                '"stabilizerImpl": "0x0",'
-                '"stabilizer": "0x0",'
-                '"token": "0x0",'
-                '"rateContract": "0x0"' // Add rateContract field
+                '"proxyAdmin": "0x0000000000000000000000000000000000000000",'
+                '"oracleImpl": "0x0000000000000000000000000000000000000000",'
+                '"oracle": "0x0000000000000000000000000000000000000000",'
+                '"positionNFTImpl": "0x0000000000000000000000000000000000000000",'
+                '"positionNFT": "0x0000000000000000000000000000000000000000",'
+                '"stabilizerImpl": "0x0000000000000000000000000000000000000000",'
+                '"stabilizer": "0x0000000000000000000000000000000000000000",'
+                '"token": "0x0000000000000000000000000000000000000000",'
+                '"rateContract": "0x0000000000000000000000000000000000000000"'
             '},'
             '"config": {'
+                '"usdcAddress": "0x0000000000000000000000000000000000000000",'
+                '"uniswapRouter": "0x0000000000000000000000000000000000000000",'
+                '"chainlinkAggregator": "0x0000000000000000000000000000000000000000",'
+                '"lidoAddress": "0x0000000000000000000000000000000000000000",'
+                '"stETHAddress": "0x0000000000000000000000000000000000000000"'
+            '},'
+            '"metadata": {'
                 '"usdcAddress": "0x0",'
                 '"uniswapRouter": "0x0",'
                 '"chainlinkAggregator": "0x0",'
@@ -416,18 +529,20 @@ contract DeployScript is Script {
             vm.writeFile(deploymentPath, initialJson);
         }
 
-        // Add contract addresses
+        // Save always deployed contracts
         vm.writeJson(vm.toString(proxyAdminAddress), deploymentPath, ".contracts.proxyAdmin");
         vm.writeJson(vm.toString(oracleImplAddress), deploymentPath, ".contracts.oracleImpl");
         vm.writeJson(vm.toString(oracleProxyAddress), deploymentPath, ".contracts.oracle");
+        vm.writeJson(vm.toString(tokenAddress), deploymentPath, ".contracts.token"); // Token is always deployed
+
+        // Conditionally save full system contracts (use the addresses stored in state variables)
         vm.writeJson(vm.toString(positionNFTImplAddress), deploymentPath, ".contracts.positionNFTImpl");
         vm.writeJson(vm.toString(positionNFTProxyAddress), deploymentPath, ".contracts.positionNFT");
         vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
         vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
-        vm.writeJson(vm.toString(tokenAddress), deploymentPath, ".contracts.token");
-        vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract"); // Save rate contract address
+        vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
 
-        // Add configuration
+        // Save configuration (some might be 0x0 depending on network)
         vm.writeJson(vm.toString(usdcAddress), deploymentPath, ".config.usdcAddress");
         vm.writeJson(vm.toString(uniswapRouter), deploymentPath, ".config.uniswapRouter");
         vm.writeJson(vm.toString(chainlinkAggregator), deploymentPath, ".config.chainlinkAggregator");
