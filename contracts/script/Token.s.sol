@@ -331,10 +331,12 @@ contract DeployScript is Script {
         require(oracleProxyAddress != address(0), "Oracle proxy not deployed yet");
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed yet"); // Safety check
 
+        require(rateContractAddress != address(0), "Rate contract not deployed yet"); // Add check
+
         // Get the bytecode of UspdToken with constructor arguments
         bytes memory bytecode = abi.encodePacked(
             type(USPDToken).creationCode,
-            abi.encode(oracleProxyAddress, stabilizerProxyAddress, deployer) // Pass actual stabilizer address
+            abi.encode(oracleProxyAddress, stabilizerProxyAddress, rateContractAddress, deployer) // Add rateContractAddress
         );
 
         // Deploy using CREATE2 for deterministic address using CreateX
@@ -351,7 +353,7 @@ contract DeployScript is Script {
         // Get the bytecode of UspdToken with constructor arguments
         bytes memory bytecode = abi.encodePacked(
             type(USPDToken).creationCode,
-            abi.encode(oracleProxyAddress, address(0), deployer) // Pass address(0) for stabilizer
+            abi.encode(oracleProxyAddress, address(0), address(0), deployer) // Pass address(0) for stabilizer and rateContract
         );
 
         // Deploy using CREATE2 for deterministic address using CreateX
@@ -380,12 +382,13 @@ contract DeployScript is Script {
         require(tokenAddress != address(0), "Token not deployed");
         require(stETHAddress != address(0), "stETH address not set");
         require(lidoAddress != address(0), "Lido address not set");
+        require(rateContractAddress != address(0), "Rate contract not deployed yet"); // Add check
 
         // Prepare initialization data
-        // StabilizerNFT.initialize(address _positionNFT, address _uspdToken, address _stETH, address _lido, address _admin)
+        // StabilizerNFT.initialize(address _positionNFT, address _uspdToken, address _stETH, address _lido, address _rateContract, address _admin)
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (positionNFTProxyAddress, tokenAddress, stETHAddress, lidoAddress, deployer)
+            (positionNFTProxyAddress, tokenAddress, stETHAddress, lidoAddress, rateContractAddress, deployer) // Add rateContractAddress
         );
 
          // Call initialize via the proxy
