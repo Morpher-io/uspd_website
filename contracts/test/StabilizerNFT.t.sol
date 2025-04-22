@@ -65,11 +65,12 @@ contract StabilizerNFTTest is Test {
             address(mockLido)
         );
 
-        // Deploy USPD token (needs oracle, stabilizer will be set later)
+        // Deploy USPD token (needs oracle, rate contract, stabilizer will be set later)
         uspdToken = new USPDToken(
             address(priceOracle),
-            address(0),
-            address(this)
+            address(0), // Stabilizer address set later
+            address(rateContract), // Add rate contract address
+            address(this) // Admin
         );
 
         // 2. Deploy Position NFT implementation and proxy
@@ -154,6 +155,7 @@ contract StabilizerNFTTest is Test {
             address(uspdToken), // _uspdToken
             address(mockStETH), // _stETH
             address(mockLido), // _lido
+            address(rateContract), // _rateContract
             address(this) // _admin
         );
 
