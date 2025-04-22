@@ -242,7 +242,7 @@ contract StabilizerNFTTest is Test {
         assertEq(
             escrow.allocatedStETH(),
             0,
-            "Escrow initial allocated mismatch"
+            // "Escrow initial allocated mismatch" // State variable removed
         );
         assertEq(
             mockStETH.balanceOf(deployedEscrowAddress),

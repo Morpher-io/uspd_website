@@ -60,7 +60,7 @@ contract StabilizerEscrowTest is Test {
         assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch");
         assertEq(escrow.stETH(), address(mockStETH), "stETH address mismatch");
         assertEq(escrow.lido(), address(mockLido), "Lido address mismatch");
-        // assertEq(escrow.allocatedStETH(), 0, "Initial allocatedStETH should be 0"); // State variable removed
+        // allocatedStETH state variable removed
         // unallocatedStETH view function removed
     }
 
@@ -126,7 +126,49 @@ contract StabilizerEscrowTest is Test {
         escrow.deposit{value: 1 ether}();
     }
 
-    // --- approveAllocation tests removed ---
+    // --- Test approveAllocation() ---
+
+    function test_ApproveAllocation_Success() public {
+        uint256 approveAmount = 0.2 ether;
+        uint256 initialBalance = mockStETH.balanceOf(address(escrow));
+        require(approveAmount <= initialBalance, "Test setup error: approveAmount > initialBalance");
+
+        vm.prank(stabilizerNFT);
+        vm.expectEmit(true, true, true, true, address(escrow));
+        emit IStabilizerEscrow.AllocationApproved(positionNFT, approveAmount);
+        escrow.approveAllocation(approveAmount, positionNFT);
+
+        assertEq(mockStETH.allowance(address(escrow), positionNFT), approveAmount, "stETH allowance mismatch");
+        // Escrow balance should not change on approval
+        assertEq(mockStETH.balanceOf(address(escrow)), initialBalance, "Escrow balance changed on approval");
+    }
+
+     function test_ApproveAllocation_Revert_ZeroAmount() public {
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(StabilizerEscrow.ZeroAmount.selector);
+        escrow.approveAllocation(0, positionNFT);
+    }
+
+    function test_ApproveAllocation_Revert_ZeroAddress() public {
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
+        escrow.approveAllocation(0.1 ether, address(0));
+    }
+
+    function test_ApproveAllocation_Revert_InsufficientBalance() public {
+        uint256 currentBalance = mockStETH.balanceOf(address(escrow));
+        uint256 amount = currentBalance + 1 wei; // Try to approve more than available
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(escrow), currentBalance, amount));
+        escrow.approveAllocation(amount, positionNFT);
+    }
+
+    function test_ApproveAllocation_Revert_NotStabilizerNFT() public {
+        vm.prank(user1);
+        vm.expectRevert("Caller is not StabilizerNFT");
+        escrow.approveAllocation(0.1 ether, positionNFT);
+    }
+
 
     // --- registerUnallocation tests removed ---
 

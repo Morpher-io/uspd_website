@@ -91,9 +91,25 @@ contract StabilizerEscrow is IStabilizerEscrow {
         emit DepositReceived(msg.value); // Emit the event
     }
 
-    // approveAllocation function removed
+    /**
+     * @notice Approves the PositionNFT contract to spend stETH for allocation.
+     * @param amount The amount of stETH to approve.
+     * @param positionNFTAddress The address of the PositionNFT contract.
+     * @dev Callable only by StabilizerNFT. Checks for sufficient balance.
+     */
+    function approveAllocation(uint256 amount, address positionNFTAddress) external onlyStabilizerNFT {
+        if (amount == 0) revert ZeroAmount();
+        if (positionNFTAddress == address(0)) revert ZeroAddress();
 
-    // registerUnallocation function removed
+        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
+        if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount);
+
+        // Approve PositionNFT to pull the funds
+        IERC20(stETH).approve(positionNFTAddress, amount);
+        emit AllocationApproved(positionNFTAddress, amount); // Emit event
+    }
+
+    // registerUnallocation function removed (Escrow doesn't track allocation state)
 
     /**
      * @notice Withdraws unallocated stETH to the stabilizer owner.
