@@ -285,27 +285,29 @@ contract StabilizerEscrowTest is Test {
         // Simulate a scenario where allocatedStETH > balance (e.g., external stETH transfer out)
         // This shouldn't happen normally but test the view function's safety
         uint256 allocateAmount = 0.5 ether;
+        uint256 initialBalance = escrow.unallocatedStETH(); // Should be INITIAL_DEPOSIT
+        require(allocateAmount < initialBalance, "Test setup error: allocateAmount >= initialBalance");
+
+        // 1. Allocate some funds
         vm.prank(stabilizerNFT);
-        escrow.approveAllocation(allocateAmount, positionNFT); // allocatedStETH = 0.5
+        escrow.approveAllocation(allocateAmount, positionNFT); // allocatedStETH = 0.5 ether
+        assertEq(escrow.allocatedStETH(), allocateAmount, "Allocation failed");
+        assertEq(escrow.unallocatedStETH(), initialBalance - allocateAmount, "Unallocated mismatch after allocation");
 
-        // Manually transfer stETH out of escrow to make balance < allocated
-        uint256 transferAmount = mockStETH.balanceOf(address(escrow)); // Transfer everything out
-        vm.prank(deployer); // Assume deployer owns stETH supply for minting/transferring
-        mockStETH.transferFrom(address(escrow), user1, transferAmount); // This needs approval first, or use direct transfer if escrow owns stETH
+        // 2. Simulate stETH being transferred *out* of the escrow contract, making balance < allocated
+        // Transfer slightly more than the unallocated amount, so balance becomes less than allocatedAmount
+        uint256 transferAmount = (initialBalance - allocateAmount) + 0.1 ether;
+        require(transferAmount < initialBalance, "Test setup error: transferAmount too high");
 
-        // Simpler: Directly manipulate allocatedStETH using cheatcodes if possible,
-        // or set up the state such that balance < allocatedStETH.
-        // Let's assume allocatedStETH is somehow larger than balance.
-        // We can't easily force this state without cheatcodes/modifying escrow.
-        // Instead, let's test the logic conceptually: if allocated >= balance, result is 0.
+        // Use vm.prank to make the transfer originate *from* the escrow contract itself
+        vm.startPrank(address(escrow));
+        mockStETH.transfer(user1, transferAmount); // Transfer stETH out
+        vm.stopPrank();
 
-        // Test case: Allocate exactly the balance
-        vm.prank(stabilizerNFT);
-        escrow.approveAllocation(mockStETH.balanceOf(address(escrow)), positionNFT);
-        assertEq(escrow.unallocatedStETH(), 0, "Unallocated should be 0 when allocated equals balance");
-
-        // We cannot easily test allocated > balance without modifying the contract or using cheatcodes.
-        // The code `if (allocatedStETH >= currentBalance) { return 0; }` handles this.
+        // 3. Verify the view function returns 0 when balance < allocatedStETH
+        uint256 currentBalance = mockStETH.balanceOf(address(escrow));
+        assertTrue(currentBalance < allocateAmount, "Balance should be less than allocated amount now");
+        assertEq(escrow.unallocatedStETH(), 0, "Unallocated should be 0 when balance < allocatedStETH");
     }
 
 
