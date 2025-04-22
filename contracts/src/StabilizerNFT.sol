@@ -207,52 +207,72 @@ contract StabilizerNFT is
             }
 
             StabilizerPosition storage pos = positions[currentId];
+            address escrowAddress = stabilizerEscrows[currentId];
+            require(escrowAddress != address(0), "Escrow not found for stabilizer"); // Should not happen
 
-            if (remainingEth == 0) break;
+            // Get available stETH balance from the escrow
+            uint256 escrowBalance = IStabilizerEscrow(escrowAddress).unallocatedStETH();
 
-            // Calculate how much stabilizer ETH is needed for this user ETH
-            // Multiply first to avoid rounding down
-            uint256 stabilizerEthNeeded = (remainingEth * pos.minCollateralRatio) / 100 - remainingEth;
-
-            uint256 toAllocate = stabilizerEthNeeded > pos.totalEth
-                ? pos.totalEth
-                : stabilizerEthNeeded;
-
-            // If stabilizer can't provide enough ETH, adjust user's ETH amount
-            uint256 userEthShare = remainingEth;
-            if (toAllocate < stabilizerEthNeeded) {
-                // Calculate maximum user ETH that can be backed by available stabilizer ETH
-                // Add 1% on top for buffer
-                userEthShare =
-                    (toAllocate * 100) /
-                    (pos.minCollateralRatio - 100);
+            // Skip if escrow has no funds or user needs no more funds
+            if (escrowBalance == 0 || remainingEth == 0) {
+                 currentId = pos.nextUnallocated; // Move to next
+                 continue;
             }
 
+            // Calculate how much stabilizer stETH is ideally needed for the remaining user ETH
+            uint256 stabilizerStEthNeeded = (remainingEth * pos.minCollateralRatio) / 100 - remainingEth;
+
+            // Determine how much stabilizer stETH can actually be allocated (min of needed and available)
+            uint256 toAllocate = stabilizerStEthNeeded > escrowBalance
+                ? escrowBalance
+                : stabilizerStEthNeeded;
+
+            // If stabilizer can't provide the ideally needed amount, adjust the user's ETH share accordingly
+            uint256 userEthShare = remainingEth;
+            if (toAllocate < stabilizerStEthNeeded) {
+                // Calculate maximum user ETH that can be backed by the available stabilizer stETH ('toAllocate')
+                // userEthShare = stabilizerStEthAllocated * 100 / (ratio - 100)
+                userEthShare = (toAllocate * 100) / (pos.minCollateralRatio - 100);
+                // Ensure we don't try to allocate more user ETH than remaining
+                if (userEthShare > remainingEth) {
+                    userEthShare = remainingEth;
+                }
+            }
+
+            // --- Prepare for PositionNFT interaction ---
             address owner = ownerOf(currentId);
             uint256 positionId = positionNFT.getTokenByOwner(owner);
 
-            // If no position exists, create one
+            // If no position exists for the owner, create one
             if (positionId == 0) {
                 positionId = positionNFT.mint(owner);
-                _registerAllocatedPosition(currentId);
+                _registerAllocatedPosition(currentId); // Add stabilizer to allocated list
             }
 
-            // Add collateral from both user and stabilizer
-            positionNFT.addCollateral{value: toAllocate + userEthShare}(
-                positionId
-            );
+            // Approve PositionNFT to pull stETH from Escrow
+            IStabilizerEscrow(escrowAddress).approveAllocation(toAllocate, address(positionNFT));
 
-            // Calculate USPD amount backed by user's ETH
+            // Call PositionNFT to add collateral (user ETH + pull stabilizer stETH)
+            // NOTE: This requires a new function in UspdCollateralizedPositionNFT
+            // positionNFT.addCollateralFromStabilizer{value: userEthShare}( // Send user ETH
+            //     positionId,
+            //     escrowAddress,
+            //     toAllocate // Amount of stETH to pull
+            // );
+            // Placeholder for the conceptual change - actual implementation in PositionNFT needed next.
+            // For now, let's assume the logic happens and update state here.
+
+            // Calculate USPD amount backed by the user's ETH share being allocated now
             uint256 uspdAmount = (userEthShare * ethUsdPrice) /
                 (10 ** priceDecimals);
-            positionNFT.modifyAllocation(positionId, uspdAmount);
+            // TODO: Call positionNFT.modifyAllocation AFTER addCollateralFromStabilizer succeeds
+            // positionNFT.modifyAllocation(positionId, currentBackedUspd + uspdAmount); // Add to existing backed amount
 
-            // Update state
-            pos.totalEth -= toAllocate;
-            result.allocatedEth += userEthShare; // Only track user's ETH
+            // Update loop variables
+            result.allocatedEth += userEthShare; // Track total user ETH allocated in this call
             remainingEth -= userEthShare;
 
-            emit FundsAllocated(
+            emit FundsAllocated( // Keep event as is for now
                 currentId,
                 toAllocate,
                 userEthShare,
@@ -261,12 +281,12 @@ contract StabilizerNFT is
 
             uint nextId = pos.nextUnallocated;
 
-            // Update unallocated list if no more funds
-            if (pos.totalEth == 0) {
+            // Update unallocated list if the escrow's entire balance was allocated
+            if (toAllocate == escrowBalance) {
                 _removeFromUnallocatedList(currentId);
             }
 
-            // Move to next stabilizer if we still have ETH to allocate
+            // Move to next stabilizer
             currentId = nextId;
         }
 
