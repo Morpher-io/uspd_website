@@ -19,7 +19,7 @@ interface IUspdCollateralizedPositionNFT is IERC721Errors { // Inherit standard 
     // --- Structs ---
     struct Position {
         uint256 allocatedEth;    // Amount of stETH allocated to this position
-        uint256 backedUspd;      // Amount of USPD backed by this position
+        uint256 backedPoolShares; // Amount of Pool Shares backed by this position
     }
 
     function mint(
