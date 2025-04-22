@@ -14,9 +14,9 @@ contract StabilizerEscrow is IStabilizerEscrow {
     // --- Errors ---
     error ZeroAddress();
     error ZeroAmount();
-    error InsufficientUnallocatedStETH();
-    error InsufficientAllocatedStETH();
-    error InitialDepositFailed();
+    // Removed InsufficientUnallocatedStETH
+    // Removed InsufficientAllocatedStETH
+    error InitialDepositFailed(); // Keep for constructor check if needed, though constructor doesn't deposit now
     error DepositFailed();
     error TransferFailed();
 
@@ -26,7 +26,7 @@ contract StabilizerEscrow is IStabilizerEscrow {
     address public immutable stETH;                 // stETH token contract
     address public immutable lido;                  // Lido staking pool contract
 
-    uint256 public allocatedStETH; // stETH currently allocated to the PositionNFT
+    // allocatedStETH state variable removed
 
     // --- Modifiers ---
     modifier onlyStabilizerNFT() {
@@ -67,10 +67,10 @@ contract StabilizerEscrow is IStabilizerEscrow {
 
         // // Verify stETH received - Removed from constructor
         // if (IERC20(stETH).balanceOf(address(this)) == 0) {
-        //     revert InitialDepositFailed();
+        //     revert InitialDepositFailed(); // Constructor doesn't deposit anymore
         // }
 
-        allocatedStETH = 0; // Explicitly initialize
+        // allocatedStETH removed, no initialization needed
     }
 
     // --- External Functions ---
@@ -90,44 +90,19 @@ contract StabilizerEscrow is IStabilizerEscrow {
         emit DepositReceived(msg.value); // Emit the event
     }
 
-    /**
-     * @notice Approves the PositionNFT contract to spend stETH for allocation.
-     * @param amount The amount of stETH to approve.
-     * @param positionNFTAddress The address of the PositionNFT contract.
-     * @dev Callable only by StabilizerNFT. Checks for sufficient unallocated funds.
-     */
-    function approveAllocation(uint256 amount, address positionNFTAddress) external onlyStabilizerNFT {
-        if (amount == 0) revert ZeroAmount();
-        if (positionNFTAddress == address(0)) revert ZeroAddress();
-        if (amount > unallocatedStETH()) revert InsufficientUnallocatedStETH();
+    // approveAllocation function removed
 
-        allocatedStETH += amount;
-
-        // Approve PositionNFT to pull the funds
-        IERC20(stETH).approve(positionNFTAddress, amount);
-    }
-
-    /**
-     * @notice Registers that stETH has been returned from the PositionNFT.
-     * @param amount The amount of stETH returned.
-     * @dev Callable only by StabilizerNFT after successful unallocation.
-     */
-    function registerUnallocation(uint256 amount) external onlyStabilizerNFT {
-        if (amount == 0) revert ZeroAmount();
-        // Use subtraction with underflow check (Solidity >=0.8.0)
-        if (amount > allocatedStETH) revert InsufficientAllocatedStETH();
-
-        allocatedStETH -= amount;
-    }
+    // registerUnallocation function removed
 
     /**
      * @notice Withdraws unallocated stETH to the stabilizer owner.
      * @param amount The amount of stETH to withdraw.
-     * @dev Callable only by StabilizerNFT upon request from the stabilizer owner.
+     * @dev Callable only by StabilizerNFT upon request from the stabilizer owner. Checks against total balance.
      */
     function withdrawUnallocated(uint256 amount) external onlyStabilizerNFT {
         if (amount == 0) revert ZeroAmount();
-        if (amount > unallocatedStETH()) revert InsufficientUnallocatedStETH();
+        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
+        if (amount > currentBalance) revert InsufficientBalance(currentBalance, amount); // Use standard ERC20 error if possible, or custom
 
         // Transfer stETH to the owner
         bool success = IERC20(stETH).transfer(stabilizerOwner, amount);
@@ -136,18 +111,7 @@ contract StabilizerEscrow is IStabilizerEscrow {
 
     // --- View Functions ---
 
-    /**
-     * @notice Calculates the amount of stETH currently not allocated.
-     * @return The amount of unallocated stETH.
-     */
-    function unallocatedStETH() public view returns (uint256) {
-        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
-        // Handle potential edge case where allocatedStETH might exceed balance due to external factors (unlikely)
-        if (allocatedStETH >= currentBalance) {
-            return 0;
-        }
-        return currentBalance - allocatedStETH;
-    }
+    // unallocatedStETH view function removed
 
     // --- Fallback ---
     // Accept ETH transfers directly (e.g., if StabilizerNFT sends back ETH during unallocation)
