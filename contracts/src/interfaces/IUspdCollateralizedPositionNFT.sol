@@ -20,7 +20,6 @@ interface IUspdCollateralizedPositionNFT {
         uint256 ethUsdPrice, 
         uint8 priceDecimals
     ) external view returns (uint256);
-   ) external view returns (uint256);
 
    function getPosition(uint256 tokenId) external view returns (Position memory);
 
