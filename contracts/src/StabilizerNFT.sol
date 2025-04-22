@@ -253,20 +253,19 @@ contract StabilizerNFT is
             IStabilizerEscrow(escrowAddress).approveAllocation(toAllocate, address(positionNFT));
 
             // Call PositionNFT to add collateral (user ETH + pull stabilizer stETH)
-            // NOTE: This requires a new function in UspdCollateralizedPositionNFT
-            // positionNFT.addCollateralFromStabilizer{value: userEthShare}( // Send user ETH
-            //     positionId,
-            //     escrowAddress,
-            //     toAllocate // Amount of stETH to pull
-            // );
-            // Placeholder for the conceptual change - actual implementation in PositionNFT needed next.
-            // For now, let's assume the logic happens and update state here.
+            positionNFT.addCollateralFromStabilizer{value: userEthShare}( // Send user ETH
+                positionId,
+                escrowAddress,
+                toAllocate // Amount of stETH to pull
+            );
 
             // Calculate USPD amount backed by the user's ETH share being allocated now
             uint256 uspdAmount = (userEthShare * ethUsdPrice) /
                 (10 ** priceDecimals);
-            // TODO: Call positionNFT.modifyAllocation AFTER addCollateralFromStabilizer succeeds
-            // positionNFT.modifyAllocation(positionId, currentBackedUspd + uspdAmount); // Add to existing backed amount
+
+            // Get current backed amount and add the new amount
+            IUspdCollateralizedPositionNFT.Position memory currentPosData = positionNFT.getPosition(positionId);
+            positionNFT.modifyAllocation(positionId, currentPosData.backedUspd + uspdAmount); // Add to existing backed amount
 
             // Update loop variables
             result.allocatedEth += userEthShare; // Track total user ETH allocated in this call
