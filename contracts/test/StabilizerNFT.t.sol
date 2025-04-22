@@ -65,104 +65,45 @@ contract StabilizerNFTTest is Test {
             address(mockLido)
         );
 
-        // Deploy USPD token (needs oracle, rate contract, stabilizer will be set later)
+        // 2. Deploy Implementations
+        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
+        StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
+
+        // 3. Deploy Proxies (without init data)
+        ERC1967Proxy stabilizerProxy_NoInit = new ERC1967Proxy(address(stabilizerNFTImpl), bytes(""));
+        stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy_NoInit))); // Get proxy instance
+
+        ERC1967Proxy positionProxy_NoInit = new ERC1967Proxy(address(positionNFTImpl), bytes(""));
+        positionNFT = UspdCollateralizedPositionNFT(payable(address(positionProxy_NoInit))); // Get proxy instance
+
+        // 4. Deploy USPD Token (AFTER proxies exist, needs Stabilizer proxy address)
         uspdToken = new USPDToken(
             address(priceOracle),
-            address(0), // Stabilizer address set later
-            address(rateContract), // Add rate contract address
+            address(stabilizerNFT), // Pass StabilizerNFT proxy address
+            address(rateContract),
             address(this) // Admin
         );
 
-        // 2. Deploy Position NFT implementation and proxy
-        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
-        // Encode all 6 arguments for PositionNFT.initialize
-        bytes memory positionInitData = abi.encodeWithSelector(
-            UspdCollateralizedPositionNFT.initialize.selector,
-            address(priceOracle), // _oracleAddress
-            address(mockStETH), // _stETHAddress
-            address(mockLido), // _lidoAddress
-            address(rateContract), // _rateContractAddress
-            address(0), // _stabilizerNFTAddress (will be the proxy deployed below)
-            address(this) // _admin
-        );
-        ERC1967Proxy positionProxy = new ERC1967Proxy(
-            address(positionNFTImpl),
-            positionInitData // This data is incomplete, needs stabilizer address
-        );
-        positionNFT = UspdCollateralizedPositionNFT(
-            payable(address(positionProxy))
+        // 5. Initialize Proxies (Now that all addresses are known)
+        positionNFT.initialize(
+            address(priceOracle),
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            address(stabilizerNFT), // Pass StabilizerNFT proxy address
+            address(this) // Admin
         );
 
-        // 3. Deploy StabilizerNFT implementation and proxy
-        StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
-        // Encode all 5 arguments for StabilizerNFT.initialize
-        bytes memory stabilizerInitData = abi.encodeWithSelector(
-            StabilizerNFT.initialize.selector,
-            address(positionNFT), // _positionNFT
-            address(uspdToken), // _uspdToken
-            address(mockStETH), // _stETH
-            address(mockLido), // _lido
-            address(this) // _admin
-        );
-        ERC1967Proxy stabilizerProxy = new ERC1967Proxy(
-            address(stabilizerNFTImpl),
-            stabilizerInitData
-        );
-        stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy)));
-
-        // 4. Update PositionNFT initializer data with the correct StabilizerNFT proxy address
-        // This is tricky because the proxy is already deployed. We need to call initialize separately.
-        // Let's redeploy the PositionNFT proxy *after* StabilizerNFT proxy is deployed.
-
-        // --- Revised Deployment Order ---
-        // (Keep mocks, oracle, rateContract, uspdToken deployments as above)
-
-        // Deploy StabilizerNFT implementation (no proxy yet)
-        // StabilizerNFT stabilizerNFTImpl = new StabilizerNFT(); // Already done above
-
-        // Deploy PositionNFT implementation (no proxy yet)
-        // UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT(); // Already done above
-
-        // Deploy StabilizerNFT Proxy (needs init data without PositionNFT address yet, or init later)
-        // Let's initialize later. Deploy proxy without init data first.
-        ERC1967Proxy stabilizerProxy_NoInit = new ERC1967Proxy(
-            address(stabilizerNFTImpl),
-            bytes("")
-        );
-        stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy_NoInit)));
-
-        // Deploy PositionNFT Proxy (needs init data with StabilizerNFT proxy address)
-        bytes memory positionInitData_Correct = abi.encodeWithSelector(
-            UspdCollateralizedPositionNFT.initialize.selector,
-            address(priceOracle), // _oracleAddress
-            address(mockStETH), // _stETHAddress
-            address(mockLido), // _lidoAddress
-            address(rateContract), // _rateContractAddress
-            address(stabilizerNFT), // _stabilizerNFTAddress (Correct Proxy Address)
-            address(this) // _admin
-        );
-        ERC1967Proxy positionProxy_Correct = new ERC1967Proxy(
-            address(positionNFTImpl),
-            positionInitData_Correct
-        );
-        positionNFT = UspdCollateralizedPositionNFT(
-            payable(address(positionProxy_Correct))
-        );
-
-        // Now Initialize StabilizerNFT Proxy
         stabilizerNFT.initialize(
-            address(positionNFT), // _positionNFT
-            address(uspdToken), // _uspdToken
-            address(mockStETH), // _stETH
-            address(mockLido), // _lido
-            address(rateContract), // _rateContract
-            address(this) // _admin
+            address(positionNFT), // Pass PositionNFT proxy address
+            address(uspdToken),   // Pass USPDToken address
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            address(this) // Admin
         );
 
-        // Update USPDToken with the correct stabilizer address
-        uspdToken.updateStabilizer(address(stabilizerNFT));
-
-        // 5. Setup roles
+        // 6. Setup roles
         positionNFT.grantRole(
             positionNFT.MINTER_ROLE(),
             address(stabilizerNFT)
