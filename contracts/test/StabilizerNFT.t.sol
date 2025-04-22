@@ -269,9 +269,10 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
        // Action
        // Expect revert with specific error arguments
+       // Expect revert with specific error arguments using IERC20 interface for error selector
        vm.expectRevert(
            abi.encodeWithSelector(
-               ERC20.ERC20InsufficientAllowance.selector,
+               IERC20.ERC20InsufficientAllowance.selector, // Use IERC20 interface
                address(stabilizerNFT), // spender
                amount / 2,             // allowance
                amount                  // needed
