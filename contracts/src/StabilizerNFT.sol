@@ -11,6 +11,7 @@ import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IPriceOracle.sol";
 import "./interfaces/IUspdCollateralizedPositionNFT.sol";
 import "./interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
+import "./interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contract interface
 import "./StabilizerEscrow.sol"; // Import Escrow implementation for deployment
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
@@ -54,6 +55,7 @@ contract StabilizerNFT is
     // Addresses needed for Escrow deployment/interaction
     address public stETH;
     address public lido;
+    IPoolSharesConversionRate public rateContract; // Add Rate Contract reference
     // Optional: CREATE2 factory address if used
     // ICreateX public createX;
 
@@ -97,6 +99,7 @@ contract StabilizerNFT is
         address _uspdToken,
         address _stETH,
         address _lido,
+        address _rateContract, // Add rate contract address
         // address _createX, // Uncomment if using CREATE2 factory
         address _admin
     ) public initializer {
@@ -109,6 +112,7 @@ contract StabilizerNFT is
         uspdToken = USPDToken(payable(_uspdToken));
         stETH = _stETH;
         lido = _lido;
+        rateContract = IPoolSharesConversionRate(_rateContract); // Initialize rate contract
         // createX = ICreateX(_createX); // Uncomment if using CREATE2 factory
     }
 
@@ -189,16 +193,16 @@ contract StabilizerNFT is
 
 
     function allocateStabilizerFunds(
-        uint256 ethAmount,
+        uint256 poolSharesToMint, // Changed parameter from ethAmount
         uint256 ethUsdPrice,
         uint256 priceDecimals
     ) external payable returns (AllocationResult memory result) {
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(lowestUnallocatedId != 0, "No unallocated funds");
-        require(msg.value == ethAmount, "ETH amount mismatch");
+        require(msg.value > 0, "No ETH sent"); // User must send ETH
 
         uint256 currentId = lowestUnallocatedId;
-        uint256 remainingEth = ethAmount;
+        uint256 remainingEth = msg.value; // User's ETH to be backed
 
         while (currentId != 0 && remainingEth > 0) {
             // Check remaining gas
