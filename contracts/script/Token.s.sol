@@ -297,13 +297,19 @@ contract DeployScript is Script {
         (bool success, bytes memory result) = positionNFTProxyAddress.call(initData);
         if (!success) {
              // Try to decode revert reason
-             if (result.length < 68) { // Not a standard error signature
-                 revert("PositionNFT Proxy initialization failed with no reason");
-             }
-             bytes memory reason = abi.decode(result[4:], (string)); // Skip selector
-             revert(string(abi.encodePacked("PositionNFT Proxy initialization failed: ", reason)));
-        }
-         console2.log("PositionNFT proxy initialized.");
+            if (result.length < 68) { // Not a standard error signature (Error(string) selector + offset + length)
+                revert("PositionNFT Proxy initialization failed with unknown reason");
+            }
+            // Copy the slice into a new bytes memory variable
+            bytes memory reasonBytes = new bytes(result.length - 4);
+            for (uint i = 0; i < reasonBytes.length; i++) {
+                reasonBytes[i] = result[i + 4];
+            }
+            // Decode the copied bytes
+            string memory reason = abi.decode(reasonBytes, (string));
+            revert(string(abi.encodePacked("PositionNFT Proxy initialization failed: ", reason)));
+       }
+        console2.log("PositionNFT proxy initialized.");
     }
 
 
@@ -386,13 +392,19 @@ contract DeployScript is Script {
         (bool success, bytes memory result) = stabilizerProxyAddress.call(initData);
         if (!success) {
              // Try to decode revert reason
-             if (result.length < 68) { // Not a standard error signature
-                 revert("StabilizerNFT Proxy initialization failed with no reason");
-             }
-             bytes memory reason = abi.decode(result[4:], (string)); // Skip selector
-             revert(string(abi.encodePacked("StabilizerNFT Proxy initialization failed: ", reason)));
-        }
-        console2.log("StabilizerNFT proxy initialized.");
+            if (result.length < 68) { // Not a standard error signature (Error(string) selector + offset + length)
+                revert("StabilizerNFT Proxy initialization failed with unknown reason");
+            }
+            // Copy the slice into a new bytes memory variable
+            bytes memory reasonBytes = new bytes(result.length - 4);
+            for (uint i = 0; i < reasonBytes.length; i++) {
+                reasonBytes[i] = result[i + 4];
+            }
+            // Decode the copied bytes
+            string memory reason = abi.decode(reasonBytes, (string));
+            revert(string(abi.encodePacked("StabilizerNFT Proxy initialization failed: ", reason)));
+       }
+       console2.log("StabilizerNFT proxy initialized.");
     }
 
 
