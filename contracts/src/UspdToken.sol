@@ -4,12 +4,15 @@ pragma solidity ^0.8.20;
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol"; // Import Math library
 import "./PriceOracle.sol";
 import "./interfaces/IStabilizerNFT.sol";
+import "./interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contract interface
 
 contract USPDToken is ERC20, ERC20Permit, AccessControl {
     PriceOracle oracle;
     IStabilizerNFT stabilizer;
+    IPoolSharesConversionRate public rateContract; // Add Rate Contract
     bytes32 public constant EXCESS_COLLATERAL_DRAIN_ROLE =
         keccak256("EXCESS_COLLATERAL_DRAIN_ROLE");
     bytes32 public constant UPDATE_ORACLE_ROLE =

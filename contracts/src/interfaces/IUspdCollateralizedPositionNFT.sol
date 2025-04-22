@@ -28,9 +28,9 @@ interface IUspdCollateralizedPositionNFT is IERC721Errors { // Inherit standard 
 
     function burn(uint256 tokenId) external;
 
-    function getCollateralizationRatio(
-        uint256 tokenId, 
-        uint256 ethUsdPrice, 
+    function getCollateralizationRatio( // Now needs rate contract for yield factor
+        uint256 tokenId,
+        uint256 ethUsdPrice,
         uint8 priceDecimals
     ) external view returns (uint256);
 
@@ -58,7 +58,7 @@ interface IUspdCollateralizedPositionNFT is IERC721Errors { // Inherit standard 
 
      function addCollateral(uint256 tokenId) external payable;
 
-     function modifyAllocation(uint256 tokenId, uint256 newBackedUspd) external;
+     function modifyAllocation(uint256 tokenId, uint256 newBackedPoolShares) external; // Parameter changed
 
      function removeCollateral(
         uint256 tokenId, 
