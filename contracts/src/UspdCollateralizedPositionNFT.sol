@@ -12,9 +12,9 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"; // Add 
 import "./PriceOracle.sol";
 
 contract UspdCollateralizedPositionNFT is
-    IUspdCollateralizedPositionNFT,
     Initializable,
     ERC721Upgradeable,
+    IUspdCollateralizedPositionNFT,
     AccessControlUpgradeable
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
