@@ -267,11 +267,18 @@ contract StabilizerNFTTest is Test {
         mockStETH.mint(user1, amount);
         mockStETH.approve(address(stabilizerNFT), amount / 2); // Approve only half
         vm.stopPrank();
-
-        // Action
-        vm.expectRevert(ERC20.ERC20InsufficientAllowance.selector);
-        vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsStETH(tokenId, amount);
+       // Action
+       // Expect revert with specific error arguments
+       vm.expectRevert(
+           abi.encodeWithSelector(
+               ERC20.ERC20InsufficientAllowance.selector,
+               address(stabilizerNFT), // spender
+               amount / 2,             // allowance
+               amount                  // needed
+           )
+       );
+       vm.prank(user1);
+       stabilizerNFT.addUnallocatedFundsStETH(tokenId, amount);
     }
 
      function testAddUnallocatedFundsStETH_Revert_InsufficientBalance() public {
@@ -286,11 +293,18 @@ contract StabilizerNFTTest is Test {
         mockStETH.mint(user1, userBalance);
         mockStETH.approve(address(stabilizerNFT), amountToTransfer); // Approve more than balance
         vm.stopPrank();
-
-        // Action
-        vm.expectRevert(ERC20.ERC20InsufficientBalance.selector);
-        vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsStETH(tokenId, amountToTransfer);
+       // Action
+       // Expect revert with specific error arguments
+       vm.expectRevert(
+           abi.encodeWithSelector(
+               ERC20.ERC20InsufficientBalance.selector,
+               user1,           // sender
+               userBalance,     // balance
+               amountToTransfer // needed
+           )
+       );
+       vm.prank(user1);
+       stabilizerNFT.addUnallocatedFundsStETH(tokenId, amountToTransfer);
     }
 
     function testAddUnallocatedFundsStETH_Revert_NonExistentToken() public {
