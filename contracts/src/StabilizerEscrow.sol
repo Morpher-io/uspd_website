@@ -5,6 +5,7 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ILido.sol";
 import "./interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 
+
 /**
  * @title StabilizerEscrow
  * @notice A dedicated vault for a single Stabilizer NFT, holding and managing stETH collateral.
@@ -102,7 +103,7 @@ contract StabilizerEscrow is IStabilizerEscrow {
     function withdrawUnallocated(uint256 amount) external onlyStabilizerNFT {
         if (amount == 0) revert ZeroAmount();
         uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
-        if (amount > currentBalance) revert InsufficientBalance(currentBalance, amount); // Use standard ERC20 error if possible, or custom
+        if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount); // Use standard ERC20 error if possible, or custom
 
         // Transfer stETH to the owner
         bool success = IERC20(stETH).transfer(stabilizerOwner, amount);

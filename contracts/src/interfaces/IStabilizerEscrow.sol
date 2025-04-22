@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
+import {IERC20Errors} from "../../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
+
+
 
 /**
  * @title IStabilizerEscrow Interface
  * @notice Interface for the StabilizerEscrow contract.
  */
-interface IStabilizerEscrow {
+interface IStabilizerEscrow is IERC20Errors {
     // --- Events (Optional, but good practice) ---
     event DepositReceived(uint256 amount);
     event AllocationApproved(address indexed spender, uint256 amount);
