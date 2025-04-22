@@ -3,13 +3,14 @@ pragma solidity ^0.8.20;
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ILido.sol";
+import "./interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 
 /**
  * @title StabilizerEscrow
  * @notice A dedicated vault for a single Stabilizer NFT, holding and managing stETH collateral.
- * @dev Deployed and controlled by the StabilizerNFT contract.
+ * @dev Deployed and controlled by the StabilizerNFT contract. Implements IStabilizerEscrow.
  */
-contract StabilizerEscrow {
+contract StabilizerEscrow is IStabilizerEscrow {
     // --- Errors ---
     error ZeroAddress();
     error ZeroAmount();
