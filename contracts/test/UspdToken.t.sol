@@ -19,7 +19,13 @@ contract USPDTokenTest is Test {
     uint256 internal signerPrivateKey;
     address internal signer;
     
+    // --- Mocks & Dependencies ---
+    MockStETH internal mockStETH;
+    MockLido internal mockLido;
+    PoolSharesConversionRate internal rateContract;
     PriceOracle priceOracle;
+
+    // --- Contracts Under Test ---
     StabilizerNFT public stabilizerNFT;
     UspdCollateralizedPositionNFT positionNFT;
     USPD uspdToken;
@@ -95,40 +101,60 @@ contract USPDTokenTest is Test {
         // Add signer as authorized signer
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
 
-        // Deploy USPD token with oracle, temporary zero address for stabilizer, and this contract as admin
-        uspdToken = new USPD(address(priceOracle), address(0), address(this));
-
-        // Deploy Position NFT implementation and proxy
-        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
-        bytes memory positionInitData = abi.encodeWithSelector(
-            UspdCollateralizedPositionNFT.initialize.selector,
-            address(priceOracle),
-            address(this) // Test contract as admin
+        // Deploy Mocks & Rate Contract
+        mockStETH = new MockStETH();
+        mockLido = new MockLido(address(mockStETH));
+        vm.deal(address(this), 0.001 ether); // Fund for rate contract deployment
+        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(
+            address(mockStETH),
+            address(mockLido)
         );
-        ERC1967Proxy positionProxy = new ERC1967Proxy(
+
+        // Deploy Implementations
+        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
+        StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
+
+        // Deploy Proxies (without full init data initially)
+        ERC1967Proxy stabilizerProxy_NoInit = new ERC1967Proxy(
+            address(stabilizerNFTImpl),
+            bytes("")
+        );
+        stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy_NoInit)));
+
+        ERC1967Proxy positionProxy_NoInit = new ERC1967Proxy(
             address(positionNFTImpl),
-            positionInitData
+            bytes("")
         );
         positionNFT = UspdCollateralizedPositionNFT(
-            payable(address(positionProxy))
+            payable(address(positionProxy_NoInit))
         );
 
-        // Deploy StabilizerNFT implementation and proxy
-        StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
-        bytes memory stabilizerInitData = abi.encodeWithSelector(
-            StabilizerNFT.initialize.selector,
-            address(positionNFT),
+        // Deploy USPD token (needs oracle, rate contract, stabilizer proxy address)
+        uspdToken = new USPD(
+            address(priceOracle),
+            address(stabilizerNFT), // Pass stabilizer proxy address
+            address(rateContract), // Pass rate contract address
+            address(this) // Admin
+        );
+
+        // Initialize Proxies with correct addresses
+        positionNFT.initialize(
+            address(priceOracle),
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            address(stabilizerNFT), // Pass stabilizer proxy address
+            address(this) // Admin
+        );
+
+        stabilizerNFT.initialize(
+            address(positionNFT), // Pass position proxy address
             address(uspdToken),
-            address(this)
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract), // Pass rate contract address
+            address(this) // Admin
         );
-        ERC1967Proxy stabilizerProxy = new ERC1967Proxy(
-            address(stabilizerNFTImpl),
-            stabilizerInitData
-        );
-        stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy)));
-
-        // Update USPD token with correct stabilizer address
-        uspdToken.updateStabilizer(address(stabilizerNFT));
 
         // Setup roles
         positionNFT.grantRole(
@@ -143,7 +169,17 @@ contract USPDTokenTest is Test {
             positionNFT.MODIFYALLOCATION_ROLE(),
             address(stabilizerNFT)
         );
+        // Grant STABILIZER_NFT_ROLE for removeCollateral
+        positionNFT.grantRole(
+            positionNFT.STABILIZER_NFT_ROLE(),
+            address(stabilizerNFT)
+        );
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
+        // Grant STABILIZER_ROLE on USPDToken to StabilizerNFT
+        uspdToken.grantRole(
+            uspdToken.STABILIZER_ROLE(),
+            address(stabilizerNFT)
+        );
     }
 
    
@@ -202,12 +238,20 @@ contract USPDTokenTest is Test {
         vm.prank(uspdBuyer);
         uspdToken.mint{value: 1 ether}(recipient, priceQuery);
 
-        // Verify USPD balance of recipient
-        uint256 expectedBalance = (1 ether * priceQuery.price) / 1 ether;
+        // Verify USPD balance and Pool Shares of recipient
+        // Since yieldFactor is 1e18 initially, poolShares = uspdAmount
+        uint256 expectedUspdBalance = (1 ether * priceQuery.price) / (10 ** priceQuery.decimals);
+        uint256 expectedPoolShares = expectedUspdBalance; // Assuming yieldFactor = 1e18
+
         assertEq(
             uspdToken.balanceOf(recipient),
-            expectedBalance,
+            expectedUspdBalance,
             "Incorrect USPD balance of recipient"
+        );
+         assertEq(
+            uspdToken.poolSharesOf(recipient),
+            expectedPoolShares,
+            "Incorrect Pool Share balance of recipient"
         );
         assertEq(
             uspdToken.balanceOf(uspdBuyer),
@@ -216,13 +260,15 @@ contract USPDTokenTest is Test {
         );
     }
 
-    function testMintWithMaxAmount() public {
+    // Refactored test: Mint a fixed ETH amount and check balances
+    function testMintFixedEthAmount() public {
         // Setup stabilizer
         address stabilizerOwner = makeAddr("stabilizerOwner");
         address uspdBuyer = makeAddr("uspdBuyer");
+        uint256 mintEthAmount = 2 ether;
 
         vm.deal(stabilizerOwner, 10 ether);
-        vm.deal(uspdBuyer, 10 ether);
+        vm.deal(uspdBuyer, mintEthAmount + 1 ether); // Give buyer enough ETH
 
         // Create price attestation
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
@@ -232,30 +278,39 @@ contract USPDTokenTest is Test {
         // Setup stabilizer
         stabilizerNFT.mint(stabilizerOwner, 1);
         vm.prank(stabilizerOwner);
-        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 5 ether}(1); // Add enough stabilizer funds
 
         // Calculate initial balance
-        uint256 initialBalance = uspdBuyer.balance;
+        uint256 initialEthBalance = uspdBuyer.balance;
 
-        // Mint USPD tokens with max amount
+        // Mint USPD tokens
         vm.prank(uspdBuyer);
-        uspdToken.mint{value: 2 ether}(uspdBuyer, 4000 ether, priceQuery);
+        uspdToken.mint{value: mintEthAmount}(uspdBuyer, priceQuery);
 
-        // Verify USPD balance
+        // Verify USPD balance and Pool Shares
+        // Since yieldFactor is 1e18 initially, poolShares = uspdAmount
+        uint256 expectedUspdBalance = (mintEthAmount * priceQuery.price) / (10 ** priceQuery.decimals);
+        uint256 expectedPoolShares = expectedUspdBalance; // Assuming yieldFactor = 1e18
+
         assertApproxEqAbs(
             uspdToken.balanceOf(uspdBuyer),
-            4000 ether,
-            1e9,
+            expectedUspdBalance,
+            1e9, // Allow small tolerance for rounding
             "Incorrect USPD balance"
         );
-
-        // Verify ETH refund
-        uint256 ethUsed = (4000 ether * (10 ** 18)) / priceQuery.price;
         assertApproxEqAbs(
+            uspdToken.poolSharesOf(uspdBuyer),
+            expectedPoolShares,
+            1e9, // Allow small tolerance for rounding
+            "Incorrect Pool Share balance"
+        );
+
+        // Verify ETH spent (assuming full allocation, no refund)
+        // Note: Gas costs are ignored by default in forge tests unless explicitly handled
+        assertEq(
             uspdBuyer.balance,
-            initialBalance - ethUsed,
-            1e9,
-            "Incorrect ETH refund"
+            initialEthBalance - mintEthAmount,
+            "Incorrect ETH balance after mint"
         );
     }
 
@@ -289,14 +344,8 @@ contract USPDTokenTest is Test {
         );
 
         vm.prank(user);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                bytes4(keccak256("ERC20InsufficientBalance(address,uint256,uint256)")),
-                user,
-                0,
-                100 ether
-            )
-        );
+        // The revert message comes from the _update function checking pool shares
+        vm.expectRevert("ERC20: burn amount exceeds balance");
         uspdToken.burn(100 ether, payable(user), priceQuery);
     }
 
@@ -371,8 +420,9 @@ contract USPDTokenTest is Test {
         vm.prank(uspdHolder);
         uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
 
-        uint256 initialBalance = uspdHolder.balance;
+        uint256 initialEthBalance = uspdHolder.balance;
         uint256 initialUspdBalance = uspdToken.balanceOf(uspdHolder);
+        uint256 initialPoolShares = uspdToken.poolSharesOf(uspdHolder);
 
         // Create price attestation for burning
         IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
@@ -387,18 +437,27 @@ contract USPDTokenTest is Test {
             burnPriceQuery
         );
 
-        // Verify USPD was burned
+        // Verify USPD and Pool Shares were burned
+        // Since yieldFactor is 1e18, burned shares = burned USPD amount
+        uint256 expectedRemainingUspd = initialUspdBalance / 2;
+        uint256 expectedRemainingShares = initialPoolShares / 2;
 
         assertApproxEqAbs(
             uspdToken.balanceOf(uspdHolder),
-            initialUspdBalance / 2,
-            1e17,
-            "USPD not burned correctly"
+            expectedRemainingUspd,
+            1e9, // Allow small tolerance
+            "USPD balance not updated correctly after burn"
+        );
+         assertApproxEqAbs(
+            uspdToken.poolSharesOf(uspdHolder),
+            expectedRemainingShares,
+            1e9, // Allow small tolerance
+            "Pool Share balance not updated correctly after burn"
         );
 
         // Verify ETH was returned
         assertTrue(
-            uspdHolder.balance > initialBalance,
+            uspdHolder.balance > initialEthBalance, // Compare against initial ETH balance
             "ETH not returned to holder"
         );
     }
@@ -430,12 +489,20 @@ contract USPDTokenTest is Test {
         uspdToken.mint{value: 1 ether}(uspdBuyer, priceQuery);
         vm.stopPrank();
 
-        // Calculate expected USPD balance
-        uint256 expectedBalance = (1 ether * priceQuery.price) / (10 ** priceQuery.decimals);
+        // Calculate expected USPD balance and Pool Shares
+        // Since yieldFactor is 1e18 initially, poolShares = uspdAmount
+        uint256 expectedUspdBalance = (1 ether * priceQuery.price) / (10 ** priceQuery.decimals);
+        uint256 expectedPoolShares = expectedUspdBalance; // Assuming yieldFactor = 1e18
+
         assertEq(
             uspdToken.balanceOf(uspdBuyer),
-            expectedBalance,
+            expectedUspdBalance,
             "Incorrect USPD balance"
+        );
+        assertEq(
+            uspdToken.poolSharesOf(uspdBuyer),
+            expectedPoolShares,
+            "Incorrect Pool Share balance"
         );
 
         // Verify position NFT state
@@ -451,9 +518,9 @@ contract USPDTokenTest is Test {
             "Position should have correct ETH allocation"
         );
         assertEq(
-            position.backedUspd,
-            expectedBalance,
-            "Position should back correct USPD amount"
+            position.backedPoolShares, // Check backedPoolShares
+            expectedPoolShares, // Check against expected pool shares
+            "Position should back correct Pool Share amount"
         );
     }
 
