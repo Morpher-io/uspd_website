@@ -39,14 +39,7 @@ contract UspdCollateralizedPositionNFT is
     // Mapping from owner address to token ID (assuming one position per owner)
     mapping(address => uint256) private _ownerToken;
 
-    // Custom Errors
-    error NotOwner();
-    error ZeroLiability();
-    error InvalidAmount();
-    error BelowMinimumRatio();
-    error InsufficientCollateral();
-    error TransferFailed();
-    error NotImplemented(); // Added for unimplemented interface functions
+    // Custom Errors are defined in the IUspdCollateralizedPositionNFT interface
 
     function getPosition(
         uint256 tokenId

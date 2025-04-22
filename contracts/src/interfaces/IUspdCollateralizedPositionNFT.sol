@@ -2,10 +2,23 @@
 pragma solidity ^0.8.20;
 
 import "./IPriceOracle.sol";
+import {IERC721Errors} from "../../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol"; // Import standard errors
 
-interface IUspdCollateralizedPositionNFT {
+interface IUspdCollateralizedPositionNFT is IERC721Errors { // Inherit standard errors if needed
+
+    // --- Custom Errors ---
+    error NotOwner();
+    error ZeroLiability();
+    error InvalidAmount();
+    error BelowMinimumRatio();
+    error InsufficientCollateral();
+    error TransferFailed();
+    error NotImplemented();
+    error ZeroAddress(); // Added missing error
+
+    // --- Structs ---
     struct Position {
-        uint256 allocatedEth;    // Amount of ETH allocated to this position
+        uint256 allocatedEth;    // Amount of stETH allocated to this position
         uint256 backedUspd;      // Amount of USPD backed by this position
     }
 
