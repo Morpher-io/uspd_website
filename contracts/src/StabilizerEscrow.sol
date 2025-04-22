@@ -86,6 +86,7 @@ contract StabilizerEscrow {
         catch {
             revert DepositFailed();
         }
+        emit DepositReceived(msg.value); // Emit the event
     }
 
     /**
