@@ -435,9 +435,9 @@ contract StabilizerNFT is
     }
 
     function unallocateStabilizerFunds(
-        uint256 uspdAmount,
+        uint256 poolSharesToUnallocate, // Changed parameter name
         IPriceOracle.PriceResponse memory priceResponse
-    ) external returns (uint256 unallocatedEth) {
+    ) external override returns (uint256 unallocatedEth) { // Added override
         require(msg.sender == address(uspdToken), "Only USPD contract");
         require(highestAllocatedId != 0, "No allocated funds");
 
