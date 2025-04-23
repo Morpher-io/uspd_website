@@ -1,0 +1,627 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "forge-std/console.sol";
+import {IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
+import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+
+// Contract & Interfaces under test
+import "../src/PositionEscrow.sol";
+import "../src/interfaces/IPositionEscrow.sol";
+
+// Mocks & Dependencies
+import "./mocks/MockStETH.sol";
+import "./mocks/MockLido.sol";
+import "../src/PriceOracle.sol";
+import "../src/PoolSharesConversionRate.sol";
+import "../src/interfaces/IPriceOracle.sol";
+import "../src/interfaces/IPoolSharesConversionRate.sol";
+import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+
+contract PositionEscrowTest is Test {
+    // --- Mocks & Dependencies ---
+    MockStETH internal mockStETH;
+    MockLido internal mockLido;
+    PriceOracle internal priceOracle;
+    PoolSharesConversionRate internal rateContract;
+
+    // --- Test Actors ---
+    address internal admin; // Also StabilizerNFT contract address in real deployment
+    address internal stabilizerOwner;
+    address internal otherUser;
+    address internal recipient; // For withdrawals
+
+    // --- Contract Instance ---
+    PositionEscrow internal positionEscrow;
+
+    // --- Constants ---
+    uint256 internal constant FACTOR_PRECISION = 1e18;
+    uint256 internal constant INITIAL_RATE_DEPOSIT = 0.001 ether;
+    uint256 internal constant DEFAULT_MIN_RATIO = 110; // 110%
+
+    // --- Signer for Price Oracle ---
+    uint256 internal signerPrivateKey;
+    address internal signer;
+    bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD"); // Example pair
+
+    // --- Setup ---
+    function setUp() public {
+        admin = address(this); // Test contract acts as admin/StabilizerNFT
+        stabilizerOwner = makeAddr("stabilizerOwner");
+        otherUser = makeAddr("otherUser");
+        recipient = makeAddr("recipient");
+
+        // Setup signer
+        signerPrivateKey = 0xa11ce;
+        signer = vm.addr(signerPrivateKey);
+
+        // Deploy Mocks & Dependencies
+        mockStETH = new MockStETH();
+        mockLido = new MockLido(address(mockStETH));
+
+        // Deploy PriceOracle
+        PriceOracle oracleImpl = new PriceOracle();
+        bytes memory oracleInitData = abi.encodeWithSelector(
+            PriceOracle.initialize.selector, 500, 3600, address(0xdead), address(0xbeef), address(0xcafe), admin
+        );
+        ERC1967Proxy oracleProxy = new ERC1967Proxy(address(oracleImpl), oracleInitData);
+        priceOracle = PriceOracle(payable(address(oracleProxy)));
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer); // Grant signer role
+
+        // Deploy RateContract
+        vm.deal(admin, INITIAL_RATE_DEPOSIT);
+        rateContract = new PoolSharesConversionRate{value: INITIAL_RATE_DEPOSIT}(
+            address(mockStETH), address(mockLido)
+        );
+
+        // Deploy PositionEscrow
+        positionEscrow = new PositionEscrow(
+            admin, // StabilizerNFT contract address
+            stabilizerOwner,
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            address(priceOracle)
+        );
+    }
+
+    // --- Helper Functions ---
+    function createSignedPriceAttestation(
+        uint256 price,
+        uint256 timestamp
+    ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
+            price: price,
+            decimals: 18,
+            dataTimestamp: timestamp,
+            assetPair: ETH_USD_PAIR,
+            signature: bytes("")
+        });
+        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
+        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
+        query.signature = abi.encodePacked(r, s, v);
+        return query;
+    }
+
+    // =============================================
+    // I. Deployment and Initialization Tests
+    // =============================================
+
+    function test_constructor_success() public {
+        assertEq(positionEscrow.stabilizerNFTContract(), admin);
+        assertEq(positionEscrow.stETH(), address(mockStETH));
+        assertEq(positionEscrow.lido(), address(mockLido));
+        assertEq(positionEscrow.rateContract(), address(rateContract));
+        assertEq(positionEscrow.oracle(), address(priceOracle));
+    }
+
+    function test_constructor_initialState() public {
+        assertEq(positionEscrow.backedPoolShares(), 0, "Initial backed shares should be 0");
+        assertEq(positionEscrow.getCurrentStEthBalance(), 0, "Initial stETH balance should be 0");
+    }
+
+    function test_constructor_roles() public {
+        assertTrue(positionEscrow.hasRole(positionEscrow.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
+        assertTrue(positionEscrow.hasRole(positionEscrow.STABILIZER_ROLE(), admin), "Stabilizer role mismatch");
+        assertTrue(positionEscrow.hasRole(positionEscrow.EXCESSCOLLATERALMANAGER_ROLE(), stabilizerOwner), "Manager role mismatch");
+    }
+
+    function test_constructor_revert_zeroStabilizerNFT() public {
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        new PositionEscrow(address(0), stabilizerOwner, address(mockStETH), address(mockLido), address(rateContract), address(priceOracle));
+    }
+
+    function test_constructor_revert_zeroStabilizerOwner() public {
+         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        new PositionEscrow(admin, address(0), address(mockStETH), address(mockLido), address(rateContract), address(priceOracle));
+    }
+
+     function test_constructor_revert_zeroStETH() public {
+         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        new PositionEscrow(admin, stabilizerOwner, address(0), address(mockLido), address(rateContract), address(priceOracle));
+    }
+
+     function test_constructor_revert_zeroLido() public {
+         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        new PositionEscrow(admin, stabilizerOwner, address(mockStETH), address(0), address(rateContract), address(priceOracle));
+    }
+
+     function test_constructor_revert_zeroRateContract() public {
+         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        new PositionEscrow(admin, stabilizerOwner, address(mockStETH), address(mockLido), address(0), address(priceOracle));
+    }
+
+     function test_constructor_revert_zeroOracle() public {
+         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        new PositionEscrow(admin, stabilizerOwner, address(mockStETH), address(mockLido), address(rateContract), address(0));
+    }
+
+    // =============================================
+    // II. Access Control Tests
+    // =============================================
+
+    function test_addCollateral_revert_notStabilizerRole() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+        vm.prank(otherUser);
+        positionEscrow.addCollateral(1 ether);
+    }
+
+    function test_addCollateralFromStabilizer_revert_notStabilizerRole() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+        vm.prank(otherUser);
+        positionEscrow.addCollateralFromStabilizer{value: 1 ether}(0);
+    }
+
+    function test_modifyAllocation_revert_notStabilizerRole() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+        vm.prank(otherUser);
+        positionEscrow.modifyAllocation(100 ether);
+    }
+
+    function test_removeCollateral_revert_notStabilizerRole() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+        vm.prank(otherUser);
+        positionEscrow.removeCollateral(1 ether, 0.5 ether, payable(recipient));
+    }
+
+    function test_removeExcessCollateral_revert_notManagerRole() public {
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.EXCESSCOLLATERALMANAGER_ROLE()));
+        vm.prank(otherUser);
+        positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
+    }
+
+    // =============================================
+    // III. addCollateral Tests
+    // =============================================
+
+    function test_addCollateral_success() public {
+        uint256 amount = 1 ether;
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.CollateralAdded(amount);
+        vm.prank(admin); // Has STABILIZER_ROLE
+        positionEscrow.addCollateral(amount);
+        // Note: This function doesn't check balance, just emits event.
+    }
+
+    function test_addCollateral_revert_zeroAmount() public {
+        vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
+        vm.prank(admin);
+        positionEscrow.addCollateral(0);
+    }
+
+    // =============================================
+    // IV. addCollateralFromStabilizer Tests
+    // =============================================
+
+    function test_addCollateralFromStabilizer_onlyEth() public {
+        uint256 userEthAmount = 1 ether;
+        uint256 expectedStEth = userEthAmount; // MockLido 1:1
+
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.CollateralAdded(expectedStEth);
+
+        vm.prank(admin); // Has STABILIZER_ROLE
+        positionEscrow.addCollateralFromStabilizer{value: userEthAmount}(0);
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), expectedStEth, "stETH balance mismatch");
+    }
+
+     function test_addCollateralFromStabilizer_onlyStETH() public {
+        uint256 stabilizerStEthAmount = 0.5 ether;
+
+        // Pre-transfer stETH (simulate transfer from StabilizerEscrow)
+        mockStETH.mint(address(positionEscrow), stabilizerStEthAmount);
+
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.CollateralAdded(stabilizerStEthAmount);
+
+        vm.prank(admin); // Has STABILIZER_ROLE
+        positionEscrow.addCollateralFromStabilizer(stabilizerStEthAmount);
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), stabilizerStEthAmount, "stETH balance mismatch");
+    }
+
+    function test_addCollateralFromStabilizer_both() public {
+        uint256 userEthAmount = 1 ether;
+        uint256 stabilizerStEthAmount = 0.5 ether;
+        uint256 expectedUserStEth = userEthAmount; // MockLido 1:1
+        uint256 expectedTotalStEth = expectedUserStEth + stabilizerStEthAmount;
+
+        // Pre-transfer stabilizer stETH
+        mockStETH.mint(address(positionEscrow), stabilizerStEthAmount);
+
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.CollateralAdded(expectedTotalStEth);
+
+        vm.prank(admin); // Has STABILIZER_ROLE
+        positionEscrow.addCollateralFromStabilizer{value: userEthAmount}(stabilizerStEthAmount);
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), expectedTotalStEth, "stETH balance mismatch");
+    }
+
+    function test_addCollateralFromStabilizer_revert_zeroInput() public {
+        vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
+        vm.prank(admin);
+        positionEscrow.addCollateralFromStabilizer(0);
+    }
+
+    function test_addCollateralFromStabilizer_revert_lidoSubmitFails() public {
+        // Mock Lido to revert
+        vm.mockCallRevert(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), "Lido submit failed");
+
+        vm.expectRevert(IPositionEscrow.TransferFailed.selector);
+        vm.prank(admin);
+        positionEscrow.addCollateralFromStabilizer{value: 1 ether}(0);
+    }
+
+     function test_addCollateralFromStabilizer_revert_lidoReturnsZero() public {
+        // Mock Lido to return 0
+        vm.mockCall(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), abi.encode(uint256(0)));
+
+        vm.expectRevert(IPositionEscrow.TransferFailed.selector);
+        vm.prank(admin);
+        positionEscrow.addCollateralFromStabilizer{value: 1 ether}(0);
+    }
+
+    // =============================================
+    // V. modifyAllocation Tests
+    // =============================================
+
+    function test_modifyAllocation_positiveDelta() public {
+        int256 delta = 1000 ether;
+        uint256 expectedShares = 1000 ether;
+
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.AllocationModified(delta, expectedShares);
+
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(delta);
+
+        assertEq(positionEscrow.backedPoolShares(), expectedShares, "Shares mismatch after positive delta");
+    }
+
+    function test_modifyAllocation_negativeDelta() public {
+        // Setup initial shares
+        int256 initialDelta = 2000 ether;
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(initialDelta);
+        assertEq(positionEscrow.backedPoolShares(), 2000 ether, "Initial shares setup failed");
+
+        // Apply negative delta
+        int256 negativeDelta = -500 ether;
+        uint256 expectedShares = 1500 ether;
+
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.AllocationModified(negativeDelta, expectedShares);
+
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(negativeDelta);
+
+        assertEq(positionEscrow.backedPoolShares(), expectedShares, "Shares mismatch after negative delta");
+    }
+
+    function test_modifyAllocation_zeroDelta() public {
+        // Setup initial shares
+        int256 initialDelta = 2000 ether;
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(initialDelta);
+
+        // Apply zero delta
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(0); // Should not emit event
+
+        assertEq(positionEscrow.backedPoolShares(), 2000 ether, "Shares should not change for zero delta");
+    }
+
+    function test_modifyAllocation_revert_underflow() public {
+         // Setup initial shares
+        int256 initialDelta = 500 ether;
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(initialDelta);
+
+        // Try to remove more than exists
+        int256 negativeDelta = -1000 ether;
+
+        vm.expectRevert(IPositionEscrow.ArithmeticError.selector);
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(negativeDelta);
+    }
+
+    // =============================================
+    // VI. removeCollateral Tests
+    // =============================================
+
+    function test_removeCollateral_success() public {
+        uint256 initialBalance = 2 ether;
+        uint256 totalToRemove = 1 ether;
+        uint256 userShare = 0.4 ether;
+        uint256 stabilizerShare = totalToRemove - userShare; // 0.6 ether
+
+        // Fund escrow
+        mockStETH.mint(address(positionEscrow), initialBalance);
+
+        vm.expectEmit(true, true, false, true, address(positionEscrow)); // recipient is indexed
+        emit IPositionEscrow.CollateralRemoved(recipient, userShare, stabilizerShare);
+
+        vm.prank(admin);
+        positionEscrow.removeCollateral(totalToRemove, userShare, payable(recipient));
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), initialBalance - totalToRemove, "Escrow balance mismatch");
+        assertEq(mockStETH.balanceOf(recipient), totalToRemove, "Recipient balance mismatch"); // Receives both shares
+    }
+
+    function test_removeCollateral_revert_zeroAmount() public {
+        vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
+        vm.prank(admin);
+        positionEscrow.removeCollateral(0, 0, payable(recipient));
+    }
+
+    function test_removeCollateral_revert_zeroRecipient() public {
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        vm.prank(admin);
+        positionEscrow.removeCollateral(1 ether, 0.5 ether, payable(address(0)));
+    }
+
+    function test_removeCollateral_revert_userShareTooLarge() public {
+        vm.expectRevert(IPositionEscrow.ArithmeticError.selector);
+        vm.prank(admin);
+        positionEscrow.removeCollateral(1 ether, 1.1 ether, payable(recipient)); // userShare > totalToRemove
+    }
+
+    function test_removeCollateral_revert_insufficientBalance() public {
+        uint256 initialBalance = 0.5 ether;
+        uint256 totalToRemove = 1 ether;
+        uint256 userShare = 0.4 ether;
+
+        // Fund escrow
+        mockStETH.mint(address(positionEscrow), initialBalance);
+
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(positionEscrow), initialBalance, totalToRemove));
+        vm.prank(admin);
+        positionEscrow.removeCollateral(totalToRemove, userShare, payable(recipient));
+    }
+
+    function test_removeCollateral_revert_transferFails() public {
+        uint256 initialBalance = 2 ether;
+        uint256 totalToRemove = 1 ether;
+        uint256 userShare = 0.4 ether;
+
+        // Fund escrow
+        mockStETH.mint(address(positionEscrow), initialBalance);
+
+        // Mock transfer to fail
+        vm.mockCall(address(mockStETH), abi.encodeWithSelector(mockStETH.transfer.selector, recipient, userShare), abi.encode(false));
+
+        vm.expectRevert(IPositionEscrow.TransferFailed.selector);
+        vm.prank(admin);
+        positionEscrow.removeCollateral(totalToRemove, userShare, payable(recipient));
+    }
+
+    // =============================================
+    // VII. removeExcessCollateral Tests
+    // =============================================
+    // Note: These tests assume a simple 1:1 ETH:stETH price for calculation ease
+
+    function test_removeExcessCollateral_success_excessExists() public {
+        uint256 initialStEth = 1.5 ether; // e.g., 1 ETH user + 0.5 ETH stabilizer
+        uint256 shares = 1000 ether; // Backing 1000 USD initially
+        uint256 price = 2000 ether; // 1 stETH = 2000 USD
+        uint256 minRatio = 110; // 110%
+
+        // Setup state
+        mockStETH.mint(address(positionEscrow), initialStEth);
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(int256(shares));
+
+        // Calculate expected excess
+        // Liability Value = 1000e18 * 1e18 / 1e18 = 1000e18 USD
+        // Target Value = 1000e18 * 110 / 100 = 1100e18 USD
+        // Target stETH = 1100e18 * 1e18 / 2000e18 = 0.55 ether
+        // Excess = 1.5 - 0.55 = 0.95 ether
+        uint256 expectedExcess = 0.95 ether;
+
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+
+        vm.expectEmit(true, true, false, true, address(positionEscrow)); // recipient is indexed
+        emit IPositionEscrow.ExcessCollateralRemoved(recipient, expectedExcess);
+
+        vm.prank(stabilizerOwner); // Has EXCESSCOLLATERALMANAGER_ROLE
+        positionEscrow.removeExcessCollateral(payable(recipient), minRatio, query);
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), initialStEth - expectedExcess, "Escrow balance mismatch");
+        assertEq(mockStETH.balanceOf(recipient), expectedExcess, "Recipient balance mismatch");
+    }
+
+     function test_removeExcessCollateral_success_zeroLiability() public {
+        uint256 initialStEth = 0.5 ether;
+        // backedPoolShares = 0
+
+        // Setup state
+        mockStETH.mint(address(positionEscrow), initialStEth);
+
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
+
+        vm.expectEmit(true, true, false, true, address(positionEscrow));
+        emit IPositionEscrow.ExcessCollateralRemoved(recipient, initialStEth); // All is excess
+
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), 0, "Escrow balance should be 0");
+        assertEq(mockStETH.balanceOf(recipient), initialStEth, "Recipient balance mismatch");
+    }
+
+    function test_removeExcessCollateral_success_noExcess() public {
+        uint256 initialStEth = 1.1 ether; // Exactly 110% for 1000 shares @ 2000 price
+        uint256 shares = 1000 ether;
+        uint256 price = 2000 ether;
+        uint256 minRatio = 110;
+
+        // Setup state
+        mockStETH.mint(address(positionEscrow), initialStEth);
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(int256(shares));
+
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+
+        // No event expected
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(recipient), minRatio, query);
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), initialStEth, "Escrow balance should not change");
+        assertEq(mockStETH.balanceOf(recipient), 0, "Recipient balance should be 0");
+    }
+
+    function test_removeExcessCollateral_revert_zeroRecipient() public {
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(address(0)), DEFAULT_MIN_RATIO, query);
+    }
+
+    function test_removeExcessCollateral_revert_minRatioTooLow() public {
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
+        vm.expectRevert(IPositionEscrow.BelowMinimumRatio.selector);
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(recipient), 99, query); // Ratio < 100
+    }
+
+    function test_removeExcessCollateral_revert_invalidPriceQuery() public {
+        // Create invalid signature by signing with wrong key
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xbadkey, keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)));
+        query.signature = abi.encodePacked(r, s, v);
+
+        vm.expectRevert(InvalidSignature.selector); // From PriceOracle
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
+    }
+
+    function test_removeExcessCollateral_revert_zeroOraclePrice() public {
+        // Setup state
+        mockStETH.mint(address(positionEscrow), 1.5 ether);
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(1000 ether);
+
+        // Create query with price 0
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(0, block.timestamp * 1000);
+
+        vm.expectRevert(IPositionEscrow.ZeroAmount.selector); // Reverts inside removeExcessCollateral
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
+    }
+
+    function test_removeExcessCollateral_revert_transferFails() public {
+        uint256 initialStEth = 1.5 ether;
+        uint256 shares = 1000 ether;
+        uint256 price = 2000 ether;
+        uint256 minRatio = 110;
+        uint256 expectedExcess = 0.95 ether;
+
+        // Setup state
+        mockStETH.mint(address(positionEscrow), initialStEth);
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(int256(shares));
+
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+
+        // Mock transfer to fail
+        vm.mockCall(address(mockStETH), abi.encodeWithSelector(mockStETH.transfer.selector, recipient, expectedExcess), abi.encode(false));
+
+        vm.expectRevert(IPositionEscrow.TransferFailed.selector);
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(recipient), minRatio, query);
+    }
+
+    // =============================================
+    // VIII. View Functions Tests
+    // =============================================
+
+    function test_getCollateralizationRatio_zeroShares() public {
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
+        assertEq(positionEscrow.getCollateralizationRatio(priceResponse), type(uint256).max, "Ratio should be max for zero shares");
+    }
+
+    function test_getCollateralizationRatio_zeroCollateral() public {
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(1000 ether); // Set shares > 0
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
+        assertEq(positionEscrow.getCollateralizationRatio(priceResponse), 0, "Ratio should be 0 for zero collateral");
+    }
+
+    function test_getCollateralizationRatio_normal() public {
+        uint256 stEthBalance = 1.1 ether;
+        uint256 shares = 1000 ether;
+        uint256 price = 1000 ether; // 1 stETH = 1000 USD
+
+        mockStETH.mint(address(positionEscrow), stEthBalance);
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(int256(shares));
+
+        // Collateral Value = 1.1e18 * 1000e18 / 1e18 = 1100e18
+        // Liability Value = 1000e18 * 1e18 / 1e18 = 1000e18
+        // Ratio = (1100e18 * 1e18 * 100) / (1000e18 * 1e18) = 110
+        uint256 expectedRatio = 110;
+
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(price, 18, block.timestamp * 1000);
+        assertEq(positionEscrow.getCollateralizationRatio(priceResponse), expectedRatio, "Ratio calculation mismatch (no yield)");
+    }
+
+    function test_getCollateralizationRatio_withYield() public {
+        uint256 initialStEth = 1.1 ether;
+        uint256 shares = 1000 ether;
+        uint256 price = 1000 ether; // 1 stETH = 1000 USD
+
+        mockStETH.mint(address(positionEscrow), initialStEth);
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(int256(shares));
+
+        // Simulate yield (10% increase)
+        uint256 yieldFactor = 1.1 ether; // 1.1 * 1e18
+        vm.mockCall(address(rateContract), abi.encodeWithSelector(rateContract.getYieldFactor.selector), abi.encode(yieldFactor));
+        // Assume stETH balance also increased by 10% due to rebase (though not explicitly mocked here, calculation uses factor)
+        // Let's manually increase balance for clarity in calculation check
+        uint256 currentStEth = (initialStEth * 11) / 10; // 1.21 ether
+        mockStETH.burn(address(positionEscrow), initialStEth); // Remove old balance
+        mockStETH.mint(address(positionEscrow), currentStEth); // Add new balance
+
+        // Collateral Value = 1.21e18 * 1000e18 / 1e18 = 1210e18
+        // Liability Value = 1000e18 * 1.1e18 / 1e18 = 1100e18
+        // Ratio = (1210e18 * 1e18 * 100) / (1100e18 * 1e18) = 110
+        uint256 expectedRatio = 110;
+
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(price, 18, block.timestamp * 1000);
+        assertEq(positionEscrow.getCollateralizationRatio(priceResponse), expectedRatio, "Ratio calculation mismatch (with yield)");
+    }
+
+    function test_getCurrentStEthBalance() public {
+        uint256 amount = 0.77 ether;
+        mockStETH.mint(address(positionEscrow), amount);
+        assertEq(positionEscrow.getCurrentStEthBalance(), amount, "Balance mismatch");
+    }
+
+}
