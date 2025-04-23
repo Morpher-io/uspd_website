@@ -90,6 +90,40 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     }
 
     /**
+     * @notice Receives user's ETH, stakes it via Lido, and acknowledges stabilizer's stETH contribution.
+     * @param stabilizerStEthAmount The amount of stETH already transferred from the StabilizerEscrow.
+     * @dev Callable only by STABILIZER_ROLE (StabilizerNFT). Converts msg.value ETH to stETH.
+     *      Assumes stabilizerStEthAmount has been transferred *to* this contract *before* this call.
+     */
+    function addCollateralFromStabilizer(uint256 stabilizerStEthAmount)
+        external
+        payable
+        override
+        onlyRole(STABILIZER_ROLE)
+    {
+        uint256 userEthAmount = msg.value;
+        if (userEthAmount == 0 && stabilizerStEthAmount == 0) revert ZeroAmount(); // Must add something
+
+        uint256 userStEthReceived = 0;
+        if (userEthAmount > 0) {
+            // Stake User's ETH via Lido - stETH is minted directly to this contract
+            try ILido(lido).submit{value: userEthAmount}(address(0)) returns (uint256 receivedStEth) {
+                userStEthReceived = receivedStEth;
+                if (userStEthReceived == 0) revert TransferFailed(); // Lido submit should return > 0 stETH
+            } catch {
+                revert TransferFailed(); // Lido submit failed
+            }
+        }
+
+        // Total stETH added in this operation = user's converted ETH + pre-transferred stabilizer stETH
+        uint256 totalStEthAdded = userStEthReceived + stabilizerStEthAmount;
+
+        // Emit event acknowledging the total stETH added to the pool
+        emit CollateralAdded(totalStEthAdded);
+    }
+
+
+    /**
      * @notice Modifies the backed pool shares liability.
      * @param sharesDelta The change in pool shares (can be positive or negative).
      * @dev Callable only by STABILIZER_ROLE (StabilizerNFT).
