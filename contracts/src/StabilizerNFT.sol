@@ -80,8 +80,8 @@ contract StabilizerNFT is
     );
     event FundsUnallocated(
         uint256 indexed tokenId,
-        uint256 amount, // Amount of stETH returned to Escrow
-        uint256 positionId
+        uint256 userStEthAmount, // User's share of stETH returned
+        uint256 stabilizerStEthAmount // Stabilizer's share of stETH returned
     );
     // Updated event to specify asset type and potentially stETH amount
     event UnallocatedFundsAdded(uint256 indexed tokenId, address asset, uint256 amount);
@@ -457,80 +457,89 @@ contract StabilizerNFT is
 
         uint256 currentId = highestAllocatedId;
         uint256 remainingPoolShares = poolSharesToUnallocate; // Use new parameter name
-        uint256 totalUserEth;
+        uint256 totalUserStEthReturned = 0; // Track total stETH for user
 
         while (currentId != 0 && remainingPoolShares > 0) { // Use remainingPoolShares
             if (gasleft() < MIN_GAS) break;
 
             StabilizerPosition storage pos = positions[currentId];
-            uint256 positionId = positionNFT.getTokenByOwner(
-                ownerOf(currentId)
-            );
-            if (positionId != 0) {
-                IUspdCollateralizedPositionNFT.Position
-                    memory position = positionNFT.getPosition(positionId); // Now contains backedPoolShares
+            address positionEscrowAddress = positionEscrows[currentId];
+            require(positionEscrowAddress != address(0), "PositionEscrow not found");
+            IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddress);
 
+            uint256 currentBackedShares = positionEscrow.backedPoolShares();
+
+            if (currentBackedShares > 0) {
                 // Determine how many pool shares to unallocate from this specific position
-                uint256 poolSharesSliceToUnallocate = remainingPoolShares > position.backedPoolShares // Use backedPoolShares
-                    ? position.backedPoolShares
+                uint256 poolSharesSliceToUnallocate = remainingPoolShares > currentBackedShares
+                    ? currentBackedShares
                     : remainingPoolShares;
 
-                if (poolSharesSliceToUnallocate > 0) { // Only proceed if there are shares to unallocate
+                if (poolSharesSliceToUnallocate > 0) {
                     // Calculate stETH to remove and user's share based on pool shares
-                    (uint ethToRemove, uint userShare) = _calculateUnallocation(
-                        positionId,
-                        position,
-                        poolSharesSliceToUnallocate, // Pass pool shares slice
-                        // Removed boolean argument for full unallocation
+                    (uint256 stEthToRemove, uint256 userStEthShare) = _calculateUnallocationFromEscrow(
+                        positionEscrow, // Pass escrow instance
+                        poolSharesSliceToUnallocate,
                         priceResponse
                     );
 
-                    // Update position's backed shares
-                    positionNFT.modifyAllocation(
-                        positionId,
-                        position.backedPoolShares - poolSharesSliceToUnallocate // Subtract shares
+                    // Update PositionEscrow's backed shares
+                    positionEscrow.modifyAllocation(int256(-poolSharesSliceToUnallocate)); // Use negative delta
+
+                    // Remove the calculated stETH collateral - sends to this contract (StabilizerNFT)
+                    positionEscrow.removeCollateral(
+                        stEthToRemove,
+                        userStEthShare,
+                        payable(address(this)) // Recipient is this contract
                     );
 
-                    // Remove the calculated stETH collateral
-                    positionNFT.removeCollateral(
-                        positionId,
-                        payable(address(this)),
-                        ethToRemove,
-                        priceResponse
-                    );
+                    // Distribute received stETH
+                    uint256 stabilizerStEthShare = stEthToRemove - userStEthShare;
 
-                    // If all shares from this position were unallocated, remove from allocated list
-                    if (position.backedPoolShares == poolSharesSliceToUnallocate) { // Check backedPoolShares
-                        _removeFromAllocatedList(currentId);
+                    // Send user's share to USPDToken (which should forward to user)
+                    // TODO: Update USPDToken to handle stETH correctly in receiveUserStETH
+                    if (userStEthShare > 0) {
+                        // Approve USPDToken to spend stETH? Or transfer directly?
+                        // Assuming USPDToken.receiveUserStETH handles the transfer logic for now.
+                        // Need to ensure USPDToken has STABILIZER_ROLE granted to this contract.
+                        // Let's transfer stETH to USPDToken first.
+                        bool successUser = IERC20(stETH).transfer(address(uspdToken), userStEthShare);
+                        if (!successUser) revert("User stETH transfer to USPDToken failed");
+                        // uspdToken.receiveUserStETH(originalBurnerAddress, userStEthShare); // Need original burner address?
+
+                        totalUserStEthReturned += userStEthShare;
                     }
 
-                    // Update totals
-                    totalUserEth += userShare;
-                    // pos.totalEth += ethToRemove - userShare; // This logic seems incorrect, totalEth is deprecated for escrow balance
-                    // Instead, the stabilizer's share (ethToRemove - userShare) is returned to their escrow via PositionNFT.removeCollateral
+                    // Send stabilizer's share back to their StabilizerEscrow
+                    if (stabilizerStEthShare > 0) {
+                        address stabilizerEscrowAddress = stabilizerEscrows[currentId];
+                        require(stabilizerEscrowAddress != address(0), "StabilizerEscrow not found");
+                        bool successStabilizer = IERC20(stETH).transfer(stabilizerEscrowAddress, stabilizerStEthShare);
+                        if (!successStabilizer) revert("Stabilizer stETH transfer to StabilizerEscrow failed");
+                    }
 
-                    // Add back to unallocated list if needed (check escrow balance after return)
-                    // This might need adjustment based on when the escrow balance updates
-                    // For now, assume if it was fully unallocated, it might become available again later.
-                    // Let's register it if it was fully unallocated from this position.
-                    if (position.backedPoolShares == poolSharesSliceToUnallocate && pos.prevUnallocated == 0 && pos.nextUnallocated == 0) { // Check backedPoolShares
-                        _registerUnallocatedPosition(currentId);
+                    // If all shares from this position were unallocated, update lists
+                    bool fullyUnallocated = (currentBackedShares == poolSharesSliceToUnallocate);
+                    if (fullyUnallocated) {
+                        _removeFromAllocatedList(currentId);
+                        // Check if StabilizerEscrow has balance before adding back to unallocated
+                        if (IStabilizerEscrow(stabilizerEscrows[currentId]).unallocatedStETH() > 0) {
+                             _registerUnallocatedPosition(currentId);
+                        }
                     }
 
                     remainingPoolShares -= poolSharesSliceToUnallocate; // Decrease remaining shares
-                    emit FundsUnallocated(currentId, ethToRemove, positionId);
+                    emit FundsUnallocated(currentId, userStEthShare, stabilizerStEthShare); // Emit updated event
                 }
             }
 
-            currentId = pos.prevAllocated;
+            currentId = pos.prevAllocated; // Move to the next stabilizer in the allocated list
         }
 
-        require(totalUserEth > 0, "No funds unallocated");
+        require(totalUserStEthReturned > 0, "No funds unallocated");
 
-        // Send user's share back to USPD contract
-        uspdToken.receiveStabilizerReturn{value: totalUserEth}();
-
-        return totalUserEth;
+        // Return the total stETH amount intended for the user (USPDToken handles final transfer)
+        return totalUserStEthReturned;
     }
 
     function removeUnallocatedFunds(
@@ -676,6 +685,49 @@ contract StabilizerNFT is
             userStEthShare = stEthToRemove;
         }
     }
+
+    /**
+     * @notice Calculates the stETH amounts to remove based on pool shares and current ratio from PositionEscrow.
+     * @param positionEscrow The PositionEscrow instance to query.
+     * @param poolSharesToUnallocate The amount of pool shares being unallocated.
+     * @param priceResponse The current valid price response for stETH/USD.
+     * @return stEthToRemove The total stETH (including yield) to remove.
+     * @return userStEthShare The user's portion of stEthToRemove (at par value).
+     */
+    function _calculateUnallocationFromEscrow(
+        IPositionEscrow positionEscrow,
+        uint256 poolSharesToUnallocate,
+        IPriceOracle.PriceResponse memory priceResponse
+    ) internal view returns (uint256 stEthToRemove, uint256 userStEthShare) {
+        // If the position has no backed shares (should be checked before calling, but safety first)
+        if (positionEscrow.backedPoolShares() == 0) {
+            return (0, 0);
+        }
+
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        // Calculate the USD value represented by the pool shares being unallocated
+        uint256 uspdValueToUnallocate = (poolSharesToUnallocate * yieldFactor) / rateContract.FACTOR_PRECISION();
+
+        // Calculate user's share of stETH at par value (1 USD = 1/price stETH)
+        require(priceResponse.price > 0, "Oracle price cannot be zero");
+        userStEthShare = (uspdValueToUnallocate * (10**uint256(priceResponse.decimals))) / priceResponse.price;
+
+        // Get the current ratio directly from the PositionEscrow
+        uint256 currentRatio = positionEscrow.getCollateralizationRatio(priceResponse);
+
+        // Prevent division by zero or nonsensical ratios
+        require(currentRatio >= 100, "Cannot unallocate from undercollateralized position"); // Assuming ratio is scaled by 100
+
+        // Calculate total stETH to remove = userShare * ratio / 100
+        stEthToRemove = (userStEthShare * currentRatio) / 100;
+
+        // Ensure user share doesn't exceed total removed (can happen with rounding if ratio is exactly 100)
+        if (userStEthShare > stEthToRemove) {
+            userStEthShare = stEthToRemove;
+        }
+        // Note: The actual transfer in PositionEscrow.removeCollateral will fail if the contract lacks sufficient stETH balance.
+    }
+
 
     receive() external payable {}
 
