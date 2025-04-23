@@ -44,6 +44,7 @@ contract PositionEscrowTest is Test {
     // --- Signer for Price Oracle ---
     uint256 internal signerPrivateKey;
     address internal signer;
+    uint256 internal badSignerPrivateKey = 0xbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad1; // Define a bad key
     bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD"); // Example pair
 
     // --- Setup ---
@@ -511,9 +512,21 @@ contract PositionEscrowTest is Test {
     }
 
     function test_removeExcessCollateral_revert_invalidPriceQuery() public {
-        // Create invalid signature by signing with wrong key
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0xbadkey, keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)));
+        // Create query data
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
+            price: 2000 ether,
+            decimals: 18,
+            dataTimestamp: block.timestamp * 1000,
+            assetPair: ETH_USD_PAIR,
+            signature: bytes("")
+        });
+
+        // Calculate the *prefixed* hash the oracle expects
+        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
+        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+
+        // Sign the prefixed hash with the *wrong* private key
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(badSignerPrivateKey, prefixedHash);
         query.signature = abi.encodePacked(r, s, v);
 
         vm.expectRevert(InvalidSignature.selector); // From PriceOracle
