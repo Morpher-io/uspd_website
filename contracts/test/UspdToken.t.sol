@@ -15,6 +15,13 @@ import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
+import "./mocks/MockStETH.sol";
+import "./mocks/MockLido.sol";
+import "../src/PriceOracle.sol"; // Using actual for attestations if needed later
+import "../src/PoolSharesConversionRate.sol";
+import "../src/StabilizerEscrow.sol"; // Import Escrow
+import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
+
 contract USPDTokenTest is Test {
     uint256 internal signerPrivateKey;
     address internal signer;
