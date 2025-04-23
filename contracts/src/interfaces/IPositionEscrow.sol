@@ -42,8 +42,9 @@ interface IPositionEscrow is IERC20Errors, IAccessControl { // Inherit IAccessCo
     function removeCollateral(uint256 totalToRemove, uint256 userShare, address payable recipient) external;
     function removeExcessCollateral(
         address payable recipient,
-        uint256 minCollateralRatio, // Add minimum ratio (e.g., 110)
-        IPriceOracle.PriceAttestationQuery calldata priceQuery // Add price query
+        uint256 amountToRemove, // Amount the caller wants to remove
+        uint256 minCollateralRatio, // Minimum ratio required after removal
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external;
 
     // --- View Functions ---

@@ -633,6 +633,14 @@ contract StabilizerNFT is
         emit MinCollateralRatioUpdated(tokenId, oldRatio, newRatio);
     }
 
+    /**
+     * @notice Returns the minimum collateralization ratio for a given stabilizer token ID.
+     */
+    function getMinCollateralRatio(uint256 tokenId) external view returns (uint256) {
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
+        return positions[tokenId].minCollateralRatio;
+    }
+
     // Removed old _calculateUnallocation function that relied on PositionNFT
 
     /**

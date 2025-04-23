@@ -465,11 +465,41 @@ contract PositionEscrowTest is Test {
         vm.expectEmit(true, true, false, true, address(positionEscrow)); // recipient is indexed
         emit IPositionEscrow.ExcessCollateralRemoved(recipient, expectedExcess);
 
+        // Action: Remove the calculated excess
         vm.prank(stabilizerOwner); // Has EXCESSCOLLATERALMANAGER_ROLE
-        positionEscrow.removeExcessCollateral(payable(recipient), minRatio, query);
+        positionEscrow.removeExcessCollateral(payable(recipient), expectedExcess, minRatio, query);
 
         assertEq(positionEscrow.getCurrentStEthBalance(), initialStEth - expectedExcess, "Escrow balance mismatch");
         assertEq(mockStETH.balanceOf(recipient), expectedExcess, "Recipient balance mismatch");
+    }
+
+    // New test: Attempt to remove more than allowed by ratio
+    function test_removeExcessCollateral_revert_belowMinRatioAfterRemoval() public {
+        uint256 initialStEth = 1.5 ether;
+        uint256 shares = 1000 ether;
+        uint256 price = 2000 ether;
+        uint256 minRatio = 110;
+        uint256 amountToRemove = 1 ether; // Removing 1 ETH would leave 0.5 ETH (target is 0.55)
+
+        // Setup state
+        mockStETH.mint(address(positionEscrow), initialStEth);
+        vm.prank(admin);
+        positionEscrow.modifyAllocation(int256(shares));
+
+        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+
+        // Mock the oracle call
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encode(mockResponse)
+        );
+
+        // Expect revert because removing 1 ETH drops ratio below 110%
+        vm.expectRevert(IPositionEscrow.BelowMinimumRatio.selector);
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(recipient), amountToRemove, minRatio, query);
     }
 
      function test_removeExcessCollateral_success_zeroLiability() public {
@@ -492,8 +522,9 @@ contract PositionEscrowTest is Test {
         vm.expectEmit(true, true, false, true, address(positionEscrow));
         emit IPositionEscrow.ExcessCollateralRemoved(recipient, initialStEth); // All is excess
 
+        // Action: Remove the full balance (since shares are 0)
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
+        positionEscrow.removeExcessCollateral(payable(recipient), initialStEth, DEFAULT_MIN_RATIO, query);
 
         assertEq(positionEscrow.getCurrentStEthBalance(), 0, "Escrow balance should be 0");
         assertEq(mockStETH.balanceOf(recipient), initialStEth, "Recipient balance mismatch");
@@ -520,10 +551,16 @@ contract PositionEscrowTest is Test {
             abi.encode(mockResponse)
         );
 
-        // No event expected
-        vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), minRatio, query);
+        // Action: Attempt to remove 0.01 ETH (should fail as there's no excess)
+        // Note: The function now reverts if the ratio drops below min, even if removing 0 would be fine.
+        // Let's test removing a tiny amount that *would* drop the ratio.
+        uint256 tinyAmountToRemove = 0.0001 ether;
 
+        vm.expectRevert(IPositionEscrow.BelowMinimumRatio.selector);
+        vm.prank(stabilizerOwner);
+        positionEscrow.removeExcessCollateral(payable(recipient), tinyAmountToRemove, minRatio, query);
+
+        // Verify state unchanged
         assertEq(positionEscrow.getCurrentStEthBalance(), initialStEth, "Escrow balance should not change");
         assertEq(mockStETH.balanceOf(recipient), 0, "Recipient balance should be 0");
     }
@@ -532,14 +569,14 @@ contract PositionEscrowTest is Test {
         IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(address(0)), DEFAULT_MIN_RATIO, query);
+        positionEscrow.removeExcessCollateral(payable(address(0)), 0.1 ether, DEFAULT_MIN_RATIO, query); // Need amount > 0
     }
 
     function test_removeExcessCollateral_revert_minRatioTooLow() public {
         IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
         vm.expectRevert(IPositionEscrow.BelowMinimumRatio.selector);
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), 99, query); // Ratio < 100
+        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, 99, query); // Ratio < 100
     }
 
     function test_removeExcessCollateral_revert_invalidPriceQuery() public {
@@ -562,7 +599,7 @@ contract PositionEscrowTest is Test {
 
         vm.expectRevert(InvalidSignature.selector); // From PriceOracle
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
+        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, DEFAULT_MIN_RATIO, query);
     }
 
     function test_removeExcessCollateral_revert_zeroOraclePrice() public {
@@ -582,9 +619,9 @@ contract PositionEscrowTest is Test {
             abi.encode(mockResponse)
         );
 
-        vm.expectRevert(IPositionEscrow.ZeroAmount.selector); // Reverts inside removeExcessCollateral
+        vm.expectRevert(IPositionEscrow.ZeroAmount.selector); // Reverts due to price 0 in calculation
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
+        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, DEFAULT_MIN_RATIO, query);
     }
 
     function test_removeExcessCollateral_revert_transferFails() public {
@@ -614,7 +651,7 @@ contract PositionEscrowTest is Test {
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), minRatio, query);
+        positionEscrow.removeExcessCollateral(payable(recipient), expectedExcess, minRatio, query);
     }
 
     // =============================================
