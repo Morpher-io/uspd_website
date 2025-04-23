@@ -129,10 +129,10 @@ contract USPDTokenTest is Test {
         );
         stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy_NoInit)));
 
-        ERC1967Proxy positionProxy_NoInit = new ERC1967Proxy(
-            address(positionNFTImpl),
-            bytes("")
-        );
+        // ERC1967Proxy positionProxy_NoInit = new ERC1967Proxy( // Remove PositionNFT proxy deployment
+        //     address(positionNFTImpl),
+        //     bytes("")
+        // );
         // positionNFT = UspdCollateralizedPositionNFT( // Removed PositionNFT proxy assignment
         //     payable(address(positionProxy_NoInit))
         // );
