@@ -616,11 +616,12 @@ contract PositionEscrowTest is Test {
         // Simulate yield (10% increase)
         uint256 yieldFactor = 1.1 ether; // 1.1 * 1e18
         vm.mockCall(address(rateContract), abi.encodeWithSelector(rateContract.getYieldFactor.selector), abi.encode(yieldFactor));
-        // Assume stETH balance also increased by 10% due to rebase (though not explicitly mocked here, calculation uses factor)
-        // Let's manually set the balance for clarity in calculation check
+        // Assume stETH balance also increased by 10% due to rebase
+        // Let's manually adjust the balance for clarity in calculation check
         uint256 currentStEth = (initialStEth * 11) / 10; // 1.21 ether
-        // Use vm.deal to directly set the stETH balance of the escrow contract
-        vm.deal(address(mockStETH), address(positionEscrow), currentStEth);
+        uint256 amountToMint = currentStEth - initialStEth; // Calculate the difference needed
+        // Mint the difference to the escrow contract
+        mockStETH.mint(address(positionEscrow), amountToMint);
 
         // Collateral Value = 1.21e18 * 1000e18 / 1e18 = 1210e18
         // Liability Value = 1000e18 * 1.1e18 / 1e18 = 1100e18
