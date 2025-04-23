@@ -20,6 +20,9 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
     bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
 
+    // --- Constants ---
+    uint256 public constant MINIMUM_COLLATERAL_RATIO = 110; // 110%
+
     // --- State Variables ---
     address public immutable override stabilizerNFTContract; // The controller/manager (also gets STABILIZER_ROLE)
     address public immutable override stETH;                 // stETH token contract
@@ -176,17 +179,15 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     }
 
     /**
-     * @notice Removes a specified amount of stETH collateral if the ratio remains >= minCollateralRatio.
+     * @notice Removes a specified amount of stETH collateral if the ratio remains >= MINIMUM_COLLATERAL_RATIO.
      * @param recipient The address (StabilizerEscrow) to send the stETH to.
      * @param amountToRemove The amount of stETH the caller wishes to remove.
-     * @param minCollateralRatio The minimum collateral ratio required for this position (e.g., 110), passed by the caller.
      * @param priceQuery The signed price attestation query.
      * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE (Stabilizer Owner).
      */
     function removeExcessCollateral(
         address payable recipient,
         uint256 amountToRemove, // Caller specifies amount
-        uint256 minCollateralRatio, // Caller provides min ratio
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) { // Role check remains
         // --- Logic ---
@@ -203,7 +204,7 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
         // 1. Validate inputs
         if (recipient == address(0)) revert ZeroAddress();
         if (amountToRemove == 0) revert ZeroAmount();
-        if (minCollateralRatio < 100) revert BelowMinimumRatio(); // Sanity check min ratio passed in
+        // Removed minCollateralRatio check here, using constant below
 
         // 2. Validate price query
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle(oracle)
@@ -230,8 +231,8 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
             // Calculate ratio *after* removal
             uint256 newRatio = (collateralValueUSD_after * 100) / liabilityValueUSD;
 
-            // Check if the ratio after removal meets the minimum requirement
-            if (newRatio < minCollateralRatio) revert BelowMinimumRatio();
+            // Check if the ratio after removal meets the minimum requirement (using constant)
+            if (newRatio < MINIMUM_COLLATERAL_RATIO) revert BelowMinimumRatio();
         }
         // If currentShares is 0, any amount up to the balance can be withdrawn without ratio check.
 
