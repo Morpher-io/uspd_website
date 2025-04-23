@@ -467,7 +467,7 @@ contract StabilizerNFT is
                         positionId,
                         position,
                         poolSharesSliceToUnallocate, // Pass pool shares slice
-                        position.backedPoolShares == poolSharesSliceToUnallocate, // Check if fully unallocating this position's shares
+                        // Removed boolean argument for full unallocation
                         priceResponse
                     );
 
