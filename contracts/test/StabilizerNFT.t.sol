@@ -537,7 +537,7 @@ contract StabilizerNFTTest is Test {
             position1.backedPoolShares, // Check pool shares
             1400 ether, // Expected shares = 1400e18 (0.5 ETH * 2800 price / 1 yieldFactor)
             "First position should back 1400 Pool Shares (0.5 ETH * 2800)" // This check is now invalid as PositionNFT is removed
-        ); */
+        ); 
         // TODO: Add checks for PositionEscrow state for user1
 
         // Verify second position (110% collateralization)
