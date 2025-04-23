@@ -454,6 +454,14 @@ contract PositionEscrowTest is Test {
 
         IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
 
+        // Mock the oracle call to return a valid response matching the query price
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encode(mockResponse)
+        );
+
         vm.expectEmit(true, true, false, true, address(positionEscrow)); // recipient is indexed
         emit IPositionEscrow.ExcessCollateralRemoved(recipient, expectedExcess);
 
@@ -472,6 +480,14 @@ contract PositionEscrowTest is Test {
         mockStETH.mint(address(positionEscrow), initialStEth);
 
         IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
+
+        // Mock the oracle call
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encode(mockResponse)
+        );
 
         vm.expectEmit(true, true, false, true, address(positionEscrow));
         emit IPositionEscrow.ExcessCollateralRemoved(recipient, initialStEth); // All is excess
@@ -495,6 +511,14 @@ contract PositionEscrowTest is Test {
         positionEscrow.modifyAllocation(int256(shares));
 
         IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+
+        // Mock the oracle call
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encode(mockResponse)
+        );
 
         // No event expected
         vm.prank(stabilizerOwner);
@@ -550,6 +574,14 @@ contract PositionEscrowTest is Test {
         // Create query with price 0
         IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(0, block.timestamp * 1000);
 
+        // Mock the oracle call to return price 0
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(0, query.decimals, query.dataTimestamp);
+         vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encode(mockResponse)
+        );
+
         vm.expectRevert(IPositionEscrow.ZeroAmount.selector); // Reverts inside removeExcessCollateral
         vm.prank(stabilizerOwner);
         positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
@@ -568,6 +600,14 @@ contract PositionEscrowTest is Test {
         positionEscrow.modifyAllocation(int256(shares));
 
         IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+
+        // Mock the oracle call to succeed
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+         vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encode(mockResponse)
+        );
 
         // Mock transfer to fail
         vm.mockCall(address(mockStETH), abi.encodeWithSelector(mockStETH.transfer.selector, recipient, expectedExcess), abi.encode(false));
