@@ -34,7 +34,11 @@ interface IPositionEscrow is IERC20Errors {
     function addCollateral(uint256 userStEthAmount, uint256 stabilizerStEthAmount) external;
     function modifyAllocation(int256 sharesDelta) external; // Use int for delta
     function removeCollateral(uint256 totalToRemove, uint256 userShare, address payable recipient) external;
-    function removeExcessCollateral(address payable recipient) external;
+    function removeExcessCollateral(
+        address payable recipient,
+        uint256 minCollateralRatio, // Add minimum ratio (e.g., 110)
+        IPriceOracle.PriceAttestationQuery calldata priceQuery // Add price query
+    ) external;
 
     // --- View Functions ---
     function getCollateralizationRatio(IPriceOracle.PriceResponse memory priceResponse) external view returns (uint256 ratio);

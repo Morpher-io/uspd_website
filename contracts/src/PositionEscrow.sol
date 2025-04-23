@@ -130,12 +130,19 @@ contract PositionEscrow is IPositionEscrow {
     /**
      * @notice Removes excess stETH collateral above the minimum required ratio.
      * @param recipient The address (StabilizerEscrow) to send the excess stETH to.
-     * @dev Callable by StabilizerNFT (or potentially owner via StabilizerNFT).
+     * @param minCollateralRatio The minimum collateral ratio required for this position (e.g., 110).
+     * @param priceQuery The signed price attestation query.
+     * @dev Callable only by StabilizerNFT.
      */
-    function removeExcessCollateral(address payable recipient) external override onlyStabilizerNFT {
+    function removeExcessCollateral(
+        address payable recipient,
+        uint256 minCollateralRatio,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external override onlyStabilizerNFT {
         // --- Logic ---
-        // 1. Get current stETH balance
-        // 2. Get backedPoolShares
+        // 1. Validate price query via Oracle
+        // 2. Get current stETH balance
+        // 3. Get backedPoolShares
         // 3. If backedPoolShares is 0, all collateral is excess.
         // 4. If > 0, get current price from Oracle
         // 5. Get current yield factor from RateContract
@@ -146,8 +153,15 @@ contract PositionEscrow is IPositionEscrow {
         // --- Implementation ---
 
         if (recipient == address(0)) revert ZeroAddress();
+        if (minCollateralRatio < 100) revert BelowMinimumRatio(); // Sanity check ratio
 
+        // 1. Validate price query
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle(oracle)
+            .attestationService(priceQuery);
+
+        // 2. Get current stETH balance
         uint256 currentStEth = IERC20(stETH).balanceOf(address(this));
+        // 3. Get backedPoolShares
         uint256 currentShares = backedPoolShares;
         uint256 excessStEth;
 
@@ -155,36 +169,27 @@ contract PositionEscrow is IPositionEscrow {
             // No liability, all collateral is excess
             excessStEth = currentStEth;
         } else {
-            // Fetch necessary data
-            // TODO: How to get PriceResponse without user interaction? StabilizerNFT needs to pass it?
-            // Assuming StabilizerNFT passes the latest valid PriceResponse
-            // This function signature might need adjustment if called directly by owner.
-            // For now, assume StabilizerNFT calls it and provides the price.
-            // Let's add PriceResponse as a parameter for now.
-            revert("removeExcessCollateral needs PriceResponse parameter - design adjustment required");
-
-            // --- Placeholder Logic (assuming priceResponse is available) ---
-            /*
-            IPriceOracle.PriceResponse memory priceResponse = // ... passed in or fetched ... ;
+            // 5. Get current yield factor
             uint256 yieldFactor = IPoolSharesConversionRate(rateContract).getYieldFactor();
+            // 6. Calculate current liability value (USD)
             uint256 liabilityValueUSD = (currentShares * yieldFactor) / IPoolSharesConversionRate(rateContract).FACTOR_PRECISION();
 
-            // Calculate target stETH based on 110% ratio (TODO: Make ratio configurable/fetch from StabilizerNFT?)
-            uint256 minRatio = 110; // Example
+            // 7. Calculate target stETH balance for minimum ratio
             // targetValueUSD = liabilityValueUSD * minRatio / 100
-            uint256 targetValueUSD = (liabilityValueUSD * minRatio) / 100;
+            uint256 targetValueUSD = (liabilityValueUSD * minCollateralRatio) / 100;
             // targetStEth = targetValueUSD / stEthPriceUSD
-            if (priceResponse.price == 0) revert ZeroAmount(); // Avoid division by zero
+            if (priceResponse.price == 0) revert ZeroAmount(); // Avoid division by zero from oracle price
             uint256 targetStEth = (targetValueUSD * (10**uint256(priceResponse.decimals))) / priceResponse.price;
 
+            // 8. Calculate excess stETH
             if (currentStEth > targetStEth) {
                 excessStEth = currentStEth - targetStEth;
             } else {
                 excessStEth = 0; // No excess
             }
-            */
         }
 
+        // 9. Transfer excess stETH
         if (excessStEth > 0) {
             bool success = IERC20(stETH).transfer(recipient, excessStEth);
             if (!success) revert TransferFailed();
