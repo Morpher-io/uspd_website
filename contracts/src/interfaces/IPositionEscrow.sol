@@ -10,11 +10,9 @@ import {IAccessControl} from "../../lib/openzeppelin-contracts/contracts/access/
  * @notice Interface for the PositionEscrow contract, holding collateral for a specific position.
  */
 interface IPositionEscrow is IERC20Errors, IAccessControl { // Inherit IAccessControl
-    // --- Roles ---
-    // Role granted to the StabilizerNFT contract for core operations
-    bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
-    // Role granted to the owner of the corresponding StabilizerNFT for managing excess collateral
-    bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
+    // --- Roles (Defined in implementation contract) ---
+    // bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE"); // Removed from interface
+    // bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE"); // Removed from interface
 
     // --- Errors ---
     error ZeroAddress();
