@@ -960,4 +960,4 @@ contract StabilizerNFTTest is Test {
     } */
 
     receive() external payable {}
-}
+} // Add closing brace for the contract here
