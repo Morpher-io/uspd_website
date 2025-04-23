@@ -256,8 +256,9 @@ contract UspdCollateralizedPositionNFT is
         if (amount == 0) revert InvalidAmount();
 
         // Calculate current liability value based on shares and yield factor
+        // Note: We proceed even if liability is zero, as collateral might still need releasing from a previous state.
         uint256 currentLiabilityValueUSD_wei = (pos.backedPoolShares * rateContract.getYieldFactor()) / rateContract.FACTOR_PRECISION();
-        if (currentLiabilityValueUSD_wei == 0) revert ZeroLiability(); // Cannot unallocate if nothing is backed
+        // Removed: if (currentLiabilityValueUSD_wei == 0) revert ZeroLiability();
 
         // Calculate current collateral value in USD wei
         uint256 currentCollateralValueUSD_wei = (pos.allocatedEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
