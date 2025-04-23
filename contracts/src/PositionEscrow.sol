@@ -127,9 +127,9 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
 
     /**
      * @notice Adds collateral by receiving native ETH, which is staked via Lido.
-     * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE. Converts msg.value ETH to stETH.
+     * @dev Converts msg.value ETH to stETH. Callable by anyone.
      */
-    function addCollateralEth() external payable override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) {
+    function addCollateralEth() external payable override /* Removed role check */ {
         uint256 ethAmount = msg.value;
         if (ethAmount == 0) revert ZeroAmount();
 
@@ -148,9 +148,9 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     /**
      * @notice Adds collateral by receiving stETH directly from the caller.
      * @param stETHAmount The amount of stETH to add.
-     * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE. Requires caller to have approved this contract.
+     * @dev Requires caller to have approved this contract. Callable by anyone.
      */
-    function addCollateralStETH(uint256 stETHAmount) external override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) {
+    function addCollateralStETH(uint256 stETHAmount) external override /* Removed role check */ {
         if (stETHAmount == 0) revert ZeroAmount();
 
         // Pull stETH from the caller
@@ -328,6 +328,22 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     }
 
     // --- Fallback ---
-    // Should generally not receive ETH directly unless it's part of a specific flow (e.g., unwrapping stETH)
-    // receive() external payable {} // Keep commented out unless needed
+    /**
+     * @notice Allows receiving direct ETH transfers, which are then staked into stETH.
+     */
+    receive() external payable {
+        uint256 ethAmount = msg.value;
+        if (ethAmount == 0) return; // Do nothing if no ETH sent
+
+        uint256 stEthReceived = 0;
+        try ILido(lido).submit{value: ethAmount}(address(0)) returns (uint256 received) {
+            stEthReceived = received;
+            if (stEthReceived == 0) revert TransferFailed(); // Lido submit should return > 0 stETH
+        } catch {
+            revert TransferFailed(); // Lido submit failed
+        }
+
+        // Emit event acknowledging the stETH added to the pool
+        emit CollateralAdded(stEthReceived);
+    }
 }
