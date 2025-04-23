@@ -172,6 +172,7 @@ contract PositionEscrowTest is Test {
 
     function test_addCollateralFromStabilizer_revert_notStabilizerRole() public {
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+        vm.deal(otherUser, 1 ether);
         vm.prank(otherUser);
         positionEscrow.addCollateralFromStabilizer{value: 1 ether}(0);
     }
@@ -225,6 +226,8 @@ contract PositionEscrowTest is Test {
         vm.expectEmit(true, false, false, true, address(positionEscrow));
         emit IPositionEscrow.CollateralAdded(expectedStEth);
 
+        vm.deal(admin, userEthAmount);
+
         vm.prank(admin); // Has STABILIZER_ROLE
         positionEscrow.addCollateralFromStabilizer{value: userEthAmount}(0);
 
@@ -258,6 +261,8 @@ contract PositionEscrowTest is Test {
         vm.expectEmit(true, false, false, true, address(positionEscrow));
         emit IPositionEscrow.CollateralAdded(expectedTotalStEth);
 
+        vm.deal(admin, userEthAmount);
+
         vm.prank(admin); // Has STABILIZER_ROLE
         positionEscrow.addCollateralFromStabilizer{value: userEthAmount}(stabilizerStEthAmount);
 
@@ -275,6 +280,7 @@ contract PositionEscrowTest is Test {
         vm.mockCallRevert(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), "Lido submit failed");
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
+        vm.deal(admin, 1 ether);
         vm.prank(admin);
         positionEscrow.addCollateralFromStabilizer{value: 1 ether}(0);
     }
@@ -284,6 +290,7 @@ contract PositionEscrowTest is Test {
         vm.mockCall(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), abi.encode(uint256(0)));
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
+        vm.deal(admin, 1 ether);
         vm.prank(admin);
         positionEscrow.addCollateralFromStabilizer{value: 1 ether}(0);
     }
