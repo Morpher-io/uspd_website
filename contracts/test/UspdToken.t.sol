@@ -34,7 +34,7 @@ contract USPDTokenTest is Test {
 
     // --- Contracts Under Test ---
     StabilizerNFT public stabilizerNFT;
-    UspdCollateralizedPositionNFT positionNFT;
+    // UspdCollateralizedPositionNFT positionNFT; // Removed PositionNFT
     USPD uspdToken;
 
     bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD");
@@ -118,7 +118,7 @@ contract USPDTokenTest is Test {
         );
 
         // Deploy Implementations
-        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
+        // UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT(); // Removed PositionNFT implementation
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
 
         // Deploy Proxies (without full init data initially)
@@ -132,9 +132,9 @@ contract USPDTokenTest is Test {
             address(positionNFTImpl),
             bytes("")
         );
-        positionNFT = UspdCollateralizedPositionNFT(
-            payable(address(positionProxy_NoInit))
-        );
+        // positionNFT = UspdCollateralizedPositionNFT( // Removed PositionNFT proxy assignment
+        //     payable(address(positionProxy_NoInit))
+        // );
 
         // Deploy USPD token (needs oracle, rate contract, stabilizer proxy address)
         uspdToken = new USPD(
@@ -145,17 +145,10 @@ contract USPDTokenTest is Test {
         );
 
         // Initialize Proxies with correct addresses
-        positionNFT.initialize(
-            address(priceOracle),
-            address(mockStETH),
-            address(mockLido),
-            address(rateContract),
-            address(stabilizerNFT), // Pass stabilizer proxy address
-            address(this) // Admin
-        );
+        // positionNFT.initialize(...) // Removed PositionNFT initialization
 
         stabilizerNFT.initialize(
-            address(positionNFT), // Pass position proxy address
+            // address(positionNFT), // Removed position proxy address argument
             address(uspdToken),
             address(mockStETH),
             address(mockLido),
@@ -164,23 +157,8 @@ contract USPDTokenTest is Test {
         );
 
         // Setup roles
-        positionNFT.grantRole(
-            positionNFT.MINTER_ROLE(),
-            address(stabilizerNFT)
-        );
-        // positionNFT.grantRole(
-        //     positionNFT.TRANSFERCOLLATERAL_ROLE(),
-        //     address(stabilizerNFT)
-        // );
-        positionNFT.grantRole(
-            positionNFT.MODIFYALLOCATION_ROLE(),
-            address(stabilizerNFT)
-        );
-        // Grant STABILIZER_NFT_ROLE for removeCollateral
-        positionNFT.grantRole(
-            positionNFT.STABILIZER_NFT_ROLE(),
-            address(stabilizerNFT)
-        );
+        // positionNFT.grantRole(...) // Removed PositionNFT role grants
+
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
         // Grant STABILIZER_ROLE on USPDToken to StabilizerNFT
         uspdToken.grantRole(
@@ -512,22 +490,24 @@ contract USPDTokenTest is Test {
             "Incorrect Pool Share balance"
         );
 
-        // Verify position NFT state
-        uint256 positionId = positionNFT.getTokenByOwner(stabilizerOwner);
-        IUspdCollateralizedPositionNFT.Position memory position = positionNFT
-            .getPosition(positionId);
+        // Verify PositionEscrow state (instead of PositionNFT)
+        uint256 tokenId = 1; // Assuming stabilizerNFT minted token ID 1
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed/found");
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
 
         // Calculate expected allocation (110% of 1 ETH)
-        uint256 expectedAllocation = (1 ether * 110) / 100;
-        assertEq(
-            position.allocatedEth,
-            expectedAllocation,
-            "Position should have correct ETH allocation"
+        uint256 expectedStEthAllocation = (1 ether * 110) / 100; // User 1 ETH + Stabilizer 0.1 ETH = 1.1 ETH worth of stETH
+        assertApproxEqAbs(
+            positionEscrow.getCurrentStEthBalance(), // Check actual stETH balance in escrow
+            expectedStEthAllocation,
+            1e15, // Allow some tolerance for Lido conversion rate if not exactly 1:1
+            "PositionEscrow should have correct stETH allocation"
         );
         assertEq(
-            position.backedPoolShares, // Check backedPoolShares
+            positionEscrow.backedPoolShares(), // Check backedPoolShares in escrow
             expectedPoolShares, // Check against expected pool shares
-            "Position should back correct Pool Share amount"
+            "PositionEscrow should back correct Pool Share amount"
         );
     }
 

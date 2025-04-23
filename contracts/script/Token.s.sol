@@ -385,10 +385,10 @@ contract DeployScript is Script {
         require(rateContractAddress != address(0), "Rate contract not deployed yet"); // Add check
 
         // Prepare initialization data
-        // StabilizerNFT.initialize(address _positionNFT, address _uspdToken, address _stETH, address _lido, address _rateContract, address _admin)
+        // StabilizerNFT.initialize(address _uspdToken, address _stETH, address _lido, address _rateContract, address _admin)
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (positionNFTProxyAddress, tokenAddress, stETHAddress, lidoAddress, rateContractAddress, deployer) // Add rateContractAddress
+            (tokenAddress, stETHAddress, lidoAddress, rateContractAddress, deployer) // Removed positionNFTProxyAddress
         );
 
          // Call initialize via the proxy
