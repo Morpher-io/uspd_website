@@ -194,7 +194,7 @@ contract PositionEscrowTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.EXCESSCOLLATERALMANAGER_ROLE()));
         vm.prank(otherUser);
         // Add a placeholder amountToRemove (e.g., 0.1 ether) to match the function signature
-        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, DEFAULT_MIN_RATIO, query);
+        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, query);
     }
 
     // =============================================
@@ -559,7 +559,7 @@ contract PositionEscrowTest is Test {
 
         vm.expectRevert(IPositionEscrow.BelowMinimumRatio.selector);
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), tinyAmountToRemove, query); // Removed minRatio arg
+        positionEscrow.removeExcessCollateral(payable(recipient), tinyAmountToRemove, query);
 
         // Verify state unchanged
         assertEq(positionEscrow.getCurrentStEthBalance(), initialStEth, "Escrow balance should not change");
