@@ -142,7 +142,12 @@ contract PriceOracle is
             /*uint timeStamp*/,
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData();
-        return (1e18 * answer) / 1e8; //converted to 18 digits
+        // Check if the answer is negative, which is invalid for our price calculations
+        if (answer < 0) {
+            revert PriceSourceUnavailable("Chainlink negative price");
+        }
+        // Safely cast to uint256 and scale
+        return (PRICE_PRECISION * uint256(answer)) / (10**dataFeed.decimals()); // Use PRICE_PRECISION and feed decimals
     }
 
     function verifySignature(
