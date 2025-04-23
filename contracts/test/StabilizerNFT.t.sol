@@ -488,7 +488,22 @@ contract StabilizerNFTTest is Test {
             "Should allocate correct user ETH share"
         );
 
-        // TODO: Add checks for PositionEscrow state (stETH balance, backedPoolShares)
+        // Verify PositionEscrow state after allocation
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(1);
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+
+        // Expected stETH: 1 ETH from user + 0.1 ETH from stabilizer (for 110% ratio)
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            1.1 ether,
+            "PositionEscrow should have correct stETH balance"
+        );
+        // Expected shares = 2000e18 (1 ETH * 2000 price / 1 yieldFactor)
+        assertEq(
+            positionEscrow.backedPoolShares(),
+            2000 ether,
+            "PositionEscrow should back correct Pool Shares"
+        );
     }
 
     function testMultipleStabilizersAllocation() public {
@@ -555,11 +570,9 @@ contract StabilizerNFTTest is Test {
             position2.backedPoolShares, // Check pool shares
             4200 ether, // Expected shares = 4200e18 (1.5 ETH * 2800 price / 1 yieldFactor)
             "Second position should back 4200 Pool Shares (1.5 ETH * 2800)" // This check is now invalid
-        ); */
-        // TODO: Add checks for PositionEscrow state for user2
 
 
-        // Verify total allocation - only user's ETH
+        // Verify total allocation result - only user's ETH
         assertEq(
             result.allocatedEth,
             2 ether,
@@ -776,6 +789,94 @@ contract StabilizerNFTTest is Test {
             18
         );
 
+        // Verify initial PositionEscrow state
+        uint256 tokenId = 1;
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            2 ether,
+            "PositionEscrow should have 2 stETH total (1 user + 1 stabilizer)"
+        );
+        assertEq(
+            positionEscrow.backedPoolShares(),
+            2000 ether, // Expected shares = 2000e18 (1 ETH * 2000 price / 1 yieldFactor)
+            "PositionEscrow should back 2000 Pool Shares"
+        );
+
+        // Get initial collateralization ratio
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(
+            2000 ether,
+            18,
+            block.timestamp * 1000
+        );
+        uint256 initialRatio = positionEscrow.getCollateralizationRatio(priceResponse);
+        assertEq(initialRatio, 200, "Initial ratio should be 200%");
+
+        // Unallocate half the liability (1000 Pool Shares)
+        // Since yieldFactor is 1e18, 1000 USPD burn corresponds to 1000 Pool Shares
+        uint256 poolSharesToUnallocate = 1000 ether;
+        // Mock USPDToken call
+        vm.startPrank(address(uspdToken));
+        uint256 returnedStEthForUser = stabilizerNFT.unallocateStabilizerFunds(
+            poolSharesToUnallocate, // Pass Pool Shares to unallocate
+            priceResponse
+        );
+        vm.stopPrank();
+
+        // Verify unallocation result (stETH returned for user)
+        // User share = 1000 shares * 1e18 / 2000 price = 0.5 stETH
+        // Total removed = userShare * ratio / 100 = 0.5 * 200 / 100 = 1 stETH
+        // Stabilizer share = total - user = 1 - 0.5 = 0.5 stETH
+        assertEq(returnedStEthForUser, 0.5 ether, "Should return 0.5 stETH for user");
+
+        // Verify PositionEscrow state after partial unallocation
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            1 ether, // 2 initial - 1 removed = 1 stETH remaining
+            "PositionEscrow should have 1 stETH remaining"
+        );
+        assertEq(
+            positionEscrow.backedPoolShares(),
+            1000 ether, // Expected remaining shares = 2000 - 1000 = 1000e18
+            "PositionEscrow should back 1000 Pool Shares"
+        );
+
+        // Verify collateralization ratio remains the same
+        uint256 finalRatio = positionEscrow.getCollateralizationRatio(priceResponse);
+        assertEq(finalRatio, 200, "Ratio should remain at 200%");
+
+        // Verify stabilizer received its share back into StabilizerEscrow
+        address stabilizerEscrowAddr = stabilizerNFT.stabilizerEscrows(tokenId);
+        // Initial StabilizerEscrow balance = 5 - 1 (allocated) = 4
+        // Received back 0.5 stETH
+        assertEq(
+            IStabilizerEscrow(stabilizerEscrowAddr).unallocatedStETH(),
+            4.5 ether,
+            "StabilizerEscrow should have 4.5 stETH unallocated"
+        );
+    }
+
+    // Remove test that relied on PositionNFT directly
+    /* function testUnallocationAndPositionNFT() public {
+        // Setup stabilizer with 200% ratio
+        stabilizerNFT.mint(user1, 1);
+        vm.deal(user1, 5 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 5 ether}(1);
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(1, 200);
+
+        // First allocate - user provides 1 ETH, stabilizer provides 1 ETH for 200% ratio
+
+        vm.deal(address(uspdToken), 1 ether);
+        vm.startPrank(address(uspdToken));
+        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
+            1 ether,
+            2000 ether,
+            18
+        );
+
         // Verify initial position state
         uint256 positionId = positionNFT.getTokenByOwner(user1);
         IUspdCollateralizedPositionNFT.Position memory position = positionNFT
@@ -844,7 +945,7 @@ contract StabilizerNFTTest is Test {
             4.5 ether,
             "Stabilizer should have 4.5 ETH unallocated"
         );
-    }
+    } */
 
     receive() external payable {}
 }
