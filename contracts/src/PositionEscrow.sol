@@ -17,8 +17,8 @@ import "./PriceOracle.sol"; // Import implementation for type casting if needed
 contract PositionEscrow is IPositionEscrow, AccessControl {
 
     // --- Roles (defined in interface, constants here for convenience) ---
-    bytes32 public constant override STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
-    bytes32 public constant override EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
+    bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
+    bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
 
     // --- State Variables ---
     address public immutable override stabilizerNFTContract; // The controller/manager (also gets STABILIZER_ROLE)
