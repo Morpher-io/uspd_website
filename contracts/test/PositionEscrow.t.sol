@@ -532,10 +532,12 @@ contract PositionEscrowTest is Test {
     }
 
     function test_removeExcessCollateral_success_noExcess() public {
-        uint256 initialStEth = 1.1 ether; // Exactly 110% for 1000 shares @ 2000 price
-        uint256 shares = 1000 ether;
-        uint256 price = 2000 ether;
-        uint256 minRatio = 110;
+        // Setup state exactly at 110% ratio
+        uint256 shares = 1000 ether; // 1000 USD liability
+        uint256 price = 2000 ether; // 1 stETH = 2000 USD
+        // Target stETH for 110% = (1000 * 110 / 100) / 2000 = 0.55 ether
+        uint256 initialStEth = 0.55 ether;
+        // uint256 minRatio = 110; // Not needed, uses constant
 
         // Setup state
         mockStETH.mint(address(positionEscrow), initialStEth);
