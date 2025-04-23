@@ -267,32 +267,48 @@ contract StabilizerNFT is
             // Approve PositionNFT to pull stETH from Escrow
             IStabilizerEscrow(escrowAddress).approveAllocation(toAllocate, address(positionNFT));
 
-            // Call PositionNFT to add collateral (user ETH + pull stabilizer stETH)
-            positionNFT.addCollateralFromStabilizer{value: userEthShare}( // Send user ETH
-                positionId,
-                escrowAddress,
-                toAllocate // Amount of stETH to pull
-            );
+            // --- Interact with PositionEscrow ---
+            address positionEscrowAddress = positionEscrows[currentId];
+            require(positionEscrowAddress != address(0), "PositionEscrow not found");
 
-            // Calculate Pool Shares backed by the user's ETH share being allocated now
+            // 1. Stake User's ETH via Lido (stETH goes to PositionEscrow)
+            uint256 userStEthReceived;
+            try lido.submit{value: userEthShare}(address(0)) returns (uint256 receivedStEth) {
+                 // Transfer the received stETH immediately to the PositionEscrow
+                 bool success = IERC20(stETH).transfer(positionEscrowAddress, receivedStEth);
+                 if (!success) revert("User stETH transfer to PositionEscrow failed");
+                 userStEthReceived = receivedStEth;
+            } catch {
+                 revert("Lido submit failed for user ETH");
+            }
+
+            // 2. Transfer Stabilizer's stETH from StabilizerEscrow to PositionEscrow
+            IStabilizerEscrow(escrowAddress).approveAllocation(toAllocate, address(this)); // Approve this contract
+            bool successStabilizer = IERC20(stETH).transferFrom(escrowAddress, positionEscrowAddress, toAllocate);
+            if (!successStabilizer) revert("Stabilizer stETH transfer to PositionEscrow failed");
+
+            // 3. Call PositionEscrow.addCollateral hook/event emitter
+            IPositionEscrow(positionEscrowAddress).addCollateral(userStEthReceived + toAllocate);
+
+            // 4. Calculate Pool Shares backed by the user's ETH share being allocated now
             uint256 allocatedUSDValue = (userEthShare * ethUsdPrice) / (10 ** priceDecimals);
             uint256 yieldFactor = rateContract.getYieldFactor();
             uint256 poolSharesSlice = (allocatedUSDValue * rateContract.FACTOR_PRECISION()) / yieldFactor;
 
 
-            // Get current backed shares and add the new shares
-            IUspdCollateralizedPositionNFT.Position memory currentPosData = positionNFT.getPosition(positionId);
-            positionNFT.modifyAllocation(positionId, currentPosData.backedPoolShares + poolSharesSlice); // Add to existing backed shares
+            // 5. Update PositionEscrow's backed shares
+            IPositionEscrow(positionEscrowAddress).modifyAllocation(int256(poolSharesSlice));
 
             // Update loop variables
             result.allocatedEth += userEthShare; // Track total user ETH allocated in this call
             remainingEth -= userEthShare;
 
-            emit FundsAllocated( // Keep event as is for now
+            // TODO: Update FundsAllocated event? Maybe remove positionId?
+            emit FundsAllocated(
                 currentId,
-                toAllocate,
-                userEthShare,
-                positionId
+                toAllocate, // Stabilizer stETH amount
+                userStEthReceived, // User stETH amount
+                0 // positionId is no longer relevant here
             );
 
             uint nextId = pos.nextUnallocated;

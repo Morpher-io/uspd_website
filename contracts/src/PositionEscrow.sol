@@ -70,22 +70,23 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     // --- External Functions ---
 
     /**
-     * @notice Receives stETH collateral (user + stabilizer shares).
-     * @param userStEthAmount Amount of stETH corresponding to user's deposit (can be 0 if only stabilizer adds).
-     * @param stabilizerStEthAmount Amount of stETH contributed by the stabilizer (can be 0 if only user adds via StabilizerNFT).
-     * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE (Stabilizer Owner) or STABILIZER_ROLE (StabilizerNFT).
-     *      Assumes stETH has been transferred *to* this contract *before* calling.
+     * @notice Acknowledges the addition of stETH collateral to the pool.
+     * @param totalStEthAmount The total amount of stETH added in this transaction (user + stabilizer).
+     * @dev Callable only by STABILIZER_ROLE (StabilizerNFT) during allocation, or potentially
+     *      EXCESSCOLLATERALMANAGER_ROLE if the owner adds collateral directly (requires stETH transfer beforehand).
+     *      This function primarily serves as a hook/event emitter.
      */
-    function addCollateral(uint256 userStEthAmount, uint256 stabilizerStEthAmount)
+    function addCollateral(uint256 totalStEthAmount)
         external
         override
-        onlyRole(EXCESSCOLLATERALMANAGER_ROLE) // Or STABILIZER_ROLE? User requested EXCESSCOLLATERALMANAGER_ROLE
+        // Allow both roles? StabilizerNFT needs it for allocation. Owner might need it if adding directly.
+        // Let's restrict to STABILIZER_ROLE for now, assuming direct owner additions are handled differently or not needed.
+        onlyRole(STABILIZER_ROLE)
     {
-        // Note: This function primarily serves as a hook/event emitter.
-        // The actual stETH transfer happens *before* this call (e.g., via direct transfer or StabilizerNFT).
-        if (userStEthAmount == 0 && stabilizerStEthAmount == 0) revert ZeroAmount(); // Must add some collateral
+        // Note: The actual stETH transfer happens *before* this call.
+        if (totalStEthAmount == 0) revert ZeroAmount(); // Must add some collateral
 
-        emit CollateralAdded(userStEthAmount, stabilizerStEthAmount);
+        emit CollateralAdded(totalStEthAmount); // Emit simplified event
     }
 
     /**

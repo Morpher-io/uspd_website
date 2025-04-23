@@ -24,7 +24,7 @@ interface IPositionEscrow is IERC20Errors, IAccessControl { // Inherit IAccessCo
     error ArithmeticError(); // For potential overflows/underflows
 
     // --- Events ---
-    event CollateralAdded(uint256 userStEthAmount, uint256 stabilizerStEthAmount);
+    event CollateralAdded(uint256 totalStEthAmount); // Simplified event
     event AllocationModified(int256 sharesDelta, uint256 newTotalShares); // Use int for delta
     event CollateralRemoved(address indexed recipient, uint256 userAmount, uint256 stabilizerAmount);
     event ExcessCollateralRemoved(address indexed recipient, uint256 amount);
@@ -38,7 +38,7 @@ interface IPositionEscrow is IERC20Errors, IAccessControl { // Inherit IAccessCo
     function backedPoolShares() external view returns (uint256);
 
     // --- External Functions ---
-    function addCollateral(uint256 userStEthAmount, uint256 stabilizerStEthAmount) external;
+    function addCollateral(uint256 totalStEthAmount) external; // Simplified signature
     function modifyAllocation(int256 sharesDelta) external; // Use int for delta
     function removeCollateral(uint256 totalToRemove, uint256 userShare, address payable recipient) external;
     function removeExcessCollateral(
