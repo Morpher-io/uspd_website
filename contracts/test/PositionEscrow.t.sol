@@ -721,4 +721,141 @@ contract PositionEscrowTest is Test {
         assertEq(positionEscrow.getCurrentStEthBalance(), amount, "Balance mismatch");
     }
 
+    // =============================================
+    // IX. Direct Collateral Addition Tests
+    // =============================================
+
+    // --- addCollateralEth ---
+
+    function test_addCollateralEth_success() public {
+        uint256 ethAmount = 0.5 ether;
+        uint256 expectedStEth = ethAmount; // MockLido 1:1
+
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.CollateralAdded(expectedStEth);
+
+        vm.deal(otherUser, ethAmount); // Give ETH to the caller
+        vm.prank(otherUser); // Anyone can call
+        positionEscrow.addCollateralEth{value: ethAmount}();
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), expectedStEth, "stETH balance mismatch");
+    }
+
+    function test_addCollateralEth_revert_zeroAmount() public {
+        vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
+        vm.prank(otherUser);
+        positionEscrow.addCollateralEth{value: 0}();
+    }
+
+    function test_addCollateralEth_revert_lidoSubmitFails() public {
+        uint256 ethAmount = 0.5 ether;
+        // Mock Lido to revert
+        vm.mockCallRevert(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), "Lido submit failed");
+
+        vm.expectRevert(IPositionEscrow.TransferFailed.selector);
+        vm.deal(otherUser, ethAmount);
+        vm.prank(otherUser);
+        positionEscrow.addCollateralEth{value: ethAmount}();
+    }
+
+    // --- addCollateralStETH ---
+
+    function test_addCollateralStETH_success() public {
+        uint256 stETHAmount = 0.75 ether;
+
+        // Give stETH to caller and approve escrow
+        mockStETH.mint(otherUser, stETHAmount);
+        vm.startPrank(otherUser);
+        mockStETH.approve(address(positionEscrow), stETHAmount);
+        vm.stopPrank();
+
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.CollateralAdded(stETHAmount);
+
+        vm.prank(otherUser); // Anyone can call
+        positionEscrow.addCollateralStETH(stETHAmount);
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), stETHAmount, "stETH balance mismatch");
+        assertEq(mockStETH.balanceOf(otherUser), 0, "Caller stETH balance mismatch");
+    }
+
+     function test_addCollateralStETH_revert_zeroAmount() public {
+        vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
+        vm.prank(otherUser);
+        positionEscrow.addCollateralStETH(0);
+    }
+
+    function test_addCollateralStETH_revert_insufficientAllowance() public {
+        uint256 stETHAmount = 0.75 ether;
+        uint256 allowance = stETHAmount / 2;
+
+        // Give stETH to caller but approve less
+        mockStETH.mint(otherUser, stETHAmount);
+        vm.startPrank(otherUser);
+        mockStETH.approve(address(positionEscrow), allowance);
+        vm.stopPrank();
+
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(positionEscrow), allowance, stETHAmount));
+        vm.prank(otherUser);
+        positionEscrow.addCollateralStETH(stETHAmount);
+    }
+
+    function test_addCollateralStETH_revert_insufficientBalance() public {
+        uint256 stETHAmount = 0.75 ether;
+        uint256 balance = stETHAmount / 2;
+
+        // Give stETH to caller (less than amount) and approve full amount
+        mockStETH.mint(otherUser, balance);
+        vm.startPrank(otherUser);
+        mockStETH.approve(address(positionEscrow), stETHAmount);
+        vm.stopPrank();
+
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, otherUser, balance, stETHAmount));
+        vm.prank(otherUser);
+        positionEscrow.addCollateralStETH(stETHAmount);
+    }
+
+    // --- receive() ---
+
+    function test_receive_success() public {
+        uint256 ethAmount = 0.25 ether;
+        uint256 expectedStEth = ethAmount; // MockLido 1:1
+
+        vm.expectEmit(true, false, false, true, address(positionEscrow));
+        emit IPositionEscrow.CollateralAdded(expectedStEth);
+
+        vm.deal(otherUser, ethAmount); // Give ETH to the caller
+        vm.prank(otherUser); // Anyone can send
+        (bool success, ) = address(positionEscrow).call{value: ethAmount}("");
+        assertTrue(success, "Direct ETH transfer failed");
+
+        assertEq(positionEscrow.getCurrentStEthBalance(), expectedStEth, "stETH balance mismatch");
+    }
+
+    function test_receive_zeroAmount() public {
+        uint256 initialBalance = positionEscrow.getCurrentStEthBalance();
+
+        vm.deal(otherUser, 1 ether); // Give ETH to the caller
+        vm.prank(otherUser); // Anyone can send
+        (bool success, ) = address(positionEscrow).call{value: 0}(""); // Send 0 ETH
+        assertTrue(success, "Direct 0 ETH transfer failed");
+
+        // Balance should not change, no event emitted
+        assertEq(positionEscrow.getCurrentStEthBalance(), initialBalance, "stETH balance should be unchanged");
+    }
+
+    function test_receive_revert_lidoSubmitFails() public {
+        uint256 ethAmount = 0.25 ether;
+        // Mock Lido to revert
+        vm.mockCallRevert(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), "Lido submit failed");
+
+        vm.expectRevert(IPositionEscrow.TransferFailed.selector);
+        vm.deal(otherUser, ethAmount);
+        vm.prank(otherUser);
+        (bool success, ) = address(positionEscrow).call{value: ethAmount}("");
+        // The call itself might succeed, but the internal logic reverts.
+        // If the call itself reverted, success would be false.
+        // Since the revert happens *inside*, we rely on vm.expectRevert.
+    }
+
 }
