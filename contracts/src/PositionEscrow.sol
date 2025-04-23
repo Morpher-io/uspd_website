@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ILido.sol";
 import "./interfaces/IPositionEscrow.sol";
+import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol"; // Import AccessControl
 import "./interfaces/IPoolSharesConversionRate.sol";
 import "./interfaces/IPriceOracle.sol"; // Use interface for PriceOracle
 import "./PriceOracle.sol"; // Import implementation for type casting if needed
@@ -11,12 +12,16 @@ import "./PriceOracle.sol"; // Import implementation for type casting if needed
 /**
  * @title PositionEscrow
  * @notice Holds and manages the pooled stETH collateral for a single collateralized position.
- * @dev Deployed and controlled by the StabilizerNFT contract. Implements IPositionEscrow.
+ * @dev Deployed and controlled by the StabilizerNFT contract. Implements IPositionEscrow and AccessControl.
  */
-contract PositionEscrow is IPositionEscrow {
+contract PositionEscrow is IPositionEscrow, AccessControl {
+
+    // --- Roles (defined in interface, constants here for convenience) ---
+    bytes32 public constant override STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
+    bytes32 public constant override EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
 
     // --- State Variables ---
-    address public immutable override stabilizerNFTContract; // The controller/manager
+    address public immutable override stabilizerNFTContract; // The controller/manager (also gets STABILIZER_ROLE)
     address public immutable override stETH;                 // stETH token contract
     address public immutable override lido;                  // Lido staking pool contract (needed?) - Maybe not needed here if staking happens before transfer
     address public immutable override rateContract;          // PoolSharesConversionRate contract
@@ -25,10 +30,7 @@ contract PositionEscrow is IPositionEscrow {
     uint256 public override backedPoolShares; // Liability tracked in pool shares
 
     // --- Modifiers ---
-    modifier onlyStabilizerNFT() {
-        if (msg.sender != stabilizerNFTContract) revert("Caller is not StabilizerNFT");
-        _;
-    }
+    // Removed custom onlyStabilizerNFT modifier, using onlyRole instead
 
     // --- Constructor ---
     /**
@@ -38,15 +40,17 @@ contract PositionEscrow is IPositionEscrow {
      * @param _lidoAddress The address of the Lido staking pool.
      * @param _rateContractAddress The address of the PoolSharesConversionRate contract.
      * @param _oracleAddress The address of the PriceOracle contract.
+     * @param _stabilizerOwner The address of the owner of the corresponding StabilizerNFT.
      */
     constructor(
         address _stabilizerNFT,
+        address _stabilizerOwner, // Add owner parameter
         address _stETHAddress,
         address _lidoAddress, // Keep for consistency, might be removed later
         address _rateContractAddress,
         address _oracleAddress
     ) {
-        if (_stabilizerNFT == address(0) || _stETHAddress == address(0) || _lidoAddress == address(0) || _rateContractAddress == address(0) || _oracleAddress == address(0)) {
+        if (_stabilizerNFT == address(0) || _stabilizerOwner == address(0) || _stETHAddress == address(0) || _lidoAddress == address(0) || _rateContractAddress == address(0) || _oracleAddress == address(0)) {
             revert ZeroAddress();
         }
 
@@ -56,20 +60,29 @@ contract PositionEscrow is IPositionEscrow {
         rateContract = _rateContractAddress;
         oracle = _oracleAddress;
         backedPoolShares = 0; // Initialize liability to zero
+
+        // Grant roles
+        _grantRole(DEFAULT_ADMIN_ROLE, _stabilizerNFT); // StabilizerNFT is admin
+        _grantRole(STABILIZER_ROLE, _stabilizerNFT);
+        _grantRole(EXCESSCOLLATERALMANAGER_ROLE, _stabilizerOwner);
     }
 
     // --- External Functions ---
 
     /**
      * @notice Receives stETH collateral (user + stabilizer shares).
-     * @param userStEthAmount Amount of stETH corresponding to user's deposit.
-     * @param stabilizerStEthAmount Amount of stETH contributed by the stabilizer.
-     * @dev Callable only by StabilizerNFT. Assumes stETH has been transferred *to* this contract *before* calling.
+     * @param userStEthAmount Amount of stETH corresponding to user's deposit (can be 0 if only stabilizer adds).
+     * @param stabilizerStEthAmount Amount of stETH contributed by the stabilizer (can be 0 if only user adds via StabilizerNFT).
+     * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE (Stabilizer Owner) or STABILIZER_ROLE (StabilizerNFT).
+     *      Assumes stETH has been transferred *to* this contract *before* calling.
      */
-    function addCollateral(uint256 userStEthAmount, uint256 stabilizerStEthAmount) external override onlyStabilizerNFT {
+    function addCollateral(uint256 userStEthAmount, uint256 stabilizerStEthAmount)
+        external
+        override
+        onlyRole(EXCESSCOLLATERALMANAGER_ROLE) // Or STABILIZER_ROLE? User requested EXCESSCOLLATERALMANAGER_ROLE
+    {
         // Note: This function primarily serves as a hook/event emitter.
-        // The actual stETH transfer happens *before* this call.
-        // We could add checks here to ensure the balance increased appropriately, but it adds gas.
+        // The actual stETH transfer happens *before* this call (e.g., via direct transfer or StabilizerNFT).
         if (userStEthAmount == 0 && stabilizerStEthAmount == 0) revert ZeroAmount(); // Must add some collateral
 
         emit CollateralAdded(userStEthAmount, stabilizerStEthAmount);
@@ -78,9 +91,9 @@ contract PositionEscrow is IPositionEscrow {
     /**
      * @notice Modifies the backed pool shares liability.
      * @param sharesDelta The change in pool shares (can be positive or negative).
-     * @dev Callable only by StabilizerNFT.
+     * @dev Callable only by STABILIZER_ROLE (StabilizerNFT).
      */
-    function modifyAllocation(int256 sharesDelta) external override onlyStabilizerNFT {
+    function modifyAllocation(int256 sharesDelta) external override onlyRole(STABILIZER_ROLE) {
         uint256 oldShares = backedPoolShares;
         if (sharesDelta > 0) {
             // Adding shares (allocation)
@@ -102,9 +115,9 @@ contract PositionEscrow is IPositionEscrow {
      * @param totalToRemove The total amount of stETH (user + stabilizer share, including yield) to remove.
      * @param userShare The portion of totalToRemove belonging to the user.
      * @param recipient The address (StabilizerNFT) to send the stETH to.
-     * @dev Callable only by StabilizerNFT.
+     * @dev Callable only by STABILIZER_ROLE (StabilizerNFT).
      */
-    function removeCollateral(uint256 totalToRemove, uint256 userShare, address payable recipient) external override onlyStabilizerNFT {
+    function removeCollateral(uint256 totalToRemove, uint256 userShare, address payable recipient) external override onlyRole(STABILIZER_ROLE) {
         if (totalToRemove == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
         if (userShare > totalToRemove) revert ArithmeticError(); // User share cannot exceed total
@@ -132,13 +145,13 @@ contract PositionEscrow is IPositionEscrow {
      * @param recipient The address (StabilizerEscrow) to send the excess stETH to.
      * @param minCollateralRatio The minimum collateral ratio required for this position (e.g., 110).
      * @param priceQuery The signed price attestation query.
-     * @dev Callable only by StabilizerNFT.
+     * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE (Stabilizer Owner).
      */
     function removeExcessCollateral(
         address payable recipient,
         uint256 minCollateralRatio,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) external override onlyStabilizerNFT {
+    ) external override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) {
         // --- Logic ---
         // 1. Validate price query via Oracle
         // 2. Get current stETH balance

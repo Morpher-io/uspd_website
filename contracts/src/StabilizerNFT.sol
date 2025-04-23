@@ -59,8 +59,10 @@ contract StabilizerNFT is
     // Optional: CREATE2 factory address if used
     // ICreateX public createX;
 
-    // Mapping from NFT ID to its dedicated Escrow contract address
+    // Mapping from NFT ID to its dedicated StabilizerEscrow contract address (unallocated funds)
     mapping(uint256 => address) public stabilizerEscrows;
+    // Mapping from NFT ID to its dedicated PositionEscrow contract address (collateralized funds)
+    mapping(uint256 => address) public positionEscrows;
 
     // Minimum gas required for allocation loop
     uint256 public constant MIN_GAS = 100000;
@@ -129,18 +131,27 @@ contract StabilizerNFT is
         _safeMint(to, tokenId);
         emit StabilizerPositionCreated(tokenId, to, 0);
 
-        // Deploy the dedicated Escrow contract
-        // Using standard CREATE here for simplicity. Replace with CREATE2 if needed.
-        StabilizerEscrow escrow = new StabilizerEscrow(
+        // Deploy the dedicated StabilizerEscrow contract for unallocated funds
+        StabilizerEscrow stabilizerEscrow = new StabilizerEscrow(
             address(this), // This StabilizerNFT contract is the controller
             to,            // The NFT owner is the beneficiary
             stETH,         // stETH address
             lido           // Lido address
         );
-        require(address(escrow) != address(0), "Escrow deployment failed");
+        require(address(stabilizerEscrow) != address(0), "StabilizerEscrow deployment failed");
+        stabilizerEscrows[tokenId] = address(stabilizerEscrow);
 
-        // Store the Escrow address
-        stabilizerEscrows[tokenId] = address(escrow);
+        // Deploy the dedicated PositionEscrow contract for the collateralized position
+        PositionEscrow positionEscrow = new PositionEscrow(
+            address(this), // This StabilizerNFT contract is the controller/admin/stabilizer role holder
+            to,            // The NFT owner gets EXCESSCOLLATERALMANAGER_ROLE
+            stETH,         // stETH address
+            lido,          // Lido address
+            address(rateContract), // Rate contract address
+            address(uspdToken.oracle()) // Oracle address from USPDToken
+        );
+        require(address(positionEscrow) != address(0), "PositionEscrow deployment failed");
+        positionEscrows[tokenId] = address(positionEscrow);
 
         // Optional: Emit an event for deployment tracking
         // emit EscrowDeployed(tokenId, address(escrow));

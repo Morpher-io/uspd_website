@@ -166,10 +166,44 @@ contract StabilizerNFTTest is Test {
             "No code at deployed Escrow address"
         );
 
-        // 4. Check Escrow state (owner, controller)
-        StabilizerEscrow escrow = StabilizerEscrow(
+        // 4. Check StabilizerEscrow state (owner, controller)
+        StabilizerEscrow stabilizerEscrow = StabilizerEscrow(
             payable(deployedEscrowAddress)
         );
+        assertEq(
+            stabilizerEscrow.stabilizerOwner(),
+            expectedOwner,
+            "StabilizerEscrow owner mismatch"
+        );
+        assertEq(
+            stabilizerEscrow.stabilizerNFTContract(),
+            address(stabilizerNFT),
+            "StabilizerEscrow controller mismatch"
+        );
+        assertEq(stabilizerEscrow.stETH(), address(mockStETH), "StabilizerEscrow stETH mismatch");
+        assertEq(stabilizerEscrow.lido(), address(mockLido), "StabilizerEscrow lido mismatch");
+        assertEq(
+            mockStETH.balanceOf(deployedEscrowAddress),
+            0,
+            "StabilizerEscrow initial stETH balance should be 0"
+        );
+
+        // 5. Check PositionEscrow address stored
+        address deployedPositionEscrowAddress = stabilizerNFT.positionEscrows(tokenId);
+        assertTrue(deployedPositionEscrowAddress != address(0), "PositionEscrow address not stored");
+        assertTrue(deployedPositionEscrowAddress.code.length > 0, "No code at deployed PositionEscrow address");
+
+        // 6. Check PositionEscrow state and roles
+        PositionEscrow positionEscrow = PositionEscrow(payable(deployedPositionEscrowAddress));
+        assertEq(positionEscrow.stabilizerNFTContract(), address(stabilizerNFT), "PositionEscrow controller mismatch");
+        assertEq(positionEscrow.stETH(), address(mockStETH), "PositionEscrow stETH mismatch");
+        assertEq(positionEscrow.lido(), address(mockLido), "PositionEscrow lido mismatch");
+        assertEq(positionEscrow.rateContract(), address(rateContract), "PositionEscrow rateContract mismatch");
+        assertEq(positionEscrow.oracle(), address(priceOracle), "PositionEscrow oracle mismatch");
+        assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow initial shares mismatch");
+        assertTrue(positionEscrow.hasRole(positionEscrow.DEFAULT_ADMIN_ROLE(), address(stabilizerNFT)), "PositionEscrow admin role mismatch");
+        assertTrue(positionEscrow.hasRole(positionEscrow.STABILIZER_ROLE(), address(stabilizerNFT)), "PositionEscrow stabilizer role mismatch");
+        assertTrue(positionEscrow.hasRole(positionEscrow.EXCESSCOLLATERALMANAGER_ROLE(), expectedOwner), "PositionEscrow manager role mismatch");
         assertEq(
             escrow.stabilizerOwner(),
             expectedOwner,
