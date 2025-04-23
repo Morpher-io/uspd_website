@@ -633,58 +633,7 @@ contract StabilizerNFT is
         emit MinCollateralRatioUpdated(tokenId, oldRatio, newRatio);
     }
 
-    function _calculateUnallocation(
-        uint positionId,
-        IUspdCollateralizedPositionNFT.Position memory position, // Contains allocatedEth, backedPoolShares
-        uint256 poolSharesToUnallocate, // Changed parameter
-        // bool isFullUnallocation, // Removed parameter
-        IPriceOracle.PriceResponse memory priceResponse
-    ) internal view returns (uint256 stEthToRemove, uint256 userStEthShare) {
-        // If the position has no backed shares, nothing can be unallocated from it.
-        if (position.backedPoolShares == 0) {
-            return (0, 0);
-        }
-
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        // Calculate the USD value represented by the pool shares being unallocated
-        uint256 uspdValueToUnallocate = (poolSharesToUnallocate * yieldFactor) / rateContract.FACTOR_PRECISION();
-
-        // Calculate user's share of stETH at par value (1 USD = 1/price stETH)
-        // Ensure price is not zero
-        require(priceResponse.price > 0, "Oracle price cannot be zero");
-        userStEthShare = (uspdValueToUnallocate * (10**uint256(priceResponse.decimals))) / priceResponse.price;
-
-        // Calculate the total stETH to remove based on the current ratio
-        // This ensures overcollateralization (including yield) is returned proportionally.
-        // This single calculation works for both partial and full unallocations.
-        uint256 currentRatio = positionNFT.getCollateralizationRatio(
-            positionId,
-            priceResponse.price,
-            priceResponse.decimals
-        );
-
-        // Prevent division by zero or nonsensical ratios
-        // Note: getCollateralizationRatio now needs rateContract access internally
-        // Allow ratio slightly below 100 for potential rounding, but PositionNFT.removeCollateral might fail later if truly undercollateralized.
-        // A check >= 100 ensures we don't inflate removal amount nonsensically if undercollateralized.
-        require(currentRatio >= 100, "Cannot unallocate from undercollateralized position"); // Assuming ratio is scaled by 100
-
-        // totalToRemove = userShare * ratio / 100
-        stEthToRemove = (userStEthShare * currentRatio) / 100;
-
-        // Sanity check: Ensure we don't remove *less* than the user's share (can happen with rounding or ratio < 100)
-        // If stEthToRemove < userStEthShare due to ratio < 100 (which shouldn't happen with the require above) or rounding,
-        // we should prioritize giving the user their share. However, PositionNFT.removeCollateral handles the actual transfer
-        // and will fail if insufficient funds. The primary goal here is calculating the *total* proportional amount.
-
-        // We no longer compare stEthToRemove against position.allocatedEth as stEthToRemove includes yield.
-        // The actual transfer in PositionNFT.removeCollateral will fail if the contract lacks sufficient stETH balance.
-
-        // Ensure user share doesn't exceed total removed (can happen with rounding if ratio is exactly 100)
-        if (userStEthShare > stEthToRemove) {
-            userStEthShare = stEthToRemove;
-        }
-    }
+    // Removed old _calculateUnallocation function that relied on PositionNFT
 
     /**
      * @notice Calculates the stETH amounts to remove based on pool shares and current ratio from PositionEscrow.
