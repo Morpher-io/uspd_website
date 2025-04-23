@@ -617,6 +617,11 @@ contract StabilizerNFT is
         bool isFullUnallocation,
         IPriceOracle.PriceResponse memory priceResponse
     ) internal view returns (uint256 stEthToRemove, uint256 userStEthShare) { // Renamed return values for clarity
+        // If the position has no backed shares, nothing can be unallocated from it.
+        if (position.backedPoolShares == 0) {
+            return (0, 0);
+        }
+
         uint256 yieldFactor = rateContract.getYieldFactor();
         // Calculate the USD value represented by the pool shares being unallocated
         uint256 uspdValueToUnallocate = (poolSharesToUnallocate * yieldFactor) / rateContract.FACTOR_PRECISION();
