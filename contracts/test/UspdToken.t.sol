@@ -21,6 +21,7 @@ import "../src/PriceOracle.sol"; // Using actual for attestations if needed late
 import "../src/PoolSharesConversionRate.sol";
 import "../src/StabilizerEscrow.sol"; // Import Escrow
 import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
+import "../src/interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
 
 contract USPDTokenTest is Test {
     uint256 internal signerPrivateKey;
