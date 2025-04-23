@@ -38,6 +38,8 @@ interface IPositionEscrow is IERC20Errors, IAccessControl { // Inherit IAccessCo
     // --- External Functions ---
     function addCollateral(uint256 totalStEthAmount) external; // Simplified signature
     function addCollateralFromStabilizer(uint256 stabilizerStEthAmount) external payable; // New function
+    function addCollateralEth() external payable; // Add ETH collateral directly
+    function addCollateralStETH(uint256 stETHAmount) external; // Add stETH collateral directly
     function modifyAllocation(int256 sharesDelta) external; // Use int for delta
     function removeCollateral(uint256 totalToRemove, uint256 userShare, address payable recipient) external;
     function removeExcessCollateral(

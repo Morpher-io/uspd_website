@@ -125,6 +125,42 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
         emit CollateralAdded(totalStEthAdded);
     }
 
+    /**
+     * @notice Adds collateral by receiving native ETH, which is staked via Lido.
+     * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE. Converts msg.value ETH to stETH.
+     */
+    function addCollateralEth() external payable override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) {
+        uint256 ethAmount = msg.value;
+        if (ethAmount == 0) revert ZeroAmount();
+
+        uint256 stEthReceived = 0;
+        try ILido(lido).submit{value: ethAmount}(address(0)) returns (uint256 received) {
+            stEthReceived = received;
+            if (stEthReceived == 0) revert TransferFailed(); // Lido submit should return > 0 stETH
+        } catch {
+            revert TransferFailed(); // Lido submit failed
+        }
+
+        // Emit event acknowledging the stETH added to the pool
+        emit CollateralAdded(stEthReceived);
+    }
+
+    /**
+     * @notice Adds collateral by receiving stETH directly from the caller.
+     * @param stETHAmount The amount of stETH to add.
+     * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE. Requires caller to have approved this contract.
+     */
+    function addCollateralStETH(uint256 stETHAmount) external override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) {
+        if (stETHAmount == 0) revert ZeroAmount();
+
+        // Pull stETH from the caller
+        bool success = IERC20(stETH).transferFrom(msg.sender, address(this), stETHAmount);
+        if (!success) revert TransferFailed(); // Check allowance and balance
+
+        // Emit event acknowledging the stETH added to the pool
+        emit CollateralAdded(stETHAmount);
+    }
+
 
     /**
      * @notice Modifies the backed pool shares liability.
