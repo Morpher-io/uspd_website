@@ -176,38 +176,34 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     }
 
     /**
-     * @notice Removes a specified amount of stETH collateral if the ratio remains above the minimum.
+     * @notice Removes a specified amount of stETH collateral if the ratio remains >= minCollateralRatio.
      * @param recipient The address (StabilizerEscrow) to send the stETH to.
      * @param amountToRemove The amount of stETH the caller wishes to remove.
+     * @param minCollateralRatio The minimum collateral ratio required for this position (e.g., 110), passed by the caller.
      * @param priceQuery The signed price attestation query.
      * @dev Callable only by EXCESSCOLLATERALMANAGER_ROLE (Stabilizer Owner).
-     *      Checks if the collateralization ratio remains >= the minimum required ratio *after* removal.
      */
     function removeExcessCollateral(
         address payable recipient,
-        uint256 amountToRemove,
+        uint256 amountToRemove, // Caller specifies amount
+        uint256 minCollateralRatio, // Caller provides min ratio
         IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) external override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) {
+    ) external override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) { // Role check remains
         // --- Logic ---
-        // 1. Validate inputs (recipient, amount)
-        // 2. Validate price query via Oracle
-        // 3. Get current stETH balance and backed shares
-        // 4. Check if removal is possible (amount <= balance)
-        // 5. Calculate remaining stETH balance after removal
-        // 6. If backedShares > 0:
-        //    a. Get yield factor
-        //    b. Calculate liability value (USD)
-        //    c. Calculate collateral value (USD) *after* removal
-        //    d. Calculate ratio *after* removal
-        //    e. Fetch min required ratio from StabilizerNFT
-        //    f. Require new ratio >= min required ratio
-        // 7. Transfer amountToRemove to recipient
+        // 1. Validate inputs
+        // 2. Validate price query
+        // 3. Get current state
+        // 4. Check sufficient balance
+        // 5. Calculate state *after* removal
+        // 6. If liability exists, check if new ratio >= minCollateralRatio
+        // 7. Transfer amount
         // 8. Emit event
         // --- Implementation ---
 
         // 1. Validate inputs
         if (recipient == address(0)) revert ZeroAddress();
         if (amountToRemove == 0) revert ZeroAmount();
+        if (minCollateralRatio < 100) revert BelowMinimumRatio(); // Sanity check min ratio passed in
 
         // 2. Validate price query
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle(oracle)
@@ -217,58 +213,34 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
         uint256 currentStEth = IERC20(stETH).balanceOf(address(this));
         uint256 currentShares = backedPoolShares;
 
-        // 4. Check if removal is possible
+        // 4. Check sufficient balance
         if (amountToRemove > currentStEth) revert ERC20InsufficientBalance(address(this), currentStEth, amountToRemove);
 
-        // 5. Calculate remaining stETH
+        // 5. Calculate state *after* removal
         uint256 remainingStEth = currentStEth - amountToRemove;
 
         // 6. Perform ratio check only if there's liability
         if (currentShares > 0) {
-            // 6a. Get yield factor
             uint256 yieldFactor = IPoolSharesConversionRate(rateContract).getYieldFactor();
-            // 6b. Calculate liability value (USD)
             uint256 liabilityValueUSD = (currentShares * yieldFactor) / IPoolSharesConversionRate(rateContract).FACTOR_PRECISION();
-            if (liabilityValueUSD == 0) revert ArithmeticError(); // Should not happen if shares > 0
+            if (liabilityValueUSD == 0) revert ArithmeticError(); // Safety check
 
-            // 6c. Calculate collateral value (USD) *after* removal
+            // Calculate collateral value *after* removal
             uint256 collateralValueUSD_after = (remainingStEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
-
-            // 6d. Calculate ratio *after* removal
+            // Calculate ratio *after* removal
             uint256 newRatio = (collateralValueUSD_after * 100) / liabilityValueUSD;
 
-            // 6e. Fetch min required ratio from StabilizerNFT
-            // Requires StabilizerNFT interface and the tokenId (which this contract doesn't know)
-            // --> This approach requires passing the minRatio from the caller (StabilizerNFT or owner via StabilizerNFT)
-            // --> Reverting to previous signature logic where minRatio is passed in.
-            // --> Let's adjust the logic: Calculate max removable amount and ensure requested amount <= max removable.
-
-            // --- Revised Logic ---
-            // 7. Calculate target stETH balance for minimum ratio
-            // Fetch min required ratio from StabilizerNFT (Need StabilizerNFT interface and tokenId)
-            // This contract CANNOT know the tokenId. The caller (owner via StabilizerNFT) must enforce the check.
-            // Let's revert this function's logic to simply allow withdrawal if the caller has the role.
-            // The check MUST happen in the calling contract (StabilizerNFT) or off-chain by the owner.
-
-            // --- Simplified Logic (Caller Responsible for Ratio Check) ---
-            // This function only checks role and transfers the requested amount if balance allows.
-            // The EXCESSCOLLATERALMANAGER_ROLE implies the caller (owner) is responsible for not withdrawing too much.
-
-            // (Steps 6a-f are removed from this contract)
-
-        } else {
-             // No liability, any amount up to the balance can be withdrawn.
-             // The check `amountToRemove <= currentStEth` already covers this.
+            // Check if the ratio after removal meets the minimum requirement
+            if (newRatio < minCollateralRatio) revert BelowMinimumRatio();
         }
+        // If currentShares is 0, any amount up to the balance can be withdrawn without ratio check.
 
-
-        // 7. Transfer amountToRemove to recipient
+        // 7. Transfer amountToRemove
         bool success = IERC20(stETH).transfer(recipient, amountToRemove);
         if (!success) revert TransferFailed();
 
         // 8. Emit event
         emit ExcessCollateralRemoved(recipient, amountToRemove);
-        }
     }
 
     // --- View Functions ---
