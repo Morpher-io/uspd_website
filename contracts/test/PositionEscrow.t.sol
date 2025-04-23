@@ -193,7 +193,8 @@ contract PositionEscrowTest is Test {
         IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.EXCESSCOLLATERALMANAGER_ROLE()));
         vm.prank(otherUser);
-        positionEscrow.removeExcessCollateral(payable(recipient), DEFAULT_MIN_RATIO, query);
+        // Add a placeholder amountToRemove (e.g., 0.1 ether) to match the function signature
+        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, DEFAULT_MIN_RATIO, query);
     }
 
     // =============================================
