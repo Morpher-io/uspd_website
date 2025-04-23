@@ -226,6 +226,9 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
             uint256 liabilityValueUSD = (currentShares * yieldFactor) / IPoolSharesConversionRate(rateContract).FACTOR_PRECISION();
             if (liabilityValueUSD == 0) revert ArithmeticError(); // Safety check
 
+            // Check for zero price from oracle before using it in calculations
+            if (priceResponse.price == 0) revert ZeroAmount();
+
             // Calculate collateral value *after* removal
             uint256 collateralValueUSD_after = (remainingStEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
             // Calculate ratio *after* removal
