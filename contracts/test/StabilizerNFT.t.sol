@@ -528,34 +528,46 @@ contract StabilizerNFTTest is Test {
         (uint256 totalEth1, , , , , ) = stabilizerNFT.positions(1);
         (uint256 totalEth2, , , , , ) = stabilizerNFT.positions(2);
         assertEq(totalEth1, 0.5 ether, "First stabilizer should have 0.5 ETH");
-        assertEq(totalEth2, 4 ether, "Second stabilizer should have 4 ETH");
+        // Check escrow balances directly before allocation
+        address escrow1Addr = stabilizerNFT.stabilizerEscrows(1);
+        address escrow2Addr = stabilizerNFT.stabilizerEscrows(2);
+        assertEq(IStabilizerEscrow(escrow1Addr).unallocatedStETH(), 0.5 ether, "Escrow1 balance mismatch before alloc");
+        assertEq(IStabilizerEscrow(escrow2Addr).unallocatedStETH(), 4 ether, "Escrow2 balance mismatch before alloc");
+
 
         // Mock as USPD token to test allocation
         vm.deal(address(uspdToken), 2 ether); //user sends 2 eth to the uspd contract
         vm.startPrank(address(uspdToken));
+        // Note: The poolSharesToMint argument (2 ether) to allocateStabilizerFunds is likely incorrect
+        // as it should represent the total pool shares for the 2 ETH mint, not just 2 ether.
+        // Let's calculate it: 2 ETH * 2800 price = 5600 USD value = 5600e18 pool shares (assuming yieldFactor=1)
+        uint256 expectedTotalPoolShares = 5600 ether;
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT
-            .allocateStabilizerFunds{value: 2 ether}(2 ether, 2800 ether, 18);
+            .allocateStabilizerFunds{value: 2 ether}(expectedTotalPoolShares, 2800 ether, 18);
         vm.stopPrank();
 
-        // Verify first position (200% collateralization)
-        uint256 positionId1 = positionNFT.getTokenByOwner(user1);
-        IUspdCollateralizedPositionNFT.Position memory position1 = positionNFT
-            .getPosition(positionId1);
+        // Verify first position (user1, tokenId 1, 200% ratio)
+        // User ETH allocated: 0.5 ETH (needs 0.5 ETH stabilizer stETH)
+        address posEscrow1Addr = stabilizerNFT.positionEscrows(1);
+        IPositionEscrow posEscrow1 = IPositionEscrow(posEscrow1Addr);
+        assertEq(posEscrow1.getCurrentStEthBalance(), 1 ether, "PositionEscrow 1 stETH balance mismatch (0.5 user + 0.5 stab)");
+        // Expected shares = 1400e18 (0.5 ETH * 2800 price / 1 yieldFactor)
+        assertEq(posEscrow1.backedPoolShares(), 1400 ether, "PositionEscrow 1 backed shares mismatch");
+        // Check remaining balance in StabilizerEscrow 1
+        assertEq(IStabilizerEscrow(escrow1Addr).unallocatedStETH(), 0, "StabilizerEscrow 1 should be empty");
 
-        // For 200% ratio: user provides 0.5 ETH, stabilizer provides 0.5 ETH
-        assertEq(
-            position1.allocatedEth,
-            1 ether,
-            "First position should have 1 ETH total (0.5 user + 0.5 stabilizer)"
-        );
-        assertEq(
-            position1.backedPoolShares, // Check pool shares
-            1400 ether, // Expected shares = 1400e18 (0.5 ETH * 2800 price / 1 yieldFactor)
-            "First position should back 1400 Pool Shares (0.5 ETH * 2800)" // This check is now invalid as PositionNFT is removed
-        ); 
-        // TODO: Add checks for PositionEscrow state for user1
 
-        // Verify second position (110% collateralization)
+        // Verify second position (user2, tokenId 2, 110% ratio)
+        // User ETH allocated: 1.5 ETH (needs 0.15 ETH stabilizer stETH)
+        address posEscrow2Addr = stabilizerNFT.positionEscrows(2);
+        IPositionEscrow posEscrow2 = IPositionEscrow(posEscrow2Addr);
+        assertEq(posEscrow2.getCurrentStEthBalance(), 1.65 ether, "PositionEscrow 2 stETH balance mismatch (1.5 user + 0.15 stab)");
+        // Expected shares = 4200e18 (1.5 ETH * 2800 price / 1 yieldFactor)
+        assertEq(posEscrow2.backedPoolShares(), 4200 ether, "PositionEscrow 2 backed shares mismatch");
+        // Check remaining balance in StabilizerEscrow 2
+        assertEq(IStabilizerEscrow(escrow2Addr).unallocatedStETH(), 3.85 ether, "StabilizerEscrow 2 remaining balance mismatch");
+
+
         /* uint256 positionId2 = positionNFT.getTokenByOwner(user2);
         IUspdCollateralizedPositionNFT.Position memory position2 = positionNFT
             .getPosition(positionId2);
