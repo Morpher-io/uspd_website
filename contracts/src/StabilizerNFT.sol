@@ -9,10 +9,12 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initiali
 import "./UspdToken.sol";
 import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IPriceOracle.sol";
-import "./interfaces/IUspdCollateralizedPositionNFT.sol";
+// import "./interfaces/IUspdCollateralizedPositionNFT.sol"; // Removed PositionNFT interface
+import "./interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
 import "./interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 import "./interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contract interface
 import "./StabilizerEscrow.sol"; // Import Escrow implementation for deployment
+import "./PositionEscrow.sol"; // Import PositionEscrow implementation for deployment
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
 import {console} from "forge-std/console.sol";
@@ -49,8 +51,7 @@ contract StabilizerNFT is
     // USPD token contract
     USPDToken public uspdToken;
 
-    // Position NFT contract
-    IUspdCollateralizedPositionNFT public positionNFT;
+    // Position NFT contract removed
 
     // Addresses needed for Escrow deployment/interaction
     address public stETH;
@@ -72,11 +73,10 @@ contract StabilizerNFT is
         address indexed owner,
         uint256 totalEth
     );
-    event FundsAllocated(
+    event FundsAllocated( // Removed positionId
         uint256 indexed tokenId,
-        uint256 stabilizersAmount,
-        uint256 usersAmount,
-        uint256 positionId
+        uint256 stabilizersAmount, // stETH from StabilizerEscrow
+        uint256 usersAmount // ETH sent by user (before conversion)
     );
     event FundsUnallocated(
         uint256 indexed tokenId,
@@ -97,7 +97,7 @@ contract StabilizerNFT is
     }
 
     function initialize(
-        address _positionNFT,
+        // address _positionNFT, // Removed PositionNFT address
         address _uspdToken,
         address _stETH,
         address _lido,
@@ -110,7 +110,7 @@ contract StabilizerNFT is
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        positionNFT = IUspdCollateralizedPositionNFT(_positionNFT);
+        // positionNFT = IUspdCollateralizedPositionNFT(_positionNFT); // Removed PositionNFT assignment
         uspdToken = USPDToken(payable(_uspdToken));
         stETH = _stETH;
         lido = _lido;
@@ -254,20 +254,8 @@ contract StabilizerNFT is
                 }
             }
 
-            // --- Prepare for PositionNFT interaction ---
-            address owner = ownerOf(currentId);
-            uint256 positionId = positionNFT.getTokenByOwner(owner);
-
-            // If no position exists for the owner, create one
-            if (positionId == 0) {
-                positionId = positionNFT.mint(owner);
-                _registerAllocatedPosition(currentId); // Add stabilizer to allocated list
-            }
-
-            // Approve PositionNFT to pull stETH from Escrow
-            IStabilizerEscrow(escrowAddress).approveAllocation(toAllocate, address(positionNFT));
-
             // --- Interact with PositionEscrow ---
+            // PositionNFT interaction removed
             address positionEscrowAddress = positionEscrows[currentId];
             require(positionEscrowAddress != address(0), "PositionEscrow not found");
 
@@ -296,15 +284,19 @@ contract StabilizerNFT is
             result.allocatedEth += userEthShare; // Track total user ETH allocated in this call
             remainingEth -= userEthShare;
 
-            // Emit event (Note: We don't know the exact userStEthReceived here anymore)
-            // We could potentially modify addCollateralFromStabilizer to return it, or emit it from there.
-            // For now, let's emit the ETH sent and the stabilizer stETH allocated.
+            // Emit event
             emit FundsAllocated(
                 currentId,
                 toAllocate, // Stabilizer stETH amount
-                userEthShare, // User ETH amount sent
-                0 // positionId is no longer relevant here
+                userEthShare // User ETH amount sent
+                // positionId removed
             );
+
+            // Check if this is the first time allocating for this stabilizer
+            if (pos.prevAllocated == 0 && pos.nextAllocated == 0 && lowestAllocatedId != currentId) {
+                 _registerAllocatedPosition(currentId); // Add stabilizer to allocated list only once
+            }
+
 
             uint nextId = pos.nextUnallocated;
 

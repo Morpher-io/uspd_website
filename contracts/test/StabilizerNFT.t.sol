@@ -32,7 +32,7 @@ contract StabilizerNFTTest is Test {
     address public user1;
     address public user2;
 
-    UspdCollateralizedPositionNFT public positionNFT;
+    // UspdCollateralizedPositionNFT public positionNFT; // Removed PositionNFT instance
 
     function setUp() public {
         owner = address(this);
@@ -66,15 +66,15 @@ contract StabilizerNFTTest is Test {
         );
 
         // 2. Deploy Implementations
-        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
+        // UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT(); // Removed PositionNFT implementation deployment
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
 
         // 3. Deploy Proxies (without init data)
         ERC1967Proxy stabilizerProxy_NoInit = new ERC1967Proxy(address(stabilizerNFTImpl), bytes(""));
         stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy_NoInit))); // Get proxy instance
 
-        ERC1967Proxy positionProxy_NoInit = new ERC1967Proxy(address(positionNFTImpl), bytes(""));
-        positionNFT = UspdCollateralizedPositionNFT(payable(address(positionProxy_NoInit))); // Get proxy instance
+        // ERC1967Proxy positionProxy_NoInit = new ERC1967Proxy(address(positionNFTImpl), bytes("")); // Removed PositionNFT proxy deployment
+        // positionNFT = UspdCollateralizedPositionNFT(payable(address(positionProxy_NoInit))); // Removed PositionNFT instance assignment
 
         // 4. Deploy USPD Token (AFTER proxies exist, needs Stabilizer proxy address)
         uspdToken = new USPDToken(
@@ -85,17 +85,10 @@ contract StabilizerNFTTest is Test {
         );
 
         // 5. Initialize Proxies (Now that all addresses are known)
-        positionNFT.initialize(
-            address(priceOracle),
-            address(mockStETH),
-            address(mockLido),
-            address(rateContract),
-            address(stabilizerNFT), // Pass StabilizerNFT proxy address
-            address(this) // Admin
-        );
+        // positionNFT.initialize(...) // Removed PositionNFT initialization
 
         stabilizerNFT.initialize(
-            address(positionNFT), // Pass PositionNFT proxy address
+            // address(positionNFT), // Removed PositionNFT proxy address
             address(uspdToken),   // Pass USPDToken address
             address(mockStETH),
             address(mockLido),
@@ -104,19 +97,8 @@ contract StabilizerNFTTest is Test {
         );
 
         // 6. Setup roles
-        positionNFT.grantRole(
-            positionNFT.MINTER_ROLE(),
-            address(stabilizerNFT)
-        );
-        // Grant STABILIZER_NFT_ROLE for removeCollateral
-        positionNFT.grantRole(
-            positionNFT.STABILIZER_NFT_ROLE(),
-            address(stabilizerNFT)
-        );
-        positionNFT.grantRole(
-            positionNFT.MODIFYALLOCATION_ROLE(),
-            address(stabilizerNFT)
-        );
+        // positionNFT.grantRole(...) // Removed PositionNFT role grants
+
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
         // Grant STABILIZER_ROLE on USPDToken to StabilizerNFT
         uspdToken.grantRole(
@@ -506,22 +488,7 @@ contract StabilizerNFTTest is Test {
             "Should allocate correct user ETH share"
         );
 
-        // Verify position NFT state after allocation
-        uint256 positionId = positionNFT.getTokenByOwner(user1);
-        IUspdCollateralizedPositionNFT.Position memory position = positionNFT
-            .getPosition(positionId);
-
-        // Should have both user's ETH and stabilizer's ETH
-        assertEq(
-            position.allocatedEth,
-            1.1 ether,
-            "Position should have correct ETH after allocation (user + stabilizer)"
-        );
-        assertEq(
-            position.backedPoolShares, // Check pool shares
-            2000 ether, // Expected shares = 2000e18 (1 ETH * 2000 price / 1 yieldFactor)
-            "Position should back correct Pool Shares after allocation"
-        );
+        // TODO: Add checks for PositionEscrow state (stETH balance, backedPoolShares)
     }
 
     function testMultipleStabilizersAllocation() public {
@@ -569,11 +536,12 @@ contract StabilizerNFTTest is Test {
         assertEq(
             position1.backedPoolShares, // Check pool shares
             1400 ether, // Expected shares = 1400e18 (0.5 ETH * 2800 price / 1 yieldFactor)
-            "First position should back 1400 Pool Shares (0.5 ETH * 2800)"
-        );
+            "First position should back 1400 Pool Shares (0.5 ETH * 2800)" // This check is now invalid as PositionNFT is removed
+        ); */
+        // TODO: Add checks for PositionEscrow state for user1
 
         // Verify second position (110% collateralization)
-        uint256 positionId2 = positionNFT.getTokenByOwner(user2);
+        /* uint256 positionId2 = positionNFT.getTokenByOwner(user2);
         IUspdCollateralizedPositionNFT.Position memory position2 = positionNFT
             .getPosition(positionId2);
 
@@ -586,8 +554,10 @@ contract StabilizerNFTTest is Test {
         assertEq(
             position2.backedPoolShares, // Check pool shares
             4200 ether, // Expected shares = 4200e18 (1.5 ETH * 2800 price / 1 yieldFactor)
-            "Second position should back 4200 Pool Shares (1.5 ETH * 2800)"
-        );
+            "Second position should back 4200 Pool Shares (1.5 ETH * 2800)" // This check is now invalid
+        ); */
+        // TODO: Add checks for PositionEscrow state for user2
+
 
         // Verify total allocation - only user's ETH
         assertEq(
