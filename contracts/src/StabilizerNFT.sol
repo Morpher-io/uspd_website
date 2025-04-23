@@ -484,7 +484,7 @@ contract StabilizerNFT is
                     );
 
                     // Update PositionEscrow's backed shares
-                    positionEscrow.modifyAllocation(int256(-poolSharesSliceToUnallocate)); // Use negative delta
+                    positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate)); // Cast uint to int *then* negate
 
                     // Remove the calculated stETH collateral - sends to this contract (StabilizerNFT)
                     positionEscrow.removeCollateral(
