@@ -276,9 +276,8 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
         }
 
         // Calculate ratio = (Collateral Value / Liability Value) * 100
-        // Ensure consistent decimals (scale collateral to 18 decimals if needed, but both should be wei here)
-        uint256 scaledCollateralValue = collateralValueUSD * (10**18); // Scale to 18 decimals like liability
-        ratio = (scaledCollateralValue * 100) / liabilityValueUSD;
+        // Both values are already in wei (18 decimals), no extra scaling needed.
+        ratio = (collateralValueUSD * 100) / liabilityValueUSD;
 
         return ratio;
     }
