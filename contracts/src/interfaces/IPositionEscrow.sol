@@ -3,12 +3,19 @@ pragma solidity ^0.8.20;
 
 import {IERC20Errors} from "../../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "./IPriceOracle.sol"; // Needed for ratio calculation
+import {IAccessControl} from "../../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol"; // Import IAccessControl
 
 /**
  * @title IPositionEscrow Interface
  * @notice Interface for the PositionEscrow contract, holding collateral for a specific position.
  */
-interface IPositionEscrow is IERC20Errors {
+interface IPositionEscrow is IERC20Errors, IAccessControl { // Inherit IAccessControl
+    // --- Roles ---
+    // Role granted to the StabilizerNFT contract for core operations
+    bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
+    // Role granted to the owner of the corresponding StabilizerNFT for managing excess collateral
+    bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
+
     // --- Errors ---
     error ZeroAddress();
     error ZeroAmount();
