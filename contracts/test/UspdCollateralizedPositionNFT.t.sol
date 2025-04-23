@@ -311,7 +311,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
     function test_AddStabilizerCollateral_Revert_NotOwner() public {
         // Expect revert because user1 is not the owner of TEST_TOKEN_ID
-        vm.expectRevert(UspdCollateralizedPositionNFT.NotOwner.selector);
+        vm.expectRevert(IUspdCollateralizedPositionNFT.NotOwner.selector);
         // Call the function (which exists now but lacks the check) from user1
         vm.prank(user1);
         positionNFT.addStabilizerCollateral{value: 0.1 ether}(TEST_TOKEN_ID); // Call the actual function
@@ -326,7 +326,7 @@ contract UspdCollateralizedPositionNFTTest is Test {
 
     function test_RemoveExcessCollateral_Revert_NotOwner() public {
         // Expect revert because user1 is not the owner of TEST_TOKEN_ID
-        vm.expectRevert(UspdCollateralizedPositionNFT.NotOwner.selector);
+        vm.expectRevert(IUspdCollateralizedPositionNFT.NotOwner.selector);
         // Call the function from user1
         vm.prank(user1);
         IPriceOracle.PriceResponse memory price = createPriceResponse(ethPrice);

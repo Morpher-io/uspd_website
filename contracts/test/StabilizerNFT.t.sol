@@ -568,22 +568,6 @@ contract StabilizerNFTTest is Test {
         assertEq(IStabilizerEscrow(escrow2Addr).unallocatedStETH(), 3.85 ether, "StabilizerEscrow 2 remaining balance mismatch");
 
 
-        /* uint256 positionId2 = positionNFT.getTokenByOwner(user2); // Remove this line
-        IUspdCollateralizedPositionNFT.Position memory position2 = positionNFT // Remove this line
-            .getPosition(positionId2); // Remove this line */
-
-        // For 110% ratio: user provides 1.5 ETH, stabilizer provides 0.15 ETH // Keep comment
-        assertEq(
-            position2.allocatedEth,
-            1.65 ether,
-            "Second position should have 1.65 ETH total (1.5 user + 0.15 stabilizer)" // Keep comment
-        ); // Remove this line
-        assertEq( // Remove this line
-            position2.backedPoolShares, // Check pool shares // Remove this line
-            4200 ether, // Expected shares = 4200e18 (1.5 ETH * 2800 price / 1 yieldFactor) // Remove this line
-            "Second position should back 4200 Pool Shares (1.5 ETH * 2800)" // This check is now invalid // Remove this line
-        ); // Remove this line
-        */ // End comment block here
 
         // Verify total allocation result - only user's ETH
         assertEq(
