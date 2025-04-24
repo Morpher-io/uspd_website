@@ -469,7 +469,7 @@ contract StabilizerNFTTest is Test {
         vm.deal(address(uspdToken), 1 ether);
         vm.startPrank(address(uspdToken));
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT
-            .allocateStabilizerFunds{value: 1 ether}(1 ether, 2000 ether, 18);
+            .allocateStabilizerFunds{value: 1 ether}(2000 ether, 18); // Removed poolSharesToMint arg
         vm.stopPrank();
 
         // Verify allocation result
@@ -529,12 +529,9 @@ contract StabilizerNFTTest is Test {
         // Mock as USPD token to test allocation
         vm.deal(address(uspdToken), 2 ether); //user sends 2 eth to the uspd contract
         vm.startPrank(address(uspdToken));
-        // Note: The poolSharesToMint argument (2 ether) to allocateStabilizerFunds is likely incorrect
-        // as it should represent the total pool shares for the 2 ETH mint, not just 2 ether.
-        // Let's calculate it: 2 ETH * 2800 price = 5600 USD value = 5600e18 pool shares (assuming yieldFactor=1)
-        uint256 expectedTotalPoolShares = 5600 ether;
+        // Note: The poolSharesToMint argument was removed. Allocation is based on msg.value.
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT
-            .allocateStabilizerFunds{value: 2 ether}(expectedTotalPoolShares, 2800 ether, 18);
+            .allocateStabilizerFunds{value: 2 ether}(2800 ether, 18); // Removed poolSharesToMint arg
         vm.stopPrank();
 
         // Verify first position (user1, tokenId 1, 200% ratio)
@@ -680,7 +677,7 @@ contract StabilizerNFTTest is Test {
         vm.deal(address(uspdToken), 3 ether);
         vm.startPrank(address(uspdToken));
         stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
-            1 ether,
+            // 1 ether, // poolSharesToMint removed
             2000 ether,
             18
         );
@@ -705,7 +702,7 @@ contract StabilizerNFTTest is Test {
         // Allocate more funds
         vm.startPrank(address(uspdToken));
         stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
-            1 ether,
+            // 1 ether, // poolSharesToMint removed
             2000 ether,
             18
         );
@@ -773,7 +770,7 @@ contract StabilizerNFTTest is Test {
         vm.deal(address(uspdToken), 1 ether);
         vm.startPrank(address(uspdToken));
         stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
-            1 ether,
+            // 1 ether, // poolSharesToMint removed
             2000 ether,
             18
         );
