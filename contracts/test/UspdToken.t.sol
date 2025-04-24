@@ -5,7 +5,8 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {USPDToken as USPD} from "../src/UspdToken.sol";
+// Import events along with the contract
+import {USPDToken as USPD, MintPoolShares, BurnPoolShares} from "../src/UspdToken.sol";
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
 import {IPriceOracle, PriceOracle} from "../src/PriceOracle.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
