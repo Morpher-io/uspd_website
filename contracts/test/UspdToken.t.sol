@@ -515,11 +515,11 @@ contract USPDTokenTest is Test {
         vm.deal(uspdHolder, 10 ether);
 
         // Mock the Uniswap price call within the PriceOracle for minting
-        uint256 mockUniswapPriceMint = 2000 * 1e18; // Mock price of 2000 USD
+        // uint256 mockUniswapPriceMint = 2000 * 1e18; // Mock price of 2000 USD
         vm.mockCall(
             address(priceOracle),
             abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
-            abi.encode(mockUniswapPriceMint)
+            abi.encode(2000 * 1e18)
         );
 
         // Create price attestation for minting
