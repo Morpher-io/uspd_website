@@ -230,6 +230,14 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
 
+        // Mock the Uniswap price call within the PriceOracle
+        uint256 mockUniswapPrice = 2000 * 1e18; // Mock price of 2000 USD
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
+            abi.encode(mockUniswapPrice)
+        );
+
         // Create price attestation with current Uniswap price
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
             block.timestamp * 1000
@@ -305,6 +313,14 @@ contract USPDTokenTest is Test {
 
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, mintEthAmount + 1 ether); // Give buyer enough ETH
+
+        // Mock the Uniswap price call within the PriceOracle
+        uint256 mockUniswapPrice = 2000 * 1e18; // Mock price of 2000 USD
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
+            abi.encode(mockUniswapPrice)
+        );
 
         // Create price attestation
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
@@ -427,6 +443,14 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdHolder, 10 ether);
 
+        // Mock the Uniswap price call within the PriceOracle for minting
+        uint256 mockUniswapPriceMint = 2000 * 1e18; // Mock price of 2000 USD
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
+            abi.encode(mockUniswapPriceMint)
+        );
+
         // Create price attestation for minting
         IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(
             block.timestamp * 1000
@@ -449,6 +473,22 @@ contract USPDTokenTest is Test {
 
         // Create a contract that reverts on receive
         RevertingContract reverting = new RevertingContract();
+
+        // Mock the Uniswap price call within the PriceOracle for burning
+        uint256 mockUniswapPriceBurn = 2000 * 1e18; // Mock price of 2000 USD (can be same or different)
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
+            abi.encode(mockUniswapPriceBurn)
+        );
+
+        // Mock the Uniswap price call within the PriceOracle for burning
+        uint256 mockUniswapPriceBurn = 2000 * 1e18; // Mock price of 2000 USD (can be same or different)
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
+            abi.encode(mockUniswapPriceBurn)
+        );
 
         // Create price attestation for burning
         IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
@@ -474,6 +514,14 @@ contract USPDTokenTest is Test {
 
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdHolder, 10 ether);
+
+        // Mock the Uniswap price call within the PriceOracle for minting
+        uint256 mockUniswapPriceMint = 2000 * 1e18; // Mock price of 2000 USD
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
+            abi.encode(mockUniswapPriceMint)
+        );
 
         // Create price attestation for minting
         IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(
@@ -583,6 +631,14 @@ contract USPDTokenTest is Test {
         // Setup accounts
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
+
+        // Mock the Uniswap price call within the PriceOracle
+        uint256 mockUniswapPrice = 2000 * 1e18; // Mock price of 2000 USD
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
+            abi.encode(mockUniswapPrice)
+        );
 
         // Create price attestation
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
