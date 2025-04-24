@@ -9,7 +9,6 @@ import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
-import "../src/UspdCollateralizedPositionNFT.sol";
 
 contract UpgradeScript is Script {
     // Configuration
