@@ -517,20 +517,20 @@ contract USPDTokenTest is Test {
         );
 
         // --- Assertions ---
-        uint256 expectedRemainingShares = poolSharesBeforeBurn - poolSharesToBurn; // Use fetched value
-        uint256 expectedRemainingUspd = (expectedRemainingShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
-        uint256 expectedTotalPoolShares = totalPoolSharesBeforeBurn - poolSharesToBurn; // Use fetched value
+        // Calculations are now inlined in the asserts below to save stack space
 
         // Check user balances
         assertApproxEqAbs(
             uspdToken.balanceOf(uspdHolder),
-            expectedRemainingUspd,
+            // Inlined calculation for expectedRemainingUspd: ((poolSharesBeforeBurn - poolSharesToBurn) * yieldFactor) / uspdToken.FACTOR_PRECISION()
+            ((poolSharesBeforeBurn - poolSharesToBurn) * yieldFactor) / uspdToken.FACTOR_PRECISION(),
             1e9, // Tolerance
             "USPD balance not updated correctly after burn"
         );
         assertApproxEqAbs(
             uspdToken.poolSharesOf(uspdHolder),
-            expectedRemainingShares,
+            // Inlined calculation for expectedRemainingShares: poolSharesBeforeBurn - poolSharesToBurn
+            poolSharesBeforeBurn - poolSharesToBurn,
             1e9, // Tolerance
             "Pool Share balance not updated correctly after burn"
         );
@@ -538,7 +538,8 @@ contract USPDTokenTest is Test {
         // Check total supply
         assertApproxEqAbs(
             uspdToken.totalPoolShares(),
-            expectedTotalPoolShares,
+            // Inlined calculation for expectedTotalPoolShares: totalPoolSharesBeforeBurn - poolSharesToBurn
+            totalPoolSharesBeforeBurn - poolSharesToBurn,
             1e9, // Tolerance
             "Total pool shares not updated correctly after burn"
         );
