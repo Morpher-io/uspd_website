@@ -9,7 +9,7 @@ import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
-import "../src/UspdCollateralizedPositionNFT.sol";
+// Removed UspdCollateralizedPositionNFT import
 
 contract UpgradeScript is Script {
     // Configuration
@@ -37,14 +37,14 @@ contract UpgradeScript is Script {
     // Contract addresses from deployment
     address proxyAdminAddress;
     address oracleProxyAddress;
-    address positionNFTProxyAddress;
+    // address positionNFTProxyAddress; // Removed
     address stabilizerProxyAddress;
-    
+
     // New implementation addresses
     address newOracleImplAddress;
-    address newPositionNFTImplAddress;
+    // address newPositionNFTImplAddress; // Removed
     address newStabilizerImplAddress;
-    
+
     function setUp() public {
         // Get the deployer address and chain ID
         deployer = msg.sender;
@@ -64,12 +64,12 @@ contract UpgradeScript is Script {
         string memory json = vm.readFile(deploymentPath);
         proxyAdminAddress = vm.parseJsonAddress(json, ".contracts.proxyAdmin");
         oracleProxyAddress = vm.parseJsonAddress(json, ".contracts.oracle");
-        positionNFTProxyAddress = vm.parseJsonAddress(json, ".contracts.positionNFT");
+        // positionNFTProxyAddress = vm.parseJsonAddress(json, ".contracts.positionNFT"); // Removed
         stabilizerProxyAddress = vm.parseJsonAddress(json, ".contracts.stabilizer");
-        
+
         console2.log("ProxyAdmin address:", proxyAdminAddress);
         console2.log("Oracle proxy address:", oracleProxyAddress);
-        console2.log("Position NFT proxy address:", positionNFTProxyAddress);
+        // console2.log("Position NFT proxy address:", positionNFTProxyAddress); // Removed
         console2.log("Stabilizer NFT proxy address:", stabilizerProxyAddress);
     }
 
@@ -92,18 +92,16 @@ contract UpgradeScript is Script {
         // Deploy new PriceOracle implementation with regular CREATE
         PriceOracle newOracleImpl = new PriceOracle();
         newOracleImplAddress = address(newOracleImpl);
-        
-        // Deploy new UspdCollateralizedPositionNFT implementation with regular CREATE
-        UspdCollateralizedPositionNFT newPositionNFTImpl = new UspdCollateralizedPositionNFT();
-        newPositionNFTImplAddress = address(newPositionNFTImpl);
-        
+
+        // Deploy new UspdCollateralizedPositionNFT implementation removed
+
         // Deploy new StabilizerNFT implementation with regular CREATE
         StabilizerNFT newStabilizerImpl = new StabilizerNFT();
         newStabilizerImplAddress = address(newStabilizerImpl);
-        
+
         console2.log("New implementations deployed:");
         console2.log("- PriceOracle:", newOracleImplAddress);
-        console2.log("- UspdCollateralizedPositionNFT:", newPositionNFTImplAddress);
+        // console2.log("- UspdCollateralizedPositionNFT:", newPositionNFTImplAddress); // Removed
         console2.log("- StabilizerNFT:", newStabilizerImplAddress);
     }
     
@@ -114,12 +112,9 @@ contract UpgradeScript is Script {
         // If we were changing the initialize function signature, we would need to include initialization data
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(oracleProxyAddress), newOracleImplAddress, "");
         console2.log("PriceOracle upgraded successfully");
-        
-        // Upgrade UspdCollateralizedPositionNFT - no initialization data needed for upgrade
-        // If we were changing the initialize function signature, we would need to include initialization data
-        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(positionNFTProxyAddress), newPositionNFTImplAddress, "");
-        console2.log("UspdCollateralizedPositionNFT upgraded successfully");
-        
+
+        // Upgrade UspdCollateralizedPositionNFT removed
+
         // Upgrade StabilizerNFT - no initialization data needed for upgrade
         // If we were changing the initialize function signature, we would need to include initialization data
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(stabilizerProxyAddress), newStabilizerImplAddress, "");
@@ -139,9 +134,9 @@ contract UpgradeScript is Script {
         
         // Update implementation addresses
         vm.writeJson(vm.toString(newOracleImplAddress), deploymentPath, ".contracts.oracleImpl");
-        vm.writeJson(vm.toString(newPositionNFTImplAddress), deploymentPath, ".contracts.positionNFTImpl");
+        // vm.writeJson(vm.toString(newPositionNFTImplAddress), deploymentPath, ".contracts.positionNFTImpl"); // Removed
         vm.writeJson(vm.toString(newStabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
-        
+
         // Add upgrade metadata
         vm.writeJson(vm.toString(block.timestamp), deploymentPath, ".upgrades.lastUpgradeTimestamp");
         vm.writeJson(vm.toString(deployer), deploymentPath, ".upgrades.lastUpgrader");
