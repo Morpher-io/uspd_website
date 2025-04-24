@@ -5,8 +5,8 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-// Import events along with the contract
-import {USPDToken as USPD, MintPoolShares, BurnPoolShares} from "../src/UspdToken.sol";
+// Import only the contract, not the events
+import {USPDToken as USPD} from "../src/UspdToken.sol";
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
 import {IPriceOracle, PriceOracle} from "../src/PriceOracle.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
@@ -23,6 +23,10 @@ import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 import "../src/interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
 
 contract USPDTokenTest is Test {
+    // --- Re-define events for vm.expectEmit ---
+    event MintPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
+    event BurnPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
+
     uint256 internal signerPrivateKey;
     address internal signer;
     
