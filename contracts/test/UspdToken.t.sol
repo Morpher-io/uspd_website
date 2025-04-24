@@ -555,18 +555,20 @@ contract USPDTokenTest is Test {
         );
 
         // --- Burn half of USPD ---
-        uint256 uspdToBurn = uspdToken.balanceOf(uspdHolder) / 2; // Fetch initial balance directly
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 poolSharesToBurn = (uspdToBurn * uspdToken.FACTOR_PRECISION()) / yieldFactor;
-        uint256 poolSharesBeforeBurn = uspdToken.poolSharesOf(uspdHolder); // Fetch initial shares
-        uint256 totalPoolSharesBeforeBurn = uspdToken.totalPoolShares(); // Fetch initial total shares
-        uint256 escrowSharesBeforeBurn = positionEscrow.backedPoolShares(); // Fetch initial escrow shares
+        // Store values needed multiple times or across the burn call
+        uint256 uspdToBurn_ = uspdToken.balanceOf(uspdHolder) / 2; // Calculate once, use below
+        uint256 poolSharesBeforeBurn_ = uspdToken.poolSharesOf(uspdHolder); // Fetch initial shares
+        uint256 totalPoolSharesBeforeBurn_ = uspdToken.totalPoolShares(); // Fetch initial total shares
+        uint256 escrowSharesBeforeBurn_ = positionEscrow.backedPoolShares(); // Fetch initial escrow shares
+        uint256 yieldFactor_ = rateContract.getYieldFactor(); // Fetch once
+        uint256 poolSharesToBurn_ = (uspdToBurn_ * uspdToken.FACTOR_PRECISION()) / yieldFactor_; // Calculate once
 
         vm.expectEmit(true, true, true, true, address(uspdToken));
-        emit BurnPoolShares(uspdHolder, address(0), uspdToBurn, poolSharesToBurn, yieldFactor); // Approx values for check
+        // Use calculated values in emit check
+        emit BurnPoolShares(uspdHolder, address(0), uspdToBurn_, poolSharesToBurn_, yieldFactor_);
         vm.prank(uspdHolder);
         uspdToken.burn(
-            uspdToBurn,
+            uspdToBurn_, // Use calculated value
             payable(uspdHolder),
             burnPriceQuery
         );
@@ -577,15 +579,15 @@ contract USPDTokenTest is Test {
         // Check user balances
         assertApproxEqAbs(
             uspdToken.balanceOf(uspdHolder),
-            // Inlined calculation for expectedRemainingUspd: ((poolSharesBeforeBurn - poolSharesToBurn) * yieldFactor) / uspdToken.FACTOR_PRECISION()
-            ((poolSharesBeforeBurn - poolSharesToBurn) * yieldFactor) / uspdToken.FACTOR_PRECISION(),
+            // Inlined calculation for expectedRemainingUspd: ((poolSharesBeforeBurn_ - poolSharesToBurn_) * yieldFactor_) / uspdToken.FACTOR_PRECISION()
+            ((poolSharesBeforeBurn_ - poolSharesToBurn_) * yieldFactor_) / uspdToken.FACTOR_PRECISION(),
             1e9, // Tolerance
             "USPD balance not updated correctly after burn"
         );
         assertApproxEqAbs(
             uspdToken.poolSharesOf(uspdHolder),
-            // Inlined calculation for expectedRemainingShares: poolSharesBeforeBurn - poolSharesToBurn
-            poolSharesBeforeBurn - poolSharesToBurn,
+            // Inlined calculation for expectedRemainingShares: poolSharesBeforeBurn_ - poolSharesToBurn_
+            poolSharesBeforeBurn_ - poolSharesToBurn_,
             1e9, // Tolerance
             "Pool Share balance not updated correctly after burn"
         );
@@ -593,8 +595,8 @@ contract USPDTokenTest is Test {
         // Check total supply
         assertApproxEqAbs(
             uspdToken.totalPoolShares(),
-            // Inlined calculation for expectedTotalPoolShares: totalPoolSharesBeforeBurn - poolSharesToBurn
-            totalPoolSharesBeforeBurn - poolSharesToBurn,
+            // Inlined calculation for expectedTotalPoolShares: totalPoolSharesBeforeBurn_ - poolSharesToBurn_
+            totalPoolSharesBeforeBurn_ - poolSharesToBurn_,
             1e9, // Tolerance
             "Total pool shares not updated correctly after burn"
         );
@@ -602,7 +604,7 @@ contract USPDTokenTest is Test {
         // Check PositionEscrow state
         assertApproxEqAbs(
             positionEscrow.backedPoolShares(),
-            escrowSharesBeforeBurn - poolSharesToBurn, // Use fetched value
+            escrowSharesBeforeBurn_ - poolSharesToBurn_, // Use fetched value
             1e9, // Tolerance
             "PositionEscrow backed shares not updated correctly after burn"
         );
