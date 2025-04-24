@@ -7,8 +7,8 @@ import "forge-std/console.sol";
 
 import {USPDToken as USPD} from "../src/UspdToken.sol";
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
-import {UspdCollateralizedPositionNFT} from "../src/UspdCollateralizedPositionNFT.sol";
-import {IUspdCollateralizedPositionNFT} from "../src/interfaces/IUspdCollateralizedPositionNFT.sol";
+// Removed UspdCollateralizedPositionNFT import
+// Removed IUspdCollateralizedPositionNFT import
 import {IPriceOracle, PriceOracle} from "../src/PriceOracle.sol";
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -35,7 +35,6 @@ contract USPDTokenTest is Test {
 
     // --- Contracts Under Test ---
     StabilizerNFT public stabilizerNFT;
-    // UspdCollateralizedPositionNFT positionNFT; // Removed PositionNFT
     USPD uspdToken;
 
     bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD");
@@ -119,7 +118,6 @@ contract USPDTokenTest is Test {
         );
 
         // Deploy Implementations
-        // UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT(); // Removed PositionNFT implementation
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
 
         // Deploy Proxies (without full init data initially)
@@ -146,8 +144,6 @@ contract USPDTokenTest is Test {
         );
 
         // Initialize Proxies with correct addresses
-        // positionNFT.initialize(...) // Removed PositionNFT initialization
-
         stabilizerNFT.initialize(
             // address(positionNFT), // Removed position proxy address argument
             address(uspdToken),
@@ -158,8 +154,6 @@ contract USPDTokenTest is Test {
         );
 
         // Setup roles
-        // positionNFT.grantRole(...) // Removed PositionNFT role grants
-
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
         // Grant STABILIZER_ROLE on USPDToken to StabilizerNFT
         uspdToken.grantRole(
@@ -491,13 +485,13 @@ contract USPDTokenTest is Test {
             "Incorrect Pool Share balance"
         );
 
-        // Verify PositionEscrow state (instead of PositionNFT)
+        // Verify PositionEscrow state
         uint256 tokenId = 1; // Assuming stabilizerNFT minted token ID 1
         address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
-        require(positionEscrowAddr != address(0), "PositionEscrow not deployed/found");
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed/found for token ID 1");
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
 
-        // Calculate expected allocation (110% of 1 ETH)
+        // Calculate expected allocation (110% of 1 ETH, assuming default ratio)
         uint256 expectedStEthAllocation = (1 ether * 110) / 100; // User 1 ETH + Stabilizer 0.1 ETH = 1.1 ETH worth of stETH
         assertApproxEqAbs(
             positionEscrow.getCurrentStEthBalance(), // Check actual stETH balance in escrow
