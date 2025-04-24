@@ -190,10 +190,13 @@ contract PriceOracle is
             revert InvalidDecimals(18, priceQuery.decimals);
         }
 
+
         // Check timestamp staleness
         if (priceQuery.dataTimestamp <= 1000 * (block.timestamp - config.priceStalenessPeriod)) {
             revert PriceDataTooOld(priceQuery.dataTimestamp, block.timestamp);
         }
+
+        
 
         // Get prices from other sources
         uint256 chainlinkPrice = uint256(getChainlinkDataFeedLatestAnswer());
@@ -205,6 +208,9 @@ contract PriceOracle is
         if (uniswapV3Price == 0) {
             revert PriceSourceUnavailable("Uniswap V3");
         }
+        console.log(priceQuery.price);
+        console.log(chainlinkPrice);
+        console.log(uniswapV3Price);
 
         // Check price deviations
         if (!_isPriceDeviationAcceptable(priceQuery.price, chainlinkPrice, uniswapV3Price)) {

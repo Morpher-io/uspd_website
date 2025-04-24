@@ -57,7 +57,7 @@ contract USPDTokenTest is Test {
         IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
             price: price,
             decimals: 18,
-            dataTimestamp: timestamp,
+            dataTimestamp: timestamp * 1000, //price attestation service timestamps are in miliseconds
             assetPair: ETH_USD_PAIR,
             signature: bytes("")
         });
@@ -89,6 +89,8 @@ contract USPDTokenTest is Test {
         // Setup signer for price attestations
         signerPrivateKey = 0xa11ce;
         signer = vm.addr(signerPrivateKey);
+
+        vm.warp(1000000); //warp forward for the oracle to work with the timestamp staleness, otherwise it results in an arithmetic underflow.
 
         // Deploy PriceOracle implementation and proxy
         PriceOracle implementation = new PriceOracle();
@@ -450,6 +452,7 @@ contract USPDTokenTest is Test {
             abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
             abi.encode(mockUniswapPriceMint)
         );
+
 
         // Create price attestation for minting
         IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(

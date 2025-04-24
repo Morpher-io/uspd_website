@@ -77,6 +77,9 @@ contract USPDToken is
         IPriceOracle.PriceResponse memory oracleResponse = oracle
             .attestationService(priceQuery);
         uint256 ethForAllocation = msg.value;
+        console.log(oracleResponse.decimals);
+        console.log(oracleResponse.price);
+        console.log(oracleResponse.timestamp);
         uint256 initialUSDValue = (ethForAllocation * oracleResponse.price) /
             (10 ** oracleResponse.decimals);
 
