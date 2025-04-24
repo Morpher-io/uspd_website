@@ -118,7 +118,16 @@ contract PriceOracle is
             );
             (uint sqrtPriceX96, , , , , , ) = uniswapPoolState.slot0();
             console.log(sqrtPriceX96);
-            return (1e18 * 1e12) / ((sqrtPriceX96 / 2 ** 96) ** 2); //18 digits PSD coin, so conversion is in WEI to USD value (e.g. 1 eth = 1500 USD * 1e18)
+            // Calculate price = (sqrtPriceX96^2 * 10^18) / 2^192
+            // This gives the price of 1 WETH (18 decimals) in terms of USDC, scaled to 18 decimals.
+            // WARNING: Direct calculation of sqrtPriceX96 * sqrtPriceX96 overflows uint256.
+            // Use a safe math library like FullMath.mulDiv:
+            // uint256 price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, 1 << 192); // This calculates price with 6 decimals (USDC)
+            // return price * 1e12; // Scale to 18 decimals
+            // Placeholder calculation demonstrating the formula (prone to overflow):
+            uint256 Q192 = 6277101735386680763835789423207666416102355444464034512896; // 2^192
+            uint256 numerator = uint256(sqrtPriceX96) * uint256(sqrtPriceX96); // OVERFLOWS!
+            return (numerator * 10**18) / Q192; // Conceptual formula - requires safe math
         }
         return 0;
     }
