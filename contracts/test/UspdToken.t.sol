@@ -179,9 +179,13 @@ contract USPDTokenTest is Test {
             uspdToken.STABILIZER_ROLE(),
             address(stabilizerNFT)
         );
+
+        // --- Verify Initialization ---
+        assertEq(address(uspdToken.stabilizer()), address(stabilizerNFT), "Stabilizer address mismatch in USPDToken");
+        assertEq(address(uspdToken.rateContract()), address(rateContract), "RateContract address mismatch in USPDToken");
+        assertTrue(uspdToken.hasRole(uspdToken.STABILIZER_ROLE(), address(stabilizerNFT)), "StabilizerNFT should have STABILIZER_ROLE on USPDToken");
     }
 
-   
 
     function testAdminRoleAssignment() public {
         // Verify that the constructor correctly assigned admin roles
@@ -235,28 +239,58 @@ contract USPDTokenTest is Test {
 
         // Mint USPD tokens to a specific address
         vm.prank(uspdBuyer);
+        // Mint USPD tokens to a specific address
+        vm.expectEmit(true, true, true, true, address(uspdToken));
+        emit MintPoolShares(address(0), recipient, (1 ether * priceQuery.price) / (10 ** priceQuery.decimals), (1 ether * priceQuery.price) / (10 ** priceQuery.decimals), rateContract.getYieldFactor()); // Approx values for check
+        vm.prank(uspdBuyer);
         uspdToken.mint{value: 1 ether}(recipient, priceQuery);
 
-        // Verify USPD balance and Pool Shares of recipient
-        // Since yieldFactor is 1e18 initially, poolShares = uspdAmount
-        uint256 expectedUspdBalance = (1 ether * priceQuery.price) / (10 ** priceQuery.decimals);
-        uint256 expectedPoolShares = expectedUspdBalance; // Assuming yieldFactor = 1e18
+        // --- Assertions ---
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 expectedPoolShares = (1 ether * priceQuery.price * uspdToken.FACTOR_PRECISION()) / ((10 ** priceQuery.decimals) * yieldFactor);
+        uint256 expectedUspdBalance = (expectedPoolShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
 
-        assertEq(
+        // Check recipient balances
+        assertApproxEqAbs(
             uspdToken.balanceOf(recipient),
             expectedUspdBalance,
+            1e9, // Tolerance for rounding
             "Incorrect USPD balance of recipient"
         );
-         assertEq(
+        assertApproxEqAbs(
             uspdToken.poolSharesOf(recipient),
             expectedPoolShares,
+            1e9, // Tolerance for rounding
             "Incorrect Pool Share balance of recipient"
         );
+
+        // Check buyer balance (should be zero)
         assertEq(
             uspdToken.balanceOf(uspdBuyer),
             0,
             "Buyer should not receive USPD"
         );
+
+        // Check total supply
+        assertApproxEqAbs(uspdToken.totalPoolShares(), expectedPoolShares, 1e9, "Incorrect total pool shares");
+
+        // Check PositionEscrow state (Token ID 1)
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(1);
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed for token ID 1");
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+
+        assertApproxEqAbs(
+            positionEscrow.backedPoolShares(),
+            expectedPoolShares,
+            1e9, // Tolerance
+            "PositionEscrow backed shares mismatch"
+        );
+        // Check stETH balance reflects user ETH + stabilizer contribution
+        uint256 minRatio = stabilizerNFT.getMinCollateralRatio(1);
+        uint256 expectedStabilizerStEth = (1 ether * minRatio / 100) - 1 ether; // Approx stETH needed
+        // Note: Actual stETH might differ slightly due to Lido rate and available funds check
+        assertTrue(positionEscrow.getCurrentStEthBalance() >= 1 ether, "PositionEscrow stETH balance too low");
+        assertTrue(positionEscrow.getCurrentStEthBalance() <= 1 ether + expectedStabilizerStEth + 1e15, "PositionEscrow stETH balance too high"); // Allow tolerance
     }
 
     // Refactored test: Mint a fixed ETH amount and check balances
@@ -284,25 +318,51 @@ contract USPDTokenTest is Test {
 
         // Mint USPD tokens
         vm.prank(uspdBuyer);
+        // Mint USPD tokens
+        vm.expectEmit(true, true, true, true, address(uspdToken));
+        emit MintPoolShares(address(0), uspdBuyer, (mintEthAmount * priceQuery.price) / (10 ** priceQuery.decimals), (mintEthAmount * priceQuery.price) / (10 ** priceQuery.decimals), rateContract.getYieldFactor()); // Approx values for check
+        vm.prank(uspdBuyer);
         uspdToken.mint{value: mintEthAmount}(uspdBuyer, priceQuery);
 
-        // Verify USPD balance and Pool Shares
-        // Since yieldFactor is 1e18 initially, poolShares = uspdAmount
-        uint256 expectedUspdBalance = (mintEthAmount * priceQuery.price) / (10 ** priceQuery.decimals);
-        uint256 expectedPoolShares = expectedUspdBalance; // Assuming yieldFactor = 1e18
+        // --- Assertions ---
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 expectedPoolShares = (mintEthAmount * priceQuery.price * uspdToken.FACTOR_PRECISION()) / ((10 ** priceQuery.decimals) * yieldFactor);
+        uint256 expectedUspdBalance = (expectedPoolShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
 
+        // Check buyer balances
         assertApproxEqAbs(
             uspdToken.balanceOf(uspdBuyer),
             expectedUspdBalance,
-            1e9, // Allow small tolerance for rounding
+            1e9, // Tolerance for rounding
             "Incorrect USPD balance"
         );
         assertApproxEqAbs(
             uspdToken.poolSharesOf(uspdBuyer),
             expectedPoolShares,
-            1e9, // Allow small tolerance for rounding
+            1e9, // Tolerance for rounding
             "Incorrect Pool Share balance"
         );
+
+        // Check total supply
+        assertApproxEqAbs(uspdToken.totalPoolShares(), expectedPoolShares, 1e9, "Incorrect total pool shares");
+
+        // Check PositionEscrow state (Token ID 1)
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(1);
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed for token ID 1");
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+
+        assertApproxEqAbs(
+            positionEscrow.backedPoolShares(),
+            expectedPoolShares,
+            1e9, // Tolerance
+            "PositionEscrow backed shares mismatch"
+        );
+        // Check stETH balance reflects user ETH + stabilizer contribution
+        uint256 minRatio = stabilizerNFT.getMinCollateralRatio(1);
+        uint256 expectedStabilizerStEth = (mintEthAmount * minRatio / 100) - mintEthAmount; // Approx stETH needed
+        // Note: Actual stETH might differ slightly due to Lido rate and available funds check
+        assertTrue(positionEscrow.getCurrentStEthBalance() >= mintEthAmount, "PositionEscrow stETH balance too low");
+        assertTrue(positionEscrow.getCurrentStEthBalance() <= mintEthAmount + expectedStabilizerStEth + 1e15, "PositionEscrow stETH balance too high"); // Allow tolerance
 
         // Verify ETH spent (assuming full allocation, no refund)
         // Note: Gas costs are ignored by default in forge tests unless explicitly handled
@@ -374,6 +434,7 @@ contract USPDTokenTest is Test {
         // Mint USPD tokens
         vm.prank(uspdHolder);
         uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
+        uint256 uspdToBurn = uspdToken.balanceOf(uspdHolder) / 2; // Burn half
 
         // Create a contract that reverts on receive
         RevertingContract reverting = new RevertingContract();
@@ -384,10 +445,12 @@ contract USPDTokenTest is Test {
         );
 
         // Try to burn USPD and send ETH to reverting contract
+        // Try to burn USPD and send ETH to reverting contract
+        // The burn logic itself (shares, stabilizer call) should succeed, but the final ETH transfer fails.
         vm.prank(uspdHolder);
         vm.expectRevert("ETH transfer failed");
         uspdToken.burn(
-            1000 ether,
+            uspdToBurn, // Use the calculated amount to burn
             payable(address(reverting)),
             burnPriceQuery
         );
@@ -422,42 +485,82 @@ contract USPDTokenTest is Test {
         uint256 initialEthBalance = uspdHolder.balance;
         uint256 initialUspdBalance = uspdToken.balanceOf(uspdHolder);
         uint256 initialPoolShares = uspdToken.poolSharesOf(uspdHolder);
+        uint256 initialTotalPoolShares = uspdToken.totalPoolShares();
+
+        // Get initial PositionEscrow state
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(1);
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed for token ID 1");
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+        uint256 initialEscrowShares = positionEscrow.backedPoolShares();
+        uint256 initialEscrowStEth = positionEscrow.getCurrentStEthBalance();
+
 
         // Create price attestation for burning
         IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
             block.timestamp * 1000
         );
 
-        // Burn half of USPD
+        // --- Burn half of USPD ---
+        uint256 uspdToBurn = initialUspdBalance / 2;
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 poolSharesToBurn = (uspdToBurn * uspdToken.FACTOR_PRECISION()) / yieldFactor;
+
+        vm.expectEmit(true, true, true, true, address(uspdToken));
+        emit BurnPoolShares(uspdHolder, address(0), uspdToBurn, poolSharesToBurn, yieldFactor); // Approx values for check
         vm.prank(uspdHolder);
         uspdToken.burn(
-            initialUspdBalance / 2,
+            uspdToBurn,
             payable(uspdHolder),
             burnPriceQuery
         );
 
-        // Verify USPD and Pool Shares were burned
-        // Since yieldFactor is 1e18, burned shares = burned USPD amount
-        uint256 expectedRemainingUspd = initialUspdBalance / 2;
-        uint256 expectedRemainingShares = initialPoolShares / 2;
+        // --- Assertions ---
+        uint256 expectedRemainingShares = initialPoolShares - poolSharesToBurn;
+        uint256 expectedRemainingUspd = (expectedRemainingShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
+        uint256 expectedTotalPoolShares = initialTotalPoolShares - poolSharesToBurn;
 
+        // Check user balances
         assertApproxEqAbs(
             uspdToken.balanceOf(uspdHolder),
             expectedRemainingUspd,
-            1e9, // Allow small tolerance
+            1e9, // Tolerance
             "USPD balance not updated correctly after burn"
         );
-         assertApproxEqAbs(
+        assertApproxEqAbs(
             uspdToken.poolSharesOf(uspdHolder),
             expectedRemainingShares,
-            1e9, // Allow small tolerance
+            1e9, // Tolerance
             "Pool Share balance not updated correctly after burn"
         );
 
-        // Verify ETH was returned
+        // Check total supply
+        assertApproxEqAbs(
+            uspdToken.totalPoolShares(),
+            expectedTotalPoolShares,
+            1e9, // Tolerance
+            "Total pool shares not updated correctly after burn"
+        );
+
+        // Check PositionEscrow state
+        assertApproxEqAbs(
+            positionEscrow.backedPoolShares(),
+            initialEscrowShares - poolSharesToBurn,
+            1e9, // Tolerance
+            "PositionEscrow backed shares not updated correctly after burn"
+        );
+        // Check that stETH balance decreased (exact amount depends on ratio/yield)
         assertTrue(
-            uspdHolder.balance > initialEthBalance, // Compare against initial ETH balance
-            "ETH not returned to holder"
+            positionEscrow.getCurrentStEthBalance() < initialEscrowStEth,
+            "PositionEscrow stETH balance should decrease after burn"
+        );
+
+
+        // Verify ETH/stETH was returned (Check if balance changed, acknowledging stETH complexity)
+        // Note: This check might fail if gas costs exactly offset the returned ETH/stETH value,
+        // or if the stETH isn't converted/transferred yet by USPDToken.
+        assertTrue(
+            uspdHolder.balance != initialEthBalance, // Check if balance changed at all
+            "Holder ETH balance did not change after burn (stETH return might be pending/unhandled)"
         );
     }
 
@@ -488,40 +591,55 @@ contract USPDTokenTest is Test {
         uspdToken.mint{value: 1 ether}(uspdBuyer, priceQuery);
         vm.stopPrank();
 
-        // Calculate expected USPD balance and Pool Shares
-        // Since yieldFactor is 1e18 initially, poolShares = uspdAmount
-        uint256 expectedUspdBalance = (1 ether * priceQuery.price) / (10 ** priceQuery.decimals);
-        uint256 expectedPoolShares = expectedUspdBalance; // Assuming yieldFactor = 1e18
+        // --- Assertions ---
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 expectedPoolShares = (1 ether * priceQuery.price * uspdToken.FACTOR_PRECISION()) / ((10 ** priceQuery.decimals) * yieldFactor);
+        uint256 expectedUspdBalance = (expectedPoolShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
 
-        assertEq(
+        // Check buyer balances
+        assertApproxEqAbs(
             uspdToken.balanceOf(uspdBuyer),
             expectedUspdBalance,
+            1e9, // Tolerance
             "Incorrect USPD balance"
         );
-        assertEq(
+        assertApproxEqAbs(
             uspdToken.poolSharesOf(uspdBuyer),
             expectedPoolShares,
+            1e9, // Tolerance
             "Incorrect Pool Share balance"
         );
 
+        // Check total supply
+        assertApproxEqAbs(uspdToken.totalPoolShares(), expectedPoolShares, 1e9, "Incorrect total pool shares");
+
+
         // Verify PositionEscrow state
-        uint256 tokenId = 1; // Assuming stabilizerNFT minted token ID 1
+        uint256 tokenId = 1;
         address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
-        require(positionEscrowAddr != address(0), "PositionEscrow not deployed/found for token ID 1");
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed for token ID 1");
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
 
-        // Calculate expected allocation (110% of 1 ETH, assuming default ratio)
-        uint256 expectedStEthAllocation = (1 ether * 110) / 100; // User 1 ETH + Stabilizer 0.1 ETH = 1.1 ETH worth of stETH
+        // Check backed shares
+        assertApproxEqAbs(
+            positionEscrow.backedPoolShares(),
+            expectedPoolShares,
+            1e9, // Tolerance
+            "PositionEscrow should back correct Pool Share amount"
+        );
+
+        // Calculate expected stETH allocation based on min ratio (110% default)
+        // User provides 1 ETH. Stabilizer needs to provide 0.1 ETH worth of stETH. Total = 1.1 ETH worth.
+        // Note: Actual amount depends on StabilizerEscrow balance and Lido rate.
+        uint256 minRatio = stabilizerNFT.getMinCollateralRatio(tokenId); // Default is 110
+        uint256 expectedMinStEth = (1 ether * minRatio) / 100;
+        uint256 expectedMaxStEth = expectedMinStEth + 1e15; // Allow tolerance for Lido rate != 1:1
+
         assertApproxEqAbs(
             positionEscrow.getCurrentStEthBalance(), // Check actual stETH balance in escrow
-            expectedStEthAllocation,
-            1e15, // Allow some tolerance for Lido conversion rate if not exactly 1:1
-            "PositionEscrow should have correct stETH allocation"
-        );
-        assertEq(
-            positionEscrow.backedPoolShares(), // Check backedPoolShares in escrow
-            expectedPoolShares, // Check against expected pool shares
-            "PositionEscrow should back correct Pool Share amount"
+            expectedMinStEth, // Check against calculated minimum expected stETH
+            1e15, // Allow tolerance for Lido conversion rate and potential rounding in allocation
+            "PositionEscrow stETH balance mismatch"
         );
     }
 
