@@ -483,7 +483,6 @@ contract USPDTokenTest is Test {
         );
 
         // Mock the Uniswap price call within the PriceOracle for burning
-        uint256 mockUniswapPriceBurn = 2000 * 1e18; // Mock price of 2000 USD (can be same or different)
         vm.mockCall(
             address(priceOracle),
             abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
