@@ -108,6 +108,25 @@ contract USPDTokenTest is Test {
         // Add signer as authorized signer
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
 
+        // Mock Chainlink call to avoid revert in local test environment
+        // Prepare mock return data for latestRoundData() -> (roundId, answer, startedAt, updatedAt, answeredInRound)
+        // Chainlink ETH/USD uses 8 decimals, so 2000 USD = 2000 * 1e8
+        int mockPriceAnswer = 2000 * 1e8; 
+        uint256 mockTimestamp = block.timestamp;
+        bytes memory mockChainlinkReturn = abi.encode(
+            uint80(1),           // roundId
+            mockPriceAnswer,     // answer
+            uint256(mockTimestamp), // startedAt
+            uint256(mockTimestamp), // updatedAt
+            uint80(1)            // answeredInRound
+        );
+        // Mock the call on the specific Chainlink feed address used by the oracle
+        vm.mockCall(
+            CHAINLINK_ETH_USD, // Address of the Chainlink Aggregator
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            mockChainlinkReturn
+        );
+
         // Deploy Mocks & Rate Contract
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
