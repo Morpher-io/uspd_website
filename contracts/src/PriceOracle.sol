@@ -106,6 +106,7 @@ contract PriceOracle is
         IUniswapV3Factory factory = IUniswapV3Factory(
             0x1F98431c8aD98523631AE4a59f267346ea31F984
         );
+        console.log(uniswapRouter.WETH());
         address uniswapV3PoolWethUSDC = factory.getPool(
             uniswapRouter.WETH(),
             usdcAddress,
@@ -116,6 +117,7 @@ contract PriceOracle is
                 uniswapV3PoolWethUSDC
             );
             (uint sqrtPriceX96, , , , , , ) = uniswapPoolState.slot0();
+            console.log(sqrtPriceX96);
             return (1e18 * 1e12) / ((sqrtPriceX96 / 2 ** 96) ** 2); //18 digits PSD coin, so conversion is in WEI to USD value (e.g. 1 eth = 1500 USD * 1e18)
         }
         return 0;
