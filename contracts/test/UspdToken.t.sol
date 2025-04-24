@@ -21,6 +21,8 @@ import "../src/PoolSharesConversionRate.sol";
 import "../src/StabilizerEscrow.sol"; // Import Escrow
 import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 import "../src/interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
+import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol"; // For mocking WETH()
+import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol"; // For mocking WETH()
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // For mocking getPool
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol"; // For mocking slot0
 
@@ -142,7 +144,7 @@ contract USPDTokenTest is Test {
         // Mock the uniswapRouter.WETH() call to return the correct WETH address
         vm.mockCall(
             UNISWAP_ROUTER, // The address of the Uniswap Router used by the PriceOracle
-            abi.encodeWithSelector(IUniswapV2Router02.WETH.selector),
+            abi.encodeWithSelector(IUniswapV2Router01.WETH.selector),
             abi.encode(wethAddress) // Return the actual WETH address
         );
 
@@ -155,7 +157,7 @@ contract USPDTokenTest is Test {
 
         // Mock the pool.slot0 call to return data yielding a price of ~2000 USD
         // sqrtPriceX96 for $2000 WETH/USDC (6 decimals) is approx 14614467034852101032872730522039888
-        uint160 mockSqrtPriceX96 = 14614467034852101032872730522039888;
+        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000;
         bytes memory mockSlot0Return = abi.encode(
             mockSqrtPriceX96, // sqrtPriceX96
             int24(0),         // tick
