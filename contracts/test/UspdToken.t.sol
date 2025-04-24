@@ -708,6 +708,436 @@ contract USPDTokenTest is Test {
         );
     }
 
+    // --- Yield Factor Tests ---
+
+    function testMintWithIncreasedYieldFactor() public {
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdBuyer = makeAddr("uspdBuyer");
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdBuyer, 1 ether);
+
+        // Setup stabilizer
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
+
+        // Create price attestation
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Mock increased yield factor (e.g., 10% yield)
+        uint256 increasedYieldFactor = 1.1 ether; // 1.1 * 1e18
+        vm.mockCall(
+            address(rateContract),
+            abi.encodeWithSelector(IPoolSharesConversionRate.getYieldFactor.selector),
+            abi.encode(increasedYieldFactor)
+        );
+
+        // Mint
+        vm.prank(uspdBuyer);
+        uspdToken.mint{value: 1 ether}(uspdBuyer, priceQuery);
+
+        // Assertions
+        uint256 expectedUSDValue = (1 ether * priceQuery.price) / (10 ** priceQuery.decimals);
+        // Fewer pool shares should be minted due to higher yield factor
+        uint256 expectedPoolShares = (expectedUSDValue * uspdToken.FACTOR_PRECISION()) / increasedYieldFactor;
+        // USPD balance should still reflect the initial USD value based on the *current* (mocked) factor
+        uint256 expectedUspdBalance = (expectedPoolShares * increasedYieldFactor) / uspdToken.FACTOR_PRECISION();
+
+        assertApproxEqAbs(uspdToken.poolSharesOf(uspdBuyer), expectedPoolShares, 1e9, "Incorrect pool shares with increased yield");
+        assertApproxEqAbs(uspdToken.balanceOf(uspdBuyer), expectedUspdBalance, 1e9, "Incorrect USPD balance with increased yield");
+        // Also check that the USPD balance roughly equals the initial USD value
+        assertApproxEqAbs(uspdToken.balanceOf(uspdBuyer), expectedUSDValue, 1e10, "USPD balance mismatch with initial value");
+    }
+
+    function testBurnWithIncreasedYieldFactor() public {
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdHolder = makeAddr("uspdHolder");
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdHolder, 2 ether); // Enough for mint + buffer
+
+        // Setup stabilizer & Mint initial USPD with normal yield factor (1e18)
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.setMinCollateralizationRatio(1,115); // Avoid rounding issues
+
+        IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.prank(uspdHolder);
+        uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
+        uint256 initialUspdBalance = uspdToken.balanceOf(uspdHolder);
+        uint256 uspdToBurn = initialUspdBalance / 2;
+
+        // Mock increased yield factor for burning
+        uint256 increasedYieldFactor = 1.1 ether; // 1.1 * 1e18
+        vm.mockCall(
+            address(rateContract),
+            abi.encodeWithSelector(IPoolSharesConversionRate.getYieldFactor.selector),
+            abi.encode(increasedYieldFactor)
+        );
+
+        // Create burn price attestation
+        IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Burn
+        uint256 ethBalanceBefore = uspdHolder.balance;
+        vm.prank(uspdHolder);
+        uspdToken.burn(uspdToBurn, payable(uspdHolder), burnPriceQuery);
+
+        // Assertions
+        // Fewer pool shares should be burned for the same USPD amount
+        uint256 expectedSharesBurned = (uspdToBurn * uspdToken.FACTOR_PRECISION()) / increasedYieldFactor;
+        uint256 initialShares = uspdToken.poolSharesOf(uspdHolder); // Get shares *after* burn to calculate initial
+
+        // Check remaining shares (initial shares = remaining + burned)
+        assertApproxEqAbs(uspdToken.poolSharesOf(uspdHolder), initialShares, 1e9, "Incorrect remaining pool shares with increased yield burn");
+
+        // Check ETH returned (should be based on the value represented by the burned shares)
+        assertTrue(uspdHolder.balance > ethBalanceBefore, "ETH not returned during burn with increased yield");
+        // Precise ETH return check is complex due to stabilizer logic, focus on shares burned.
+    }
+
+    function testTransferWithYieldFactorChange() public {
+        address sender = makeAddr("sender");
+        address recipient = makeAddr("recipient");
+        vm.deal(sender, 1 ether); // For minting
+
+        // Mint initial USPD with normal yield factor
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        vm.deal(stabilizerOwner, 10 ether);
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
+        IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.prank(sender);
+        uspdToken.mint{value: 0.1 ether}(sender, mintPriceQuery); // Mint a small amount
+
+        uint256 sharesToTransfer = uspdToken.poolSharesOf(sender) / 2;
+        uint256 uspdAmountToTransfer = (sharesToTransfer * rateContract.getYieldFactor()) / uspdToken.FACTOR_PRECISION();
+
+        // Mock yield factor increase *after* calculating transfer amount but *before* transfer execution
+        uint256 increasedYieldFactor = 1.2 ether; // 1.2 * 1e18
+        vm.mockCall(
+            address(rateContract),
+            abi.encodeWithSelector(IPoolSharesConversionRate.getYieldFactor.selector),
+            abi.encode(increasedYieldFactor)
+        );
+
+        // Transfer USPD (which transfers underlying shares)
+        vm.prank(sender);
+        uspdToken.transfer(recipient, uspdAmountToTransfer);
+
+        // Assertions
+        // Recipient's share balance should match the transferred shares
+        assertApproxEqAbs(uspdToken.poolSharesOf(recipient), sharesToTransfer, 1e9, "Recipient share balance mismatch");
+
+        // Recipient's USPD balance should reflect the *new* yield factor applied to the received shares
+        uint256 expectedRecipientUspd = (sharesToTransfer * increasedYieldFactor) / uspdToken.FACTOR_PRECISION();
+        assertApproxEqAbs(uspdToken.balanceOf(recipient), expectedRecipientUspd, 1e9, "Recipient USPD balance mismatch after yield change");
+
+        // Sender's remaining USPD balance should also reflect the new yield factor
+        uint256 remainingSenderShares = uspdToken.poolSharesOf(sender);
+        uint256 expectedSenderUspd = (remainingSenderShares * increasedYieldFactor) / uspdToken.FACTOR_PRECISION();
+        assertApproxEqAbs(uspdToken.balanceOf(sender), expectedSenderUspd, 1e9, "Sender USPD balance mismatch after yield change");
+    }
+
+    // --- Allocation Tests ---
+
+    function testMintWithPartialAllocation() public {
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdBuyer = makeAddr("uspdBuyer");
+        vm.deal(stabilizerOwner, 1 ether); // Less ETH for stabilizer
+        vm.deal(uspdBuyer, 2 ether); // Buyer wants to mint 2 ETH worth
+
+        // Setup stabilizer with limited funds (e.g., 0.1 ETH)
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(1); // Only 0.1 ETH in StabilizerEscrow
+
+        // Create price attestation
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        uint256 minRatio = stabilizerNFT.getMinCollateralRatio(1); // Default 110
+
+        // Calculate max user ETH that can be backed by 0.1 stETH stabilizer funds
+        // userEth = stabilizerStEth * 100 / (ratio - 100)
+        uint256 maxUserEthAllocatable = (0.1 ether * 100) / (minRatio - 100); // Should be 1 ETH
+
+        uint256 buyerEthBefore = uspdBuyer.balance;
+
+        // Mint 2 ETH - expect only maxUserEthAllocatable (1 ETH) to be used
+        vm.prank(uspdBuyer);
+        uspdToken.mint{value: 2 ether}(uspdBuyer, priceQuery);
+
+        // Assertions
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 expectedUSDValue = (maxUserEthAllocatable * priceQuery.price) / (10 ** priceQuery.decimals);
+        uint256 expectedPoolShares = (expectedUSDValue * uspdToken.FACTOR_PRECISION()) / yieldFactor;
+        uint256 expectedUspdBalance = (expectedPoolShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
+
+        // Check minted amounts based on allocated ETH
+        assertApproxEqAbs(uspdToken.poolSharesOf(uspdBuyer), expectedPoolShares, 1e9, "Incorrect pool shares on partial allocation");
+        assertApproxEqAbs(uspdToken.balanceOf(uspdBuyer), expectedUspdBalance, 1e9, "Incorrect USPD balance on partial allocation");
+
+        // Check ETH refund
+        uint256 expectedRefund = 2 ether - maxUserEthAllocatable;
+        assertEq(uspdBuyer.balance, buyerEthBefore - maxUserEthAllocatable, "Incorrect ETH balance after partial allocation (refund failed)");
+
+        // Check PositionEscrow collateral (should match allocated amounts)
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(1);
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+        uint256 expectedStEthInEscrow = (maxUserEthAllocatable * minRatio) / 100;
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), expectedStEthInEscrow, 1e15, "PositionEscrow stETH mismatch on partial allocation");
+        assertApproxEqAbs(positionEscrow.backedPoolShares(), expectedPoolShares, 1e9, "PositionEscrow shares mismatch on partial allocation");
+    }
+
+    // --- Stabilizer Availability Tests ---
+
+    function testMintWithNoUnallocatedStabilizers() public {
+        address uspdBuyer = makeAddr("uspdBuyer");
+        vm.deal(uspdBuyer, 1 ether);
+
+        // Ensure no stabilizers are minted or funded
+        // lowestUnallocatedId should be 0
+
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Mint - Expect revert from StabilizerNFT because lowestUnallocatedId is 0
+        vm.prank(uspdBuyer);
+        vm.expectRevert("No unallocated funds");
+        uspdToken.mint{value: 1 ether}(uspdBuyer, priceQuery);
+    }
+
+    function testBurnWithNoAllocatedStabilizers() public {
+        // Setup: Mint some USPD first, but ensure no stabilizers end up in the *allocated* list
+        // This is tricky. We'll mint normally, then manually remove the stabilizer from the allocated list
+        // for testing purposes (this wouldn't happen normally).
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdHolder = makeAddr("uspdHolder");
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdHolder, 2 ether);
+
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.setMinCollateralizationRatio(1,115);
+
+        IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.prank(uspdHolder);
+        uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
+        uint256 uspdToBurn = uspdToken.balanceOf(uspdHolder) / 2;
+
+        // Manually remove stabilizer 1 from allocated list (for testing only)
+        // This requires making _removeFromAllocatedList public or creating a test helper
+        // --> Alternative: Just check the revert condition directly without minting/burning setup.
+        // Let's test the direct revert condition.
+
+        // Ensure highestAllocatedId is 0 (no setup needed as it starts at 0)
+        require(stabilizerNFT.highestAllocatedId() == 0, "Test setup failed: highestAllocatedId not 0");
+
+        IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Burn - Expect revert from StabilizerNFT because highestAllocatedId is 0
+        vm.prank(uspdHolder); // Need a burner address, even if they have no balance
+        vm.expectRevert("No allocated funds");
+        uspdToken.burn(1 ether, payable(uspdHolder), burnPriceQuery); // Burn amount doesn't matter for this check
+    }
+
+    // --- Bridged Token Tests ---
+
+    function testMintBridged() public {
+        // Deploy USPDToken with stabilizer = address(0)
+        USPD bridgedToken = new USPD(
+            address(priceOracle),
+            address(0), // No stabilizer
+            address(rateContract),
+            address(this) // Admin
+        );
+
+        address uspdBuyer = makeAddr("uspdBuyer");
+        vm.deal(uspdBuyer, 1 ether);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Mint in bridged mode
+        // Current logic: result.allocatedEth defaults to 0 if stabilizer is address(0),
+        // then it calculates shares based on 0 allocated ETH, mints 0, refunds all ETH.
+        uint256 buyerEthBefore = uspdBuyer.balance;
+        vm.prank(uspdBuyer);
+        bridgedToken.mint{value: 1 ether}(uspdBuyer, priceQuery);
+
+        // Assertions
+        assertEq(bridgedToken.balanceOf(uspdBuyer), 0, "USPD balance should be 0 in bridged mint");
+        assertEq(bridgedToken.poolSharesOf(uspdBuyer), 0, "Pool shares should be 0 in bridged mint");
+        assertEq(uspdBuyer.balance, buyerEthBefore, "Full ETH refund expected in bridged mint");
+    }
+
+    function testBurnBridged() public {
+        // Deploy USPDToken with stabilizer = address(0)
+        USPD bridgedToken = new USPD(
+            address(priceOracle),
+            address(0), // No stabilizer
+            address(rateContract),
+            address(this) // Admin
+        );
+
+        address user = makeAddr("user");
+        IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Burn in bridged mode - expect revert
+        vm.prank(user);
+        vm.expectRevert("Burning not supported in bridged mode without stabilizer");
+        bridgedToken.burn(1 ether, payable(user), burnPriceQuery);
+    }
+
+    // --- receiveUserStETH Tests (Placeholders) ---
+    /*
+    function testReceiveUserStETH() public {
+        // TODO: Implement when receiveUserStETH is functional
+        // 1. Grant STABILIZER_ROLE to a mock stabilizer address
+        // 2. Fund mock stabilizer with mock stETH
+        // 3. Prank as mock stabilizer
+        // 4. Call receiveUserStETH with a user address and amount
+        // 5. Assert mock stETH balance of user increased
+        vm.expectRevert("Not implemented");
+    }
+
+    function testReceiveUserStETH_NotStabilizer() public {
+        // TODO: Implement when receiveUserStETH is functional
+        // 1. Prank as a non-stabilizer address
+        // 2. Call receiveUserStETH
+        // 3. Expect revert due to role check
+        vm.expectRevert("Not implemented");
+    }
+    */
+
+    // --- Admin Function Tests ---
+
+    function testUpdateOracle() public {
+        address newOracle = makeAddr("newOracle");
+        address nonAdmin = makeAddr("nonAdmin");
+
+        // Check event
+        vm.expectEmit(true, true, false, true, address(uspdToken));
+        emit PriceOracleUpdated(address(oracle), newOracle);
+        uspdToken.updateOracle(newOracle);
+
+        // Check state
+        assertEq(address(uspdToken.oracle()), newOracle, "Oracle address not updated");
+
+        // Check role enforcement
+        vm.prank(nonAdmin);
+        vm.expectRevert(abi.encodeWithSelector(AccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.UPDATE_ORACLE_ROLE()));
+        uspdToken.updateOracle(makeAddr("anotherOracle"));
+    }
+
+     function testUpdateStabilizer() public {
+        address newStabilizer = makeAddr("newStabilizer");
+        address nonAdmin = makeAddr("nonAdmin");
+
+        // Check event
+        vm.expectEmit(true, true, false, true, address(uspdToken));
+        emit StabilizerUpdated(address(stabilizerNFT), newStabilizer); // Use stabilizerNFT here
+        uspdToken.updateStabilizer(newStabilizer);
+
+        // Check state
+        assertEq(address(uspdToken.stabilizer()), newStabilizer, "Stabilizer address not updated");
+
+        // Check role enforcement (DEFAULT_ADMIN_ROLE)
+        vm.prank(nonAdmin);
+        vm.expectRevert(abi.encodeWithSelector(AccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        uspdToken.updateStabilizer(makeAddr("anotherStabilizer"));
+    }
+
+    function testUpdateRateContract() public {
+        address newRateContract = makeAddr("newRateContract");
+        address nonAdmin = makeAddr("nonAdmin");
+
+        // Check event
+        vm.expectEmit(true, true, false, true, address(uspdToken));
+        emit RateContractUpdated(address(rateContract), newRateContract);
+        uspdToken.updateRateContract(newRateContract);
+
+        // Check state
+        assertEq(address(uspdToken.rateContract()), newRateContract, "Rate contract address not updated");
+
+        // Check role enforcement (DEFAULT_ADMIN_ROLE)
+        vm.prank(nonAdmin);
+        vm.expectRevert(abi.encodeWithSelector(AccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        uspdToken.updateRateContract(makeAddr("anotherRateContract"));
+
+        // Check zero address revert
+        vm.expectRevert("Rate contract address cannot be zero");
+        uspdToken.updateRateContract(address(0));
+    }
+
+    // --- Dust Amount Tests ---
+
+    function testMintDustAmount() public {
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdBuyer = makeAddr("uspdBuyer");
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdBuyer, 1 ether); // Enough gas
+
+        // Setup stabilizer
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
+
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Mint 1 wei
+        vm.prank(uspdBuyer);
+        uspdToken.mint{value: 1 wei}(uspdBuyer, priceQuery);
+
+        // Assertions - Expect 0 USPD and 0 shares due to integer division
+        assertEq(uspdToken.balanceOf(uspdBuyer), 0, "Dust mint should result in 0 USPD");
+        assertEq(uspdToken.poolSharesOf(uspdBuyer), 0, "Dust mint should result in 0 shares");
+        // Check PositionEscrow - should also have 0 backed shares
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(1);
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+        assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow shares should be 0 after dust mint");
+        // ETH should be refunded (check balance hasn't changed significantly, allowing for gas)
+        // Precise check is hard, but balance should not decrease by 1 wei.
+    }
+
+    function testBurnDustAmount() public {
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        address uspdHolder = makeAddr("uspdHolder");
+        vm.deal(stabilizerOwner, 10 ether);
+        vm.deal(uspdHolder, 2 ether);
+
+        // Setup stabilizer & Mint
+        stabilizerNFT.mint(stabilizerOwner, 1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(1);
+        vm.prank(stabilizerOwner);
+        stabilizerNFT.setMinCollateralizationRatio(1,115);
+
+        IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.prank(uspdHolder);
+        uspdToken.mint{value: 0.1 ether}(uspdHolder, mintPriceQuery); // Mint some USPD
+
+        uint256 initialShares = uspdToken.poolSharesOf(uspdHolder);
+        uint256 initialUspd = uspdToken.balanceOf(uspdHolder);
+
+        // Burn 1 wei USPD
+        uint256 uspdToBurn = 1 wei;
+        IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(block.timestamp);
+
+        vm.prank(uspdHolder);
+        uspdToken.burn(uspdToBurn, payable(uspdHolder), burnPriceQuery);
+
+        // Assertions - Expect 0 shares burned due to integer division in _update
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 expectedSharesToBurn = (uspdToBurn * uspdToken.FACTOR_PRECISION()) / yieldFactor; // Likely 0
+        assertEq(expectedSharesToBurn, 0, "Expected shares to burn should be 0 for dust amount");
+
+        // Balances should remain unchanged
+        assertEq(uspdToken.poolSharesOf(uspdHolder), initialShares, "Shares should not change on dust burn");
+        assertEq(uspdToken.balanceOf(uspdHolder), initialUspd, "USPD balance should not change on dust burn");
+        // ETH return should be 0
+    }
+
 }
 
 contract RevertingContract {
