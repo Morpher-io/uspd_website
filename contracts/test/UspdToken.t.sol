@@ -21,6 +21,8 @@ import "../src/PoolSharesConversionRate.sol";
 import "../src/StabilizerEscrow.sol"; // Import Escrow
 import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 import "../src/interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
+import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // For mocking getPool
+import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol"; // For mocking slot0
 
 contract USPDTokenTest is Test {
     // --- Re-define events for vm.expectEmit ---
@@ -132,6 +134,38 @@ contract USPDTokenTest is Test {
             mockChainlinkReturn
         );
 
+        // --- Mock Uniswap V3 interactions needed by PriceOracle internal checks ---
+        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+        address wethAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // Mainnet WETH needed for getPool call
+        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640); // Use real pool address or a mock like address(1)
+
+        // Mock the factory.getPool call to return a non-zero pool address
+        vm.mockCall(
+            uniswapV3Factory,
+            abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000),
+            abi.encode(mockPoolAddress)
+        );
+
+        // Mock the pool.slot0 call to return data yielding a price of ~2000 USD
+        // sqrtPriceX96 for $2000 WETH/USDC (6 decimals) is approx 14614467034852101032872730522039888
+        uint160 mockSqrtPriceX96 = 14614467034852101032872730522039888;
+        bytes memory mockSlot0Return = abi.encode(
+            mockSqrtPriceX96, // sqrtPriceX96
+            int24(0),         // tick
+            uint16(0),        // observationIndex
+            uint16(0),        // observationCardinality
+            uint16(0),        // observationCardinalityNext
+            uint8(0),         // feeProtocol
+            false             // unlocked
+        );
+        vm.mockCall(
+            mockPoolAddress,
+            abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector),
+            mockSlot0Return
+        );
+        // --- End Uniswap V3 Mocks ---
+
+
         // Deploy Mocks & Rate Contract
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
@@ -232,15 +266,8 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
 
-        // Mock the Uniswap price call within the PriceOracle
-        uint256 mockUniswapPrice = 2000 * 1e18; // Mock price of 2000 USD
-        vm.mockCall(
-            address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
-            abi.encode(mockUniswapPrice)
-        );
-
         // Create price attestation with current Uniswap price
+        // Uniswap V3 getPool/slot0 calls are mocked in setUp
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
             block.timestamp // Pass block.timestamp directly
         );
@@ -316,15 +343,8 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, mintEthAmount + 1 ether); // Give buyer enough ETH
 
-        // Mock the Uniswap price call within the PriceOracle
-        uint256 mockUniswapPrice = 2000 * 1e18; // Mock price of 2000 USD
-        vm.mockCall(
-            address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
-            abi.encode(mockUniswapPrice)
-        );
-
         // Create price attestation
+        // Uniswap V3 getPool/slot0 calls are mocked in setUp
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
             block.timestamp // Pass block.timestamp directly
         );
@@ -418,15 +438,8 @@ contract USPDTokenTest is Test {
         address user = makeAddr("user");
         vm.deal(user, 1 ether);
 
-        // Mock the Uniswap price call within the PriceOracle for this test
-        uint256 mockUniswapPrice = 2000 * 1e18; // Mock price of 2000 USD
-        vm.mockCall(
-            address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
-            abi.encode(mockUniswapPrice)
-        );
-
         // Create price attestation (will now use the mocked Uniswap price)
+        // Uniswap V3 getPool/slot0 calls are mocked in setUp
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
             block.timestamp // Pass block.timestamp directly
         );
@@ -445,16 +458,8 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdHolder, 10 ether);
 
-        // Mock the Uniswap price call within the PriceOracle for minting
-        uint256 mockUniswapPriceMint = 2000 * 1e18; // Mock price of 2000 USD
-        vm.mockCall(
-            address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
-            abi.encode(mockUniswapPriceMint)
-        );
-
-
         // Create price attestation for minting
+        // Uniswap V3 getPool/slot0 calls are mocked in setUp
         IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(
             block.timestamp // Pass block.timestamp directly
         );
@@ -477,22 +482,8 @@ contract USPDTokenTest is Test {
         // Create a contract that reverts on receive
         RevertingContract reverting = new RevertingContract();
 
-        // Mock the Uniswap price call within the PriceOracle for burning
-        uint256 mockUniswapPriceBurn = 2000 * 1e18; // Mock price of 2000 USD (can be same or different)
-        vm.mockCall(
-            address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
-            abi.encode(mockUniswapPriceBurn)
-        );
-
-        // Mock the Uniswap price call within the PriceOracle for burning
-        vm.mockCall(
-            address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
-            abi.encode(mockUniswapPriceBurn)
-        );
-
         // Create price attestation for burning
+        // Uniswap V3 getPool/slot0 calls are mocked in setUp
         IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
             block.timestamp // Pass block.timestamp directly
         );
@@ -553,6 +544,7 @@ contract USPDTokenTest is Test {
         uint256 escrowStEthBeforeBurn = positionEscrow.getCurrentStEthBalance(); // Store initial stETH for comparison
 
         // Create price attestation for burning
+        // Uniswap V3 getPool/slot0 calls are mocked in setUp
         IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
             block.timestamp // Pass block.timestamp directly
         );
@@ -636,15 +628,8 @@ contract USPDTokenTest is Test {
         vm.deal(stabilizerOwner, 10 ether);
         vm.deal(uspdBuyer, 10 ether);
 
-        // Mock the Uniswap price call within the PriceOracle
-        uint256 mockUniswapPrice = 2000 * 1e18; // Mock price of 2000 USD
-        vm.mockCall(
-            address(priceOracle),
-            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
-            abi.encode(mockUniswapPrice)
-        );
-
         // Create price attestation
+        // Uniswap V3 getPool/slot0 calls are mocked in setUp
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
             block.timestamp * 1000
         );
