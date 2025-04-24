@@ -240,7 +240,7 @@ contract USPDTokenTest is Test {
 
         // Create price attestation with current Uniswap price
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
-            block.timestamp * 1000
+            block.timestamp // Pass block.timestamp directly
         );
 
         // Setup stabilizer
@@ -324,7 +324,7 @@ contract USPDTokenTest is Test {
 
         // Create price attestation
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
-            block.timestamp * 1000
+            block.timestamp // Pass block.timestamp directly
         );
 
         // Setup stabilizer
@@ -395,7 +395,7 @@ contract USPDTokenTest is Test {
     function testBurnWithZeroAmount() public {
         // Create price attestation
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
-            block.timestamp * 1000
+            block.timestamp // Pass block.timestamp directly
         );
         
         vm.expectRevert("Amount must be greater than 0");
@@ -426,7 +426,7 @@ contract USPDTokenTest is Test {
 
         // Create price attestation (will now use the mocked Uniswap price)
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
-            block.timestamp * 1000
+            block.timestamp // Pass block.timestamp directly
         );
 
         vm.prank(user);
@@ -453,7 +453,7 @@ contract USPDTokenTest is Test {
 
         // Create price attestation for minting
         IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(
-            block.timestamp * 1000
+            block.timestamp // Pass block.timestamp directly
         );
 
         // Setup stabilizer
@@ -491,7 +491,7 @@ contract USPDTokenTest is Test {
 
         // Create price attestation for burning
         IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
-            block.timestamp * 1000
+            block.timestamp // Pass block.timestamp directly
         );
 
         // Try to burn USPD and send ETH to reverting contract
@@ -524,7 +524,7 @@ contract USPDTokenTest is Test {
 
         // Create price attestation for minting
         IPriceOracle.PriceAttestationQuery memory mintPriceQuery = createSignedPriceAttestation(
-            block.timestamp * 1000
+            block.timestamp // Pass block.timestamp directly
         );
 
         // Setup stabilizer
@@ -551,7 +551,7 @@ contract USPDTokenTest is Test {
 
         // Create price attestation for burning
         IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
-            block.timestamp * 1000
+            block.timestamp // Pass block.timestamp directly
         );
 
         // --- Burn half of USPD ---
