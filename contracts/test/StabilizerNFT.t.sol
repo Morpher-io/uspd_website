@@ -516,9 +516,9 @@ contract StabilizerNFTTest is Test {
 
         // Set custom collateral ratios
         vm.startPrank(address(this));
-        (uint256 totalEth1, , , , , ) = stabilizerNFT.positions(1);
-        (uint256 totalEth2, , , , , ) = stabilizerNFT.positions(2);
-        assertEq(totalEth1, 0.5 ether, "First stabilizer should have 0.5 ETH");
+        // (uint256 totalEth1, , , , , ) = stabilizerNFT.positions(1); // Removed totalEth check
+        // (uint256 totalEth2, , , , , ) = stabilizerNFT.positions(2); // Removed totalEth check
+        // assertEq(totalEth1, 0.5 ether, "First stabilizer should have 0.5 ETH"); // Removed totalEth check
         // Check escrow balances directly before allocation
         address escrow1Addr = stabilizerNFT.stabilizerEscrows(1);
         address escrow2Addr = stabilizerNFT.stabilizerEscrows(2);
@@ -589,7 +589,8 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
 
         // Verify ratio was updated
-        (, uint256 minCollateralRatio, , , , ) = stabilizerNFT.positions(1);
+        // Destructure without totalEth
+        (uint256 minCollateralRatio, , , , ) = stabilizerNFT.positions(1);
         assertEq(
             minCollateralRatio,
             150,

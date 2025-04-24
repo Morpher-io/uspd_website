@@ -29,7 +29,7 @@ contract StabilizerNFT is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     struct StabilizerPosition {
-        uint256 totalEth; // Total ETH committed
+        // uint256 totalEth; // Removed - Unallocated funds are now held in StabilizerEscrow
         uint256 minCollateralRatio; // Minimum collateral ratio (e.g., 110 for 110%)
         uint256 prevUnallocated; // Previous stabilizer ID in unallocated funds list
         uint256 nextUnallocated; // Next stabilizer ID in unallocated funds list
@@ -70,8 +70,8 @@ contract StabilizerNFT is
 
     event StabilizerPositionCreated(
         uint256 indexed tokenId,
-        address indexed owner,
-        uint256 totalEth
+        address indexed owner
+        // uint256 totalEth // Removed
     );
     event FundsAllocated( // Removed positionId
         uint256 indexed tokenId,
@@ -97,7 +97,6 @@ contract StabilizerNFT is
     }
 
     function initialize(
-        // address _positionNFT, // Removed PositionNFT address
         address _uspdToken,
         address _stETH,
         address _lido,
@@ -120,7 +119,7 @@ contract StabilizerNFT is
 
     function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
         positions[tokenId] = StabilizerPosition({
-            totalEth: 0,
+            // totalEth: 0, // Removed
             minCollateralRatio: 110, // Default 110%
             prevUnallocated: 0,
             nextUnallocated: 0,
@@ -129,7 +128,7 @@ contract StabilizerNFT is
         });
 
         _safeMint(to, tokenId);
-        emit StabilizerPositionCreated(tokenId, to, 0);
+        emit StabilizerPositionCreated(tokenId, to); // Removed totalEth
 
         // Deploy the dedicated StabilizerEscrow contract for unallocated funds
         StabilizerEscrow stabilizerEscrow = new StabilizerEscrow(
@@ -542,27 +541,8 @@ contract StabilizerNFT is
         return totalUserStEthReturned;
     }
 
-    function removeUnallocatedFunds(
-        uint256 tokenId,
-        uint256 amount,
-        address payable to
-    ) external {
-        require(ownerOf(tokenId) != address(0), "Token does not exist");
-        require(ownerOf(tokenId) == msg.sender, "Not token owner");
-        require(to != address(0), "Invalid recipient");
-
-        StabilizerPosition storage pos = positions[tokenId];
-        require(pos.totalEth >= amount, "Insufficient unallocated funds");
-
-        pos.totalEth -= amount;
-
-        // If no more unallocated funds, remove from list
-        if (pos.totalEth == 0) {
-            _removeFromUnallocatedList(tokenId);
-        }
-
-        to.transfer(amount);
-    }
+    // Removed removeUnallocatedFunds function as totalEth is no longer tracked here.
+    // Withdrawal logic should now be handled via StabilizerEscrow.
 
     function tokenURI(
         uint256 tokenId
@@ -581,9 +561,9 @@ contract StabilizerNFT is
                         '"image": "data:image/svg+xml;base64,',
                         Base64.encode(bytes(generateSVG(tokenId))),
                         '", "attributes": [',
-                        '{"trait_type": "Unallocated ETH", "value": "',
-                        toString(pos.totalEth),
-                        '"},',
+                        // '{"trait_type": "Unallocated ETH", "value": "', // Removed totalEth attribute
+                        // toString(pos.totalEth), // Removed totalEth attribute
+                        // '"},', // Removed totalEth attribute
                         '{"trait_type": "Min Collateral Ratio", "value": "',
                         toString(pos.minCollateralRatio),
                         '%"}',
@@ -609,10 +589,10 @@ contract StabilizerNFT is
                     "Stabilizer #",
                     toString(tokenId),
                     "</text>",
-                    '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">',
-                    toString(pos.totalEth),
-                    " ETH Unallocated",
-                    "</text>",
+                    // '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">', // Removed totalEth display
+                    // toString(pos.totalEth), // Removed totalEth display
+                    // " ETH Unallocated", // Removed totalEth display
+                    // "</text>", // Removed totalEth display
                     "</svg>"
                 )
             );
