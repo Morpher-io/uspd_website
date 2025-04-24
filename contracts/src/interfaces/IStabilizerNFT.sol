@@ -9,7 +9,7 @@ interface IStabilizerNFT {
     }
 
     function allocateStabilizerFunds(
-        uint256 poolSharesToMint, // Changed parameter name
+        // poolSharesToMint removed - allocation based on msg.value (ETH)
         uint256 ethUsdPrice,
         uint256 priceDecimals
     ) external payable returns (AllocationResult memory);

@@ -97,7 +97,7 @@ contract USPDToken is
             result = stabilizer.allocateStabilizerFunds{
                 value: ethForAllocation
             }(
-                poolSharesToMint, // Pass pool shares as liability
+                // poolSharesToMint removed
                 oracleResponse.price,
                 oracleResponse.decimals
             );

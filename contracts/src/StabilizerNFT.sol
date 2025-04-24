@@ -203,7 +203,7 @@ contract StabilizerNFT is
 
 
     function allocateStabilizerFunds(
-        uint256 poolSharesToMint, // Changed parameter from ethAmount
+        // poolSharesToMint removed
         uint256 ethUsdPrice,
         uint256 priceDecimals
     ) external payable returns (AllocationResult memory result) {
