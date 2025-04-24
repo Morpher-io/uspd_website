@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol";
-import "../src/UspdCollateralizedPositionNFT.sol";
+// Removed UspdCollateralizedPositionNFT import
 import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
@@ -17,6 +17,7 @@ import "../src/PriceOracle.sol"; // Using actual for attestations if needed late
 import "../src/PoolSharesConversionRate.sol";
 import "../src/StabilizerEscrow.sol"; // Import Escrow
 import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
+import "../src/interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
 
 contract StabilizerNFTTest is Test {
     // --- Mocks ---
@@ -31,8 +32,6 @@ contract StabilizerNFTTest is Test {
     address public owner;
     address public user1;
     address public user2;
-
-    // UspdCollateralizedPositionNFT public positionNFT; // Removed PositionNFT instance
 
     function setUp() public {
         owner = address(this);
@@ -66,15 +65,11 @@ contract StabilizerNFTTest is Test {
         );
 
         // 2. Deploy Implementations
-        // UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT(); // Removed PositionNFT implementation deployment
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
 
         // 3. Deploy Proxies (without init data)
         ERC1967Proxy stabilizerProxy_NoInit = new ERC1967Proxy(address(stabilizerNFTImpl), bytes(""));
         stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy_NoInit))); // Get proxy instance
-
-        // ERC1967Proxy positionProxy_NoInit = new ERC1967Proxy(address(positionNFTImpl), bytes("")); // Removed PositionNFT proxy deployment
-        // positionNFT = UspdCollateralizedPositionNFT(payable(address(positionProxy_NoInit))); // Removed PositionNFT instance assignment
 
         // 4. Deploy USPD Token (AFTER proxies exist, needs Stabilizer proxy address)
         uspdToken = new USPDToken(
@@ -85,8 +80,6 @@ contract StabilizerNFTTest is Test {
         );
 
         // 5. Initialize Proxies (Now that all addresses are known)
-        // positionNFT.initialize(...) // Removed PositionNFT initialization
-
         stabilizerNFT.initialize(
             // address(positionNFT), // Removed PositionNFT proxy address
             address(uspdToken),   // Pass USPDToken address
@@ -97,8 +90,6 @@ contract StabilizerNFTTest is Test {
         );
 
         // 6. Setup roles
-        // positionNFT.grantRole(...) // Removed PositionNFT role grants
-
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
         // Grant STABILIZER_ROLE on USPDToken to StabilizerNFT
         uspdToken.grantRole(
@@ -853,8 +844,6 @@ contract StabilizerNFTTest is Test {
             "StabilizerEscrow should have 4.5 stETH unallocated"
         );
     }
-
-    // Removed test that relied on PositionNFT directly
 
     receive() external payable {}
 } // Add closing brace for the contract here
