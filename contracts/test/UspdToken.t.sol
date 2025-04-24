@@ -25,11 +25,17 @@ import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol"
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol"; // For mocking WETH()
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // For mocking getPool
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol"; // For mocking slot0
+import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol"; // Import AccessControl for error selector
+
 
 contract USPDTokenTest is Test {
     // --- Re-define events for vm.expectEmit ---
     event MintPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
     event BurnPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
+    event PriceOracleUpdated(address oldOracle, address newOracle);
+    event StabilizerUpdated(address oldStabilizer, address newStabilizer);
+    event RateContractUpdated(address oldRateContract, address newRateContract);
+
 
     uint256 internal signerPrivateKey;
     address internal signer;
@@ -1018,7 +1024,7 @@ contract USPDTokenTest is Test {
 
         // Check event
         vm.expectEmit(true, true, false, true, address(uspdToken));
-        emit PriceOracleUpdated(address(oracle), newOracle);
+        emit PriceOracleUpdated(address(priceOracle), newOracle); // Use priceOracle variable
         uspdToken.updateOracle(newOracle);
 
         // Check state
