@@ -485,18 +485,14 @@ contract USPDTokenTest is Test {
         vm.prank(uspdHolder);
         uspdToken.mint{value: 1 ether}(uspdHolder, mintPriceQuery);
 
-        uint256 initialEthBalance = uspdHolder.balance;
-        uint256 initialUspdBalance = uspdToken.balanceOf(uspdHolder);
-        uint256 initialPoolShares = uspdToken.poolSharesOf(uspdHolder);
-        uint256 initialTotalPoolShares = uspdToken.totalPoolShares();
+        // Get PositionEscrow instance (needed multiple times)
+        address positionEscrowAddr_ = stabilizerNFT.positionEscrows(1);
+        require(positionEscrowAddr_ != address(0), "PositionEscrow not deployed for token ID 1");
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr_);
 
-        // Get initial PositionEscrow state
-        address positionEscrowAddr = stabilizerNFT.positionEscrows(1);
-        require(positionEscrowAddr != address(0), "PositionEscrow not deployed for token ID 1");
-        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
-        uint256 initialEscrowShares = positionEscrow.backedPoolShares();
-        uint256 initialEscrowStEth = positionEscrow.getCurrentStEthBalance();
-
+        // Store initial ETH balance for final check
+        uint256 ethBalanceBeforeBurn = uspdHolder.balance;
+        uint256 escrowStEthBeforeBurn = positionEscrow.getCurrentStEthBalance(); // Store initial stETH for comparison
 
         // Create price attestation for burning
         IPriceOracle.PriceAttestationQuery memory burnPriceQuery = createSignedPriceAttestation(
@@ -504,9 +500,12 @@ contract USPDTokenTest is Test {
         );
 
         // --- Burn half of USPD ---
-        uint256 uspdToBurn = initialUspdBalance / 2;
+        uint256 uspdToBurn = uspdToken.balanceOf(uspdHolder) / 2; // Fetch initial balance directly
         uint256 yieldFactor = rateContract.getYieldFactor();
         uint256 poolSharesToBurn = (uspdToBurn * uspdToken.FACTOR_PRECISION()) / yieldFactor;
+        uint256 poolSharesBeforeBurn = uspdToken.poolSharesOf(uspdHolder); // Fetch initial shares
+        uint256 totalPoolSharesBeforeBurn = uspdToken.totalPoolShares(); // Fetch initial total shares
+        uint256 escrowSharesBeforeBurn = positionEscrow.backedPoolShares(); // Fetch initial escrow shares
 
         vm.expectEmit(true, true, true, true, address(uspdToken));
         emit BurnPoolShares(uspdHolder, address(0), uspdToBurn, poolSharesToBurn, yieldFactor); // Approx values for check
@@ -518,9 +517,9 @@ contract USPDTokenTest is Test {
         );
 
         // --- Assertions ---
-        uint256 expectedRemainingShares = initialPoolShares - poolSharesToBurn;
+        uint256 expectedRemainingShares = poolSharesBeforeBurn - poolSharesToBurn; // Use fetched value
         uint256 expectedRemainingUspd = (expectedRemainingShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
-        uint256 expectedTotalPoolShares = initialTotalPoolShares - poolSharesToBurn;
+        uint256 expectedTotalPoolShares = totalPoolSharesBeforeBurn - poolSharesToBurn; // Use fetched value
 
         // Check user balances
         assertApproxEqAbs(
@@ -547,13 +546,13 @@ contract USPDTokenTest is Test {
         // Check PositionEscrow state
         assertApproxEqAbs(
             positionEscrow.backedPoolShares(),
-            initialEscrowShares - poolSharesToBurn,
+            escrowSharesBeforeBurn - poolSharesToBurn, // Use fetched value
             1e9, // Tolerance
             "PositionEscrow backed shares not updated correctly after burn"
         );
         // Check that stETH balance decreased (exact amount depends on ratio/yield)
         assertTrue(
-            positionEscrow.getCurrentStEthBalance() < initialEscrowStEth,
+            positionEscrow.getCurrentStEthBalance() < escrowStEthBeforeBurn, // Use fetched value
             "PositionEscrow stETH balance should decrease after burn"
         );
 
@@ -562,7 +561,7 @@ contract USPDTokenTest is Test {
         // Note: This check might fail if gas costs exactly offset the returned ETH/stETH value,
         // or if the stETH isn't converted/transferred yet by USPDToken.
         assertTrue(
-            uspdHolder.balance != initialEthBalance, // Check if balance changed at all
+            uspdHolder.balance != ethBalanceBeforeBurn, // Compare with balance before burn
             "Holder ETH balance did not change after burn (stETH return might be pending/unhandled)"
         );
     }
