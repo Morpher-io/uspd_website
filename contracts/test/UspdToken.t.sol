@@ -136,8 +136,15 @@ contract USPDTokenTest is Test {
 
         // --- Mock Uniswap V3 interactions needed by PriceOracle internal checks ---
         address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
-        address wethAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // Mainnet WETH needed for getPool call
+        address wethAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // Mainnet WETH address
         address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640); // Use real pool address or a mock like address(1)
+
+        // Mock the uniswapRouter.WETH() call to return the correct WETH address
+        vm.mockCall(
+            UNISWAP_ROUTER, // The address of the Uniswap Router used by the PriceOracle
+            abi.encodeWithSelector(IUniswapV2Router02.WETH.selector),
+            abi.encode(wethAddress) // Return the actual WETH address
+        );
 
         // Mock the factory.getPool call to return a non-zero pool address
         vm.mockCall(
