@@ -10,7 +10,7 @@ import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol";
-import "../src/UspdCollateralizedPositionNFT.sol";
+// Removed UspdCollateralizedPositionNFT import
 import "../src/PoolSharesConversionRate.sol"; // Import the new contract
 import "../src/interfaces/ILido.sol"; // Import Lido interface
 import "../test/mocks/MockStETH.sol";
@@ -37,7 +37,7 @@ contract DeployScript is Script {
     // Define salts for each contract
     bytes32 PROXY_ADMIN_SALT;
     bytes32 ORACLE_PROXY_SALT;
-    bytes32 POSITION_NFT_PROXY_SALT;
+    // bytes32 POSITION_NFT_PROXY_SALT; // Removed
     bytes32 STABILIZER_PROXY_SALT;
     bytes32 TOKEN_SALT;
     bytes32 RATE_CONTRACT_SALT; // Salt for the rate contract
@@ -50,8 +50,8 @@ contract DeployScript is Script {
     address proxyAdminAddress;
     address oracleImplAddress;
     address oracleProxyAddress;
-    address positionNFTImplAddress;
-    address positionNFTProxyAddress;
+    // address positionNFTImplAddress; // Removed
+    // address positionNFTProxyAddress; // Removed
     address stabilizerImplAddress;
     address stabilizerProxyAddress;
     address tokenAddress;
@@ -85,7 +85,7 @@ contract DeployScript is Script {
         // Initialize salts with proper format for CreateX
         PROXY_ADMIN_SALT = generateSalt("USPD_PROXY_ADMIN_v1");
         ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
-        POSITION_NFT_PROXY_SALT = generateSalt("USPD_POSITION_NFT_PROXY_v1");
+        // POSITION_NFT_PROXY_SALT = generateSalt("USPD_POSITION_NFT_PROXY_v1"); // Removed
         STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
         TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
         RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1"); // Initialize salt
@@ -156,26 +156,26 @@ contract DeployScript is Script {
         if (deployFullSystem) {
             console2.log("Deploying Full System...");
             // 1. Deploy Implementations (Oracle already done)
-            deployPositionNFTImplementation();
+            // deployPositionNFTImplementation(); // Removed
             deployStabilizerNFTImplementation();
             // 2. Deploy Rate Contract
             deployPoolSharesConversionRate();
             // 3. Deploy Proxies (Admin, Oracle already done) - No Init Data
             deployStabilizerNFTProxy_NoInit(); // Deploy proxy, get address
-            deployPositionNFTProxy_NoInit(); // Deploy proxy, get address
+            // deployPositionNFTProxy_NoInit(); // Removed
             // 4. Deploy Token (Needs Oracle, Stabilizer Proxy Address)
             deployUspdToken(); // Pass stabilizerProxyAddress
             // 5. Initialize Proxies
-            initializeStabilizerNFTProxy(); // Pass positionNFTProxyAddress, tokenAddress, stETH, lido, admin
-            initializePositionNFTProxy(); // Pass oracleProxyAddress, stETHAddress, lidoAddress, rateContractAddress, stabilizerProxyAddress, admin
+            initializeStabilizerNFTProxy(); // Pass tokenAddress, stETH, lido, rateContract, admin
+            // initializePositionNFTProxy(); // Removed
             // 6. Setup Roles
             setupRolesAndPermissions();
         } else {
             console2.log("Deploying Bridged Token Only...");
             // --- Bridged Token Deployment ---
             // Set placeholder addresses for non-deployed contracts
-            positionNFTImplAddress = address(0);
-            positionNFTProxyAddress = address(0);
+            // positionNFTImplAddress = address(0); // Removed
+            // positionNFTProxyAddress = address(0); // Removed
             stabilizerImplAddress = address(0);
             stabilizerProxyAddress = address(0);
             rateContractAddress = address(0);
@@ -247,70 +247,9 @@ contract DeployScript is Script {
         console2.log("PriceOracle proxy deployed at:", oracleProxyAddress);
     }
 
-    function deployPositionNFTImplementation() internal {
-        // Deploy UspdCollateralizedPositionNFT implementation with regular CREATE
-        console2.log("Deploying PositionNFT implementation...");
-        UspdCollateralizedPositionNFT positionNFTImpl = new UspdCollateralizedPositionNFT();
-        positionNFTImplAddress = address(positionNFTImpl);
-
-        console2.log(
-            "UspdCollateralizedPositionNFT implementation deployed at:",
-            positionNFTImplAddress
-        );
-    }
-
-    // Deploy PositionNFT Proxy without initializing
-    function deployPositionNFTProxy_NoInit() internal {
-        console2.log("Deploying PositionNFT proxy (no init)...");
-        require(positionNFTImplAddress != address(0), "PositionNFT implementation not deployed");
-        positionNFTProxyAddress = deployProxy_NoInit(POSITION_NFT_PROXY_SALT, positionNFTImplAddress);
-        console2.log(
-            "UspdCollateralizedPositionNFT proxy (uninitialized) deployed at:",
-            positionNFTProxyAddress
-        );
-    }
-
-    // Initialize PositionNFT Proxy
-    function initializePositionNFTProxy() internal {
-         console2.log("Initializing PositionNFT proxy at:", positionNFTProxyAddress);
-         require(positionNFTProxyAddress != address(0), "PositionNFT proxy not deployed");
-         require(oracleProxyAddress != address(0), "Oracle proxy not deployed");
-         require(stETHAddress != address(0), "stETH address not set");
-         require(lidoAddress != address(0), "Lido address not set");
-         require(rateContractAddress != address(0), "Rate contract address not set");
-         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
-
-         // Prepare initialization data
-         bytes memory initData = abi.encodeCall(
-            UspdCollateralizedPositionNFT.initialize,
-            (
-                oracleProxyAddress,
-                stETHAddress,
-                lidoAddress,
-                rateContractAddress,
-                stabilizerProxyAddress,
-                deployer // Admin
-            )
-        );
-
-        // Call initialize via the proxy
-        (bool success, bytes memory result) = positionNFTProxyAddress.call(initData);
-        if (!success) {
-             // Try to decode revert reason
-            if (result.length < 68) { // Not a standard error signature (Error(string) selector + offset + length)
-                revert("PositionNFT Proxy initialization failed with unknown reason");
-            }
-            // Copy the slice into a new bytes memory variable
-            bytes memory reasonBytes = new bytes(result.length - 4);
-            for (uint i = 0; i < reasonBytes.length; i++) {
-                reasonBytes[i] = result[i + 4];
-            }
-            // Decode the copied bytes
-            string memory reason = abi.decode(reasonBytes, (string));
-            revert(string(abi.encodePacked("PositionNFT Proxy initialization failed: ", reason)));
-       }
-        console2.log("PositionNFT proxy initialized.");
-    }
+    // Removed deployPositionNFTImplementation
+    // Removed deployPositionNFTProxy_NoInit
+    // Removed initializePositionNFTProxy
 
 
     function deployStabilizerNFTImplementation() internal {
@@ -378,7 +317,7 @@ contract DeployScript is Script {
     function initializeStabilizerNFTProxy() internal {
         console2.log("Initializing StabilizerNFT proxy at:", stabilizerProxyAddress);
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
-        require(positionNFTProxyAddress != address(0), "PositionNFT proxy not deployed");
+        // require(positionNFTProxyAddress != address(0), "PositionNFT proxy not deployed"); // Removed
         require(tokenAddress != address(0), "Token not deployed");
         require(stETHAddress != address(0), "stETH address not set");
         require(lidoAddress != address(0), "Lido address not set");
@@ -443,27 +382,7 @@ contract DeployScript is Script {
         oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
         oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
 
-        // Grant roles to the PositionNFT
-        console2.log("Granting PositionNFT roles...");
-        UspdCollateralizedPositionNFT positionNFT = UspdCollateralizedPositionNFT(
-                payable(positionNFTProxyAddress)
-            );
-        // Grant MINTER_ROLE to StabilizerNFT
-        positionNFT.grantRole(
-            positionNFT.MINTER_ROLE(),
-            stabilizerProxyAddress
-        );
-        // Grant STABILIZER_NFT_ROLE to StabilizerNFT (for removeCollateral)
-        positionNFT.grantRole(
-            positionNFT.STABILIZER_NFT_ROLE(),
-            stabilizerProxyAddress
-        );
-        // Grant MODIFYALLOCATION_ROLE to StabilizerNFT
-        positionNFT.grantRole(
-            positionNFT.MODIFYALLOCATION_ROLE(),
-            stabilizerProxyAddress
-        );
-        // Grant DEFAULT_ADMIN_ROLE to deployer (already done in initializer)
+        // Grant roles to the PositionNFT - Removed
 
         // Grant roles to the StabilizerNFT
         console2.log("Granting StabilizerNFT roles...");
@@ -510,8 +429,8 @@ contract DeployScript is Script {
                 '"proxyAdmin": "0x0000000000000000000000000000000000000000",'
                 '"oracleImpl": "0x0000000000000000000000000000000000000000",'
                 '"oracle": "0x0000000000000000000000000000000000000000",'
-                '"positionNFTImpl": "0x0000000000000000000000000000000000000000",'
-                '"positionNFT": "0x0000000000000000000000000000000000000000",'
+                // '"positionNFTImpl": "0x0000000000000000000000000000000000000000",' // Removed
+                // '"positionNFT": "0x0000000000000000000000000000000000000000",' // Removed
                 '"stabilizerImpl": "0x0000000000000000000000000000000000000000",'
                 '"stabilizer": "0x0000000000000000000000000000000000000000",'
                 '"token": "0x0000000000000000000000000000000000000000",'
@@ -549,8 +468,8 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(tokenAddress), deploymentPath, ".contracts.token"); // Token is always deployed
 
         // Conditionally save full system contracts (use the addresses stored in state variables)
-        vm.writeJson(vm.toString(positionNFTImplAddress), deploymentPath, ".contracts.positionNFTImpl");
-        vm.writeJson(vm.toString(positionNFTProxyAddress), deploymentPath, ".contracts.positionNFT");
+        // vm.writeJson(vm.toString(positionNFTImplAddress), deploymentPath, ".contracts.positionNFTImpl"); // Removed
+        // vm.writeJson(vm.toString(positionNFTProxyAddress), deploymentPath, ".contracts.positionNFT"); // Removed
         vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
         vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
         vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
