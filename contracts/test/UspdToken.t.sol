@@ -400,7 +400,15 @@ contract USPDTokenTest is Test {
         address user = makeAddr("user");
         vm.deal(user, 1 ether);
 
-        // Create price attestation
+        // Mock the Uniswap price call within the PriceOracle for this test
+        uint256 mockUniswapPrice = 2000 * 1e18; // Mock price of 2000 USD
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(PriceOracle.getUniswapV3WethUsdcPrice.selector),
+            abi.encode(mockUniswapPrice)
+        );
+
+        // Create price attestation (will now use the mocked Uniswap price)
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(
             block.timestamp * 1000
         );
