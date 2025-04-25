@@ -32,8 +32,20 @@ contract StabilizerNFTTest is Test {
     address public owner;
     address public user1;
     address public user2;
+    uint256 internal signerPrivateKey;
+    address internal signer;
+
+    // Mainnet addresses needed for mocks/oracle
+    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant UNISWAP_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address public constant CHAINLINK_ETH_USD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+
 
     function setUp() public {
+        // Setup signer for price attestations/responses
+        signerPrivateKey = 0xa11ce;
+        signer = vm.addr(signerPrivateKey);
+
         owner = address(this);
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
@@ -57,6 +69,27 @@ contract StabilizerNFTTest is Test {
             oracleInitData
         );
         priceOracle = PriceOracle(payable(address(oracleProxy)));
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer); // Grant signer role
+
+        // --- Mock Oracle Dependencies ---
+        // Mock Chainlink call
+        int mockPriceAnswer = 2000 * 1e8;
+        uint256 mockTimestamp = block.timestamp;
+        bytes memory mockChainlinkReturn = abi.encode(uint80(1), mockPriceAnswer, uint256(mockTimestamp), uint256(mockTimestamp), uint80(1));
+        vm.mockCall(CHAINLINK_ETH_USD, abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector), mockChainlinkReturn);
+
+        // Mock Uniswap V3 calls
+        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+        address wethAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
+        vm.mockCall(UNISWAP_ROUTER, abi.encodeWithSelector(IUniswapV2Router01.WETH.selector), abi.encode(wethAddress));
+        vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
+        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000; // Approx 2000 USD/ETH
+        bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
+        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
+        // --- End Oracle Mocks ---
+
+
         // Deploy RateContract (can use mocks if preferred) - Needs ETH deposit
         vm.deal(address(this), 0.001 ether);
         rateContract = new PoolSharesConversionRate{value: 0.001 ether}(
@@ -96,6 +129,19 @@ contract StabilizerNFTTest is Test {
             uspdToken.STABILIZER_ROLE(),
             address(stabilizerNFT)
         );
+    }
+
+    // --- Helper Functions ---
+
+    function createPriceResponse() internal view returns (IPriceOracle.PriceResponse memory) {
+        // Use the mocked oracle setup to get a consistent price
+        uint256 price = priceOracle.getUniswapV3WethUsdcPrice();
+        require(price > 0, "Mocked price is zero");
+        return IPriceOracle.PriceResponse({
+            price: price,
+            decimals: 18,
+            timestamp: block.timestamp // Use current block timestamp for response
+        });
     }
 
     // --- Mint Tests ---
@@ -842,6 +888,110 @@ contract StabilizerNFTTest is Test {
             "StabilizerEscrow should have 4.5 stETH unallocated"
         );
     }
+
+    // --- Snapshot Tracking Tests ---
+
+    function testInitialization_SnapshotVariables() public {
+        assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), 0, "Initial ETH snapshot should be 0");
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), stabilizerNFT.FACTOR_PRECISION(), "Initial yield snapshot should be 1e18");
+    }
+
+    function testAllocate_UpdatesSnapshot_FirstAllocation() public {
+        // Setup
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
+        vm.deal(user1, 2 ether); // Stabilizer funds
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId); // Add 2 ETH stabilizer funds
+
+        // Action: Allocate 1 ETH from user (needs 0.1 ETH from stabilizer at 110%)
+        vm.deal(address(uspdToken), 1 ether);
+        vm.startPrank(address(uspdToken));
+        IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
+            2000 ether, // price (mocked)
+            18          // decimals
+        );
+        vm.stopPrank();
+
+        // Assertions
+        uint256 expectedEthEquivalentAdded = result.totalEthEquivalentAdded; // Use value from result struct
+        // Verify snapshot state
+        assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), expectedEthEquivalentAdded, "ETH snapshot mismatch after first allocation");
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), rateContract.getYieldFactor(), "Yield snapshot mismatch after first allocation"); // Should be current factor (1e18)
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), stabilizerNFT.FACTOR_PRECISION(), "Yield snapshot should be 1e18 initially");
+    }
+
+    function testUnallocate_UpdatesSnapshot_PartialUnallocation() public {
+        // Setup: Allocate 1 ETH user + 0.1 ETH stabilizer
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
+        vm.deal(user1, 2 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
+        vm.deal(address(uspdToken), 1 ether);
+        vm.startPrank(address(uspdToken));
+        IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(2000 ether, 18);
+        vm.stopPrank();
+
+        uint256 initialEthSnapshot = stabilizerNFT.totalEthEquivalentAtLastSnapshot();
+        uint256 initialYieldSnapshot = stabilizerNFT.yieldFactorAtLastSnapshot();
+        require(initialEthSnapshot == allocResult.totalEthEquivalentAdded, "Initial snapshot setup failed");
+
+        // Action: Unallocate half the shares (1000 shares if price=2000, yield=1)
+        uint256 poolSharesToUnallocate = 1000 ether;
+        IPriceOracle.PriceResponse memory priceResponse = createPriceResponse();
+        // Calculate expected stETH removal (stETH = shares * yield / price * ratio / 100)
+        // user stETH = 1000 * 1e18 / 2000 = 0.5e18
+        // total stETH = 0.5e18 * 110 / 100 = 0.55e18
+        uint256 expectedStEthToRemove = 0.55 ether;
+        uint256 expectedEthEquivalentRemoved = expectedStEthToRemove; // Treat 1:1
+
+        vm.startPrank(address(uspdToken));
+        stabilizerNFT.unallocateStabilizerFunds(poolSharesToUnallocate, priceResponse);
+        vm.stopPrank();
+
+        // Assertions
+        uint256 expectedFinalEthSnapshot = initialEthSnapshot - expectedEthEquivalentRemoved;
+        assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), expectedFinalEthSnapshot, "ETH snapshot mismatch after partial unallocation");
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), initialYieldSnapshot, "Yield snapshot should not change if no rebase"); // Assuming no yield change
+    }
+
+     function testUnallocate_UpdatesSnapshot_FullUnallocation() public {
+        // Setup: Allocate 1 ETH user + 0.1 ETH stabilizer
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
+        vm.deal(user1, 2 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
+        vm.deal(address(uspdToken), 1 ether);
+        vm.startPrank(address(uspdToken));
+        IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(2000 ether, 18);
+        vm.stopPrank();
+
+        uint256 initialEthSnapshot = stabilizerNFT.totalEthEquivalentAtLastSnapshot();
+        uint256 initialYieldSnapshot = stabilizerNFT.yieldFactorAtLastSnapshot();
+        require(initialEthSnapshot == allocResult.totalEthEquivalentAdded, "Initial snapshot setup failed");
+
+        // Action: Unallocate all shares (2000 shares if price=2000, yield=1)
+        uint256 poolSharesToUnallocate = 2000 ether;
+        IPriceOracle.PriceResponse memory priceResponse = createPriceResponse();
+        // Expected total stETH removal = 1.1 ether
+        uint256 expectedEthEquivalentRemoved = 1.1 ether; // Treat 1:1
+
+        vm.startPrank(address(uspdToken));
+        stabilizerNFT.unallocateStabilizerFunds(poolSharesToUnallocate, priceResponse);
+        vm.stopPrank();
+
+        // Assertions
+        uint256 expectedFinalEthSnapshot = initialEthSnapshot - expectedEthEquivalentRemoved;
+        // Allow small tolerance for potential rounding dust
+        assertApproxEqAbs(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), expectedFinalEthSnapshot, 1e6, "ETH snapshot mismatch after full unallocation");
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), initialYieldSnapshot, "Yield snapshot should not change if no rebase");
+    }
+
 
     receive() external payable {}
 } // Add closing brace for the contract here
