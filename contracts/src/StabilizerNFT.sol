@@ -316,14 +316,7 @@ contract StabilizerNFT is
             }
 
 
-            uint nextId = pos.nextUnallocated;
-
-            // Update unallocated list if the escrow's entire balance was allocated
-            if (toAllocate == escrowBalance) {
-                _removeFromUnallocatedList(currentId);
-            }
-
-            // Move to next stabilizer
+            
             // --- Accumulate ETH Equivalent Delta for Snapshot ---
             uint256 currentYieldFactorForSlice = rateContract.getYieldFactor(); // Get factor for this slice calculation
             require(currentYieldFactorForSlice > 0, "Yield factor zero during alloc slice");
@@ -333,6 +326,8 @@ contract StabilizerNFT is
             // --- Snapshot call moved outside loop ---
 
 
+
+            // Move to next stabilizer
             uint nextId = pos.nextUnallocated;
 
             // Update unallocated list if the escrow's entire balance was allocated
