@@ -316,15 +316,11 @@ contract StabilizerNFT is
             if (pos.prevAllocated == 0 && pos.nextAllocated == 0 && lowestAllocatedId != currentId) {
                  _registerAllocatedPosition(currentId); // Add stabilizer to allocated list only once
             }
-
-
             
             // --- Accumulate ETH Equivalent Delta for Snapshot ---
             // Delta = User's ETH + Stabilizer's stETH (treated 1:1 as ETH value at this moment)
             result.totalEthEquivalentAdded += (userEthShare + toAllocate);
             // --- Snapshot call moved outside loop ---
-
-
 
             // Move to next stabilizer
             uint nextId = pos.nextUnallocated;
