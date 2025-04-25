@@ -5,7 +5,8 @@ import "./IPriceOracle.sol";
 
 interface IStabilizerNFT {
     struct AllocationResult {
-        uint256 allocatedEth;
+        uint256 allocatedEth; // User's ETH allocated
+        uint256 totalEthEquivalentAdded; // Total ETH equivalent added (user + stabilizer) for snapshot
     }
 
     function allocateStabilizerFunds(

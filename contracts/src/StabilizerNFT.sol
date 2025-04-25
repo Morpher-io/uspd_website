@@ -231,7 +231,9 @@ contract StabilizerNFT is
 
         uint256 currentId = lowestUnallocatedId;
         uint256 remainingEth = msg.value; // User's ETH to be backed
-        uint256 totalEthEquivalentAddedAggregate = 0; // Accumulator for snapshot update
+        // Initialize result struct fields
+        result.allocatedEth = 0;
+        result.totalEthEquivalentAdded = 0;
 
         while (currentId != 0 && remainingEth > 0) {
             // Check remaining gas
@@ -342,8 +344,8 @@ contract StabilizerNFT is
         require(result.allocatedEth > 0, "No funds allocated");
 
         // --- Update Snapshot Once After Loop ---
-        if (totalEthEquivalentAddedAggregate > 0) {
-            _updateCollateralSnapshot(int256(totalEthEquivalentAddedAggregate));
+        if (result.totalEthEquivalentAdded > 0) {
+            _updateCollateralSnapshot(int256(result.totalEthEquivalentAdded));
         }
         // --- End Snapshot Update ---
 
@@ -558,8 +560,8 @@ contract StabilizerNFT is
                     // --- Accumulate ETH Equivalent Delta for Snapshot ---
                     uint256 currentYieldFactorForSlice = rateContract.getYieldFactor(); // Get factor for this slice calculation
                     require(currentYieldFactorForSlice > 0, "Yield factor zero during unalloc slice");
-                    uint256 totalEthEquivalentRemovedThisSlice = (stEthToRemove * FACTOR_PRECISION) / currentYieldFactorForSlice;
-                    totalEthEquivalentRemovedAggregate += totalEthEquivalentRemovedThisSlice; // Add to accumulator
+                    // Inline calculation into accumulator update
+                    totalEthEquivalentRemovedAggregate += (stEthToRemove * FACTOR_PRECISION) / currentYieldFactorForSlice;
                     // --- Snapshot call moved outside loop ---
 
                     // If all shares from this position were unallocated, update lists
