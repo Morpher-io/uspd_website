@@ -578,7 +578,7 @@ contract StabilizerNFT is
     function generateSVG(
         uint256 tokenId
     ) internal view returns (string memory) {
-        StabilizerPosition storage pos = positions[tokenId];
+        // StabilizerPosition storage pos = positions[tokenId];
         return
             string(
                 abi.encodePacked(
