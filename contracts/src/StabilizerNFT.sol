@@ -30,6 +30,7 @@ contract StabilizerNFT is
     AccessControlUpgradeable
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE"); // New role
 
     struct StabilizerPosition {
         // uint256 totalEth; // Removed - Unallocated funds are now held in StabilizerEscrow
@@ -165,6 +166,9 @@ contract StabilizerNFT is
         );
         require(address(positionEscrow) != address(0), "PositionEscrow deployment failed");
         positionEscrows[tokenId] = address(positionEscrow);
+
+        // Grant the new PositionEscrow the role needed to call back
+        _grantRole(POSITION_ESCROW_ROLE, address(positionEscrow));
 
         // Optional: Emit an event for deployment tracking
         // emit EscrowDeployed(tokenId, address(escrow));
@@ -651,6 +655,45 @@ contract StabilizerNFT is
 
         emit MinCollateralRatioUpdated(tokenId, oldRatio, newRatio);
     }
+
+    // --- PositionEscrow Callback Handlers ---
+
+    /**
+     * @notice Handles callback from PositionEscrow reporting direct collateral addition.
+     * @param stEthAmount The amount of stETH added directly to the PositionEscrow.
+     * @dev Only callable by contracts with POSITION_ESCROW_ROLE. Updates the global snapshot.
+     */
+    function reportCollateralAddition(uint256 stEthAmount) external override onlyRole(POSITION_ESCROW_ROLE) {
+        if (stEthAmount == 0) return; // Nothing to report
+
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        require(currentYieldFactor > 0, "Yield factor zero during report add");
+
+        // Calculate ETH equivalent delta using current yield factor
+        uint256 ethEquivalentDelta = (stEthAmount * FACTOR_PRECISION) / currentYieldFactor;
+
+        _updateCollateralSnapshot(int256(ethEquivalentDelta));
+    }
+
+    /**
+     * @notice Handles callback from PositionEscrow reporting direct collateral removal.
+     * @param stEthAmount The amount of stETH removed directly from the PositionEscrow.
+     * @dev Only callable by contracts with POSITION_ESCROW_ROLE. Updates the global snapshot.
+     */
+    function reportCollateralRemoval(uint256 stEthAmount) external override onlyRole(POSITION_ESCROW_ROLE) {
+        if (stEthAmount == 0) return; // Nothing to report
+
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        require(currentYieldFactor > 0, "Yield factor zero during report remove");
+
+        // Calculate ETH equivalent delta using current yield factor
+        uint256 ethEquivalentDelta = (stEthAmount * FACTOR_PRECISION) / currentYieldFactor;
+
+        _updateCollateralSnapshot(-int256(ethEquivalentDelta));
+    }
+
+    // --- End PositionEscrow Callback Handlers ---
+
 
     // --- Internal Collateral Tracking Logic ---
 

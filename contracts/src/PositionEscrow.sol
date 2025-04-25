@@ -143,6 +143,9 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
+
+        // Report addition to StabilizerNFT
+        IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(stEthReceived);
     }
 
     /**
@@ -159,6 +162,9 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stETHAmount);
+
+        // Report addition to StabilizerNFT
+        IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(stETHAmount);
     }
 
 
@@ -281,6 +287,9 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
 
         // 8. Emit event
         emit ExcessCollateralRemoved(recipient, amountToRemove);
+
+        // Report removal to StabilizerNFT
+        IStabilizerNFT(stabilizerNFTContract).reportCollateralRemoval(amountToRemove);
     }
 
     // --- View Functions ---
@@ -345,5 +354,8 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
+
+        // Report addition to StabilizerNFT
+        IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(stEthReceived);
     }
 }

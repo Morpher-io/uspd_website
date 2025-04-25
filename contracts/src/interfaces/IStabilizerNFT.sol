@@ -18,4 +18,19 @@ interface IStabilizerNFT {
         uint256 poolSharesToUnallocate, // Changed parameter name
         IPriceOracle.PriceResponse memory priceResponse
     ) external returns (uint256 unallocatedEth);
+
+    // --- Callback Functions for PositionEscrow ---
+    /**
+     * @notice Reports that stETH collateral was directly added to a PositionEscrow.
+     * @param stEthAmount The amount of stETH added.
+     * @dev Called by PositionEscrow contract.
+     */
+    function reportCollateralAddition(uint256 stEthAmount) external;
+
+    /**
+     * @notice Reports that stETH collateral was directly removed from a PositionEscrow.
+     * @param stEthAmount The amount of stETH removed.
+     * @dev Called by PositionEscrow contract.
+     */
+    function reportCollateralRemoval(uint256 stEthAmount) external;
 }
