@@ -494,6 +494,7 @@ contract StabilizerNFT is
         uint256 currentId = highestAllocatedId;
         uint256 remainingPoolShares = poolSharesToUnallocate; // Use new parameter name
         uint256 totalUserStEthReturned = 0; // Track total stETH for user
+        uint256 totalEthEquivalentRemovedAggregate = 0; // Accumulator for snapshot update
 
         while (currentId != 0 && remainingPoolShares > 0) { // Use remainingPoolShares
             if (gasleft() < MIN_GAS) break;
@@ -554,12 +555,12 @@ contract StabilizerNFT is
                         if (!successStabilizer) revert("Stabilizer stETH transfer to StabilizerEscrow failed");
                     }
 
-                    // --- Update Global Collateral Snapshot ---
-                    uint256 currentYieldFactorForUnalloc = rateContract.getYieldFactor(); // Get factor again
-                    require(currentYieldFactorForUnalloc > 0, "Yield factor zero during unalloc update");
-                    uint256 totalEthEquivalentRemovedThisTx = (stEthToRemove * FACTOR_PRECISION) / currentYieldFactorForUnalloc;
-                    _updateCollateralSnapshot(-int256(totalEthEquivalentRemovedThisTx));
-                    // --- End Snapshot Update ---
+                    // --- Accumulate ETH Equivalent Delta for Snapshot ---
+                    uint256 currentYieldFactorForSlice = rateContract.getYieldFactor(); // Get factor for this slice calculation
+                    require(currentYieldFactorForSlice > 0, "Yield factor zero during unalloc slice");
+                    uint256 totalEthEquivalentRemovedThisSlice = (stEthToRemove * FACTOR_PRECISION) / currentYieldFactorForSlice;
+                    totalEthEquivalentRemovedAggregate += totalEthEquivalentRemovedThisSlice; // Add to accumulator
+                    // --- Snapshot call moved outside loop ---
 
                     // If all shares from this position were unallocated, update lists
                     bool fullyUnallocated = (currentBackedShares == poolSharesSliceToUnallocate);
@@ -580,6 +581,12 @@ contract StabilizerNFT is
         }
 
         require(totalUserStEthReturned > 0, "No funds unallocated");
+
+        // --- Update Snapshot Once After Loop ---
+        if (totalEthEquivalentRemovedAggregate > 0) {
+            _updateCollateralSnapshot(-int256(totalEthEquivalentRemovedAggregate));
+        }
+        // --- End Snapshot Update ---
 
         // Return the total stETH amount intended for the user (USPDToken handles final transfer)
         return totalUserStEthReturned;
