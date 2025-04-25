@@ -320,11 +320,8 @@ contract StabilizerNFT is
 
             
             // --- Accumulate ETH Equivalent Delta for Snapshot ---
-            uint256 currentYieldFactorForSlice = rateContract.getYieldFactor(); // Get factor for this slice calculation
-            require(currentYieldFactorForSlice > 0, "Yield factor zero during alloc slice");
-            uint256 stabilizerEthEquivalentAddedSlice = (toAllocate * FACTOR_PRECISION) / currentYieldFactorForSlice;
-            // Accumulate directly into the result struct
-            result.totalEthEquivalentAdded += (userEthShare + stabilizerEthEquivalentAddedSlice);
+            // Delta = User's ETH + Stabilizer's stETH (treated 1:1 as ETH value at this moment)
+            result.totalEthEquivalentAdded += (userEthShare + toAllocate);
             // --- Snapshot call moved outside loop ---
 
 
@@ -558,10 +555,8 @@ contract StabilizerNFT is
                     }
 
                     // --- Accumulate ETH Equivalent Delta for Snapshot ---
-                    uint256 currentYieldFactorForSlice = rateContract.getYieldFactor(); // Get factor for this slice calculation
-                    require(currentYieldFactorForSlice > 0, "Yield factor zero during unalloc slice");
-                    // Inline calculation into accumulator update
-                    totalEthEquivalentRemovedAggregate += (stEthToRemove * FACTOR_PRECISION) / currentYieldFactorForSlice;
+                    // Delta = Total stETH removed (treated 1:1 as ETH value at this moment)
+                    totalEthEquivalentRemovedAggregate += stEthToRemove;
                     // --- Snapshot call moved outside loop ---
 
                     // If all shares from this position were unallocated, update lists
@@ -679,10 +674,8 @@ contract StabilizerNFT is
         uint256 currentYieldFactor = rateContract.getYieldFactor();
         require(currentYieldFactor > 0, "Yield factor zero during report add");
 
-        // Calculate ETH equivalent delta using current yield factor
-        uint256 ethEquivalentDelta = (stEthAmount * FACTOR_PRECISION) / currentYieldFactor;
-
-        _updateCollateralSnapshot(int256(ethEquivalentDelta));
+        // The stETH amount *is* the ETH equivalent delta for this moment
+        _updateCollateralSnapshot(int256(stEthAmount));
     }
 
     /**
@@ -696,10 +689,8 @@ contract StabilizerNFT is
         uint256 currentYieldFactor = rateContract.getYieldFactor();
         require(currentYieldFactor > 0, "Yield factor zero during report remove");
 
-        // Calculate ETH equivalent delta using current yield factor
-        uint256 ethEquivalentDelta = (stEthAmount * FACTOR_PRECISION) / currentYieldFactor;
-
-        _updateCollateralSnapshot(-int256(ethEquivalentDelta));
+        // The stETH amount *is* the ETH equivalent delta for this moment
+        _updateCollateralSnapshot(-int256(stEthAmount));
     }
 
     // --- End PositionEscrow Callback Handlers ---
@@ -709,15 +700,15 @@ contract StabilizerNFT is
 
     /**
      * @notice Updates the global collateral snapshot based on a change in collateral.
-     * @param ethEquivalentDelta The change in collateral expressed as ETH equivalent at the *current* yield factor.
+     * @param ethEquivalentDelta The change in collateral value (treating stETH as 1:1 ETH at the time of tx).
      *                           Positive for additions, negative for removals.
-     * @dev Reads the current yield factor, calculates the stETH equivalent of the old snapshot and the delta,
-     *      updates the total stETH value, converts back to ETH equivalent for the new snapshot, and stores state.
+     * @dev Reads the current yield factor, projects the old snapshot's value to the present,
+     *      adds/subtracts the delta, and stores the new snapshot value and current yield factor.
      */
     function _updateCollateralSnapshot(int256 ethEquivalentDelta) internal {
         // Read old state
         uint256 oldEthSnapshot = totalEthEquivalentAtLastSnapshot;
-        uint256 oldYieldFactor = yieldFactorAtLastSnapshot;
+        uint256 oldYieldFactor = yieldFactorAtLastSnapshot; // Yield factor when oldEthSnapshot was recorded
 
         // Get current yield factor
         uint256 currentYieldFactor = rateContract.getYieldFactor();
@@ -726,45 +717,25 @@ contract StabilizerNFT is
         // --- Calculate new snapshot value ---
         uint256 newEthSnapshot;
 
-        // Optimization: If yield factor hasn't changed, simple add/subtract is accurate
-        if (currentYieldFactor == oldYieldFactor) {
-            if (ethEquivalentDelta >= 0) {
-                newEthSnapshot = oldEthSnapshot + uint256(ethEquivalentDelta);
-            } else {
-                uint256 removalAmount = uint256(-ethEquivalentDelta);
-                require(oldEthSnapshot >= removalAmount, "Snapshot underflow (simple)");
-                newEthSnapshot = oldEthSnapshot - removalAmount;
-            }
+        // Project old snapshot's ETH equivalent value to the current time using yield factors
+        uint256 projectedOldEthValue;
+        if (oldYieldFactor == 0) { // Should only happen at initialization before first update
+             require(oldEthSnapshot == 0, "Inconsistent initial state");
+             projectedOldEthValue = 0;
+        } else if (currentYieldFactor == oldYieldFactor) {
+            projectedOldEthValue = oldEthSnapshot; // No change if yield factor is the same
         } else {
-            // Yield factor changed, perform full recalculation via stETH value
-            require(oldYieldFactor > 0, "Invalid old yield factor"); // Should be initialized
+            // projected_value = old_eth_snapshot * current_yield / old_yield
+            projectedOldEthValue = (oldEthSnapshot * currentYieldFactor) / oldYieldFactor;
+        }
 
-            // Calculate current stETH value of the old snapshot
-            // stETH_value = eth_equiv * yield / precision
-            uint256 currentStEthValueOldSnapshot = (oldEthSnapshot * currentYieldFactor) / oldYieldFactor;
-
-            // Calculate stETH delta for this transaction using the current yield factor
-            // delta_stETH = delta_eth_equiv * yield / precision
-            int256 deltaStEth;
-            if (ethEquivalentDelta >= 0) {
-                deltaStEth = int256((uint256(ethEquivalentDelta) * currentYieldFactor) / FACTOR_PRECISION);
-            } else {
-                deltaStEth = -int256((uint256(-ethEquivalentDelta) * currentYieldFactor) / FACTOR_PRECISION);
-            }
-
-            // Calculate new total stETH value
-            uint256 newTotalStEthValue;
-            if (deltaStEth >= 0) {
-                newTotalStEthValue = currentStEthValueOldSnapshot + uint256(deltaStEth);
-            } else {
-                uint256 removalAmountStEth = uint256(-deltaStEth);
-                require(currentStEthValueOldSnapshot >= removalAmountStEth, "Snapshot stETH underflow");
-                newTotalStEthValue = currentStEthValueOldSnapshot - removalAmountStEth;
-            }
-
-            // Convert the new total stETH value back to ETH equivalent using the current yield factor
-            // eth_equiv = stETH_value * precision / yield
-            newEthSnapshot = (newTotalStEthValue * FACTOR_PRECISION) / currentYieldFactor;
+        // Apply the delta (which is already in ETH equivalent terms for the current moment)
+        if (ethEquivalentDelta >= 0) {
+            newEthSnapshot = projectedOldEthValue + uint256(ethEquivalentDelta);
+        } else {
+            uint256 removalAmount = uint256(-ethEquivalentDelta);
+            require(projectedOldEthValue >= removalAmount, "Snapshot underflow after projection");
+            newEthSnapshot = projectedOldEthValue - removalAmount;
         }
 
         // --- Update State ---
