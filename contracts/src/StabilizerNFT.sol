@@ -17,8 +17,7 @@ import "./StabilizerEscrow.sol"; // Import Escrow implementation for deployment
 import "./PositionEscrow.sol"; // Import PositionEscrow implementation for deployment
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
-// Define FACTOR_PRECISION directly as it's a standard value
-uint256 constant FACTOR_PRECISION = 1e18;
+// FACTOR_PRECISION moved inside the contract definition
 
 import {console} from "forge-std/console.sol";
 
@@ -29,8 +28,13 @@ contract StabilizerNFT is
     ERC721EnumerableUpgradeable,
     AccessControlUpgradeable
 {
+    // --- Constants ---
+    uint256 public constant FACTOR_PRECISION = 1e18; // Moved inside
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE"); // New role
+    // Minimum gas required for allocation loop
+    uint256 public constant MIN_GAS = 100000;
+    // --- End Constants ---
 
     struct StabilizerPosition {
         // uint256 totalEth; // Removed - Unallocated funds are now held in StabilizerEscrow
@@ -69,8 +73,7 @@ contract StabilizerNFT is
     // Mapping from NFT ID to its dedicated PositionEscrow contract address (collateralized funds)
     mapping(uint256 => address) public positionEscrows;
 
-    // Minimum gas required for allocation loop
-    uint256 public constant MIN_GAS = 100000;
+    // MIN_GAS moved to Constants section above
 
     // --- Collateral Ratio Tracking ---
     uint256 public totalEthEquivalentAtLastSnapshot;
