@@ -17,8 +17,8 @@ import "./StabilizerEscrow.sol"; // Import Escrow implementation for deployment
 import "./PositionEscrow.sol"; // Import PositionEscrow implementation for deployment
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
-// Import FACTOR_PRECISION constant (assuming it's defined in the interface)
-uint256 constant FACTOR_PRECISION = IPoolSharesConversionRate.FACTOR_PRECISION;
+// Define FACTOR_PRECISION directly as it's a standard value
+uint256 constant FACTOR_PRECISION = 1e18;
 
 import {console} from "forge-std/console.sol";
 
