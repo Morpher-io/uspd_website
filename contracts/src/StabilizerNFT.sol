@@ -323,8 +323,8 @@ contract StabilizerNFT is
             uint256 currentYieldFactorForSlice = rateContract.getYieldFactor(); // Get factor for this slice calculation
             require(currentYieldFactorForSlice > 0, "Yield factor zero during alloc slice");
             uint256 stabilizerEthEquivalentAddedSlice = (toAllocate * FACTOR_PRECISION) / currentYieldFactorForSlice;
-            uint256 totalEthEquivalentAddedThisSlice = userEthShare + stabilizerEthEquivalentAddedSlice;
-            totalEthEquivalentAddedAggregate += totalEthEquivalentAddedThisSlice; // Add to accumulator
+            // Accumulate directly into the result struct
+            result.totalEthEquivalentAdded += (userEthShare + stabilizerEthEquivalentAddedSlice);
             // --- Snapshot call moved outside loop ---
 
 
