@@ -231,6 +231,7 @@ contract StabilizerNFT is
 
         uint256 currentId = lowestUnallocatedId;
         uint256 remainingEth = msg.value; // User's ETH to be backed
+        uint256 totalEthEquivalentAddedAggregate = 0; // Accumulator for snapshot update
 
         while (currentId != 0 && remainingEth > 0) {
             // Check remaining gas
