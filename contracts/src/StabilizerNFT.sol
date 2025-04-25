@@ -301,7 +301,7 @@ contract StabilizerNFT is
             result.allocatedEth += userEthShare; // Track total user ETH allocated in this call
             remainingEth -= userEthShare;
 
-            // Emit event
+            // Emit event for this slice
             emit FundsAllocated(
                 currentId,
                 toAllocate, // Stabilizer stETH amount
@@ -323,14 +323,13 @@ contract StabilizerNFT is
             }
 
             // Move to next stabilizer
-            // --- Update Global Collateral Snapshot ---
-            // Calculate ETH equivalent of stabilizer's contribution at current yield
-            uint256 currentYieldFactorForAlloc = rateContract.getYieldFactor(); // Get factor again, might have changed slightly during loop
-            require(currentYieldFactorForAlloc > 0, "Yield factor zero during alloc update");
-            uint256 stabilizerEthEquivalentAdded = (toAllocate * FACTOR_PRECISION) / currentYieldFactorForAlloc;
-            uint256 totalEthEquivalentAddedThisSlice = userEthShare + stabilizerEthEquivalentAdded;
-            _updateCollateralSnapshot(int256(totalEthEquivalentAddedThisSlice));
-            // --- End Snapshot Update ---
+            // --- Accumulate ETH Equivalent Delta for Snapshot ---
+            uint256 currentYieldFactorForSlice = rateContract.getYieldFactor(); // Get factor for this slice calculation
+            require(currentYieldFactorForSlice > 0, "Yield factor zero during alloc slice");
+            uint256 stabilizerEthEquivalentAddedSlice = (toAllocate * FACTOR_PRECISION) / currentYieldFactorForSlice;
+            uint256 totalEthEquivalentAddedThisSlice = userEthShare + stabilizerEthEquivalentAddedSlice;
+            totalEthEquivalentAddedAggregate += totalEthEquivalentAddedThisSlice; // Add to accumulator
+            // --- Snapshot call moved outside loop ---
 
 
             uint nextId = pos.nextUnallocated;
@@ -345,6 +344,12 @@ contract StabilizerNFT is
         }
 
         require(result.allocatedEth > 0, "No funds allocated");
+
+        // --- Update Snapshot Once After Loop ---
+        if (totalEthEquivalentAddedAggregate > 0) {
+            _updateCollateralSnapshot(int256(totalEthEquivalentAddedAggregate));
+        }
+        // --- End Snapshot Update ---
 
         // Return any unallocated ETH to USPD token
         if (remainingEth > 0) {
