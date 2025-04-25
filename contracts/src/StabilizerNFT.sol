@@ -17,6 +17,9 @@ import "./StabilizerEscrow.sol"; // Import Escrow implementation for deployment
 import "./PositionEscrow.sol"; // Import PositionEscrow implementation for deployment
 import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 
+// Import FACTOR_PRECISION constant (assuming it's defined in the interface)
+uint256 constant FACTOR_PRECISION = IPoolSharesConversionRate.FACTOR_PRECISION;
+
 import {console} from "forge-std/console.sol";
 
 contract StabilizerNFT is
@@ -68,6 +71,11 @@ contract StabilizerNFT is
     // Minimum gas required for allocation loop
     uint256 public constant MIN_GAS = 100000;
 
+    // --- Collateral Ratio Tracking ---
+    uint256 public totalEthEquivalentAtLastSnapshot;
+    uint256 public yieldFactorAtLastSnapshot;
+    // --- End Collateral Ratio Tracking ---
+
     event StabilizerPositionCreated(
         uint256 indexed tokenId,
         address indexed owner
@@ -115,6 +123,12 @@ contract StabilizerNFT is
         lido = _lido;
         rateContract = IPoolSharesConversionRate(_rateContract); // Initialize rate contract
         // createX = ICreateX(_createX); // Uncomment if using CREATE2 factory
+
+        // Initialize collateral snapshot state
+        totalEthEquivalentAtLastSnapshot = 0;
+        // Set initial yield factor snapshot (assuming 1e18 if rate contract isn't deployed/readable yet, otherwise query it)
+        // For simplicity here, assume 1e18. A more robust init might query rateContract if possible.
+        yieldFactorAtLastSnapshot = FACTOR_PRECISION;
     }
 
     function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
@@ -295,6 +309,24 @@ contract StabilizerNFT is
             if (pos.prevAllocated == 0 && pos.nextAllocated == 0 && lowestAllocatedId != currentId) {
                  _registerAllocatedPosition(currentId); // Add stabilizer to allocated list only once
             }
+
+
+            uint nextId = pos.nextUnallocated;
+
+            // Update unallocated list if the escrow's entire balance was allocated
+            if (toAllocate == escrowBalance) {
+                _removeFromUnallocatedList(currentId);
+            }
+
+            // Move to next stabilizer
+            // --- Update Global Collateral Snapshot ---
+            // Calculate ETH equivalent of stabilizer's contribution at current yield
+            uint256 currentYieldFactorForAlloc = rateContract.getYieldFactor(); // Get factor again, might have changed slightly during loop
+            require(currentYieldFactorForAlloc > 0, "Yield factor zero during alloc update");
+            uint256 stabilizerEthEquivalentAdded = (toAllocate * FACTOR_PRECISION) / currentYieldFactorForAlloc;
+            uint256 totalEthEquivalentAddedThisSlice = userEthShare + stabilizerEthEquivalentAdded;
+            _updateCollateralSnapshot(int256(totalEthEquivalentAddedThisSlice));
+            // --- End Snapshot Update ---
 
 
             uint nextId = pos.nextUnallocated;
@@ -517,6 +549,13 @@ contract StabilizerNFT is
                         if (!successStabilizer) revert("Stabilizer stETH transfer to StabilizerEscrow failed");
                     }
 
+                    // --- Update Global Collateral Snapshot ---
+                    uint256 currentYieldFactorForUnalloc = rateContract.getYieldFactor(); // Get factor again
+                    require(currentYieldFactorForUnalloc > 0, "Yield factor zero during unalloc update");
+                    uint256 totalEthEquivalentRemovedThisTx = (stEthToRemove * FACTOR_PRECISION) / currentYieldFactorForUnalloc;
+                    _updateCollateralSnapshot(-int256(totalEthEquivalentRemovedThisTx));
+                    // --- End Snapshot Update ---
+
                     // If all shares from this position were unallocated, update lists
                     bool fullyUnallocated = (currentBackedShares == poolSharesSliceToUnallocate);
                     if (fullyUnallocated) {
@@ -613,6 +652,76 @@ contract StabilizerNFT is
         emit MinCollateralRatioUpdated(tokenId, oldRatio, newRatio);
     }
 
+    // --- Internal Collateral Tracking Logic ---
+
+    /**
+     * @notice Updates the global collateral snapshot based on a change in collateral.
+     * @param ethEquivalentDelta The change in collateral expressed as ETH equivalent at the *current* yield factor.
+     *                           Positive for additions, negative for removals.
+     * @dev Reads the current yield factor, calculates the stETH equivalent of the old snapshot and the delta,
+     *      updates the total stETH value, converts back to ETH equivalent for the new snapshot, and stores state.
+     */
+    function _updateCollateralSnapshot(int256 ethEquivalentDelta) internal {
+        // Read old state
+        uint256 oldEthSnapshot = totalEthEquivalentAtLastSnapshot;
+        uint256 oldYieldFactor = yieldFactorAtLastSnapshot;
+
+        // Get current yield factor
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        require(currentYieldFactor > 0, "Current yield factor is zero"); // Safety check
+
+        // --- Calculate new snapshot value ---
+        uint256 newEthSnapshot;
+
+        // Optimization: If yield factor hasn't changed, simple add/subtract is accurate
+        if (currentYieldFactor == oldYieldFactor) {
+            if (ethEquivalentDelta >= 0) {
+                newEthSnapshot = oldEthSnapshot + uint256(ethEquivalentDelta);
+            } else {
+                uint256 removalAmount = uint256(-ethEquivalentDelta);
+                require(oldEthSnapshot >= removalAmount, "Snapshot underflow (simple)");
+                newEthSnapshot = oldEthSnapshot - removalAmount;
+            }
+        } else {
+            // Yield factor changed, perform full recalculation via stETH value
+            require(oldYieldFactor > 0, "Invalid old yield factor"); // Should be initialized
+
+            // Calculate current stETH value of the old snapshot
+            // stETH_value = eth_equiv * yield / precision
+            uint256 currentStEthValueOldSnapshot = (oldEthSnapshot * currentYieldFactor) / oldYieldFactor;
+
+            // Calculate stETH delta for this transaction using the current yield factor
+            // delta_stETH = delta_eth_equiv * yield / precision
+            int256 deltaStEth;
+            if (ethEquivalentDelta >= 0) {
+                deltaStEth = int256((uint256(ethEquivalentDelta) * currentYieldFactor) / FACTOR_PRECISION);
+            } else {
+                deltaStEth = -int256((uint256(-ethEquivalentDelta) * currentYieldFactor) / FACTOR_PRECISION);
+            }
+
+            // Calculate new total stETH value
+            uint256 newTotalStEthValue;
+            if (deltaStEth >= 0) {
+                newTotalStEthValue = currentStEthValueOldSnapshot + uint256(deltaStEth);
+            } else {
+                uint256 removalAmountStEth = uint256(-deltaStEth);
+                require(currentStEthValueOldSnapshot >= removalAmountStEth, "Snapshot stETH underflow");
+                newTotalStEthValue = currentStEthValueOldSnapshot - removalAmountStEth;
+            }
+
+            // Convert the new total stETH value back to ETH equivalent using the current yield factor
+            // eth_equiv = stETH_value * precision / yield
+            newEthSnapshot = (newTotalStEthValue * FACTOR_PRECISION) / currentYieldFactor;
+        }
+
+        // --- Update State ---
+        totalEthEquivalentAtLastSnapshot = newEthSnapshot;
+        yieldFactorAtLastSnapshot = currentYieldFactor; // Always update to the latest factor used
+    }
+
+    // --- End Internal Collateral Tracking Logic ---
+
+
     /**
      * @notice Returns the minimum collateralization ratio for a given stabilizer token ID.
      */
@@ -687,6 +796,54 @@ contract StabilizerNFT is
         return string(buffer);
     }
 
+    // --- Collateral Ratio View Function ---
+
+    /**
+     * @notice Calculates the approximate current system-wide collateralization ratio.
+     * @param priceResponse The current valid price response for stETH/USD.
+     * @return ratio The ratio (scaled by 100, e.g., 110 means 110%). Returns type(uint256).max if liability is zero.
+     * @dev This ratio is approximate as it relies on snapshot data and the PoolSharesConversionRate yield factor.
+     *      It does not account for yield accrued since the last snapshot update if the yield factor hasn't changed.
+     *      It also assumes callbacks from PositionEscrow are correctly implemented for direct collateral changes.
+     */
+    function getSystemCollateralizationRatio(IPriceOracle.PriceResponse memory priceResponse) external view returns (uint256 ratio) {
+        uint256 currentTotalSupply = uspdToken.totalSupply();
+        if (currentTotalSupply == 0) {
+            return type(uint256).max; // Infinite ratio if no liability
+        }
+
+        uint256 ethSnapshot = totalEthEquivalentAtLastSnapshot;
+        uint256 yieldSnapshot = yieldFactorAtLastSnapshot;
+        if (yieldSnapshot == 0) {
+             // Should not happen after initialization, but safety check
+             return 0; // Or handle as error/undefined
+        }
+
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        require(currentYieldFactor > 0, "Current yield factor is zero");
+
+        // Estimate current total stETH value by projecting the snapshot forward
+        // estimated_stETH = eth_snapshot * current_yield / snapshot_yield
+        uint256 estimatedCurrentCollateralStEth = (ethSnapshot * currentYieldFactor) / yieldSnapshot;
+
+        if (estimatedCurrentCollateralStEth == 0) {
+            return 0; // No collateral tracked
+        }
+
+        // Calculate collateral value in USD wei (assuming priceResponse has 18 decimals for price)
+        require(priceResponse.decimals == 18, "Price must have 18 decimals"); // Adapt if oracle uses different decimals
+        require(priceResponse.price > 0, "Oracle price cannot be zero");
+        uint256 estimatedCollateralValueUSD = (estimatedCurrentCollateralStEth * priceResponse.price) / 1e18;
+
+        // Calculate ratio = (Collateral Value / Liability Value) * 100
+        // Both values are in 18 decimal USD equivalent
+        ratio = (estimatedCollateralValueUSD * 100) / currentTotalSupply;
+
+        return ratio;
+    }
+
+    // --- End Collateral Ratio View Function ---
+
 
     // The following functions are overrides required by Solidity.
     function _update(address to, uint256 tokenId, address auth)
@@ -712,5 +869,26 @@ contract StabilizerNFT is
     {
         return super.supportsInterface(interfaceId);
     }
-   
+
+    // --- Admin Collateral Reset ---
+
+    /**
+     * @notice Allows an admin to reset the collateral snapshot values.
+     * @param actualTotalEthEquivalent The externally calculated total ETH equivalent value of all collateral.
+     * @dev This should only be used to correct significant drift from the on-chain approximation.
+     *      It requires a trusted off-chain process to calculate the 'actualTotalEthEquivalent'.
+     */
+    function resetCollateralSnapshot(uint256 actualTotalEthEquivalent) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        require(currentYieldFactor > 0, "Cannot reset with zero yield factor");
+
+        totalEthEquivalentAtLastSnapshot = actualTotalEthEquivalent;
+        yieldFactorAtLastSnapshot = currentYieldFactor;
+
+        // Optional: Emit an event
+        // emit CollateralSnapshotReset(actualTotalEthEquivalent, currentYieldFactor);
+    }
+
+    // --- End Admin Collateral Reset ---
+
 }
