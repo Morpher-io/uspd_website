@@ -115,7 +115,7 @@ contract StabilizerNFTTest is Test {
             address(stabilizerNFT),   // stabilizer
             address(rateContract),    // rateContract
             owner,                    // admin role
-            owner,                    // minter role (test contract)
+            // owner,                 // MINTER_ROLE removed
             owner                     // burner role (test contract)
         );
         // Grant UPDATER_ROLE if needed for tests (constructor grants to admin/owner)
