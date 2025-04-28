@@ -1142,6 +1142,87 @@ contract StabilizerNFTTest is Test {
         assertEq(IStabilizerEscrow(stabilizerEscrowAddr).unallocatedStETH(), 2.1 ether, "StabilizerEscrow balance mismatch after removal");
     }
 
+    function testReportCollateralRemoval_UpdatesSnapshot_WithYieldChange() public {
+        // Prerequisite: MockStETH.rebase() function exists.
+        // Scenario: Test removing collateral directly after a yield change.
+
+        // --- Setup ---
+        // 1. Mint NFT, add funds, allocate, add extra collateral to set snapshot
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId); // user1 is the stabilizer owner
+        vm.deal(user1, 2 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
+
+        uint256 userEthForAllocation = 1 ether;
+        vm.deal(address(uspdToken), userEthForAllocation);
+        vm.startPrank(address(uspdToken));
+        IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
+            2000 ether, 18
+        );
+        vm.stopPrank();
+
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+        address stabilizerEscrowAddr = stabilizerNFT.stabilizerEscrows(tokenId);
+
+        uint256 extraEth = 0.5 ether;
+        uint256 expectedExtraStEth = extraEth;
+        address directAdder = makeAddr("directAdder");
+        vm.deal(directAdder, extraEth);
+        vm.prank(directAdder);
+        positionEscrow.addCollateralEth{value: extraEth}(); // Triggers reportCollateralAddition
+
+        // 2. Store intermediate snapshot values (ETH_Snapshot1, Yield_Snapshot1)
+        uint256 ethSnapshot1 = stabilizerNFT.totalEthEquivalentAtLastSnapshot();
+        uint256 yieldSnapshot1 = stabilizerNFT.yieldFactorAtLastSnapshot();
+        require(ethSnapshot1 == allocResult.totalEthEquivalentAdded + expectedExtraStEth, "Intermediate snapshot setup failed");
+        require(yieldSnapshot1 == rateContract.getYieldFactor(), "Initial yield factor mismatch");
+        require(yieldSnapshot1 == stabilizerNFT.FACTOR_PRECISION(), "Yield factor should be 1e18 initially");
+
+        // --- Simulate Yield ---
+        uint256 currentTotalSupply = mockStETH.totalSupply();
+        uint256 newTotalSupply = (currentTotalSupply * 110) / 100; // 10% increase
+        vm.prank(owner); // Only owner can rebase MockStETH
+        mockStETH.rebase(newTotalSupply);
+
+        // 3. Get new yield factor (Yield_Snapshot2)
+        uint256 yieldSnapshot2 = rateContract.getYieldFactor();
+        assertTrue(yieldSnapshot2 > yieldSnapshot1, "Yield factor did not increase after rebase");
+
+        // 4. Prepare Price Attestation Query
+        IPriceOracle.PriceAttestationQuery memory priceQuery = _createSignedPriceAttestationForOracle(
+             address(priceOracle), 2000 ether, block.timestamp * 1000
+         );
+
+        // Mock the oracle call
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp);
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.attestationService.selector, priceQuery),
+            abi.encode(mockResponse)
+        );
+
+        // --- Action ---
+        // Remove some of the excess collateral
+        uint256 amountToRemove = 0.2 ether; // Remove less than the 'extra' added
+        require(amountToRemove <= expectedExtraStEth, "Test setup error: removing more than excess");
+
+        vm.prank(user1); // user1 is stabilizerOwner
+        positionEscrow.removeExcessCollateral(payable(stabilizerEscrowAddr), amountToRemove, priceQuery); // Triggers reportCollateralRemoval
+
+        // --- Assertions ---
+        // Calculate expected final ETH snapshot: (ETH_Snapshot1 * Yield2 / Yield1) - amountToRemove
+        uint256 projectedEth1 = (ethSnapshot1 * yieldSnapshot2) / yieldSnapshot1;
+        require(projectedEth1 >= amountToRemove, "Snapshot underflow after projection during removal"); // Sanity check
+        uint256 expectedFinalEthSnapshot = projectedEth1 - amountToRemove;
+
+        assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), expectedFinalEthSnapshot, "ETH snapshot mismatch after direct removal with yield change");
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), yieldSnapshot2, "Yield snapshot mismatch after direct removal with yield change");
+    }
+
+
     // Helper to create signed attestation for a specific oracle instance
     function _createSignedPriceAttestationForOracle(
         address oracleAddress, // Pass the specific oracle instance
