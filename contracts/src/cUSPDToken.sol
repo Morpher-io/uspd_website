@@ -22,8 +22,8 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     uint256 public constant FACTOR_PRECISION = 1e18; // Match rate contract precision
 
     // --- Roles ---
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE"); // Role allowed to initiate minting (e.g., a frontend contract or EOA)
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");   // Role allowed to initiate burning (e.g., a frontend contract or EOA)
+    // MINTER_ROLE removed
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");   // Role allowed to initiate burning (e.g., a frontend contract or EOA) - Keeping for now, might remove later if burn is also unrestricted
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE"); // Role for updating dependencies
     // Note: STABILIZER_ROLE is likely needed *by* StabilizerNFT *on* this contract if StabilizerNFT needs to call back (e.g., for adjustments),
     // but StabilizerNFT itself initiates the calls *to* PositionEscrow during mint/burn triggered here.
@@ -58,14 +58,14 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         address _stabilizer,
         address _rateContract,
         address _admin,
-        address _minter, // Grant initial minter role
+        // address _minter, // MINTER_ROLE removed
         address _burner  // Grant initial burner role
     ) ERC20(name, symbol) ERC20Permit(name) {
         require(_oracle != address(0), "cUSPD: Zero oracle address");
         require(_stabilizer != address(0), "cUSPD: Zero stabilizer address"); // Stabilizer is essential
         require(_rateContract != address(0), "cUSPD: Zero rate contract address");
         require(_admin != address(0), "cUSPD: Zero admin address");
-        require(_minter != address(0), "cUSPD: Zero minter address");
+        // require(_minter != address(0), "cUSPD: Zero minter address"); // Removed check
         require(_burner != address(0), "cUSPD: Zero burner address");
 
         oracle = IPriceOracle(_oracle);
@@ -73,7 +73,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         rateContract = IPoolSharesConversionRate(_rateContract);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(MINTER_ROLE, _minter);
+        // _grantRole(MINTER_ROLE, _minter); // Removed MINTER_ROLE grant
         _grantRole(BURNER_ROLE, _burner);
         _grantRole(UPDATER_ROLE, _admin); // Grant admin updater role initially
         // Grant StabilizerNFT any roles it might need on cUSPD if callbacks are added later
@@ -92,7 +92,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     function mintShares(
         address to,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) external payable onlyRole(MINTER_ROLE) {
+    ) external payable /* Removed onlyRole(MINTER_ROLE) */ {
         require(msg.value > 0, "cUSPD: Must send ETH to mint");
         require(to != address(0), "cUSPD: Mint to zero address");
 

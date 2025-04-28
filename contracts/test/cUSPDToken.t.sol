@@ -59,7 +59,7 @@ contract cUSPDTokenTest is Test {
 
     // --- Test Actors & Config ---
     address internal admin; // Test contract often acts as admin
-    address internal minter; // Address granted MINTER_ROLE
+    // address internal minter; // MINTER_ROLE removed
     address internal burner; // Address granted BURNER_ROLE
     address internal updater; // Address granted UPDATER_ROLE
     address internal user1;
@@ -78,7 +78,7 @@ contract cUSPDTokenTest is Test {
     function setUp() public {
         // 1. Setup Addresses & Signer
         admin = address(this);
-        minter = address(this); // Grant roles to test contract for convenience
+        // minter = address(this); // MINTER_ROLE removed
         burner = address(this);
         updater = address(this);
         user1 = makeAddr("user1");
@@ -127,7 +127,7 @@ contract cUSPDTokenTest is Test {
             address(stabilizerNFT),   // stabilizer
             address(rateContract),    // rateContract
             admin,                    // admin role
-            minter,                   // minter role
+            // minter,                // MINTER_ROLE removed
             burner                    // burner role
         );
         cuspdToken = testableToken; // Assign to the state variable
@@ -216,7 +216,7 @@ contract cUSPDTokenTest is Test {
 
         // Check roles
         assertTrue(cuspdToken.hasRole(cuspdToken.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
-        assertTrue(cuspdToken.hasRole(cuspdToken.MINTER_ROLE(), minter), "Minter role mismatch");
+        // assertTrue(cuspdToken.hasRole(cuspdToken.MINTER_ROLE(), minter), "Minter role mismatch"); // MINTER_ROLE removed
         assertTrue(cuspdToken.hasRole(cuspdToken.BURNER_ROLE(), burner), "Burner role mismatch");
         assertTrue(cuspdToken.hasRole(cuspdToken.UPDATER_ROLE(), admin), "Updater role mismatch (should be admin)"); // Granted to admin in setup
     }
@@ -232,13 +232,13 @@ contract cUSPDTokenTest is Test {
         new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(0), admin, minter, burner);
 
         vm.expectRevert("cUSPD: Zero admin address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0), minter, burner);
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0), /* minter, */ burner);
 
-        vm.expectRevert("cUSPD: Zero minter address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, address(0), burner);
+        // vm.expectRevert("cUSPD: Zero minter address"); // MINTER_ROLE removed
+        // new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, address(0), burner);
 
         vm.expectRevert("cUSPD: Zero burner address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, minter, address(0));
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, /* minter, */ address(0));
     }
 
     // =============================================
@@ -267,10 +267,10 @@ contract cUSPDTokenTest is Test {
         uint256 expectedAllocatedEth = 1 ether; // Should allocate all user ETH
 
         vm.expectEmit(true, true, true, true, address(cuspdToken));
-        emit cUSPDToken.SharesMinted(minter, user2, expectedAllocatedEth, expectedShares); // Mint to user2
+        emit cUSPDToken.SharesMinted(user1, user2, expectedAllocatedEth, expectedShares); // msg.sender is now user1
 
-        vm.deal(minter, ethToSend); // Fund the minter
-        vm.prank(minter); // Minter calls mintShares
+        vm.deal(user1, ethToSend); // Fund user1
+        vm.prank(user1); // Any user (user1) calls mintShares
         cuspdToken.mintShares{value: ethToSend}(user2, priceQuery);
 
         // Assertions
@@ -284,12 +284,7 @@ contract cUSPDTokenTest is Test {
         assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 1.1 ether, 1e15, "PositionEscrow stETH balance mismatch"); // 1 user + 0.1 stabilizer
     }
 
-     function testMintShares_Revert_NotMinter() public {
-        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, cuspdToken.MINTER_ROLE()));
-        vm.prank(user1); // user1 does not have MINTER_ROLE
-        cuspdToken.mintShares{value: 1 ether}(user1, priceQuery);
-    }
+     // Removed testMintShares_Revert_NotMinter as role check was removed
 
     function testMintShares_Revert_NoEthSent() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
@@ -301,8 +296,8 @@ contract cUSPDTokenTest is Test {
     function testMintShares_Revert_ZeroRecipient() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("cUSPD: Mint to zero address");
-        vm.deal(minter, 1 ether);
-        vm.prank(minter);
+        vm.deal(user1, 1 ether); // Fund any user
+        vm.prank(user1); // Prank as the user
         cuspdToken.mintShares{value: 1 ether}(address(0), priceQuery);
     }
 
@@ -317,8 +312,8 @@ contract cUSPDTokenTest is Test {
         );
 
         vm.expectRevert("cUSPD: Invalid oracle price");
-        vm.deal(minter, 1 ether);
-        vm.prank(minter);
+        vm.deal(user1, 1 ether); // Fund any user
+        vm.prank(user1); // Prank as the user
         cuspdToken.mintShares{value: 1 ether}(user1, priceQuery);
     }
 
@@ -332,8 +327,8 @@ contract cUSPDTokenTest is Test {
 
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("cUSPD: Invalid yield factor");
-        vm.deal(minter, 1 ether);
-        vm.prank(minter);
+        vm.deal(user1, 1 ether); // Fund any user
+        vm.prank(user1); // Prank as the user
         cuspdToken.mintShares{value: 1 ether}(user1, priceQuery);
     }
 
@@ -343,8 +338,8 @@ contract cUSPDTokenTest is Test {
 
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("No unallocated funds"); // Revert from StabilizerNFT
-        vm.deal(minter, 1 ether);
-        vm.prank(minter);
+        vm.deal(user1, 1 ether); // Fund any user
+        vm.prank(user1); // Prank as the user
         cuspdToken.mintShares{value: 1 ether}(user1, priceQuery);
     }
 
@@ -368,7 +363,7 @@ contract cUSPDTokenTest is Test {
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(price, block.timestamp);
         // User2 mints shares for themselves
         vm.deal(user2, ethToSend); // Fund user2
-        vm.prank(user2); // User2 has MINTER_ROLE
+        vm.prank(user2); // User2 calls mintShares directly
         cuspdToken.mintShares{value: ethToSend}(user2, mintQuery); // Mint shares to user2
 
         uint256 initialShares = cuspdToken.balanceOf(user2); // Check user2's balance
@@ -429,8 +424,8 @@ contract cUSPDTokenTest is Test {
         vm.prank(admin); stabilizerNFT.mint(user1, tokenId);
         vm.deal(user1, 2 ether); vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.deal(minter, 1 ether); vm.prank(minter); cuspdToken.mintShares{value: 1 ether}(burner, mintQuery); // Mint to burner
-        uint256 sharesToBurn = cuspdToken.balanceOf(burner) / 2;
+        vm.deal(user1, 1 ether); vm.prank(user1); cuspdToken.mintShares{value: 1 ether}(user1, mintQuery); // Mint to user1
+        uint256 sharesToBurn = cuspdToken.balanceOf(user1) / 2;
 
         // Mock oracle to return 0 price for burn
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(0, block.timestamp);
@@ -442,7 +437,7 @@ contract cUSPDTokenTest is Test {
         );
 
         vm.expectRevert("cUSPD: Invalid oracle price");
-        vm.prank(burner);
+        vm.prank(user1); // User1 owns the shares
         cuspdToken.burnShares(sharesToBurn, payable(recipient), burnQuery);
     }
 
@@ -480,12 +475,12 @@ contract cUSPDTokenTest is Test {
 
         // Mint some shares directly for testing burn revert (bypass mintShares logic)
         // Use the exposed internal mint function via the TestableCUSPD instance
-        TestableCUSPD(payable(address(cuspdToken))).mintInternal(burner, 1000 ether); // Mint shares to burner
+        TestableCUSPD(payable(address(cuspdToken))).mintInternal(user1, 1000 ether); // Mint shares to user1
 
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
         vm.expectRevert("No allocated funds"); // Revert from StabilizerNFT
-        vm.prank(burner);
+        vm.prank(user1); // User1 owns the shares
         cuspdToken.burnShares(500 ether, payable(recipient), burnQuery);
     }
 
@@ -495,8 +490,8 @@ contract cUSPDTokenTest is Test {
         vm.prank(admin); stabilizerNFT.mint(user1, tokenId);
         vm.deal(user1, 2 ether); vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.deal(minter, 1 ether); vm.prank(minter); cuspdToken.mintShares{value: 1 ether}(burner, mintQuery); // Mint to burner
-        uint256 sharesToBurn = cuspdToken.balanceOf(burner) / 2;
+        vm.deal(user1, 1 ether); vm.prank(user1); cuspdToken.mintShares{value: 1 ether}(user1, mintQuery); // Mint to user1
+        uint256 sharesToBurn = cuspdToken.balanceOf(user1) / 2;
 
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
@@ -509,7 +504,7 @@ contract cUSPDTokenTest is Test {
         );
 
         vm.expectRevert("cUSPD: stETH transfer failed");
-        vm.prank(burner);
+        vm.prank(user1); // User1 owns the shares
         cuspdToken.burnShares(sharesToBurn, payable(recipient), burnQuery);
     }
 

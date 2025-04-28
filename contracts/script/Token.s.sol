@@ -287,7 +287,7 @@ contract DeployScript is Script {
                 stabilizerProxyAddress,   // stabilizer
                 rateContractAddress,      // rateContract
                 deployer,                 // admin
-                deployer,                 // minter (deployer initially)
+                // deployer,              // MINTER_ROLE removed
                 deployer                  // burner (deployer initially)
             )
         );
@@ -335,7 +335,7 @@ contract DeployScript is Script {
                 address(0),               // stabilizer (zero address)
                 address(0),               // rateContract (zero address)
                 deployer,                 // admin
-                deployer,                 // minter
+                // deployer,              // MINTER_ROLE removed
                 deployer                  // burner
             )
         );
@@ -455,9 +455,8 @@ contract DeployScript is Script {
         // Grant roles to the cUSPDToken
         console2.log("Granting cUSPDToken roles...");
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
-        // Deployer already has ADMIN, MINTER, BURNER, UPDATER roles from constructor
-        // Grant MINTER_ROLE/BURNER_ROLE to specific frontend/automation contracts if needed
-        // coreToken.grantRole(coreToken.MINTER_ROLE(), address(FRONTEND_MINTER));
+        // Deployer already has ADMIN, BURNER, UPDATER roles from constructor
+        // Grant BURNER_ROLE to specific frontend/automation contracts if needed
         // coreToken.grantRole(coreToken.BURNER_ROLE(), address(FRONTEND_BURNER));
 
         // Grant roles to the USPDToken (View Layer) - Only admin needed
@@ -481,8 +480,8 @@ contract DeployScript is Script {
         // Grant roles to the cUSPDToken
         console2.log("Granting cUSPDToken (bridged) roles...");
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
-        // Deployer already has ADMIN, MINTER, BURNER, UPDATER roles from constructor
-        // Grant MINTER_ROLE/BURNER_ROLE to specific frontend/automation contracts if needed
+        // Deployer already has ADMIN, BURNER, UPDATER roles from constructor
+        // Grant BURNER_ROLE to specific frontend/automation contracts if needed
 
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view, bridged) roles...");
