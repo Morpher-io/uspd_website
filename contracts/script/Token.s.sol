@@ -23,13 +23,8 @@ contract DeployScript is Script {
     uint256 chainId;
     string deploymentPath;
 
-    // Salt for CREATE2 deployments - with proper formatting for CreateX
-    // Format: first 20 bytes = deployer address, 21st byte = 0x00 (no cross-chain protection)
     function generateSalt(string memory identifier) internal view returns (bytes32) {
-        // Start with deployer address (20 bytes)
         bytes32 salt = bytes32(uint256(uint160(deployer)) << 96);
-        // Set 21st byte to 0x00 (no cross-chain protection)
-        // Last 11 bytes will be derived from the identifier
         bytes32 identifierHash = bytes32(uint256(keccak256(abi.encodePacked(identifier))));
         // Combine: deployer (20 bytes) + 0x00 (1 byte) + identifier hash (last 11 bytes)
         return salt | (identifierHash & bytes32(uint256(0x00000000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFF)));
@@ -38,11 +33,10 @@ contract DeployScript is Script {
     // Define salts for each contract
     bytes32 PROXY_ADMIN_SALT;
     bytes32 ORACLE_PROXY_SALT;
-    // bytes32 POSITION_NFT_PROXY_SALT; // Removed
     bytes32 STABILIZER_PROXY_SALT;
-    bytes32 CUSPD_TOKEN_SALT; // Salt for cUSPD Token
-    bytes32 USPD_TOKEN_SALT; // Renamed salt for USPD Token (view layer)
-    bytes32 RATE_CONTRACT_SALT; // Salt for the rate contract
+    bytes32 CUSPD_TOKEN_SALT;
+    bytes32 USPD_TOKEN_SALT;
+    bytes32 RATE_CONTRACT_SALT;
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
@@ -56,9 +50,9 @@ contract DeployScript is Script {
     // address positionNFTProxyAddress; // Removed
     address stabilizerImplAddress;
     address stabilizerProxyAddress;
-    address cuspdTokenAddress; // Address for cUSPD Token
-    address uspdTokenAddress; // Address for USPD Token (view layer)
-    address rateContractAddress; // Address for the rate contract
+    address cuspdTokenAddress;
+    address uspdTokenAddress;
+    address rateContractAddress;
 
     // Configuration for PriceOracle
     uint256 maxPriceDeviation = 500; // 5%
@@ -88,11 +82,10 @@ contract DeployScript is Script {
         // Initialize salts with proper format for CreateX
         PROXY_ADMIN_SALT = generateSalt("USPD_PROXY_ADMIN_v1");
         ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
-        // POSITION_NFT_PROXY_SALT = generateSalt("USPD_POSITION_NFT_PROXY_v1"); // Removed
         STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
-        CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1"); // Initialize cUSPD salt
-        USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1"); // Initialize USPD salt (renamed from TOKEN_SALT)
-        RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1"); // Initialize salt
+        CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1");
+        USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
+        RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1");
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
@@ -103,18 +96,16 @@ contract DeployScript is Script {
             usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
             chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-            lidoAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // Lido contract
-            stETHAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // stETH is same as Lido contract
+            lidoAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+            stETHAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
         } else if (chainId == 11155111) { // Sepolia
-            usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Using Goerli USDC example, update if specific Sepolia USDC exists
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Using Goerli Uniswap example, update if specific Sepolia Router exists
-            chainlinkAggregator = 0x694AA1769357215DE4FAC081bf1f309aDC325306; // Sepolia ETH/USD
-            // Use Sepolia Lido addresses from https://docs.lido.fi/deployed-contracts/sepolia/
-            lidoAddress = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Lido & stETH token proxy
-            stETHAddress = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Lido & stETH token proxy
+            usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
+            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+            chainlinkAggregator = 0x694AA1769357215DE4FAC081bf1f309aDC325306;
+            lidoAddress = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af;
+            stETHAddress = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af;
         } else if (chainId == 31337) { // Local development (Anvil/Hardhat) - Deploy Mocks
             console2.log("Local development detected (chainId 31337), deploying mocks...");
-            // Deploy MockStETH
             MockStETH mockStETH = new MockStETH();
             stETHAddress = address(mockStETH);
             // Deploy MockLido
@@ -159,41 +150,24 @@ contract DeployScript is Script {
 
         if (deployFullSystem) {
             console2.log("Deploying Full System...");
-            // 1. Deploy Implementations (Oracle already done)
-            // deployPositionNFTImplementation(); // Removed
             deployStabilizerNFTImplementation();
-            // 2. Deploy Rate Contract
             deployPoolSharesConversionRate();
-            // 3. Deploy Proxies (Admin, Oracle already done) - No Init Data
-            deployStabilizerNFTProxy_NoInit(); // Deploy proxy, get address
-            // deployPositionNFTProxy_NoInit(); // Removed
-            // 4. Deploy Tokens (cUSPD first, then USPD)
-            deployCUSPDToken(); // Deploy core token
-            deployUspdToken(); // Deploy view token, linking to cUSPD
-            // 5. Initialize Proxies
-            initializeStabilizerNFTProxy(); // Pass cuspdTokenAddress, stETH, lido, rateContract, admin
-            // initializePositionNFTProxy(); // Removed
-            // 6. Setup Roles
-            setupRolesAndPermissions(); // Setup roles on cUSPD and Stabilizer
+            deployStabilizerNFTProxy_NoInit();
+            deployCUSPDToken();
+            deployUspdToken();
+            initializeStabilizerNFTProxy();
+            setupRolesAndPermissions();
         } else {
             console2.log("Deploying Bridged Token Only...");
-            // --- Bridged Token Deployment ---
-            // Set placeholder addresses for non-deployed contracts
-            // positionNFTImplAddress = address(0); // Removed
-            // positionNFTProxyAddress = address(0); // Removed
             stabilizerImplAddress = address(0);
             stabilizerProxyAddress = address(0);
             rateContractAddress = address(0);
-
-            // Deploy Tokens (cUSPD first, then USPD)
-            deployCUSPDToken_Bridged(); // Deploy core token with zero addresses
-            deployUspdToken_Bridged(); // Deploy view token, linking to cUSPD
-            // Setup minimal roles
-            setupRolesAndPermissions_Bridged(); // Setup roles on cUSPD
+            deployCUSPDToken_Bridged();
+            deployUspdToken_Bridged();
+            setupRolesAndPermissions_Bridged();
         }
 
-        // --- Always Save ---
-        saveDeploymentInfo(); // Adapt to save 0x0 for non-deployed contracts
+        saveDeploymentInfo();
 
         vm.stopBroadcast();
     }
@@ -253,11 +227,6 @@ contract DeployScript is Script {
         console2.log("PriceOracle proxy deployed at:", oracleProxyAddress);
     }
 
-    // Removed deployPositionNFTImplementation
-    // Removed deployPositionNFTProxy_NoInit
-    // Removed initializePositionNFTProxy
-
-
     function deployStabilizerNFTImplementation() internal {
         // Deploy StabilizerNFT implementation with regular CREATE
         console2.log("Deploying StabilizerNFT implementation...");
@@ -287,7 +256,6 @@ contract DeployScript is Script {
                 stabilizerProxyAddress,   // stabilizer
                 rateContractAddress,      // rateContract
                 deployer,                 // admin
-                // deployer,              // MINTER_ROLE removed
                 deployer                  // burner (deployer initially)
             )
         );
@@ -335,7 +303,6 @@ contract DeployScript is Script {
                 address(0),               // stabilizer (zero address)
                 address(0),               // rateContract (zero address)
                 deployer,                 // admin
-                // deployer,              // MINTER_ROLE removed
                 deployer                  // burner
             )
         );
@@ -379,16 +346,15 @@ contract DeployScript is Script {
     function initializeStabilizerNFTProxy() internal {
         console2.log("Initializing StabilizerNFT proxy at:", stabilizerProxyAddress);
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
-        require(cuspdTokenAddress != address(0), "cUSPD Token not deployed"); // Check cUSPD
+        require(cuspdTokenAddress != address(0), "cUSPD Token not deployed");
         require(stETHAddress != address(0), "stETH address not set");
         require(lidoAddress != address(0), "Lido address not set");
-        require(rateContractAddress != address(0), "Rate contract not deployed yet"); // Add check
+        require(rateContractAddress != address(0), "Rate contract not deployed yet");
 
         // Prepare initialization data
-        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _admin)
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, deployer) // Pass cUSPD address, removed USPD address
+            (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, deployer)
         );
 
          // Call initialize via the proxy
@@ -443,26 +409,18 @@ contract DeployScript is Script {
         oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
         oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
 
-        // Grant roles to the PositionNFT - Removed
-
         // Grant roles to the StabilizerNFT
         console2.log("Granting StabilizerNFT roles...");
         StabilizerNFT stabilizer = StabilizerNFT(payable(stabilizerProxyAddress));
-        // Deployer already has DEFAULT_ADMIN_ROLE from initialization
-        // Grant MINTER_ROLE to deployer (or a dedicated minter address)
         stabilizer.grantRole(stabilizer.MINTER_ROLE(), deployer);
 
         // Grant roles to the cUSPDToken
         console2.log("Granting cUSPDToken roles...");
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
-        // Deployer already has ADMIN, BURNER, UPDATER roles from constructor
-        // Grant BURNER_ROLE to specific frontend/automation contracts if needed
-        // coreToken.grantRole(coreToken.BURNER_ROLE(), address(FRONTEND_BURNER));
 
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view) roles...");
         USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
-        // Deployer already has DEFAULT_ADMIN_ROLE from constructor
 
         console2.log("Roles setup complete.");
     }
@@ -480,13 +438,10 @@ contract DeployScript is Script {
         // Grant roles to the cUSPDToken
         console2.log("Granting cUSPDToken (bridged) roles...");
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
-        // Deployer already has ADMIN, BURNER, UPDATER roles from constructor
-        // Grant BURNER_ROLE to specific frontend/automation contracts if needed
 
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view, bridged) roles...");
         USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
-        // Deployer already has DEFAULT_ADMIN_ROLE from constructor
 
         console2.log("Bridged roles setup complete.");
     }
@@ -500,12 +455,10 @@ contract DeployScript is Script {
                 '"proxyAdmin": "0x0000000000000000000000000000000000000000",'
                 '"oracleImpl": "0x0000000000000000000000000000000000000000",'
                 '"oracle": "0x0000000000000000000000000000000000000000",'
-                // '"positionNFTImpl": "0x0000000000000000000000000000000000000000",' // Removed
-                // '"positionNFT": "0x0000000000000000000000000000000000000000",' // Removed
                 '"stabilizerImpl": "0x0000000000000000000000000000000000000000",'
                 '"stabilizer": "0x0000000000000000000000000000000000000000",'
-                '"cuspdToken": "0x0000000000000000000000000000000000000000",' // Added cUSPD
-                '"uspdToken": "0x0000000000000000000000000000000000000000",' // Renamed from token
+                '"cuspdToken": "0x0000000000000000000000000000000000000000",'
+                '"uspdToken": "0x0000000000000000000000000000000000000000",'
                 '"rateContract": "0x0000000000000000000000000000000000000000"'
             '},'
             '"config": {'
@@ -519,8 +472,8 @@ contract DeployScript is Script {
                 '"usdcAddress": "0x0",'
                 '"uniswapRouter": "0x0",'
                 '"chainlinkAggregator": "0x0",'
-                '"lidoAddress": "0x0",' // Add lidoAddress field
-                '"stETHAddress": "0x0"' // Add stETHAddress field
+                '"lidoAddress": "0x0",'
+                '"stETHAddress": "0x0"'
             '},'
             '"metadata": {'
                 '"chainId": 0,'
@@ -537,22 +490,20 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(proxyAdminAddress), deploymentPath, ".contracts.proxyAdmin");
         vm.writeJson(vm.toString(oracleImplAddress), deploymentPath, ".contracts.oracleImpl");
         vm.writeJson(vm.toString(oracleProxyAddress), deploymentPath, ".contracts.oracle");
-        vm.writeJson(vm.toString(cuspdTokenAddress), deploymentPath, ".contracts.cuspdToken"); // Save cUSPD address
-        vm.writeJson(vm.toString(uspdTokenAddress), deploymentPath, ".contracts.uspdToken"); // Save USPD address
+        vm.writeJson(vm.toString(cuspdTokenAddress), deploymentPath, ".contracts.cuspdToken");
+        vm.writeJson(vm.toString(uspdTokenAddress), deploymentPath, ".contracts.uspdToken");
 
-        // Conditionally save full system contracts (use the addresses stored in state variables)
-        // vm.writeJson(vm.toString(positionNFTImplAddress), deploymentPath, ".contracts.positionNFTImpl"); // Removed
-        // vm.writeJson(vm.toString(positionNFTProxyAddress), deploymentPath, ".contracts.positionNFT"); // Removed
+        // Conditionally save full system contracts
         vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
         vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
         vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
 
-        // Save configuration (some might be 0x0 depending on network)
+        // Save configuration
         vm.writeJson(vm.toString(usdcAddress), deploymentPath, ".config.usdcAddress");
         vm.writeJson(vm.toString(uniswapRouter), deploymentPath, ".config.uniswapRouter");
         vm.writeJson(vm.toString(chainlinkAggregator), deploymentPath, ".config.chainlinkAggregator");
-        vm.writeJson(vm.toString(lidoAddress), deploymentPath, ".config.lidoAddress"); // Save Lido address
-        vm.writeJson(vm.toString(stETHAddress), deploymentPath, ".config.stETHAddress"); // Save stETH address
+        vm.writeJson(vm.toString(lidoAddress), deploymentPath, ".config.lidoAddress");
+        vm.writeJson(vm.toString(stETHAddress), deploymentPath, ".config.stETHAddress");
 
         // Add metadata
         vm.writeJson(vm.toString(chainId), deploymentPath, ".metadata.chainId");

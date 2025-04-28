@@ -19,15 +19,11 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     IPriceOracle public oracle; // Made mutable
     IStabilizerNFT public stabilizer; // Made mutable
     IPoolSharesConversionRate public rateContract; // Made mutable
-    uint256 public constant FACTOR_PRECISION = 1e18; // Match rate contract precision
+    uint256 public constant FACTOR_PRECISION = 1e18;
 
     // --- Roles ---
-    // MINTER_ROLE removed
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");   // Role allowed to initiate burning (e.g., a frontend contract or EOA) - Keeping for now, might remove later if burn is also unrestricted
-    bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE"); // Role for updating dependencies
-    // Note: STABILIZER_ROLE is likely needed *by* StabilizerNFT *on* this contract if StabilizerNFT needs to call back (e.g., for adjustments),
-    // but StabilizerNFT itself initiates the calls *to* PositionEscrow during mint/burn triggered here.
-    // Let's assume no direct callbacks needed from StabilizerNFT to cUSPD for now.
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
     // --- Events ---
     // Standard ERC20 Transfer event will track cUSPD share transfers.
@@ -58,14 +54,12 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         address _stabilizer,
         address _rateContract,
         address _admin,
-        // address _minter, // MINTER_ROLE removed
-        address _burner  // Grant initial burner role
+        address _burner
     ) ERC20(name, symbol) ERC20Permit(name) {
         require(_oracle != address(0), "cUSPD: Zero oracle address");
-        require(_stabilizer != address(0), "cUSPD: Zero stabilizer address"); // Stabilizer is essential
+        require(_stabilizer != address(0), "cUSPD: Zero stabilizer address");
         require(_rateContract != address(0), "cUSPD: Zero rate contract address");
         require(_admin != address(0), "cUSPD: Zero admin address");
-        // require(_minter != address(0), "cUSPD: Zero minter address"); // Removed check
         require(_burner != address(0), "cUSPD: Zero burner address");
 
         oracle = IPriceOracle(_oracle);
@@ -73,10 +67,8 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         rateContract = IPoolSharesConversionRate(_rateContract);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        // _grantRole(MINTER_ROLE, _minter); // Removed MINTER_ROLE grant
         _grantRole(BURNER_ROLE, _burner);
-        _grantRole(UPDATER_ROLE, _admin); // Grant admin updater role initially
-        // Grant StabilizerNFT any roles it might need on cUSPD if callbacks are added later
+        _grantRole(UPDATER_ROLE, _admin);
     }
 
     // --- Core Logic ---
@@ -120,12 +112,10 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         // 5. Determine actual shares minted based on actual ETH allocated
         uint256 actualPoolSharesMinted;
         if (result.allocatedEth == 0) {
-             actualPoolSharesMinted = 0; // No allocation happened
+             actualPoolSharesMinted = 0;
         } else if (result.allocatedEth >= ethForAllocation) {
-            // Full allocation or more (shouldn't be more, but handle >=)
             actualPoolSharesMinted = targetPoolSharesToMint;
         } else {
-            // Partial allocation, recalculate shares based on allocated ETH
             uint256 allocatedUSDValue = (result.allocatedEth * oracleResponse.price) / (10**uint256(oracleResponse.decimals));
             actualPoolSharesMinted = (allocatedUSDValue * FACTOR_PRECISION) / yieldFactor;
         }
@@ -168,27 +158,24 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         _burn(msg.sender, sharesAmount);
 
         // 3. Unallocate funds via StabilizerNFT
-        // StabilizerNFT handles interaction with PositionEscrow(s) and transfers stETH to this contract
         uint256 unallocatedStEth = stabilizer.unallocateStabilizerFunds(
-            sharesAmount, // Pass the exact shares being burned
+            sharesAmount,
             oracleResponse
         );
 
         // 4. Emit events
-        emit SharesBurned(msg.sender, msg.sender, sharesAmount, unallocatedStEth); // Use renamed variable
-        emit Payout(to, sharesAmount, unallocatedStEth, oracleResponse.price); // Use renamed variable
+        emit SharesBurned(msg.sender, msg.sender, sharesAmount, unallocatedStEth);
+        emit Payout(to, sharesAmount, unallocatedStEth, oracleResponse.price);
 
-        // 5. Transfer redeemed stETH to the recipient
         if (unallocatedStEth > 0) {
-            address stETHAddress = rateContract.stETH(); // Get stETH address from rateContract
+            address stETHAddress = rateContract.stETH();
             require(stETHAddress != address(0), "cUSPD: Invalid stETH address from rateContract");
-            // Ensure this contract has the stETH balance before transferring
             require(IERC20(stETHAddress).balanceOf(address(this)) >= unallocatedStEth, "cUSPD: Insufficient stETH received");
             bool success = IERC20(stETHAddress).transfer(to, unallocatedStEth);
             require(success, "cUSPD: stETH transfer failed");
         }
 
-        return unallocatedStEth; // Return the amount of stETH transferred
+        return unallocatedStEth;
     }
 
     // --- Admin Functions ---
@@ -227,11 +214,8 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     }
 
     // --- ERC20 Standard Functions ---
-    // Inherited: balanceOf, totalSupply, transfer, transferFrom, approve, allowance, etc.
-    // These operate directly on the non-rebasing cUSPD shares.
 
     // --- Fallback ---
-    // Prevent direct ETH transfers
     receive() external payable {
         revert("cUSPD: Direct ETH transfers not allowed");
     }

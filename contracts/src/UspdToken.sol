@@ -50,7 +50,6 @@ contract USPDToken is
     }
 
     // --- Core Logic (Mint/Burn Removed) ---
-    // Minting and Burning are handled by the cUSPDToken contract directly.
 
     // --- ERC20 Overrides ---
 
@@ -96,7 +95,6 @@ contract USPDToken is
 
         // Call transfer on the underlying cUSPD token
         return cuspdToken.transfer(to, sharesToTransfer);
-        // Note: The Transfer event emitted by cUSPD will reflect the share amount, not the USPD amount.
     }
 
     /**
@@ -132,7 +130,6 @@ contract USPDToken is
 
         // Call approve on the underlying cUSPD token
         return cuspdToken.approve(spender, sharesToApprove);
-        // Note: The Approval event emitted by cUSPD will reflect the share amount, not the USPD amount.
     }
 
     /**
@@ -153,7 +150,6 @@ contract USPDToken is
         require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield");
 
         // Call transferFrom on the underlying cUSPD token
-        // The allowance check happens within cUSPD's transferFrom
         return cuspdToken.transferFrom(from, to, sharesToTransfer);
     }
 
@@ -181,7 +177,6 @@ contract USPDToken is
         cuspdToken = IcUSPDToken(newCUSPDAddress);
     }
 
-    // --- Internal (Removed _update override) ---
 
     // --- Fallback ---
     // Prevent direct ETH transfers

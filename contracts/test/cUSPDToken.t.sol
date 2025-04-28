@@ -28,7 +28,7 @@ import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol"; // For mocking WETH()
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // For mocking getPool
-import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol"; // For mocking slot0
+import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
 
 
 // Helper contract to expose internal _mint for testing
@@ -58,10 +58,9 @@ contract cUSPDTokenTest is Test {
     cUSPDToken internal cuspdToken;
 
     // --- Test Actors & Config ---
-    address internal admin; // Test contract often acts as admin
-    // address internal minter; // MINTER_ROLE removed
-    address internal burner; // Address granted BURNER_ROLE
-    address internal updater; // Address granted UPDATER_ROLE
+    address internal admin;
+    address internal burner;
+    address internal updater;
     address internal user1;
     address internal user2;
     address internal recipient;
@@ -78,7 +77,6 @@ contract cUSPDTokenTest is Test {
     function setUp() public {
         // 1. Setup Addresses & Signer
         admin = address(this);
-        // minter = address(this); // MINTER_ROLE removed
         burner = address(this);
         updater = address(this);
         user1 = makeAddr("user1");
@@ -149,15 +147,10 @@ contract cUSPDTokenTest is Test {
             address(rateContract),
             admin                     // Admin
         );
-        // Grant StabilizerNFT MINTER_ROLE to admin for test setup convenience
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), admin);
 
 
-        // 4. Link USPD View Token to cUSPD Token - NO LONGER NEEDED (set in constructor)
-        // uspdTokenView.updateCUSPDAddress(address(cuspdToken));
-
-        // 6. Setup Oracle Mocks (Chainlink, Uniswap) - Renumbered step
-        // Mock Chainlink
+        // 6. Setup Oracle Mocks (Chainlink, Uniswap)
         int mockPriceAnswer = 2000 * 1e8;
         uint256 mockTimestamp = block.timestamp;
         bytes memory mockChainlinkReturn = abi.encode(uint80(1), mockPriceAnswer, mockTimestamp, mockTimestamp, uint80(1));
@@ -173,11 +166,7 @@ contract cUSPDTokenTest is Test {
         bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
         vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
 
-        // 7. Grant any necessary cross-contract roles - Renumbered step
-        // Example: If StabilizerNFT needed to call cUSPDToken (not currently the case)
-        // cuspdToken.grantRole(cuspdToken.SOME_ROLE_FOR_STABILIZER(), address(stabilizerNFT));
-        // Example: If USPDToken needed roles on cUSPD (not currently the case)
-        // cuspdToken.grantRole(cuspdToken.SOME_ROLE_FOR_USPDVIEW(), address(uspdTokenView));
+        // 7. Grant any necessary cross-contract roles
     }
 
     // --- Helper Functions ---
@@ -216,9 +205,8 @@ contract cUSPDTokenTest is Test {
 
         // Check roles
         assertTrue(cuspdToken.hasRole(cuspdToken.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
-        // assertTrue(cuspdToken.hasRole(cuspdToken.MINTER_ROLE(), minter), "Minter role mismatch"); // MINTER_ROLE removed
         assertTrue(cuspdToken.hasRole(cuspdToken.BURNER_ROLE(), burner), "Burner role mismatch");
-        assertTrue(cuspdToken.hasRole(cuspdToken.UPDATER_ROLE(), admin), "Updater role mismatch (should be admin)"); // Granted to admin in setup
+        assertTrue(cuspdToken.hasRole(cuspdToken.UPDATER_ROLE(), admin), "Updater role mismatch (should be admin)");
     }
 
     function testConstructor_Revert_ZeroAddresses() public {
@@ -232,13 +220,10 @@ contract cUSPDTokenTest is Test {
         new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(0), admin, minter, burner);
 
         vm.expectRevert("cUSPD: Zero admin address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0), /* minter, */ burner);
-
-        // vm.expectRevert("cUSPD: Zero minter address"); // MINTER_ROLE removed
-        // new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, address(0), burner);
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0), burner);
 
         vm.expectRevert("cUSPD: Zero burner address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, /* minter, */ address(0));
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, address(0));
     }
 
     // =============================================
@@ -248,11 +233,11 @@ contract cUSPDTokenTest is Test {
     function testMintShares_Success() public {
         // Setup: Mint StabilizerNFT and add funds
         uint256 tokenId = 1;
-        vm.prank(admin); // Use admin (owner in StabilizerNFT setup)
-        stabilizerNFT.mint(user1, tokenId); // Mint to user1
-        vm.deal(user1, 2 ether); // Fund stabilizer owner
+        vm.prank(admin);
+        stabilizerNFT.mint(user1, tokenId);
+        vm.deal(user1, 2 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId); // Add funds
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
 
         // Action: Mint shares
         uint256 ethToSend = 1 ether;
@@ -260,17 +245,14 @@ contract cUSPDTokenTest is Test {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(price, block.timestamp);
 
         // Calculate expected shares (assuming 110% ratio, 1:1 yield)
-        // User ETH = 1, Stabilizer ETH = 0.1, Total ETH = 1.1
-        // USD Value = 1 * 2000 = 2000
-        // Shares = 2000 * 1e18 / 1e18 = 2000 ether
         uint256 expectedShares = 2000 ether;
-        uint256 expectedAllocatedEth = 1 ether; // Should allocate all user ETH
+        uint256 expectedAllocatedEth = 1 ether;
 
         vm.expectEmit(true, true, true, true, address(cuspdToken));
-        emit cUSPDToken.SharesMinted(user1, user2, expectedAllocatedEth, expectedShares); // msg.sender is now user1
+        emit cUSPDToken.SharesMinted(user1, user2, expectedAllocatedEth, expectedShares);
 
-        vm.deal(user1, ethToSend); // Fund user1
-        vm.prank(user1); // Any user (user1) calls mintShares
+        vm.deal(user1, ethToSend);
+        vm.prank(user1);
         cuspdToken.mintShares{value: ethToSend}(user2, priceQuery);
 
         // Assertions
@@ -281,16 +263,15 @@ contract cUSPDTokenTest is Test {
         address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
         assertApproxEqAbs(positionEscrow.backedPoolShares(), expectedShares, 1e6, "PositionEscrow backed shares mismatch");
-        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 1.1 ether, 1e15, "PositionEscrow stETH balance mismatch"); // 1 user + 0.1 stabilizer
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 1.1 ether, 1e15, "PositionEscrow stETH balance mismatch");
     }
 
-     // Removed testMintShares_Revert_NotMinter as role check was removed
 
     function testMintShares_Revert_NoEthSent() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("cUSPD: Must send ETH to mint");
-        vm.prank(minter);
-        cuspdToken.mintShares(user1, priceQuery); // No value sent
+        vm.prank(user1); // Any user can attempt
+        cuspdToken.mintShares(user1, priceQuery);
     }
 
     function testMintShares_Revert_ZeroRecipient() public {
@@ -356,7 +337,7 @@ contract cUSPDTokenTest is Test {
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(tokenId, 110); // Set ratio
+        stabilizerNFT.setMinCollateralizationRatio(tokenId, 110);
 
         uint256 ethToSend = 1 ether;
         uint256 price = 2000 ether;
@@ -375,16 +356,14 @@ contract cUSPDTokenTest is Test {
         uint256 recipientStEthBefore = mockStETH.balanceOf(recipient);
 
         // Calculate expected stETH return
-        // user stETH = shares * yield / price = (initialShares/2) * 1e18 / 2000e18
         uint256 expectedStEthReturned = (sharesToBurn * cuspdToken.FACTOR_PRECISION()) / price;
 
         vm.expectEmit(true, true, true, true, address(cuspdToken));
-        // msg.sender for SharesBurned is now user2
         emit cUSPDToken.SharesBurned(user2, user2, sharesToBurn, expectedStEthReturned);
         vm.expectEmit(true, true, true, true, address(cuspdToken));
         emit cUSPDToken.Payout(recipient, sharesToBurn, expectedStEthReturned, price);
 
-        vm.prank(user2); // User2 calls burnShares
+        vm.prank(user2);
         uint256 actualStEthReturned = cuspdToken.burnShares(sharesToBurn, payable(recipient), burnQuery);
 
         // Assertions
@@ -393,33 +372,31 @@ contract cUSPDTokenTest is Test {
         assertApproxEqAbs(cuspdToken.totalSupply(), initialShares - sharesToBurn, 1e6, "Total cUSPD supply mismatch");
         assertEq(mockStETH.balanceOf(recipient), recipientStEthBefore + expectedStEthReturned, "Recipient stETH balance mismatch");
 
+        assertEq(mockStETH.balanceOf(recipient), recipientStEthBefore + expectedStEthReturned, "Recipient stETH balance mismatch");
+
         // Check PositionEscrow state
         address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
         assertApproxEqAbs(positionEscrow.backedPoolShares(), initialShares - sharesToBurn, 1e6, "PositionEscrow backed shares mismatch after burn");
-        // Check stETH balance decreased (exact amount depends on ratio)
-        // Initial stETH = 1.1, Removed stETH = userShare * ratio / 100 = 0.5 * 110 / 100 = 0.55
-        // Remaining = 1.1 - 0.55 = 0.55
         assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 0.55 ether, 1e15, "PositionEscrow stETH balance mismatch after burn");
     }
 
     function testBurnShares_Revert_ZeroAmount() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("cUSPD: Shares amount must be positive");
-        vm.prank(burner);
+        vm.prank(user1); // Any user can attempt
         cuspdToken.burnShares(0, payable(recipient), priceQuery);
     }
 
     function testBurnShares_Revert_ZeroRecipient() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("cUSPD: Burn to zero address");
-        vm.prank(burner);
+        vm.prank(user1); // Any user can attempt
         cuspdToken.burnShares(1 ether, payable(address(0)), priceQuery);
     }
 
     function testBurnShares_Revert_InvalidPrice() public {
         // Setup: Mint shares first
-        // ... (similar setup as testBurnShares_Success) ...
         uint256 tokenId = 1;
         vm.prank(admin); stabilizerNFT.mint(user1, tokenId);
         vm.deal(user1, 2 ether); vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
@@ -463,19 +440,14 @@ contract cUSPDTokenTest is Test {
     }
 
     function testBurnShares_Revert_NoAllocatedStabilizers() public {
-        // Test Purpose: Verify that burnShares correctly propagates the revert from
-        // StabilizerNFT.unallocateStabilizerFunds if the stabilizer somehow enters
-        // a state where no positions are allocated (highestAllocatedId == 0).
-        // Note: This state (cUSPD supply > 0 but highestAllocatedId == 0) should
-        // not occur in a normally functioning system. This test focuses on
-        // ensuring cUSPD handles the dependency revert correctly.
+        // Test Purpose: Verify error propagation from StabilizerNFT.
+        // Note: This state (shares > 0, highestAllocatedId == 0) shouldn't normally occur.
 
         // Setup: Ensure no stabilizers are allocated initially
         require(stabilizerNFT.highestAllocatedId() == 0, "Test setup fail: Stabilizers allocated");
 
-        // Mint some shares directly for testing burn revert (bypass mintShares logic)
-        // Use the exposed internal mint function via the TestableCUSPD instance
-        TestableCUSPD(payable(address(cuspdToken))).mintInternal(user1, 1000 ether); // Mint shares to user1
+        // Mint shares directly using helper to bypass allocation logic
+        TestableCUSPD(payable(address(cuspdToken))).mintInternal(user1, 1000 ether);
 
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
@@ -512,8 +484,6 @@ contract cUSPDTokenTest is Test {
     // IV. Admin Functions Tests
     // =============================================
 
-    // --- updateOracle ---
-
     function testUpdateOracle_Success() public {
         address newOracle = makeAddr("newOracle");
         address oldOracle = address(cuspdToken.oracle());
@@ -521,7 +491,7 @@ contract cUSPDTokenTest is Test {
         vm.expectEmit(true, true, false, true, address(cuspdToken));
         emit cUSPDToken.PriceOracleUpdated(oldOracle, newOracle);
 
-        vm.prank(updater); // Updater has the role
+        vm.prank(updater);
         cuspdToken.updateOracle(newOracle);
 
         assertEq(address(cuspdToken.oracle()), newOracle, "Oracle address not updated");
@@ -529,7 +499,7 @@ contract cUSPDTokenTest is Test {
 
     function testUpdateOracle_Revert_NotUpdater() public {
         address newOracle = makeAddr("newOracle");
-        address nonUpdater = user1; // User1 doesn't have the role
+        address nonUpdater = user1;
 
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonUpdater, cuspdToken.UPDATER_ROLE()));
         vm.prank(nonUpdater);
@@ -541,8 +511,6 @@ contract cUSPDTokenTest is Test {
         vm.prank(updater);
         cuspdToken.updateOracle(address(0));
     }
-
-    // --- updateStabilizer ---
 
     function testUpdateStabilizer_Success() public {
         address newStabilizer = makeAddr("newStabilizer");
@@ -571,8 +539,6 @@ contract cUSPDTokenTest is Test {
         vm.prank(updater);
         cuspdToken.updateStabilizer(address(0));
     }
-
-    // --- updateRateContract ---
 
     function testUpdateRateContract_Success() public {
         address newRateContract = makeAddr("newRateContract");
@@ -606,12 +572,10 @@ contract cUSPDTokenTest is Test {
     // =============================================
     // V. ERC20 Standard Tests (Placeholder)
     // =============================================
-    // TODO: Add tests for transfer, approve, allowance, transferFrom on cUSPD shares
 
     // =============================================
     // VI. ERC20Permit Tests (Placeholder)
     // =============================================
-    // TODO: Add tests for permit function
 
     // =============================================
     // VII. Fallback Test

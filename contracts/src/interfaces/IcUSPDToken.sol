@@ -28,12 +28,4 @@ interface IcUSPDToken is IERC20 {
      */
     function oracle() external view returns (address);
 
-    // Add any other specific functions from cUSPDToken that other contracts might need to call,
-    // beyond the standard IERC20 functions.
-
-    // Example:
-    // function stabilizer() external view returns (address);
-    // function rateContract() external view returns (address);
-    // function mintShares(address to, IPriceOracle.PriceAttestationQuery calldata priceQuery) external payable;
-    // function burnShares(uint256 sharesAmount, address payable to, bytes calldata priceQuery) external;
 }

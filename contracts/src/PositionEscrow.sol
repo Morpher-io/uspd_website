@@ -33,8 +33,6 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
 
     uint256 public override backedPoolShares; // Liability tracked in pool shares
 
-    // --- Modifiers ---
-    // Removed custom onlyStabilizerNFT modifier, using onlyRole instead
 
     // --- Constructor ---
     /**
@@ -83,14 +81,11 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     function addCollateral(uint256 totalStEthAmount)
         external
         override
-        // Allow both roles? StabilizerNFT needs it for allocation. Owner might need it if adding directly.
-        // Let's restrict to STABILIZER_ROLE for now, assuming direct owner additions are handled differently or not needed.
         onlyRole(STABILIZER_ROLE)
     {
-        // Note: The actual stETH transfer happens *before* this call.
         if (totalStEthAmount == 0) revert ZeroAmount(); // Must add some collateral
 
-        emit CollateralAdded(totalStEthAmount); // Emit simplified event
+        emit CollateralAdded(totalStEthAmount);
     }
 
     /**
@@ -234,20 +229,11 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) { // Role check remains
         // --- Logic ---
-        // 1. Validate inputs
-        // 2. Validate price query
-        // 3. Get current state
-        // 4. Check sufficient balance
-        // 5. Calculate state *after* removal
-        // 6. If liability exists, check if new ratio >= minCollateralRatio
-        // 7. Transfer amount
-        // 8. Emit event
         // --- Implementation ---
 
         // 1. Validate inputs
         if (recipient == address(0)) revert ZeroAddress();
         if (amountToRemove == 0) revert ZeroAmount();
-        // Removed minCollateralRatio check here, using constant below
 
         // 2. Validate price query
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle(oracle)

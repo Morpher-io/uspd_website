@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
-import "./interfaces/ILido.sol"; // Import Lido interface
+import "./interfaces/ILido.sol";
 
 /**
  * @title PoolSharesConversionRate
@@ -58,20 +58,17 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate {
             revert NoEthSent();
         }
 
-        stETH = _stETHAddress; // Store stETH address
+        stETH = _stETHAddress;
 
         // Call Lido's submit function to stake the received ETH
-        // The stETH will be minted to this contract's address
         ILido(_lidoAddress).submit{value: msg.value}(
-            address(0) // No referral
+            address(0)
         );
 
         // Check the actual balance after the submit call
         uint256 balance = IERC20(stETH).balanceOf(address(this));
 
-        // Ensure Lido call resulted in stETH balance
         if (balance == 0) {
-            // Could also check receivedStEth, but balance check is more direct
             revert InitialBalanceZero();
         }
 
@@ -88,8 +85,7 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate {
      * @return yieldFactor The current yield factor, scaled by FACTOR_PRECISION.
      */
     function getYieldFactor() external view override returns (uint256 yieldFactor) {
-        uint256 initialBalance = initialStEthBalance; // Read immutable to memory
-        // Should not happen due to constructor check, but added for safety.
+        uint256 initialBalance = initialStEthBalance;
         if (initialBalance == 0) {
             return FACTOR_PRECISION;
         }
@@ -97,7 +93,6 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate {
         uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
 
         // Calculate factor using integer math (multiply first)
-        // factor = current / initial * precision
         yieldFactor = (currentBalance * FACTOR_PRECISION) / initialBalance;
     }
 }

@@ -29,12 +29,10 @@ contract StabilizerNFT is
     AccessControlUpgradeable
 {
     // --- Constants ---
-    uint256 public constant FACTOR_PRECISION = 1e18; // Moved inside
+    uint256 public constant FACTOR_PRECISION = 1e18;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE"); // New role
-    // Minimum gas required for allocation loop
+    bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE");
     uint256 public constant MIN_GAS = 100000;
-    // --- End Constants ---
 
     struct StabilizerPosition {
         // uint256 totalEth; // Removed - Unallocated funds are now held in StabilizerEscrow
@@ -56,7 +54,7 @@ contract StabilizerNFT is
     uint256 public lowestAllocatedId;
     uint256 public highestAllocatedId;
 
-    // cUSPD token contract (Core Logic) - USPD view layer token removed
+    // cUSPD token contract (Core Logic)
     IcUSPDToken public cuspdToken;
 
     // Addresses needed for Escrow deployment/interaction
@@ -107,8 +105,7 @@ contract StabilizerNFT is
     }
 
     function initialize(
-        // address _uspdToken, // View layer token address - REMOVED
-        address _cuspdToken, // Core share token address
+        address _cuspdToken,
         address _stETH,
         address _lido,
         address _rateContract,
@@ -120,17 +117,12 @@ contract StabilizerNFT is
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        // uspdToken = USPDToken(payable(_uspdToken)); // REMOVED assignment
-        cuspdToken = IcUSPDToken(_cuspdToken); // Initialize cUSPD token
+        cuspdToken = IcUSPDToken(_cuspdToken);
         stETH = _stETH;
         lido = _lido;
-        rateContract = IPoolSharesConversionRate(_rateContract); // Initialize rate contract
-        // createX = ICreateX(_createX); // Uncomment if using CREATE2 factory
+        rateContract = IPoolSharesConversionRate(_rateContract);
 
-        // Initialize collateral snapshot state
         totalEthEquivalentAtLastSnapshot = 0;
-        // Set initial yield factor snapshot (assuming 1e18 if rate contract isn't deployed/readable yet, otherwise query it)
-        // For simplicity here, assume 1e18. A more robust init might query rateContract if possible.
         yieldFactorAtLastSnapshot = FACTOR_PRECISION;
     }
 
@@ -182,10 +174,9 @@ contract StabilizerNFT is
      */
     function _registerUnallocatedPosition(uint256 tokenId) internal {
         StabilizerPosition storage pos = positions[tokenId];
-        // Only register if it's not already linked (prevents messing up existing links)
-        // And ensure it's not the only element already (handles edge case of adding funds multiple times)
+        // Only register if it's not already linked
         if (pos.prevUnallocated == 0 && pos.nextUnallocated == 0 && lowestUnallocatedId != tokenId) {
-             if (lowestUnallocatedId == 0) { // List is empty
+             if (lowestUnallocatedId == 0) {
                 lowestUnallocatedId = tokenId;
                 highestUnallocatedId = tokenId;
             } else if (tokenId > highestUnallocatedId) {
@@ -210,15 +201,13 @@ contract StabilizerNFT is
                 pos.prevUnallocated = currentId;
                 pos.nextUnallocated = nextId;
                 positions[currentId].nextUnallocated = tokenId;
-                if (nextId != 0) { // Check if not inserting at the end
+                if (nextId != 0) {
                     positions[nextId].prevUnallocated = tokenId;
                 } else {
-                    // This case should be covered by the tokenId > highestUnallocatedId check, but included for completeness
                     highestUnallocatedId = tokenId;
                 }
             }
         }
-        // If already in the list (pos.prev/next != 0 or it's the only element), do nothing.
     }
 
 
@@ -232,8 +221,7 @@ contract StabilizerNFT is
         require(msg.value > 0, "No ETH sent"); // User must send ETH
 
         uint256 currentId = lowestUnallocatedId;
-        uint256 remainingEth = msg.value; // User's ETH to be backed
-        // Initialize result struct fields
+        uint256 remainingEth = msg.value;
         result.allocatedEth = 0;
         result.totalEthEquivalentAdded = 0;
 
@@ -250,9 +238,8 @@ contract StabilizerNFT is
             // Get available stETH balance from the escrow
             uint256 escrowBalance = IStabilizerEscrow(escrowAddress).unallocatedStETH();
 
-            // Skip if escrow has no funds or user needs no more funds
             if (escrowBalance == 0 || remainingEth == 0) {
-                 currentId = pos.nextUnallocated; // Move to next
+                 currentId = pos.nextUnallocated;
                  continue;
             }
 
@@ -320,9 +307,7 @@ contract StabilizerNFT is
             }
             
             // --- Accumulate ETH Equivalent Delta for Snapshot ---
-            // Delta = User's ETH + Stabilizer's stETH (treated 1:1 as ETH value at this moment)
             result.totalEthEquivalentAdded += (userEthShare + toAllocate);
-            // --- Snapshot call moved outside loop ---
 
             // Move to next stabilizer
             uint nextId = pos.nextUnallocated;
@@ -342,19 +327,10 @@ contract StabilizerNFT is
         if (result.totalEthEquivalentAdded > 0) {
             _updateCollateralSnapshot(int256(result.totalEthEquivalentAdded));
         }
-        // --- End Snapshot Update ---
 
-        // Return any unallocated ETH to cUSPD token (which should forward to original minter)
+        // Return any unallocated ETH to cUSPD token
         if (remainingEth > 0) {
-            // cUSPD needs a function to handle this refund, or transfer directly to tx.origin?
-            // For now, let's assume cUSPD handles it via a specific function or direct transfer.
-            // If transferring directly, need to ensure cUSPD doesn't revert on receive.
-            // Safest is likely a callback to cUSPD. Let's assume cUSPD handles refund internally for now.
-            // payable(address(cuspdToken)).transfer(remainingEth); // This would require cUSPD to be payable and handle it.
-            // OR: cuspdToken.handleRefund(remainingEth); // Requires a new function on cUSPD
-            // OR: Transfer back to the original minter (tx.origin)? Risky.
-            // Let's comment out the direct transfer for now, assuming cUSPD handles refund logic.
-            // payable(msg.sender).transfer(remainingEth); // Send back to cUSPD
+            // Assuming cUSPD handles refund logic internally for now.
         }
 
         return result;
@@ -378,8 +354,7 @@ contract StabilizerNFT is
         // Register position if it now has funds (Escrow handles staking)
         _registerUnallocatedPosition(tokenId);
 
-        // Emit event indicating ETH was added (amount is msg.value)
-        emit UnallocatedFundsAdded(tokenId, address(0), msg.value); // Use address(0) for ETH
+        emit UnallocatedFundsAdded(tokenId, address(0), msg.value);
     }
 
     /**
@@ -401,7 +376,6 @@ contract StabilizerNFT is
         // Register position if it now has funds
         _registerUnallocatedPosition(tokenId);
 
-        // Emit event indicating stETH was added
         emit UnallocatedFundsAdded(tokenId, stETH, stETHAmount);
     }
 
@@ -497,11 +471,11 @@ contract StabilizerNFT is
         require(highestAllocatedId != 0, "No allocated funds");
 
         uint256 currentId = highestAllocatedId;
-        uint256 remainingPoolShares = poolSharesToUnallocate; // Use new parameter name
-        uint256 totalUserStEthReturned = 0; // Track total stETH for user
-        uint256 totalEthEquivalentRemovedAggregate = 0; // Accumulator for snapshot update
+        uint256 remainingPoolShares = poolSharesToUnallocate;
+        uint256 totalUserStEthReturned = 0;
+        uint256 totalEthEquivalentRemovedAggregate = 0;
 
-        while (currentId != 0 && remainingPoolShares > 0) { // Use remainingPoolShares
+        while (currentId != 0 && remainingPoolShares > 0) {
             if (gasleft() < MIN_GAS) break;
 
             StabilizerPosition storage pos = positions[currentId];
@@ -538,16 +512,11 @@ contract StabilizerNFT is
                     // Distribute received stETH
                     uint256 stabilizerStEthShare = stEthToRemove - userStEthShare;
 
-                    // Send user's share to cUSPDToken (which should forward to user as ETH)
+                    // Send user's share to cUSPDToken
                     if (userStEthShare > 0) {
-                        // Transfer stETH to cUSPDToken. cUSPDToken's burnShares function
-                        // already calculated the ETH equivalent and will send ETH to the user.
-                        // This contract (StabilizerNFT) just needs to ensure cUSPD gets the stETH collateral back.
                         bool successUser = IERC20(stETH).transfer(address(cuspdToken), userStEthShare);
                         if (!successUser) revert("User stETH transfer to cUSPDToken failed");
-                        // No need to call back to cUSPD here, the ETH transfer happens in burnShares.
-
-                        totalUserStEthReturned += userStEthShare; // Track stETH moved for user's portion
+                        totalUserStEthReturned += userStEthShare;
                     }
 
                     // Send stabilizer's share back to their StabilizerEscrow
@@ -559,26 +528,23 @@ contract StabilizerNFT is
                     }
 
                     // --- Accumulate ETH Equivalent Delta for Snapshot ---
-                    // Delta = Total stETH removed (treated 1:1 as ETH value at this moment)
                     totalEthEquivalentRemovedAggregate += stEthToRemove;
-                    // --- Snapshot call moved outside loop ---
 
                     // If all shares from this position were unallocated, update lists
                     bool fullyUnallocated = (currentBackedShares == poolSharesSliceToUnallocate);
                     if (fullyUnallocated) {
                         _removeFromAllocatedList(currentId);
-                        // Check if StabilizerEscrow has balance before adding back to unallocated
                         if (IStabilizerEscrow(stabilizerEscrows[currentId]).unallocatedStETH() > 0) {
                              _registerUnallocatedPosition(currentId);
                         }
                     }
 
-                    remainingPoolShares -= poolSharesSliceToUnallocate; // Decrease remaining shares
-                    emit FundsUnallocated(currentId, userStEthShare, stabilizerStEthShare); // Emit updated event
+                    remainingPoolShares -= poolSharesSliceToUnallocate;
+                    emit FundsUnallocated(currentId, userStEthShare, stabilizerStEthShare);
                 }
             }
 
-            currentId = pos.prevAllocated; // Move to the next stabilizer in the allocated list
+            currentId = pos.prevAllocated;
         }
 
         require(totalUserStEthReturned > 0, "No funds unallocated");
@@ -587,14 +553,10 @@ contract StabilizerNFT is
         if (totalEthEquivalentRemovedAggregate > 0) {
             _updateCollateralSnapshot(-int256(totalEthEquivalentRemovedAggregate));
         }
-        // --- End Snapshot Update ---
 
-        // Return the total stETH amount intended for the user (USPDToken handles final transfer)
         return totalUserStEthReturned;
     }
 
-    // Removed removeUnallocatedFunds function as totalEth is no longer tracked here.
-    // Withdrawal logic should now be handled via StabilizerEscrow.
 
     function tokenURI(
         uint256 tokenId
@@ -613,9 +575,6 @@ contract StabilizerNFT is
                         '"image": "data:image/svg+xml;base64,',
                         Base64.encode(bytes(generateSVG(tokenId))),
                         '", "attributes": [',
-                        // '{"trait_type": "Unallocated ETH", "value": "', // Removed totalEth attribute
-                        // toString(pos.totalEth), // Removed totalEth attribute
-                        // '"},', // Removed totalEth attribute
                         '{"trait_type": "Min Collateral Ratio", "value": "',
                         toString(pos.minCollateralRatio),
                         '%"}',
@@ -641,10 +600,6 @@ contract StabilizerNFT is
                     "Stabilizer #",
                     toString(tokenId),
                     "</text>",
-                    // '<text x="50%" y="60%" class="base" dominant-baseline="middle" text-anchor="middle">', // Removed totalEth display
-                    // toString(pos.totalEth), // Removed totalEth display
-                    // " ETH Unallocated", // Removed totalEth display
-                    // "</text>", // Removed totalEth display
                     "</svg>"
                 )
             );
@@ -723,17 +678,16 @@ contract StabilizerNFT is
 
         // Project old snapshot's ETH equivalent value to the current time using yield factors
         uint256 projectedOldEthValue;
-        if (oldYieldFactor == 0) { // Should only happen at initialization before first update
+        if (oldYieldFactor == 0) {
              require(oldEthSnapshot == 0, "Inconsistent initial state");
              projectedOldEthValue = 0;
         } else if (currentYieldFactor == oldYieldFactor) {
-            projectedOldEthValue = oldEthSnapshot; // No change if yield factor is the same
+            projectedOldEthValue = oldEthSnapshot;
         } else {
-            // projected_value = old_eth_snapshot * current_yield / old_yield
             projectedOldEthValue = (oldEthSnapshot * currentYieldFactor) / oldYieldFactor;
         }
 
-        // Apply the delta (which is already in ETH equivalent terms for the current moment)
+        // Apply the delta
         if (ethEquivalentDelta >= 0) {
             newEthSnapshot = projectedOldEthValue + uint256(ethEquivalentDelta);
         } else {
@@ -744,7 +698,7 @@ contract StabilizerNFT is
 
         // --- Update State ---
         totalEthEquivalentAtLastSnapshot = newEthSnapshot;
-        yieldFactorAtLastSnapshot = currentYieldFactor; // Always update to the latest factor used
+        yieldFactorAtLastSnapshot = currentYieldFactor;
     }
 
     // --- End Internal Collateral Tracking Logic ---
@@ -758,7 +712,6 @@ contract StabilizerNFT is
         return positions[tokenId].minCollateralRatio;
     }
 
-    // Removed old _calculateUnallocation function that relied on PositionNFT
 
     /**
      * @notice Calculates the stETH amounts to remove based on pool shares and current ratio from PositionEscrow.
@@ -779,27 +732,23 @@ contract StabilizerNFT is
         }
 
         uint256 yieldFactor = rateContract.getYieldFactor();
-        // Calculate the USD value represented by the pool shares being unallocated
         uint256 uspdValueToUnallocate = (poolSharesToUnallocate * yieldFactor) / rateContract.FACTOR_PRECISION();
 
-        // Calculate user's share of stETH at par value (1 USD = 1/price stETH)
+        // Calculate user's share of stETH at par value
         require(priceResponse.price > 0, "Oracle price cannot be zero");
         userStEthShare = (uspdValueToUnallocate * (10**uint256(priceResponse.decimals))) / priceResponse.price;
 
         // Get the current ratio directly from the PositionEscrow
         uint256 currentRatio = positionEscrow.getCollateralizationRatio(priceResponse);
 
-        // Prevent division by zero or nonsensical ratios
-        require(currentRatio >= 100, "Cannot unallocate from undercollateralized position"); // Assuming ratio is scaled by 100
+        require(currentRatio >= 100, "Cannot unallocate from undercollateralized position");
 
-        // Calculate total stETH to remove = userShare * ratio / 100
+        // Calculate total stETH to remove
         stEthToRemove = (userStEthShare * currentRatio) / 100;
 
-        // Ensure user share doesn't exceed total removed (can happen with rounding if ratio is exactly 100)
         if (userStEthShare > stEthToRemove) {
             userStEthShare = stEthToRemove;
         }
-        // Note: The actual transfer in PositionEscrow.removeCollateral will fail if the contract lacks sufficient stETH balance.
     }
 
 
@@ -842,13 +791,12 @@ contract StabilizerNFT is
         }
 
         uint256 currentYieldFactor = rateContract.getYieldFactor();
-        require(currentYieldFactor > 0, "Current yield factor is zero"); // Safety check
+        require(currentYieldFactor > 0, "Current yield factor is zero");
 
         // Liability Value = totalShares * currentYieldFactor / precision
         uint256 liabilityValueUSD = (totalShares * currentYieldFactor) / FACTOR_PRECISION;
         if (liabilityValueUSD == 0) {
-             // Can happen if totalShares is very small or yieldFactor is somehow 0 after check
-             return type(uint256).max; // Treat as infinite ratio
+             return type(uint256).max;
         }
 
 
@@ -856,11 +804,10 @@ contract StabilizerNFT is
         uint256 ethSnapshot = totalEthEquivalentAtLastSnapshot;
         uint256 yieldSnapshot = yieldFactorAtLastSnapshot;
         if (yieldSnapshot == 0) {
-             // Should not happen after initialization, but safety check
-             return 0; // Or handle as error/undefined
+             return 0;
         }
 
-       
+
         // Estimate current total stETH value by projecting the snapshot forward
         // estimated_stETH = eth_snapshot * current_yield / snapshot_yield
         uint256 estimatedCurrentCollateralStEth = (ethSnapshot * currentYieldFactor) / yieldSnapshot;
@@ -869,14 +816,13 @@ contract StabilizerNFT is
             return 0; // No collateral tracked
         }
 
-        // Calculate collateral value in USD wei (assuming priceResponse has 18 decimals for price)
-        require(priceResponse.decimals == 18, "Price must have 18 decimals"); // Adapt if oracle uses different decimals
+        // Calculate collateral value in USD wei
+        require(priceResponse.decimals == 18, "Price must have 18 decimals");
         require(priceResponse.price > 0, "Oracle price cannot be zero");
         uint256 estimatedCollateralValueUSD = (estimatedCurrentCollateralStEth * priceResponse.price) / 1e18;
 
         // Calculate ratio = (Collateral Value / Liability Value) * 100
-        // Both values are in 18 decimal USD equivalent
-        ratio = (estimatedCollateralValueUSD * 100) / liabilityValueUSD; // Use calculated liabilityValueUSD
+        ratio = (estimatedCollateralValueUSD * 100) / liabilityValueUSD;
 
         return ratio;
     }
@@ -924,8 +870,6 @@ contract StabilizerNFT is
         totalEthEquivalentAtLastSnapshot = actualTotalEthEquivalent;
         yieldFactorAtLastSnapshot = currentYieldFactor;
 
-        // Optional: Emit an event
-        // emit CollateralSnapshotReset(actualTotalEthEquivalent, currentYieldFactor);
     }
 
     // --- End Admin Collateral Reset ---

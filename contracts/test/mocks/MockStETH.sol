@@ -10,10 +10,8 @@ import "../../lib/openzeppelin-contracts/contracts/access/Ownable.sol"; // To co
  * Balances are adjusted proportionally when rebase is called.
  */
 contract MockStETH is ERC20, Ownable {
-    // Keep track of addresses that hold tokens to iterate during rebase
-    // Note: This is inefficient for production but acceptable for testing.
     address[] private _holders;
-    mapping(address => uint256) private _holderIndex; // 1-based index to check existence
+    mapping(address => uint256) private _holderIndex;
 
     uint256 public constant REBASE_PRECISION = 1e18;
 
@@ -36,7 +34,6 @@ contract MockStETH is ERC20, Ownable {
         uint256 factor = (_newTotalSupply * REBASE_PRECISION) / oldTotalSupply;
 
         // Adjust balances for all holders
-        // Create a copy of holders array to avoid potential issues if _update modifies it during iteration
         address[] memory currentHolders = new address[](_holders.length);
         for(uint k=0; k < _holders.length; k++){
             currentHolders[k] = _holders[k];
@@ -44,37 +41,17 @@ contract MockStETH is ERC20, Ownable {
 
         for (uint256 i = 0; i < currentHolders.length; i++) {
             address holder = currentHolders[i];
-            // Check if holder still exists in original mapping in case _update removed it
              if (_holderIndex[holder] > 0) {
                 uint256 oldBalance = balanceOf(holder);
                 if (oldBalance > 0) {
                     uint256 newBalance = (oldBalance * factor) / REBASE_PRECISION;
                     if (newBalance > oldBalance) {
                         uint256 increase = newBalance - oldBalance;
-                        _mint(holder, increase); // Mint the difference to increase balance
+                        _mint(holder, increase);
                     }
-                    // Note: We don't handle decreases here as stETH yield only increases
                 }
             }
         }
-
-        // Note: The ERC20 _update function handles totalSupply adjustments implicitly
-        // if moving from/to address(0), but here we adjust existing balances.
-        // We might need to manually adjust _totalSupply if _update doesn't cover it.
-        // Let's verify if OpenZeppelin's _update handles this correctly when not burning/minting.
-        // Based on OZ 5.x _update, it doesn't adjust totalSupply unless from/to zero.
-        // We need to adjust it manually based on the sum of balance changes,
-        // or more simply, set it directly based on the intended new total supply.
-
-        // Force set total supply - This bypasses standard ERC20 supply checks but is needed for mock rebase
-        // This requires overriding the internal _update or managing supply separately.
-        // Let's simplify: Assume _update handles balances, and we just need to ensure total supply matches.
-        // A simpler mock might just adjust total supply and expect external contracts
-        // to calculate balances based on shares, but to test the Rate contract, we need balances to change.
-
-        // Re-fetch balances and sum them up to ensure consistency (or trust the math)
-        // For simplicity in mock, we'll assume the math holds and OZ's balance updates are sufficient.
-        // The key is that balanceOf(rateContract) changes.
     }
 
     // --- Internal bookkeeping for rebase iteration ---
@@ -82,7 +59,7 @@ contract MockStETH is ERC20, Ownable {
     function _addHolder(address account) internal {
         if (_holderIndex[account] == 0) {
             _holders.push(account);
-            _holderIndex[account] = _holders.length; // 1-based index
+            _holderIndex[account] = _holders.length;
         }
     }
 
@@ -105,17 +82,14 @@ contract MockStETH is ERC20, Ownable {
         super._update(from, to, value);
 
         if (from == address(0)) {
-            // Mint
-            if (balanceOf(to) > 0) { // Check if balance is now non-zero
+            if (balanceOf(to) > 0) {
                  _addHolder(to);
             }
         } else if (to == address(0)) {
-            // Burn
-            if (balanceOf(from) == 0) { // Check if balance is now zero
+            if (balanceOf(from) == 0) {
                 _removeHolder(from);
             }
         } else {
-            // Transfer
             if (balanceOf(from) == 0) {
                  _removeHolder(from);
             }
@@ -127,10 +101,6 @@ contract MockStETH is ERC20, Ownable {
 
     // --- Mint function for MockLido ---
     function mint(address to, uint256 amount) external {
-        // In a real scenario, only Lido pool could mint stETH.
-        // Here, we allow anyone for testing setup, or restrict it.
-        // Let's restrict it to owner (deployer) or specific addresses if needed.
-        // For now, keep it simple for MockLido to call.
         _mint(to, amount);
     }
 }

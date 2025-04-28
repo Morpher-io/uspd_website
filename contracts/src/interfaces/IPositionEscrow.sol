@@ -9,11 +9,7 @@ import {IAccessControl} from "../../lib/openzeppelin-contracts/contracts/access/
  * @title IPositionEscrow Interface
  * @notice Interface for the PositionEscrow contract, holding collateral for a specific position.
  */
-interface IPositionEscrow is IERC20Errors, IAccessControl { // Inherit IAccessControl
-    // --- Roles (Defined in implementation contract) ---
-    // bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE"); // Removed from interface
-    // bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE"); // Removed from interface
-
+interface IPositionEscrow is IERC20Errors, IAccessControl {
     // --- Errors ---
     error ZeroAddress();
     error ZeroAmount();

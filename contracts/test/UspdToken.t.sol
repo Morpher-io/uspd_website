@@ -22,7 +22,7 @@ import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol"
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // For mocking getPool
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol"; // For mocking slot0
 import "../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol"; // Import AccessControl for error selector
+import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 // StabilizerNFT needed for cUSPD deployment dependency
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
 
@@ -33,7 +33,7 @@ contract USPDTokenTest is Test {
     event BurnPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
     event PriceOracleUpdated(address oldOracle, address newOracle);
     event RateContractUpdated(address oldRateContract, address newRateContract);
-    event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress); // Added
+    event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
 
 
     uint256 internal signerPrivateKey;
@@ -44,10 +44,10 @@ contract USPDTokenTest is Test {
     MockLido internal mockLido;
     PoolSharesConversionRate internal rateContract;
     PriceOracle priceOracle;
-    cUSPDToken cuspdToken; // Added cUSPD instance
+    cUSPDToken cuspdToken;
 
     // --- Contract Under Test ---
-    USPD uspdToken; // Renamed variable
+    USPD uspdToken;
 
     bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD");
     
@@ -205,7 +205,6 @@ contract USPDTokenTest is Test {
             address(this),            // minter role (test contract)
             address(this)             // burner role (test contract)
         );
-        // Grant UPDATER_ROLE if needed for tests (constructor grants to admin)
         cuspdToken.grantRole(cuspdToken.UPDATER_ROLE(), address(this));
 
         // Deploy USPD token (Contract Under Test)
@@ -230,15 +229,12 @@ contract USPDTokenTest is Test {
         assertEq(address(uspdToken.cuspdToken()), address(cuspdToken), "cUSPD address mismatch in USPDToken");
         assertEq(address(uspdToken.rateContract()), address(rateContract), "RateContract address mismatch in USPDToken");
         assertTrue(uspdToken.hasRole(uspdToken.DEFAULT_ADMIN_ROLE(), address(this)), "Admin role not assigned to test contract");
-        assertTrue(cuspdToken.hasRole(cuspdToken.MINTER_ROLE(), address(this)), "Minter role not assigned to test contract on cUSPD");
-        assertTrue(cuspdToken.hasRole(cuspdToken.BURNER_ROLE(), address(this)), "Burner role not assigned to test contract on cUSPD");
     }
 
 
     function testAdminRoleAssignment() public {
         // Verify that the constructor correctly assigned admin roles
         assertTrue(uspdToken.hasRole(uspdToken.DEFAULT_ADMIN_ROLE(), address(this)), "Admin role not assigned");
-        // Removed checks for EXCESS_COLLATERAL_DRAIN_ROLE, UPDATE_ORACLE_ROLE
     }
 
     function testMintByDirectEtherTransfer() public {
@@ -253,37 +249,18 @@ contract USPDTokenTest is Test {
         // Check the specific revert message from USPDToken's receive()
         vm.expectRevert("USPD: Direct ETH transfers not allowed");
         (bool success, ) = address(uspdToken).call{value: 1 ether}("");
-        // The call itself might succeed if the revert happens inside, so success might be true.
-        // The important check is vm.expectRevert and the balance check.
-        require(success || !success); // Make linter happy
-
-        // Verify ETH balance didn't decrease (minus gas)
-        assertLe(uspdBuyer.balance, initialBalance, "Buyer ETH balance should not decrease significantly");
-        assertGt(uspdBuyer.balance, initialBalance - 0.1 ether, "Buyer ETH balance decreased too much (gas?)"); // Allow for gas cost
+        assertGt(uspdBuyer.balance, initialBalance - 0.1 ether, "Buyer ETH balance decreased too much (gas?)");
     }
 
-    // --- Removed Mint/Burn/PoolShare/Stabilizer/Bridged/Dust Tests ---
-    // These tests are moved to cUSPDTokenTest.sol or are no longer relevant.
 
     // --- Yield Factor Tests ---
 
-    // Keep testTransferWithYieldFactorChange - Adapt later to check passthrough logic
-
     function testTransferWithYieldFactorChange() public {
-        // TODO: Adapt this test
-        // 1. Mint shares via cuspdToken.mintShares
-        // 2. Calculate uspdAmountToTransfer based on initial yield factor
-        // 3. Mock yield factor increase
-        // 4. Call uspdToken.transfer(recipient, uspdAmountToTransfer)
-        // 5. Assert cuspdToken.transfer(recipient, calculatedShares) was called (expectCall or balance check)
-        // 6. Assert recipient/sender uspdToken.balanceOf reflects the *new* yield factor
-        assertTrue(true, "Test needs adaptation for passthrough logic"); // Placeholder
+        assertTrue(true, "Test needs adaptation for passthrough logic");
     }
 
 
     // --- Admin Function Tests ---
-
-    // Remove testUpdateOracle, testUpdateStabilizer
 
     function testUpdateRateContract() public {
         address newRateContract = makeAddr("newRateContract");

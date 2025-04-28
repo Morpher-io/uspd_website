@@ -7,8 +7,7 @@ import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol"; // View layer
 import "../src/cUSPDToken.sol"; // Core share token
 import "../src/interfaces/IcUSPDToken.sol"; // Interface for cUSPD
-// Removed UspdCollateralizedPositionNFT import
-import {IERC721Errors, IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol"; // Added IERC20Errors
+import {IERC721Errors, IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -142,8 +141,6 @@ contract StabilizerNFTTest is Test {
 
         // 7. Setup roles
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
-        // No STABILIZER_ROLE needed on USPDToken view layer anymore
-        // Grant POSITION_ESCROW_ROLE to allow callbacks (done within StabilizerNFT.mint)
 
         vm.warp(1745837835); //warp for the price attestation service to a meaningful timestamp
     }
@@ -220,20 +217,11 @@ contract StabilizerNFTTest is Test {
     }
 
 
-    function createPriceResponse() internal view returns (IPriceOracle.PriceResponse memory) { // Removed view modifier
-        // Mock the specific oracle call needed by this helper for simplicity
-        uint256 mockPrice = 2000 ether; // Define a mock price for the test
-        // vm.mockCall(
-        //     address(priceOracle),
-        //     abi.encodeWithSelector(priceOracle.getUniswapV3WethUsdcPrice.selector),
-        //     abi.encode(mockPrice)
-        // );
-        // uint256 price = priceOracle.getUniswapV3WethUsdcPrice(); // Call the mocked function
-        // require(price == mockPrice, "Mocking getUniswapV3WethUsdcPrice failed");
-
+    function createPriceResponse() internal view returns (IPriceOracle.PriceResponse memory) {
         // Simpler approach: Just return the mock price directly in the response struct
+        uint256 mockPrice = 2000 ether; // Define a mock price for the test
         return IPriceOracle.PriceResponse({
-            price: mockPrice, // Use the defined mock price
+            price: mockPrice,
             decimals: 18,
             timestamp: block.timestamp // Use current block timestamp for response
         });
@@ -246,16 +234,8 @@ contract StabilizerNFTTest is Test {
         uint256 tokenId = 1;
         address expectedOwner = user1;
 
-        // Predict Escrow address (using CREATE for simplicity in test, replace with CREATE2 if used)
-        // Note: Predicting CREATE address depends on deployer nonce.
-        // Using vm.expectEmit is often easier than precise address prediction for CREATE.
-        // Let's use expectEmit for the deployment event from StabilizerNFT (needs to be added).
-
         // --- Action ---
         vm.prank(owner); // Assuming owner has MINTER_ROLE
-        // Expect an event indicating Escrow deployment (to be added to StabilizerNFT)
-        // vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        // emit EscrowDeployed(tokenId, expectedEscrowAddress);
         stabilizerNFT.mint(expectedOwner, tokenId);
 
         // --- Assertions ---
@@ -659,10 +639,6 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2);
         stabilizerNFT.setMinCollateralizationRatio(2, 110);
 
-        // Set custom collateral ratios
-        // (uint256 totalEth1, , , , , ) = stabilizerNFT.positions(1); // Removed totalEth check
-        // (uint256 totalEth2, , , , , ) = stabilizerNFT.positions(2); // Removed totalEth check
-        // assertEq(totalEth1, 0.5 ether, "First stabilizer should have 0.5 ETH"); // Removed totalEth check
         // Check escrow balances directly before allocation
         address escrow1Addr = stabilizerNFT.stabilizerEscrows(1);
         address escrow2Addr = stabilizerNFT.stabilizerEscrows(2);
@@ -702,9 +678,6 @@ contract StabilizerNFTTest is Test {
 
 
 
-        // Verify total allocation result - only user's ETH
-        // Cannot check result.allocatedEth directly anymore
-        // The PositionEscrow balance checks implicitly verify allocation happened.
     }
 
     function testSetMinCollateralizationRatio() public {
@@ -1485,9 +1458,9 @@ contract StabilizerNFTTest is Test {
         for (uint256 round = 1; round <= numRounds; round++) {
             // 1. Allocation (Mint cUSPD)
             IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(2000 ether, block.timestamp);
-            vm.deal(owner, userEthPerAllocRound); // Fund minter
-            vm.prank(owner); // Minter
-            cuspdToken.mintShares{value: userEthPerAllocRound}(user, priceQueryAlloc); // Mint to user
+            vm.deal(owner, userEthPerAllocRound);
+            vm.prank(owner);
+            cuspdToken.mintShares{value: userEthPerAllocRound}(user, priceQueryAlloc);
 
             // 2. Rebase (Simulate Yield)
             uint256 currentTotalSupply = mockStETH.totalSupply();
@@ -1508,9 +1481,7 @@ contract StabilizerNFTTest is Test {
 
                  if (sharesToBurn > 0) {
                      IPriceOracle.PriceAttestationQuery memory priceQueryUnalloc = createSignedPriceAttestation(2000 ether, block.timestamp);
-                     vm.prank(user); // User approves burner
-                    //  cuspdToken.approve(owner, sharesToBurn);
-                    //  vm.prank(owner); // Burner
+                     vm.prank(user);
                      cuspdToken.burnShares(sharesToBurn, payable(user), priceQueryUnalloc);
                  }
             }
