@@ -56,9 +56,7 @@ contract StabilizerNFT is
     uint256 public lowestAllocatedId;
     uint256 public highestAllocatedId;
 
-    // USPD token contract (View Layer)
-    USPDToken public uspdToken;
-    // cUSPD token contract (Core Logic)
+    // cUSPD token contract (Core Logic) - USPD view layer token removed
     IcUSPDToken public cuspdToken;
 
     // Addresses needed for Escrow deployment/interaction
@@ -109,7 +107,7 @@ contract StabilizerNFT is
     }
 
     function initialize(
-        address _uspdToken, // View layer token address
+        // address _uspdToken, // View layer token address - REMOVED
         address _cuspdToken, // Core share token address
         address _stETH,
         address _lido,
@@ -122,7 +120,7 @@ contract StabilizerNFT is
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        uspdToken = USPDToken(payable(_uspdToken));
+        // uspdToken = USPDToken(payable(_uspdToken)); // REMOVED assignment
         cuspdToken = IcUSPDToken(_cuspdToken); // Initialize cUSPD token
         stETH = _stETH;
         lido = _lido;
@@ -837,11 +835,24 @@ contract StabilizerNFT is
      *      It also assumes callbacks from PositionEscrow are correctly implemented for direct collateral changes.
      */
     function getSystemCollateralizationRatio(IPriceOracle.PriceResponse memory priceResponse) external view returns (uint256 ratio) {
-        uint256 currentTotalSupply = uspdToken.totalSupply();
-        if (currentTotalSupply == 0) {
-            return type(uint256).max; // Infinite ratio if no liability
+        // Calculate liability based on cUSPD shares and current yield factor
+        uint256 totalShares = cuspdToken.totalSupply();
+        if (totalShares == 0) {
+            return type(uint256).max; // Infinite ratio if no liability (no shares)
         }
 
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        require(currentYieldFactor > 0, "Current yield factor is zero"); // Safety check
+
+        // Liability Value = totalShares * currentYieldFactor / precision
+        uint256 liabilityValueUSD = (totalShares * currentYieldFactor) / FACTOR_PRECISION;
+        if (liabilityValueUSD == 0) {
+             // Can happen if totalShares is very small or yieldFactor is somehow 0 after check
+             return type(uint256).max; // Treat as infinite ratio
+        }
+
+
+        // Calculate estimated collateral based on snapshot
         uint256 ethSnapshot = totalEthEquivalentAtLastSnapshot;
         uint256 yieldSnapshot = yieldFactorAtLastSnapshot;
         if (yieldSnapshot == 0) {
@@ -850,8 +861,6 @@ contract StabilizerNFT is
         }
 
         uint256 currentYieldFactor = rateContract.getYieldFactor();
-        require(currentYieldFactor > 0, "Current yield factor is zero");
-
         // Estimate current total stETH value by projecting the snapshot forward
         // estimated_stETH = eth_snapshot * current_yield / snapshot_yield
         uint256 estimatedCurrentCollateralStEth = (ethSnapshot * currentYieldFactor) / yieldSnapshot;
@@ -867,7 +876,7 @@ contract StabilizerNFT is
 
         // Calculate ratio = (Collateral Value / Liability Value) * 100
         // Both values are in 18 decimal USD equivalent
-        ratio = (estimatedCollateralValueUSD * 100) / currentTotalSupply;
+        ratio = (estimatedCollateralValueUSD * 100) / liabilityValueUSD; // Use calculated liabilityValueUSD
 
         return ratio;
     }
