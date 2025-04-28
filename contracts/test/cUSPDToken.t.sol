@@ -111,15 +111,15 @@ contract cUSPDTokenTest is Test {
         ERC1967Proxy stabilizerProxy = new ERC1967Proxy(address(stabilizerImpl), bytes(""));
         stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy)));
 
-        // Deploy USPD View Token (Needs RateContract, cUSPD address will be set later if needed)
-        // For StabilizerNFT init, it just needs *an* address for USPDToken. We deploy it here.
-        uspdTokenView = new USPDToken("View USPD", "vUSPD", address(0), address(rateContract), admin); // cUSPD address initially 0
+        // Deploy USPD View Token (Needs RateContract, cUSPD address will be set later if needed) - MOVED LATER
+        // For StabilizerNFT init, it just needs *an* address for USPDToken. We deploy it here. - MOVED LATER
+        // uspdTokenView = new USPDToken("View USPD", "vUSPD", address(0), address(rateContract), admin); // cUSPD address initially 0 - MOVED LATER
 
-        // Initialize StabilizerNFT (Needs USPD View Token address)
-        // Initialize StabilizerNFT (Needs cUSPD address - will be set later, pass placeholder for now if needed, or initialize after cUSPD deploy)
-        // Let's deploy cUSPD first
+        // Initialize StabilizerNFT (Needs USPD View Token address) - MOVED LATER
+        // Initialize StabilizerNFT (Needs cUSPD address - will be set later, pass placeholder for now if needed, or initialize after cUSPD deploy) - MOVED LATER
+        // Let's deploy cUSPD first - MOVED LATER
 
-        // 3. Deploy Testable cUSPDToken (Contract Under Test)
+        // 3. Deploy Testable cUSPDToken (Contract Under Test) - DEPLOY CORE TOKEN FIRST
         TestableCUSPD testableToken = new TestableCUSPD(
             "Core USPD Share",        // name
             "cUSPD",                  // symbol
@@ -132,7 +132,16 @@ contract cUSPDTokenTest is Test {
         );
         cuspdToken = testableToken; // Assign to the state variable
 
-        // Initialize StabilizerNFT (Needs cUSPD address)
+        // 4. Deploy USPD View Token (Now that cUSPD exists)
+        uspdTokenView = new USPDToken(
+            "View USPD",              // name
+            "vUSPD",                  // symbol
+            address(cuspdToken),      // Pass deployed cUSPD address
+            address(rateContract),
+            admin                     // Admin
+        );
+
+        // 5. Initialize StabilizerNFT (Needs cUSPD address)
         stabilizerNFT.initialize(
             address(cuspdToken),      // Pass cUSPD address
             address(mockStETH),
@@ -142,10 +151,10 @@ contract cUSPDTokenTest is Test {
         );
 
 
-        // 4. Link USPD View Token to cUSPD Token
-        uspdTokenView.updateCUSPDAddress(address(cuspdToken));
+        // 4. Link USPD View Token to cUSPD Token - NO LONGER NEEDED (set in constructor)
+        // uspdTokenView.updateCUSPDAddress(address(cuspdToken));
 
-        // 5. Setup Oracle Mocks (Chainlink, Uniswap)
+        // 6. Setup Oracle Mocks (Chainlink, Uniswap) - Renumbered step
         // Mock Chainlink
         int mockPriceAnswer = 2000 * 1e8;
         uint256 mockTimestamp = block.timestamp;
@@ -162,7 +171,7 @@ contract cUSPDTokenTest is Test {
         bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
         vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
 
-        // 6. Grant any necessary cross-contract roles
+        // 7. Grant any necessary cross-contract roles - Renumbered step
         // Example: If StabilizerNFT needed to call cUSPDToken (not currently the case)
         // cuspdToken.grantRole(cuspdToken.SOME_ROLE_FOR_STABILIZER(), address(stabilizerNFT));
         // Example: If USPDToken needed roles on cUSPD (not currently the case)
