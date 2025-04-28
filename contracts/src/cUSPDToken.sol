@@ -44,10 +44,10 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         address indexed burner,
         address indexed from,
         uint256 sharesBurned,
-        uint256 ethReturned
+        uint256 stEthReturned // Renamed from ethReturned
     );
-    // Payout event might still be useful here to track ETH returned during burn
-    event Payout(address indexed to, uint256 sharesBurned, uint256 ethAmount, uint256 price);
+    // Payout event tracks stETH returned during burn
+    event Payout(address indexed to, uint256 sharesBurned, uint256 stEthAmount, uint256 price); // Renamed from ethAmount
 
 
     // --- Constructor ---
@@ -168,20 +168,24 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         _burn(msg.sender, sharesAmount);
 
         // 3. Unallocate funds via StabilizerNFT
-        // StabilizerNFT handles interaction with PositionEscrow(s)
-        uint256 unallocatedEth = stabilizer.unallocateStabilizerFunds(
+        // StabilizerNFT handles interaction with PositionEscrow(s) and transfers stETH to this contract
+        uint256 unallocatedStEth = stabilizer.unallocateStabilizerFunds(
             sharesAmount, // Pass the exact shares being burned
             oracleResponse
         );
 
         // 4. Emit events
-        emit SharesBurned(msg.sender, msg.sender, sharesAmount, unallocatedEth);
-        emit Payout(to, sharesAmount, unallocatedEth, oracleResponse.price);
+        emit SharesBurned(msg.sender, msg.sender, sharesAmount, unallocatedStEth); // Use renamed variable
+        emit Payout(to, sharesAmount, unallocatedStEth, oracleResponse.price); // Use renamed variable
 
-        // 5. Transfer redeemed ETH to the recipient
-        if (unallocatedEth > 0) {
-            (bool success, ) = to.call{value: unallocatedEth}("");
-            require(success, "cUSPD: ETH transfer failed");
+        // 5. Transfer redeemed stETH to the recipient
+        if (unallocatedStEth > 0) {
+            address stETHAddress = rateContract.stETH(); // Get stETH address from rateContract
+            require(stETHAddress != address(0), "cUSPD: Invalid stETH address from rateContract");
+            // Ensure this contract has the stETH balance before transferring
+            require(IERC20(stETHAddress).balanceOf(address(this)) >= unallocatedStEth, "cUSPD: Insufficient stETH received");
+            bool success = IERC20(stETHAddress).transfer(to, unallocatedStEth);
+            require(success, "cUSPD: stETH transfer failed");
         }
     }
 
