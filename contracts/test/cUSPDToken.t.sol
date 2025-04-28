@@ -301,6 +301,7 @@ contract cUSPDTokenTest is Test {
     function testMintShares_Revert_ZeroRecipient() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("cUSPD: Mint to zero address");
+        vm.deal(minter, 1 ether);
         vm.prank(minter);
         cuspdToken.mintShares{value: 1 ether}(address(0), priceQuery);
     }
@@ -316,6 +317,7 @@ contract cUSPDTokenTest is Test {
         );
 
         vm.expectRevert("cUSPD: Invalid oracle price");
+        vm.deal(minter, 1 ether);
         vm.prank(minter);
         cuspdToken.mintShares{value: 1 ether}(user1, priceQuery);
     }
@@ -330,6 +332,7 @@ contract cUSPDTokenTest is Test {
 
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("cUSPD: Invalid yield factor");
+        vm.deal(minter, 1 ether);
         vm.prank(minter);
         cuspdToken.mintShares{value: 1 ether}(user1, priceQuery);
     }
@@ -340,6 +343,7 @@ contract cUSPDTokenTest is Test {
 
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.expectRevert("No unallocated funds"); // Revert from StabilizerNFT
+        vm.deal(minter, 1 ether);
         vm.prank(minter);
         cuspdToken.mintShares{value: 1 ether}(user1, priceQuery);
     }
@@ -401,8 +405,6 @@ contract cUSPDTokenTest is Test {
         // Remaining = 1.1 - 0.55 = 0.55
         assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 0.55 ether, 1e15, "PositionEscrow stETH balance mismatch after burn");
     }
-
-    // Removed testBurnShares_Revert_NotBurner as the role check was removed from burnShares
 
     function testBurnShares_Revert_ZeroAmount() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
