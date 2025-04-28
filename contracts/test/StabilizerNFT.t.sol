@@ -1424,10 +1424,10 @@ contract StabilizerNFTTest is Test {
         // Expected total stETH removal = 1.1 ether
         uint256 expectedEthEquivalentRemoved = 1.1 ether; // Treat 1:1
 
-        // User1 approves burner (owner), burner calls burnShares
+        // User1 (owner of the shares) calls burnShares directly
         vm.prank(user1);
-        cuspdToken.approve(owner, poolSharesToUnallocate);
-        vm.prank(owner); // Burner
+        // cuspdToken.approve(owner, poolSharesToUnallocate); // No longer needed
+        // vm.prank(owner); // No longer needed
         cuspdToken.burnShares(poolSharesToUnallocate, payable(user1), priceQueryUnalloc);
 
         // Assertions
