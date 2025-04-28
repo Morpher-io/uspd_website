@@ -57,16 +57,16 @@ contract StabilizerNFTTest is Test {
         // 1. Deploy Mocks & Dependencies
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
-        // Deploy PriceOracle implementation and proxy (can use mocks if preferred)
+        // Deploy PriceOracle implementation and proxy
         PriceOracle oracleImpl = new PriceOracle();
         bytes memory oracleInitData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500,
-            3600,
-            address(0xdead),
-            address(0xbeef),
-            address(CHAINLINK_ETH_USD),
-            address(this) // Dummy config for test
+            500, // 5% max deviation
+            3600, // 1 hour staleness period
+            USDC, // Real USDC address
+            UNISWAP_ROUTER, // Real Uniswap router
+            CHAINLINK_ETH_USD, // Real Chainlink ETH/USD feed
+            owner // Admin address
         );
         ERC1967Proxy oracleProxy = new ERC1967Proxy(
             address(oracleImpl),
