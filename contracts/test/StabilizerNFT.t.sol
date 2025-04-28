@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 
 import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol";
@@ -1421,8 +1420,8 @@ contract StabilizerNFTTest is Test {
         vm.deal(user, 10 ether); // Fund user for allocations
 
         console.log("--- Starting Ratio Drift Test (Rounds: %d) ---", numRounds);
-        console.log("Round | Snapshot Ratio | Actual Ratio | Difference (%)");
-        console.log("------------------------------------------------------");
+        console.log("Round | Difference (%)");
+        console.log("----------------------");
 
         // --- Simulation Loop ---
         for (uint256 round = 1; round <= numRounds; round++) {
@@ -1477,10 +1476,8 @@ contract StabilizerNFTTest is Test {
                  diffStr = string.concat("-", vm.toString(uint256(-differenceBps) / 100), ".", vm.toString(uint256(-differenceBps) % 100));
             }
 
-            console.log("  %d   |      %d.%d%%    |    %d.%d%%   |   %s%%",
-                round,
-                snapshotRatio / 100, snapshotRatio % 100,
-                actualRatio / 100, actualRatio % 100,
+            console.log("  %d   |   %s%%",
+                uint(round),
                 diffStr
             );
 
@@ -1491,7 +1488,7 @@ contract StabilizerNFTTest is Test {
             assertLt(actualRatio - snapshotRatio, 200, "Drift between actual and snapshot ratio exceeds threshold (2%)");
 
         }
-         console.log("------------------------------------------------------");
+         console.log("----------------------");
     }
 
     // --- End Ratio Drift Test ---
