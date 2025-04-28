@@ -1035,8 +1035,9 @@ contract StabilizerNFTTest is Test {
 
         // 2. Allocate some funds to set initial snapshot
         uint256 userEthForAllocation = 1 ether;
-        vm.deal(address(uspdToken), userEthForAllocation); // Simulate user sending ETH to USPDToken
-        vm.startPrank(address(uspdToken));
+        // Simulate cUSPD calling allocateStabilizerFunds
+        vm.deal(address(cuspdToken), userEthForAllocation); // Fund cUSPD address for the call
+        vm.startPrank(address(cuspdToken)); // Prank as cUSPD
         IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
             2000 ether, // price (mocked)
             18          // decimals
@@ -1090,8 +1091,9 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
 
         uint256 userEthForAllocation = 1 ether;
-        vm.deal(address(uspdToken), userEthForAllocation);
-        vm.startPrank(address(uspdToken));
+        // Simulate cUSPD calling allocateStabilizerFunds
+        vm.deal(address(cuspdToken), userEthForAllocation); // Fund cUSPD address
+        vm.startPrank(address(cuspdToken)); // Prank as cUSPD
         IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
             2000 ether, 18
         );
@@ -1152,8 +1154,9 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
 
         uint256 userEthForAllocation = 1 ether;
-        vm.deal(address(uspdToken), userEthForAllocation);
-        vm.startPrank(address(uspdToken));
+        // Simulate cUSPD calling allocateStabilizerFunds
+        vm.deal(address(cuspdToken), userEthForAllocation); // Fund cUSPD address
+        vm.startPrank(address(cuspdToken)); // Prank as cUSPD
         IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
             2000 ether, 18
         );
@@ -1236,8 +1239,9 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
 
         uint256 userEthForAllocation = 1 ether;
-        vm.deal(address(uspdToken), userEthForAllocation);
-        vm.startPrank(address(uspdToken));
+        // Simulate cUSPD calling allocateStabilizerFunds
+        vm.deal(address(cuspdToken), userEthForAllocation); // Fund cUSPD address
+        vm.startPrank(address(cuspdToken)); // Prank as cUSPD
         IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
             2000 ether, 18
         );
@@ -1366,8 +1370,9 @@ contract StabilizerNFTTest is Test {
         vm.deal(user1, 2 ether);
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
-        vm.deal(address(uspdToken), 1 ether);
-        vm.startPrank(address(uspdToken));
+        // Simulate cUSPD calling allocateStabilizerFunds
+        vm.deal(address(cuspdToken), 1 ether); // Fund cUSPD address
+        vm.startPrank(address(cuspdToken)); // Prank as cUSPD
         IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(2000 ether, 18);
         vm.stopPrank();
 
@@ -1403,8 +1408,9 @@ contract StabilizerNFTTest is Test {
         vm.deal(user1, 2 ether);
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
-        vm.deal(address(uspdToken), 1 ether);
-        vm.startPrank(address(uspdToken));
+        // Simulate cUSPD calling allocateStabilizerFunds
+        vm.deal(address(cuspdToken), 1 ether); // Fund cUSPD address
+        vm.startPrank(address(cuspdToken)); // Prank as cUSPD
         IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(2000 ether, 18);
         vm.stopPrank();
 
