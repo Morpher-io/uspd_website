@@ -9,6 +9,7 @@ import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAc
 // Contract & Interfaces under test
 import "../src/PositionEscrow.sol";
 import "../src/interfaces/IPositionEscrow.sol";
+import "../src/interfaces/IStabilizerNFT.sol"; // <-- Import IStabilizerNFT
 
 // Mocks & Dependencies
 import "./mocks/MockStETH.sol";
@@ -20,7 +21,7 @@ import "../src/interfaces/IPoolSharesConversionRate.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-contract PositionEscrowTest is Test {
+contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizerNFT
     // --- Mocks & Dependencies ---
     MockStETH internal mockStETH;
     MockLido internal mockLido;
@@ -87,6 +88,37 @@ contract PositionEscrowTest is Test {
             address(priceOracle)
         );
     }
+
+    // --- IStabilizerNFT Implementation (Dummy for Callbacks) ---
+
+    function reportCollateralAddition(uint256 /* stEthAmount */) external override {
+        // Dummy implementation - does nothing, just prevents revert
+    }
+
+    function reportCollateralRemoval(uint256 /* stEthAmount */) external override {
+        // Dummy implementation - does nothing, just prevents revert
+    }
+
+    // Dummy implementations for other IStabilizerNFT functions (not used in these tests)
+    function allocateStabilizerFunds(uint256 /* ethUsdPrice */, uint256 /* priceDecimals */)
+        external
+        payable
+        override
+        returns (AllocationResult memory)
+    {
+        revert("allocateStabilizerFunds: Not implemented in PositionEscrowTest");
+    }
+
+    function unallocateStabilizerFunds(uint256 /* poolSharesToUnallocate */, IPriceOracle.PriceResponse memory /* priceResponse */)
+        external
+        override
+        returns (uint256 /* unallocatedEth */)
+    {
+        revert("unallocateStabilizerFunds: Not implemented in PositionEscrowTest");
+    }
+
+    // --- End IStabilizerNFT Implementation ---
+
 
     // --- Helper Functions ---
     function createSignedPriceAttestation(
@@ -468,6 +500,7 @@ contract PositionEscrowTest is Test {
 
         // Action: Remove the calculated excess
         vm.prank(stabilizerOwner); // Has EXCESSCOLLATERALMANAGER_ROLE
+        // The call to removeExcessCollateral will trigger reportCollateralRemoval back to this test contract
         positionEscrow.removeExcessCollateral(payable(recipient), expectedExcess, query); // Removed minRatio arg
 
         assertEq(positionEscrow.getCurrentStEthBalance(), initialStEth - expectedExcess, "Escrow balance mismatch");
@@ -525,6 +558,7 @@ contract PositionEscrowTest is Test {
 
         // Action: Remove the full balance (since shares are 0)
         vm.prank(stabilizerOwner);
+        // The call to removeExcessCollateral will trigger reportCollateralRemoval back to this test contract
         positionEscrow.removeExcessCollateral(payable(recipient), initialStEth, query); // Removed minRatio arg
 
         assertEq(positionEscrow.getCurrentStEthBalance(), 0, "Escrow balance should be 0");
@@ -736,6 +770,7 @@ contract PositionEscrowTest is Test {
 
         vm.deal(otherUser, ethAmount); // Give ETH to the caller
         vm.prank(otherUser); // Anyone can call
+        // The call to addCollateralEth will trigger reportCollateralAddition back to this test contract
         positionEscrow.addCollateralEth{value: ethAmount}();
 
         assertEq(positionEscrow.getCurrentStEthBalance(), expectedStEth, "stETH balance mismatch");
@@ -773,6 +808,7 @@ contract PositionEscrowTest is Test {
         emit IPositionEscrow.CollateralAdded(stETHAmount);
 
         vm.prank(otherUser); // Anyone can call
+        // The call to addCollateralStETH will trigger reportCollateralAddition back to this test contract
         positionEscrow.addCollateralStETH(stETHAmount);
 
         assertEq(positionEscrow.getCurrentStEthBalance(), stETHAmount, "stETH balance mismatch");
@@ -826,6 +862,7 @@ contract PositionEscrowTest is Test {
 
         vm.deal(otherUser, ethAmount); // Give ETH to the caller
         vm.prank(otherUser); // Anyone can send
+        // The direct ETH transfer will trigger the receive() function, which calls reportCollateralAddition back to this test contract
         (bool success, ) = address(positionEscrow).call{value: ethAmount}("");
         assertTrue(success, "Direct ETH transfer failed");
 
