@@ -366,15 +366,16 @@ contract cUSPDTokenTest is Test {
         uint256 ethToSend = 1 ether;
         uint256 price = 2000 ether;
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(price, block.timestamp);
-        vm.deal(minter, ethToSend);
-        vm.prank(minter);
-        cuspdToken.mintShares{value: ethToSend}(user1, mintQuery); // Mint shares to user1
+        // User2 mints shares for themselves
+        vm.deal(user2, ethToSend); // Fund user2
+        vm.prank(user2); // User2 has MINTER_ROLE
+        cuspdToken.mintShares{value: ethToSend}(user2, mintQuery); // Mint shares to user2
 
-        uint256 initialShares = cuspdToken.balanceOf(user1);
+        uint256 initialShares = cuspdToken.balanceOf(user2); // Check user2's balance
         require(initialShares > 0, "Minting failed in setup");
         uint256 sharesToBurn = initialShares / 2;
 
-        // Action: Burn shares
+        // Action: User2 burns their own shares
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(price, block.timestamp);
         uint256 recipientStEthBefore = mockStETH.balanceOf(recipient);
 
@@ -383,16 +384,17 @@ contract cUSPDTokenTest is Test {
         uint256 expectedStEthReturned = (sharesToBurn * cuspdToken.FACTOR_PRECISION()) / price;
 
         vm.expectEmit(true, true, true, true, address(cuspdToken));
-        emit cUSPDToken.SharesBurned(burner, burner, sharesToBurn, expectedStEthReturned);
+        // msg.sender for SharesBurned is now user2
+        emit cUSPDToken.SharesBurned(user2, user2, sharesToBurn, expectedStEthReturned);
         vm.expectEmit(true, true, true, true, address(cuspdToken));
         emit cUSPDToken.Payout(recipient, sharesToBurn, expectedStEthReturned, price);
 
-        vm.prank(burner); // Burner calls burnShares
+        vm.prank(user2); // User2 calls burnShares
         uint256 actualStEthReturned = cuspdToken.burnShares(sharesToBurn, payable(recipient), burnQuery);
 
         // Assertions
         assertEq(actualStEthReturned, expectedStEthReturned, "Incorrect stETH amount returned");
-        assertApproxEqAbs(cuspdToken.balanceOf(burner), initialShares - sharesToBurn, 1e6, "Burner cUSPD balance mismatch");
+        assertApproxEqAbs(cuspdToken.balanceOf(user2), initialShares - sharesToBurn, 1e6, "User2 cUSPD balance mismatch"); // Check user2 balance
         assertApproxEqAbs(cuspdToken.totalSupply(), initialShares - sharesToBurn, 1e6, "Total cUSPD supply mismatch");
         assertEq(mockStETH.balanceOf(recipient), recipientStEthBefore + expectedStEthReturned, "Recipient stETH balance mismatch");
 
