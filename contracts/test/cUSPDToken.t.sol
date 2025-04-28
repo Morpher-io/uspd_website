@@ -149,6 +149,8 @@ contract cUSPDTokenTest is Test {
             address(rateContract),
             admin                     // Admin
         );
+        // Grant StabilizerNFT MINTER_ROLE to admin for test setup convenience
+        stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), admin);
 
 
         // 4. Link USPD View Token to cUSPD Token - NO LONGER NEEDED (set in constructor)
