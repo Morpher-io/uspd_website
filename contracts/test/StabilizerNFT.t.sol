@@ -660,7 +660,6 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.setMinCollateralizationRatio(2, 110);
 
         // Set custom collateral ratios
-        vm.startPrank(address(this));
         // (uint256 totalEth1, , , , , ) = stabilizerNFT.positions(1); // Removed totalEth check
         // (uint256 totalEth2, , , , , ) = stabilizerNFT.positions(2); // Removed totalEth check
         // assertEq(totalEth1, 0.5 ether, "First stabilizer should have 0.5 ETH"); // Removed totalEth check
