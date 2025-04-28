@@ -201,9 +201,8 @@ contract USPDTokenTest is Test {
             address(priceOracle),     // oracle
             address(stabilizerNFTInstance), // stabilizer
             address(rateContract),    // rateContract
-            address(this),            // admin role
-            // address(this),         // MINTER_ROLE removed
-            address(this)             // burner role (test contract)
+            address(this)            // admin role
+            // address(this)          // BURNER_ROLE removed
         );
         cuspdToken.grantRole(cuspdToken.UPDATER_ROLE(), address(this));
 

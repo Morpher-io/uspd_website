@@ -255,8 +255,8 @@ contract DeployScript is Script {
                 oracleProxyAddress,       // oracle
                 stabilizerProxyAddress,   // stabilizer
                 rateContractAddress,      // rateContract
-                deployer,                 // admin
-                deployer                  // burner (deployer initially)
+                deployer                 // admin
+                // deployer              // BURNER_ROLE removed
             )
         );
 
@@ -302,8 +302,8 @@ contract DeployScript is Script {
                 oracleProxyAddress,       // oracle
                 address(0),               // stabilizer (zero address)
                 address(0),               // rateContract (zero address)
-                deployer,                 // admin
-                deployer                  // burner
+                deployer                 // admin
+                // deployer              // BURNER_ROLE removed
             )
         );
         cuspdTokenAddress = createX.deployCreate2{value: 0}(CUSPD_TOKEN_SALT, bytecode);

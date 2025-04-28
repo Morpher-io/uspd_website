@@ -22,7 +22,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     uint256 public constant FACTOR_PRECISION = 1e18;
 
     // --- Roles ---
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    // BURNER_ROLE removed
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
     // --- Events ---
@@ -53,21 +53,21 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         address _oracle,
         address _stabilizer,
         address _rateContract,
-        address _admin,
-        address _burner
+        address _admin
+        // address _burner // BURNER_ROLE removed
     ) ERC20(name, symbol) ERC20Permit(name) {
         require(_oracle != address(0), "cUSPD: Zero oracle address");
         require(_stabilizer != address(0), "cUSPD: Zero stabilizer address");
         require(_rateContract != address(0), "cUSPD: Zero rate contract address");
         require(_admin != address(0), "cUSPD: Zero admin address");
-        require(_burner != address(0), "cUSPD: Zero burner address");
+        // require(_burner != address(0), "cUSPD: Zero burner address"); // Removed check
 
         oracle = IPriceOracle(_oracle);
         stabilizer = IStabilizerNFT(_stabilizer);
         rateContract = IPoolSharesConversionRate(_rateContract);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(BURNER_ROLE, _burner);
+        // _grantRole(BURNER_ROLE, _burner); // Removed BURNER_ROLE grant
         _grantRole(UPDATER_ROLE, _admin);
     }
 

@@ -35,8 +35,8 @@ import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol
 contract TestableCUSPD is cUSPDToken {
     constructor(
         string memory name, string memory symbol, address _oracle, address _stabilizer,
-        address _rateContract, address _admin, /* address _minter, */ address _burner
-    ) cUSPDToken(name, symbol, _oracle, _stabilizer, _rateContract, _admin, /* _minter, */ _burner) {}
+        address _rateContract, address _admin /*, address _burner */ // Removed burner
+    ) cUSPDToken(name, symbol, _oracle, _stabilizer, _rateContract, _admin /*, _burner */) {} // Removed burner
 
     // Expose internal mint function for test setup
     function mintInternal(address account, uint256 amount) public {
@@ -59,7 +59,7 @@ contract cUSPDTokenTest is Test {
 
     // --- Test Actors & Config ---
     address internal admin;
-    address internal burner;
+    // address internal burner; // BURNER_ROLE removed
     address internal updater;
     address internal user1;
     address internal user2;
@@ -77,7 +77,7 @@ contract cUSPDTokenTest is Test {
     function setUp() public {
         // 1. Setup Addresses & Signer
         admin = address(this);
-        burner = address(this);
+        // burner = address(this); // BURNER_ROLE removed
         updater = address(this);
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
@@ -205,7 +205,7 @@ contract cUSPDTokenTest is Test {
 
         // Check roles
         assertTrue(cuspdToken.hasRole(cuspdToken.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
-        assertTrue(cuspdToken.hasRole(cuspdToken.BURNER_ROLE(), burner), "Burner role mismatch");
+        // assertTrue(cuspdToken.hasRole(cuspdToken.BURNER_ROLE(), burner), "Burner role mismatch"); // BURNER_ROLE removed
         assertTrue(cuspdToken.hasRole(cuspdToken.UPDATER_ROLE(), admin), "Updater role mismatch (should be admin)");
     }
 
