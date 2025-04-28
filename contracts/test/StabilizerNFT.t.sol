@@ -610,11 +610,12 @@ contract StabilizerNFTTest is Test {
         // --- Action: Mint cUSPD shares, triggering allocation ---
         uint256 userEthForAllocation = 1 ether;
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        uint256 expectedShares = 2000 ether; // Calculated based on 1 ETH user, 2000 price, 1 yield
+        uint256 expectedAllocatedEth = 1 ether; // User's ETH
 
         // Expect SharesMinted event from cUSPD
         vm.expectEmit(true, true, true, true, address(cuspdToken));
-        // Note: Exact shares depend on stabilizer contribution, difficult to predict precisely here. Check > 0.
-        // emit cUSPDToken.SharesMinted(owner, user1, userEthForAllocation, expectedShares);
+        emit IcUSPDToken.SharesMinted(owner, user1, expectedAllocatedEth, expectedShares); // Check event signature and args
 
         vm.deal(owner, userEthForAllocation); // Fund the minter (owner)
         vm.prank(owner); // Owner has MINTER_ROLE on cUSPD
