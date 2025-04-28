@@ -6,10 +6,10 @@ import {ERC721EnumerableUpgradeable} from "../lib/openzeppelin-contracts-upgrade
 
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import "./UspdToken.sol";
+import "./UspdToken.sol"; // Keep for view layer reference if needed (e.g., for ratio calc)
+import "./interfaces/IcUSPDToken.sol"; // Import cUSPD interface
 import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IPriceOracle.sol";
-// import "./interfaces/IUspdCollateralizedPositionNFT.sol"; // Removed PositionNFT interface
 import "./interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
 import "./interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 import "./interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contract interface
@@ -56,10 +56,10 @@ contract StabilizerNFT is
     uint256 public lowestAllocatedId;
     uint256 public highestAllocatedId;
 
-    // USPD token contract
+    // USPD token contract (View Layer)
     USPDToken public uspdToken;
-
-    // Position NFT contract removed
+    // cUSPD token contract (Core Logic)
+    IcUSPDToken public cuspdToken;
 
     // Addresses needed for Escrow deployment/interaction
     address public stETH;
@@ -109,10 +109,11 @@ contract StabilizerNFT is
     }
 
     function initialize(
-        address _uspdToken,
+        address _uspdToken, // View layer token address
+        address _cuspdToken, // Core share token address
         address _stETH,
         address _lido,
-        address _rateContract, // Add rate contract address
+        address _rateContract,
         // address _createX, // Uncomment if using CREATE2 factory
         address _admin
     ) public initializer {
@@ -121,8 +122,8 @@ contract StabilizerNFT is
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        // positionNFT = IUspdCollateralizedPositionNFT(_positionNFT); // Removed PositionNFT assignment
         uspdToken = USPDToken(payable(_uspdToken));
+        cuspdToken = IcUSPDToken(_cuspdToken); // Initialize cUSPD token
         stETH = _stETH;
         lido = _lido;
         rateContract = IPoolSharesConversionRate(_rateContract); // Initialize rate contract
@@ -227,8 +228,8 @@ contract StabilizerNFT is
         // poolSharesToMint removed
         uint256 ethUsdPrice,
         uint256 priceDecimals
-    ) external payable returns (AllocationResult memory result) {
-        require(msg.sender == address(uspdToken), "Only USPD contract");
+    ) external payable override returns (AllocationResult memory result) { // Added override
+        require(msg.sender == address(cuspdToken), "Only cUSPD contract"); // Check against cUSPD
         require(lowestUnallocatedId != 0, "No unallocated funds");
         require(msg.value > 0, "No ETH sent"); // User must send ETH
 
@@ -485,8 +486,8 @@ contract StabilizerNFT is
     function unallocateStabilizerFunds(
         uint256 poolSharesToUnallocate, // Changed parameter name
         IPriceOracle.PriceResponse memory priceResponse
-    ) external override returns (uint256 unallocatedEth) { // Added override
-        require(msg.sender == address(uspdToken), "Only USPD contract");
+    ) external override returns (uint256 unallocatedEth) {
+        require(msg.sender == address(cuspdToken), "Only cUSPD contract"); // Check against cUSPD
         require(highestAllocatedId != 0, "No allocated funds");
 
         uint256 currentId = highestAllocatedId;
@@ -531,18 +532,16 @@ contract StabilizerNFT is
                     // Distribute received stETH
                     uint256 stabilizerStEthShare = stEthToRemove - userStEthShare;
 
-                    // Send user's share to USPDToken (which should forward to user)
-                    // TODO: Update USPDToken to handle stETH correctly in receiveUserStETH
+                    // Send user's share to cUSPDToken (which should forward to user as ETH)
                     if (userStEthShare > 0) {
-                        // Approve USPDToken to spend stETH? Or transfer directly?
-                        // Assuming USPDToken.receiveUserStETH handles the transfer logic for now.
-                        // Need to ensure USPDToken has STABILIZER_ROLE granted to this contract.
-                        // Let's transfer stETH to USPDToken first.
-                        bool successUser = IERC20(stETH).transfer(address(uspdToken), userStEthShare);
-                        if (!successUser) revert("User stETH transfer to USPDToken failed");
-                        // uspdToken.receiveUserStETH(originalBurnerAddress, userStEthShare); // Need original burner address?
+                        // Transfer stETH to cUSPDToken. cUSPDToken's burnShares function
+                        // already calculated the ETH equivalent and will send ETH to the user.
+                        // This contract (StabilizerNFT) just needs to ensure cUSPD gets the stETH collateral back.
+                        bool successUser = IERC20(stETH).transfer(address(cuspdToken), userStEthShare);
+                        if (!successUser) revert("User stETH transfer to cUSPDToken failed");
+                        // No need to call back to cUSPD here, the ETH transfer happens in burnShares.
 
-                        totalUserStEthReturned += userStEthShare;
+                        totalUserStEthReturned += userStEthShare; // Track stETH moved for user's portion
                     }
 
                     // Send stabilizer's share back to their StabilizerEscrow
