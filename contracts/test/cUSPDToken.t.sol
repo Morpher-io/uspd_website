@@ -460,7 +460,7 @@ contract cUSPDTokenTest is Test {
 
         // Mint some shares directly for testing burn revert (bypass mintShares logic)
         // Use the exposed internal mint function via the TestableCUSPD instance
-        TestableCUSPD(address(cuspdToken)).mintInternal(burner, 1000 ether); // Mint shares to burner
+        TestableCUSPD(payable(address(cuspdToken))).mintInternal(burner, 1000 ether); // Mint shares to burner
 
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
