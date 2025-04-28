@@ -1032,7 +1032,7 @@ contract USPDTokenTest is Test {
 
         // Check role enforcement
         vm.prank(nonAdmin);
-        vm.expectRevert(abi.encodeWithSelector(AccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.UPDATE_ORACLE_ROLE()));
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.UPDATE_ORACLE_ROLE()));
         uspdToken.updateOracle(makeAddr("anotherOracle"));
     }
 
@@ -1050,7 +1050,7 @@ contract USPDTokenTest is Test {
 
         // Check role enforcement (DEFAULT_ADMIN_ROLE)
         vm.prank(nonAdmin);
-        vm.expectRevert(abi.encodeWithSelector(AccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
         uspdToken.updateStabilizer(makeAddr("anotherStabilizer"));
     }
 
@@ -1068,7 +1068,7 @@ contract USPDTokenTest is Test {
 
         // Check role enforcement (DEFAULT_ADMIN_ROLE)
         vm.prank(nonAdmin);
-        vm.expectRevert(abi.encodeWithSelector(AccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
         uspdToken.updateRateContract(makeAddr("anotherRateContract"));
 
         // Check zero address revert
