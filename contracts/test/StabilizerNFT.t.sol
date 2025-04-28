@@ -148,6 +148,26 @@ contract StabilizerNFTTest is Test {
 
     // --- Helper Functions ---
 
+    function createSignedPriceAttestation(
+        uint256 price,
+        uint256 timestamp // Expect seconds
+    ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
+        // Note: This helper assumes the test contract's 'signer' is authorized on the priceOracle instance
+        bytes32 assetPair = keccak256("MORPHER:ETH_USD"); // Consistent pair
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
+            price: price,
+            decimals: 18,
+            dataTimestamp: timestamp * 1000, // Convert to ms
+            assetPair: assetPair,
+            signature: bytes("")
+        });
+        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
+        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
+        query.signature = abi.encodePacked(r, s, v);
+        return query;
+    }
+
     /**
      * @notice Calculates the actual system collateralization ratio by summing stETH balances
      *         from all active PositionEscrow contracts associated with *allocated* StabilizerNFTs.
@@ -162,7 +182,8 @@ contract StabilizerNFTTest is Test {
         }
         // Calculate liability value in USD based on shares and yield
         uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 liabilityValueUSD = (currentTotalShares * yieldFactor) / FACTOR_PRECISION;
+        // Access FACTOR_PRECISION via stabilizerNFT instance
+        uint256 liabilityValueUSD = (currentTotalShares * yieldFactor) / stabilizerNFT.FACTOR_PRECISION();
         if (liabilityValueUSD == 0) {
              return type(uint256).max; // Avoid division by zero if yield factor is 0 or shares are dust
         }
@@ -598,11 +619,7 @@ contract StabilizerNFTTest is Test {
         cuspdToken.mintShares{value: userEthForAllocation}(user1, priceQuery); // Mint shares to user1
 
         // Verify allocation result (check PositionEscrow state)
-        assertEq(
-            result.allocatedEth,
-            1 ether,
-            "Should allocate correct user ETH share"
-        );
+        // Cannot check result.allocatedEth directly anymore
 
         // Verify PositionEscrow state after allocation
         address positionEscrowAddr = stabilizerNFT.positionEscrows(1);
@@ -683,11 +700,8 @@ contract StabilizerNFTTest is Test {
 
 
         // Verify total allocation result - only user's ETH
-        assertEq(
-            result.allocatedEth,
-            2 ether,
-            "Total allocated user ETH should be 2 ETH"
-        );
+        // Cannot check result.allocatedEth directly anymore
+        // The PositionEscrow balance checks implicitly verify allocation happened.
     }
 
     function testSetMinCollateralizationRatio() public {
@@ -1335,7 +1349,7 @@ contract StabilizerNFTTest is Test {
         uint256 expectedEthEquivalentAdded = 1.1 ether; // 1 user + 0.1 stabilizer
 
         // Assertions
-        uint256 expectedEthEquivalentAdded = result.totalEthEquivalentAdded; // Use value from result struct
+        // Remove duplicate declaration: uint256 expectedEthEquivalentAdded = result.totalEthEquivalentAdded;
         // Verify snapshot state
         assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), expectedEthEquivalentAdded, "ETH snapshot mismatch after first allocation");
         assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), rateContract.getYieldFactor(), "Yield snapshot mismatch after first allocation"); // Should be current factor (1e18)
