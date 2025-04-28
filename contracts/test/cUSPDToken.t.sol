@@ -402,12 +402,7 @@ contract cUSPDTokenTest is Test {
         assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 0.55 ether, 1e15, "PositionEscrow stETH balance mismatch after burn");
     }
 
-    function testBurnShares_Revert_NotBurner() public {
-        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, cuspdToken.BURNER_ROLE()));
-        vm.prank(user1); // user1 does not have BURNER_ROLE
-        cuspdToken.burnShares(1 ether, payable(recipient), priceQuery);
-    }
+    // Removed testBurnShares_Revert_NotBurner as the role check was removed from burnShares
 
     function testBurnShares_Revert_ZeroAmount() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
