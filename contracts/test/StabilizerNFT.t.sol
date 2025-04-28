@@ -873,10 +873,9 @@ contract StabilizerNFTTest is Test {
         // Unallocate funds and verify IDs update
         // User2 burns 2000 cUSPD shares (assuming price=2000, yield=1)
         uint256 sharesToBurn = 2000 ether;
-        vm.prank(user2); // User2 owns the shares
-        cuspdToken.approve(owner, sharesToBurn); // Approve the burner (owner)
-        vm.prank(owner); // Owner has BURNER_ROLE
-        cuspdToken.burnShares(sharesToBurn, payable(user2), priceQuery2); // Burn shares from user2
+        // User2 now has BURNER_ROLE and owns the shares, so they call burnShares directly
+        vm.prank(user2);
+        cuspdToken.burnShares(sharesToBurn, payable(user2), priceQuery2); // Burn shares owned by user2
 
         assertEq(
             stabilizerNFT.lowestAllocatedId(),
