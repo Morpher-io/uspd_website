@@ -4,9 +4,11 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 
 import "../src/StabilizerNFT.sol";
-import "../src/UspdToken.sol";
+import "../src/UspdToken.sol"; // View layer
+import "../src/cUSPDToken.sol"; // Core share token
+import "../src/interfaces/IcUSPDToken.sol"; // Interface for cUSPD
 // Removed UspdCollateralizedPositionNFT import
-import {IERC721Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
+import {IERC721Errors, IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol"; // Added IERC20Errors
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -27,9 +29,10 @@ contract StabilizerNFTTest is Test {
     PriceOracle internal priceOracle; // Using actual for now, can be mocked if needed
     PoolSharesConversionRate internal rateContract; // Mock or actual if needed
 
-    // --- Contracts Under Test ---
+    // --- Contracts Under Test & Dependencies ---
     StabilizerNFT public stabilizerNFT;
-    USPDToken public uspdToken;
+    USPDToken public uspdToken; // View layer token
+    cUSPDToken public cuspdToken; // Core share token
     address public owner;
     address public user1;
     address public user2;
@@ -105,31 +108,42 @@ contract StabilizerNFTTest is Test {
         ERC1967Proxy stabilizerProxy_NoInit = new ERC1967Proxy(address(stabilizerNFTImpl), bytes(""));
         stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy_NoInit))); // Get proxy instance
 
-        // 4. Deploy USPD Token (AFTER proxies exist, needs Stabilizer proxy address)
+        // 4. Deploy cUSPD Token (Core Share Token)
+        cuspdToken = new cUSPDToken(
+            "Core USPD Share",        // name
+            "cUSPD",                  // symbol
+            address(priceOracle),     // oracle
+            address(stabilizerNFT),   // stabilizer
+            address(rateContract),    // rateContract
+            owner,                    // admin role
+            owner,                    // minter role (test contract)
+            owner                     // burner role (test contract)
+        );
+        // Grant UPDATER_ROLE if needed for tests (constructor grants to admin/owner)
+        // cuspdToken.grantRole(cuspdToken.UPDATER_ROLE(), owner);
+
+        // 5. Deploy USPD Token (View Layer)
         uspdToken = new USPDToken(
-            address(priceOracle),
-            address(stabilizerNFT), // Pass StabilizerNFT proxy address
+            "View USPD",              // name
+            "vUSPD",                  // symbol
+            address(cuspdToken),      // Link to core token
             address(rateContract),
-            address(this) // Admin
+            owner                     // Admin
         );
 
-        // 5. Initialize Proxies (Now that all addresses are known)
+        // 6. Initialize StabilizerNFT Proxy (Needs USPD View Token address)
         stabilizerNFT.initialize(
-            // address(positionNFT), // Removed PositionNFT proxy address
-            address(uspdToken),   // Pass USPDToken address
+            address(uspdToken),       // Pass USPD View Token address
             address(mockStETH),
             address(mockLido),
             address(rateContract),
-            address(this) // Admin
+            owner                     // Admin
         );
 
-        // 6. Setup roles
+        // 7. Setup roles
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
-        // Grant STABILIZER_ROLE on USPDToken to StabilizerNFT
-        uspdToken.grantRole(
-            uspdToken.STABILIZER_ROLE(),
-            address(stabilizerNFT)
-        );
+        // No STABILIZER_ROLE needed on USPDToken view layer anymore
+        // Grant POSITION_ESCROW_ROLE to allow callbacks (done within StabilizerNFT.mint)
     }
 
     // --- Helper Functions ---
@@ -141,9 +155,16 @@ contract StabilizerNFTTest is Test {
      * @return actualRatio The calculated ratio (scaled by 100).
      */
     function _calculateActualSystemRatio(IPriceOracle.PriceResponse memory _priceResponse) internal view returns (uint256 actualRatio) {
-        uint256 currentTotalSupply = uspdToken.totalSupply();
-        if (currentTotalSupply == 0) {
+        // Use cUSPD total supply (shares) for liability calculation base
+        uint256 currentTotalShares = cuspdToken.totalSupply();
+        if (currentTotalShares == 0) {
             return type(uint256).max; // Infinite ratio if no liability
+        }
+        // Calculate liability value in USD based on shares and yield
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 liabilityValueUSD = (currentTotalShares * yieldFactor) / FACTOR_PRECISION;
+        if (liabilityValueUSD == 0) {
+             return type(uint256).max; // Avoid division by zero if yield factor is 0 or shares are dust
         }
 
         uint256 totalStEthCollateral = 0;
@@ -170,7 +191,7 @@ contract StabilizerNFTTest is Test {
         uint256 collateralValueUSD = (totalStEthCollateral * _priceResponse.price) / 1e18;
 
         // Calculate ratio = (Collateral Value / Liability Value) * 100
-        actualRatio = (collateralValueUSD * 100) / currentTotalSupply;
+        actualRatio = (collateralValueUSD * 100) / liabilityValueUSD;
 
         return actualRatio;
     }
@@ -563,14 +584,20 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 5 ether}(1);
 
-        // Mock as USPD token to test allocation
-        vm.deal(address(uspdToken), 1 ether);
-        vm.startPrank(address(uspdToken));
-        IStabilizerNFT.AllocationResult memory result = stabilizerNFT
-            .allocateStabilizerFunds{value: 1 ether}(2000 ether, 18); // Removed poolSharesToMint arg
-        vm.stopPrank();
+        // --- Action: Mint cUSPD shares, triggering allocation ---
+        uint256 userEthForAllocation = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
-        // Verify allocation result
+        // Expect SharesMinted event from cUSPD
+        vm.expectEmit(true, true, true, true, address(cuspdToken));
+        // Note: Exact shares depend on stabilizer contribution, difficult to predict precisely here. Check > 0.
+        // emit cUSPDToken.SharesMinted(owner, user1, userEthForAllocation, expectedShares);
+
+        vm.deal(owner, userEthForAllocation); // Fund the minter (owner)
+        vm.prank(owner); // Owner has MINTER_ROLE on cUSPD
+        cuspdToken.mintShares{value: userEthForAllocation}(user1, priceQuery); // Mint shares to user1
+
+        // Verify allocation result (check PositionEscrow state)
         assertEq(
             result.allocatedEth,
             1 ether,
@@ -624,15 +651,15 @@ contract StabilizerNFTTest is Test {
         assertEq(IStabilizerEscrow(escrow2Addr).unallocatedStETH(), 4 ether, "Escrow2 balance mismatch before alloc");
 
 
-        // Mock as USPD token to test allocation
-        vm.deal(address(uspdToken), 2 ether); //user sends 2 eth to the uspd contract
-        vm.startPrank(address(uspdToken));
-        // Note: The poolSharesToMint argument was removed. Allocation is based on msg.value.
-        IStabilizerNFT.AllocationResult memory result = stabilizerNFT
-            .allocateStabilizerFunds{value: 2 ether}(2800 ether, 18); // Removed poolSharesToMint arg
-        vm.stopPrank();
+        // --- Action: Mint cUSPD shares, triggering allocation ---
+        uint256 userEthForAllocation = 2 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2800 ether, block.timestamp);
 
-        // Verify first position (user1, tokenId 1, 200% ratio)
+        vm.deal(owner, userEthForAllocation); // Fund the minter (owner)
+        vm.prank(owner); // Owner has MINTER_ROLE on cUSPD
+        cuspdToken.mintShares{value: userEthForAllocation}(user1, priceQuery); // Mint shares to user1 (will be split)
+
+        // Verify first position (user1, tokenId 1, 200% ratio) - Now owned by user1
         // User ETH allocated: 0.5 ETH (needs 0.5 ETH stabilizer stETH)
         address posEscrow1Addr = stabilizerNFT.positionEscrows(1);
         IPositionEscrow posEscrow1 = IPositionEscrow(posEscrow1Addr);
@@ -772,14 +799,11 @@ contract StabilizerNFTTest is Test {
         );
 
         // Allocate funds and check allocated IDs
-        vm.deal(address(uspdToken), 3 ether);
-        vm.startPrank(address(uspdToken));
-        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
-            // 1 ether, // poolSharesToMint removed
-            2000 ether,
-            18
-        );
-        vm.stopPrank();
+        uint256 userEthForAlloc1 = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery1 = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, userEthForAlloc1);
+        vm.prank(owner); // Minter
+        cuspdToken.mintShares{value: userEthForAlloc1}(user1, priceQuery1); // Mint to user1
 
         assertEq(
             stabilizerNFT.lowestAllocatedId(),
@@ -798,13 +822,11 @@ contract StabilizerNFTTest is Test {
         );
 
         // Allocate more funds
-        vm.startPrank(address(uspdToken));
-        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
-            // 1 ether, // poolSharesToMint removed
-            2000 ether,
-            18
-        );
-        vm.stopPrank();
+        uint256 userEthForAlloc2 = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery2 = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, userEthForAlloc2);
+        vm.prank(owner); // Minter
+        cuspdToken.mintShares{value: userEthForAlloc2}(user2, priceQuery2); // Mint to user2
 
         assertEq(
             stabilizerNFT.lowestAllocatedId(),
@@ -833,9 +855,12 @@ contract StabilizerNFTTest is Test {
             block.timestamp * 1000
         );
         // Unallocate funds and verify IDs update
-        vm.startPrank(address(uspdToken));
-        stabilizerNFT.unallocateStabilizerFunds(2000 ether, response);
-        vm.stopPrank();
+        // User2 burns 2000 cUSPD shares (assuming price=2000, yield=1)
+        uint256 sharesToBurn = 2000 ether;
+        vm.prank(user2); // User2 owns the shares
+        cuspdToken.approve(owner, sharesToBurn); // Approve the burner (owner)
+        vm.prank(owner); // Owner has BURNER_ROLE
+        cuspdToken.burnShares(sharesToBurn, payable(user2), priceQuery2); // Burn shares from user2
 
         assertEq(
             stabilizerNFT.lowestAllocatedId(),
@@ -864,14 +889,11 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.setMinCollateralizationRatio(1, 200);
 
         // First allocate - user provides 1 ETH, stabilizer provides 1 ETH for 200% ratio
-
-        vm.deal(address(uspdToken), 1 ether);
-        vm.startPrank(address(uspdToken));
-        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
-            // 1 ether, // poolSharesToMint removed
-            2000 ether,
-            18
-        );
+        uint256 userEthForAllocation = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, userEthForAllocation);
+        vm.prank(owner); // Minter
+        cuspdToken.mintShares{value: userEthForAllocation}(user1, priceQueryAlloc); // Mint shares to user1
 
         // Verify initial PositionEscrow state
         uint256 tokenId = 1;
@@ -897,22 +919,21 @@ contract StabilizerNFTTest is Test {
         uint256 initialRatio = positionEscrow.getCollateralizationRatio(priceResponse);
         assertEq(initialRatio, 200, "Initial ratio should be 200%");
 
-        // Unallocate half the liability (1000 Pool Shares)
-        // Since yieldFactor is 1e18, 1000 USPD burn corresponds to 1000 Pool Shares
+        // Unallocate half the liability (1000 cUSPD Shares)
         uint256 poolSharesToUnallocate = 1000 ether;
-        // Mock USPDToken call
-        vm.startPrank(address(uspdToken));
-        uint256 returnedStEthForUser = stabilizerNFT.unallocateStabilizerFunds(
-            poolSharesToUnallocate, // Pass Pool Shares to unallocate
-            priceResponse
-        );
-        vm.stopPrank();
+        IPriceOracle.PriceAttestationQuery memory priceQueryUnalloc = createSignedPriceAttestation(2000 ether, block.timestamp);
 
-        // Verify unallocation result (stETH returned for user)
-        // User share = 1000 shares * 1e18 / 2000 price = 0.5 stETH
-        // Total removed = userShare * ratio / 100 = 0.5 * 200 / 100 = 1 stETH
-        // Stabilizer share = total - user = 1 - 0.5 = 0.5 stETH
-        assertEq(returnedStEthForUser, 0.5 ether, "Should return 0.5 stETH for user");
+        // User1 approves burner (owner), burner calls burnShares
+        vm.prank(user1);
+        cuspdToken.approve(owner, poolSharesToUnallocate);
+        vm.prank(owner); // Burner
+        uint256 returnedEthForUser = cuspdToken.burnShares(poolSharesToUnallocate, payable(user1), priceQueryUnalloc);
+
+        // Verify unallocation result (ETH returned for user)
+        // User share = 1000 shares * 1e18 / 2000 price = 0.5 ETH equivalent
+        // Total removed = userShare * ratio / 100 = 0.5 * 200 / 100 = 1 ETH equivalent
+        // Stabilizer share = total - user = 1 - 0.5 = 0.5 ETH equivalent
+        assertEq(returnedEthForUser, 0.5 ether, "Should return 0.5 ETH for user");
 
         // Verify PositionEscrow state after partial unallocation
         assertEq(
@@ -1302,13 +1323,16 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId); // Add 2 ETH stabilizer funds
 
         // Action: Allocate 1 ETH from user (needs 0.1 ETH from stabilizer at 110%)
-        vm.deal(address(uspdToken), 1 ether);
-        vm.startPrank(address(uspdToken));
-        IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
-            2000 ether, // price (mocked)
-            18          // decimals
-        );
-        vm.stopPrank();
+        uint256 userEthForAlloc = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, userEthForAlloc);
+        vm.prank(owner); // Minter
+        cuspdToken.mintShares{value: userEthForAlloc}(user1, priceQueryAlloc); // Mint to user1
+
+        // Need to get the AllocationResult. This is tricky as it's returned by StabilizerNFT
+        // but the call is now internal via cUSPD. We might need to rely on events or state checks.
+        // Let's check the snapshot state directly.
+        uint256 expectedEthEquivalentAdded = 1.1 ether; // 1 user + 0.1 stabilizer
 
         // Assertions
         uint256 expectedEthEquivalentAdded = result.totalEthEquivalentAdded; // Use value from result struct
@@ -1337,16 +1361,17 @@ contract StabilizerNFTTest is Test {
 
         // Action: Unallocate half the shares (1000 shares if price=2000, yield=1)
         uint256 poolSharesToUnallocate = 1000 ether;
-        IPriceOracle.PriceResponse memory priceResponse = createPriceResponse();
+        IPriceOracle.PriceAttestationQuery memory priceQueryUnalloc = createSignedPriceAttestation(2000 ether, block.timestamp);
         // Calculate expected stETH removal (stETH = shares * yield / price * ratio / 100)
         // user stETH = 1000 * 1e18 / 2000 = 0.5e18
         // total stETH = 0.5e18 * 110 / 100 = 0.55e18
-        uint256 expectedStEthToRemove = 0.55 ether;
-        uint256 expectedEthEquivalentRemoved = expectedStEthToRemove; // Treat 1:1
+        uint256 expectedEthEquivalentRemoved = 0.55 ether; // Treat 1:1
 
-        vm.startPrank(address(uspdToken));
-        stabilizerNFT.unallocateStabilizerFunds(poolSharesToUnallocate, priceResponse);
-        vm.stopPrank();
+        // User1 approves burner (owner), burner calls burnShares
+        vm.prank(user1);
+        cuspdToken.approve(owner, poolSharesToUnallocate);
+        vm.prank(owner); // Burner
+        cuspdToken.burnShares(poolSharesToUnallocate, payable(user1), priceQueryUnalloc);
 
         // Assertions
         uint256 expectedFinalEthSnapshot = initialEthSnapshot - expectedEthEquivalentRemoved;
@@ -1373,13 +1398,15 @@ contract StabilizerNFTTest is Test {
 
         // Action: Unallocate all shares (2000 shares if price=2000, yield=1)
         uint256 poolSharesToUnallocate = 2000 ether;
-        IPriceOracle.PriceResponse memory priceResponse = createPriceResponse();
+        IPriceOracle.PriceAttestationQuery memory priceQueryUnalloc = createSignedPriceAttestation(2000 ether, block.timestamp);
         // Expected total stETH removal = 1.1 ether
         uint256 expectedEthEquivalentRemoved = 1.1 ether; // Treat 1:1
 
-        vm.startPrank(address(uspdToken));
-        stabilizerNFT.unallocateStabilizerFunds(poolSharesToUnallocate, priceResponse);
-        vm.stopPrank();
+        // User1 approves burner (owner), burner calls burnShares
+        vm.prank(user1);
+        cuspdToken.approve(owner, poolSharesToUnallocate);
+        vm.prank(owner); // Burner
+        cuspdToken.burnShares(poolSharesToUnallocate, payable(user1), priceQueryUnalloc);
 
         // Assertions
         uint256 expectedFinalEthSnapshot = initialEthSnapshot - expectedEthEquivalentRemoved;
@@ -1425,11 +1452,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Simulation Loop ---
         for (uint256 round = 1; round <= numRounds; round++) {
-            // 1. Allocation
-            vm.deal(address(uspdToken), userEthPerAllocRound); // Fund USPD contract for allocation call
-            vm.startPrank(address(uspdToken));
-            stabilizerNFT.allocateStabilizerFunds{value: userEthPerAllocRound}(2000 ether, 18); // Use fixed price for simplicity
-            vm.stopPrank();
+            // 1. Allocation (Mint cUSPD)
+            IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(2000 ether, block.timestamp);
+            vm.deal(owner, userEthPerAllocRound); // Fund minter
+            vm.prank(owner); // Minter
+            cuspdToken.mintShares{value: userEthPerAllocRound}(user, priceQueryAlloc); // Mint to user
 
             // 2. Rebase (Simulate Yield)
             uint256 currentTotalSupply = mockStETH.totalSupply();
@@ -1440,24 +1467,20 @@ contract StabilizerNFTTest is Test {
             }
 
             // 3. Unallocation (Optional - e.g., every other round)
-            if (round % 2 == 0 && uspdToken.totalSupply() > uspdToBurnPerUnallocRound) {
-                 IPriceOracle.PriceResponse memory priceRespUnalloc = createPriceResponse(); // Get current price
+            if (round % 2 == 0 && cuspdToken.balanceOf(user) > 0) { // Check if user has shares to burn
                  uint256 currentYieldFactor = rateContract.getYieldFactor();
-                 uint256 sharesToBurn = (uspdToBurnPerUnallocRound * stabilizerNFT.FACTOR_PRECISION()) / currentYieldFactor;
+                 // Calculate shares to burn based on target USPD amount
+                 uint256 sharesToBurn = (uspdToBurnPerUnallocRound * FACTOR_PRECISION) / currentYieldFactor;
+                 if (sharesToBurn > cuspdToken.balanceOf(user)) {
+                     sharesToBurn = cuspdToken.balanceOf(user); // Don't burn more than available
+                 }
 
-                 // Ensure user has enough balance before attempting burn
-                 if (uspdToken.balanceOf(user) >= uspdToBurnPerUnallocRound) {
-                     vm.startPrank(address(uspdToken));
-                     stabilizerNFT.unallocateStabilizerFunds(sharesToBurn, priceRespUnalloc);
-                     vm.stopPrank();
-                     // Note: We don't handle the returned ETH/stETH transfer back to the user in this simplified test setup.
-                 } else {
-                     // If user doesn't have enough, mint some for them (simplification for test flow)
-                     // This isn't realistic but prevents reverts in the drift test.
-                     vm.deal(address(uspdToken), 0.1 ether);
-                     vm.startPrank(address(uspdToken));
-                     stabilizerNFT.allocateStabilizerFunds{value: 0.1 ether}(2000 ether, 18);
-                     vm.stopPrank();
+                 if (sharesToBurn > 0) {
+                     IPriceOracle.PriceAttestationQuery memory priceQueryUnalloc = createSignedPriceAttestation(2000 ether, block.timestamp);
+                     vm.prank(user); // User approves burner
+                     cuspdToken.approve(owner, sharesToBurn);
+                     vm.prank(owner); // Burner
+                     cuspdToken.burnShares(sharesToBurn, payable(user), priceQueryUnalloc);
                  }
             }
 
