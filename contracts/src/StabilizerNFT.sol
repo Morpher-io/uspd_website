@@ -166,7 +166,7 @@ contract StabilizerNFT is
             stETH,         // stETH address
             lido,          // Lido address
             address(rateContract), // Rate contract address
-            address(uspdToken.oracle()) // Oracle address from USPDToken
+            address(cuspdToken.oracle()) // Oracle address from USPDToken
         );
         require(address(positionEscrow) != address(0), "PositionEscrow deployment failed");
         positionEscrows[tokenId] = address(positionEscrow);
