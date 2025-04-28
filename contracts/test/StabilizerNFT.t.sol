@@ -133,6 +133,48 @@ contract StabilizerNFTTest is Test {
 
     // --- Helper Functions ---
 
+    /**
+     * @notice Calculates the actual system collateralization ratio by summing stETH balances
+     *         from all active PositionEscrow contracts associated with *allocated* StabilizerNFTs.
+     * @param _priceResponse The current valid price response.
+     * @return actualRatio The calculated ratio (scaled by 100).
+     */
+    function _calculateActualSystemRatio(IPriceOracle.PriceResponse memory _priceResponse) internal view returns (uint256 actualRatio) {
+        uint256 currentTotalSupply = uspdToken.totalSupply();
+        if (currentTotalSupply == 0) {
+            return type(uint256).max; // Infinite ratio if no liability
+        }
+
+        uint256 totalStEthCollateral = 0;
+        uint256 currentAllocatedId = stabilizerNFT.lowestAllocatedId();
+
+        // Iterate through the allocated list
+        while (currentAllocatedId != 0) {
+            address positionEscrowAddr = stabilizerNFT.positionEscrows(currentAllocatedId);
+            if (positionEscrowAddr != address(0)) {
+                totalStEthCollateral += IPositionEscrow(positionEscrowAddr).getCurrentStEthBalance();
+            }
+            // Move to the next allocated ID
+            (, , , , , uint256 nextAllocated) = stabilizerNFT.positions(currentAllocatedId);
+            currentAllocatedId = nextAllocated;
+        }
+
+        if (totalStEthCollateral == 0) {
+            return 0; // No collateral
+        }
+
+        // Calculate collateral value in USD wei
+        require(_priceResponse.price > 0, "Oracle price cannot be zero");
+        require(_priceResponse.decimals == 18, "Price must have 18 decimals for this calculation"); // Adapt if needed
+        uint256 collateralValueUSD = (totalStEthCollateral * _priceResponse.price) / 1e18;
+
+        // Calculate ratio = (Collateral Value / Liability Value) * 100
+        actualRatio = (collateralValueUSD * 100) / currentTotalSupply;
+
+        return actualRatio;
+    }
+
+
     function createPriceResponse() internal returns (IPriceOracle.PriceResponse memory) { // Removed view modifier
         // Mock the specific oracle call needed by this helper for simplicity
         uint256 mockPrice = 2000 ether; // Define a mock price for the test
