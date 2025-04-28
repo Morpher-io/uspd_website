@@ -448,10 +448,15 @@ contract cUSPDTokenTest is Test {
     function testBurnShares_Revert_InsufficientBalance() public {
         // Setup: Mint shares first
         uint256 tokenId = 1;
-        vm.prank(admin); stabilizerNFT.mint(user1, tokenId);
-        vm.deal(user1, 2 ether); vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
+        vm.prank(admin); 
+        stabilizerNFT.mint(user1, tokenId);
+        vm.deal(user1, 2 ether); 
+        vm.prank(user1); 
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.deal(minter, 1 ether); vm.prank(minter); cuspdToken.mintShares{value: 1 ether}(burner, mintQuery); // Mint to burner
+        vm.deal(minter, 1 ether); 
+        vm.prank(minter); 
+        cuspdToken.mintShares{value: 1 ether}(burner, mintQuery); // Mint to burner
         uint256 currentShares = cuspdToken.balanceOf(burner);
 
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
