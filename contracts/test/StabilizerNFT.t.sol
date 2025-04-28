@@ -65,7 +65,7 @@ contract StabilizerNFTTest is Test {
             3600,
             address(0xdead),
             address(0xbeef),
-            address(0xcafe),
+            address(CHAINLINK_ETH_USD),
             address(this) // Dummy config for test
         );
         ERC1967Proxy oracleProxy = new ERC1967Proxy(
@@ -133,7 +133,7 @@ contract StabilizerNFTTest is Test {
 
         // 6. Initialize StabilizerNFT Proxy (Needs USPD View Token address)
         stabilizerNFT.initialize(
-            address(uspdToken),       // Pass USPD View Token address
+            address(cuspdToken),       // Pass cUSPD View Token address
             address(mockStETH),
             address(mockLido),
             address(rateContract),
@@ -144,6 +144,8 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
         // No STABILIZER_ROLE needed on USPDToken view layer anymore
         // Grant POSITION_ESCROW_ROLE to allow callbacks (done within StabilizerNFT.mint)
+
+        vm.warp(1745837835); //warp for the price attestation service to a meaningful timestamp
     }
 
     // --- Helper Functions ---
@@ -218,7 +220,7 @@ contract StabilizerNFTTest is Test {
     }
 
 
-    function createPriceResponse() internal returns (IPriceOracle.PriceResponse memory) { // Removed view modifier
+    function createPriceResponse() internal view returns (IPriceOracle.PriceResponse memory) { // Removed view modifier
         // Mock the specific oracle call needed by this helper for simplicity
         uint256 mockPrice = 2000 ether; // Define a mock price for the test
         // vm.mockCall(
@@ -1484,7 +1486,7 @@ contract StabilizerNFTTest is Test {
             if (round % 2 == 0 && cuspdToken.balanceOf(user) > 0) { // Check if user has shares to burn
                  uint256 currentYieldFactor = rateContract.getYieldFactor();
                  // Calculate shares to burn based on target USPD amount
-                 uint256 sharesToBurn = (uspdToBurnPerUnallocRound * FACTOR_PRECISION) / currentYieldFactor;
+                 uint256 sharesToBurn = (uspdToBurnPerUnallocRound * stabilizerNFT.FACTOR_PRECISION()) / currentYieldFactor;
                  if (sharesToBurn > cuspdToken.balanceOf(user)) {
                      sharesToBurn = cuspdToken.balanceOf(user); // Don't burn more than available
                  }
