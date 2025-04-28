@@ -453,9 +453,14 @@ contract cUSPDTokenTest is Test {
     }
 
     function testBurnShares_Revert_NoAllocatedStabilizers() public {
-        // Setup: Mint shares, but ensure no stabilizers are allocated
-        // Mint shares without any stabilizer having unallocated funds
-        // (This scenario is prevented by mintShares revert, so test the direct revert)
+        // Test Purpose: Verify that burnShares correctly propagates the revert from
+        // StabilizerNFT.unallocateStabilizerFunds if the stabilizer somehow enters
+        // a state where no positions are allocated (highestAllocatedId == 0).
+        // Note: This state (cUSPD supply > 0 but highestAllocatedId == 0) should
+        // not occur in a normally functioning system. This test focuses on
+        // ensuring cUSPD handles the dependency revert correctly.
+
+        // Setup: Ensure no stabilizers are allocated initially
         require(stabilizerNFT.highestAllocatedId() == 0, "Test setup fail: Stabilizers allocated");
 
         // Mint some shares directly for testing burn revert (bypass mintShares logic)
