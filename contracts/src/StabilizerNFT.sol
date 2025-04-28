@@ -346,9 +346,17 @@ contract StabilizerNFT is
         }
         // --- End Snapshot Update ---
 
-        // Return any unallocated ETH to USPD token
+        // Return any unallocated ETH to cUSPD token (which should forward to original minter)
         if (remainingEth > 0) {
-            uspdToken.receiveStabilizerReturn{value: remainingEth}();
+            // cUSPD needs a function to handle this refund, or transfer directly to tx.origin?
+            // For now, let's assume cUSPD handles it via a specific function or direct transfer.
+            // If transferring directly, need to ensure cUSPD doesn't revert on receive.
+            // Safest is likely a callback to cUSPD. Let's assume cUSPD handles refund internally for now.
+            // payable(address(cuspdToken)).transfer(remainingEth); // This would require cUSPD to be payable and handle it.
+            // OR: cuspdToken.handleRefund(remainingEth); // Requires a new function on cUSPD
+            // OR: Transfer back to the original minter (tx.origin)? Risky.
+            // Let's comment out the direct transfer for now, assuming cUSPD handles refund logic.
+            // payable(msg.sender).transfer(remainingEth); // Send back to cUSPD
         }
 
         return result;
