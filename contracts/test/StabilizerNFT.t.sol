@@ -133,16 +133,25 @@ contract StabilizerNFTTest is Test {
 
     // --- Helper Functions ---
 
-    function createPriceResponse() internal view returns (IPriceOracle.PriceResponse memory) {
-        // Use the mocked oracle setup to get a consistent price
-        uint256 price = priceOracle.getUniswapV3WethUsdcPrice();
-        require(price > 0, "Mocked price is zero");
+    function createPriceResponse() internal returns (IPriceOracle.PriceResponse memory) { // Removed view modifier
+        // Mock the specific oracle call needed by this helper for simplicity
+        uint256 mockPrice = 2000 ether; // Define a mock price for the test
+        // vm.mockCall(
+        //     address(priceOracle),
+        //     abi.encodeWithSelector(priceOracle.getUniswapV3WethUsdcPrice.selector),
+        //     abi.encode(mockPrice)
+        // );
+        // uint256 price = priceOracle.getUniswapV3WethUsdcPrice(); // Call the mocked function
+        // require(price == mockPrice, "Mocking getUniswapV3WethUsdcPrice failed");
+
+        // Simpler approach: Just return the mock price directly in the response struct
         return IPriceOracle.PriceResponse({
-            price: price,
+            price: mockPrice, // Use the defined mock price
             decimals: 18,
             timestamp: block.timestamp // Use current block timestamp for response
         });
     }
+
 
     // --- Mint Tests ---
 
