@@ -30,6 +30,21 @@ import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol"
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // For mocking getPool
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol"; // For mocking slot0
 
+
+// Helper contract to expose internal _mint for testing
+contract TestableCUSPD is cUSPDToken {
+    constructor(
+        string memory name, string memory symbol, address _oracle, address _stabilizer,
+        address _rateContract, address _admin, address _minter, address _burner
+    ) cUSPDToken(name, symbol, _oracle, _stabilizer, _rateContract, _admin, _minter, _burner) {}
+
+    // Expose internal mint function for test setup
+    function mintInternal(address account, uint256 amount) public {
+        _mint(account, amount);
+    }
+}
+
+
 contract cUSPDTokenTest is Test {
     // --- Mocks & Dependencies ---
     MockStETH internal mockStETH;
@@ -101,10 +116,11 @@ contract cUSPDTokenTest is Test {
         uspdTokenView = new USPDToken("View USPD", "vUSPD", address(0), address(rateContract), admin); // cUSPD address initially 0
 
         // Initialize StabilizerNFT (Needs USPD View Token address)
-        stabilizerNFT.initialize(address(uspdTokenView), address(mockStETH), address(mockLido), address(rateContract), admin);
+        // Initialize StabilizerNFT (Needs cUSPD address - will be set later, pass placeholder for now if needed, or initialize after cUSPD deploy)
+        // Let's deploy cUSPD first
 
-        // 3. Deploy cUSPDToken (Contract Under Test)
-        cuspdToken = new cUSPDToken(
+        // 3. Deploy Testable cUSPDToken (Contract Under Test)
+        TestableCUSPD testableToken = new TestableCUSPD(
             "Core USPD Share",        // name
             "cUSPD",                  // symbol
             address(priceOracle),     // oracle
@@ -114,10 +130,19 @@ contract cUSPDTokenTest is Test {
             minter,                   // minter role
             burner                    // burner role
         );
-        // Grant UPDATER_ROLE separately if needed (constructor already grants to admin)
-        // cuspdToken.grantRole(cuspdToken.UPDATER_ROLE(), updater);
+        cuspdToken = testableToken; // Assign to the state variable
 
-        // 4. Link USPD View Token to cUSPD Token (if not done in constructor)
+        // Initialize StabilizerNFT (Needs cUSPD address)
+        stabilizerNFT.initialize(
+            address(cuspdToken),      // Pass cUSPD address
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            admin                     // Admin
+        );
+
+
+        // 4. Link USPD View Token to cUSPD Token
         uspdTokenView.updateCUSPDAddress(address(cuspdToken));
 
         // 5. Setup Oracle Mocks (Chainlink, Uniswap)
@@ -434,8 +459,8 @@ contract cUSPDTokenTest is Test {
         require(stabilizerNFT.highestAllocatedId() == 0, "Test setup fail: Stabilizers allocated");
 
         // Mint some shares directly for testing burn revert (bypass mintShares logic)
-        vm.prank(admin); // Use admin with role access if needed
-        cuspdToken.mint(burner, 1000 ether); // Directly mint shares to burner
+        // Use the exposed internal mint function via the TestableCUSPD instance
+        TestableCUSPD(address(cuspdToken)).mintInternal(burner, 1000 ether); // Mint shares to burner
 
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
