@@ -202,7 +202,7 @@ contract USPDTokenTest is Test {
             address(stabilizerNFTInstance), // stabilizer
             address(rateContract),    // rateContract
             address(this),            // admin role
-            address(this),            // minter role (test contract)
+            // address(this),         // MINTER_ROLE removed
             address(this)             // burner role (test contract)
         );
         cuspdToken.grantRole(cuspdToken.UPDATER_ROLE(), address(this));
