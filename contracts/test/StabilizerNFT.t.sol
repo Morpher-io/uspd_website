@@ -672,7 +672,8 @@ contract StabilizerNFTTest is Test {
 
         // --- Action: Mint cUSPD shares, triggering allocation ---
         uint256 userEthForAllocation = 2 ether;
-        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2800 ether, block.timestamp);
+        // Use the mocked price (2000) to avoid PriceDeviationTooHigh error
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
         vm.deal(owner, userEthForAllocation); // Fund the minter (owner)
         vm.prank(owner); // Owner has MINTER_ROLE on cUSPD
@@ -683,8 +684,8 @@ contract StabilizerNFTTest is Test {
         address posEscrow1Addr = stabilizerNFT.positionEscrows(1);
         IPositionEscrow posEscrow1 = IPositionEscrow(posEscrow1Addr);
         assertEq(posEscrow1.getCurrentStEthBalance(), 1 ether, "PositionEscrow 1 stETH balance mismatch (0.5 user + 0.5 stab)");
-        // Expected shares = 1400e18 (0.5 ETH * 2800 price / 1 yieldFactor)
-        assertEq(posEscrow1.backedPoolShares(), 1400 ether, "PositionEscrow 1 backed shares mismatch");
+        // Expected shares = 1000e18 (0.5 ETH * 2000 price / 1 yieldFactor)
+        assertEq(posEscrow1.backedPoolShares(), 1000 ether, "PositionEscrow 1 backed shares mismatch");
         // Check remaining balance in StabilizerEscrow 1
         assertEq(IStabilizerEscrow(escrow1Addr).unallocatedStETH(), 0, "StabilizerEscrow 1 should be empty");
 
@@ -694,8 +695,8 @@ contract StabilizerNFTTest is Test {
         address posEscrow2Addr = stabilizerNFT.positionEscrows(2);
         IPositionEscrow posEscrow2 = IPositionEscrow(posEscrow2Addr);
         assertEq(posEscrow2.getCurrentStEthBalance(), 1.65 ether, "PositionEscrow 2 stETH balance mismatch (1.5 user + 0.15 stab)");
-        // Expected shares = 4200e18 (1.5 ETH * 2800 price / 1 yieldFactor)
-        assertEq(posEscrow2.backedPoolShares(), 4200 ether, "PositionEscrow 2 backed shares mismatch");
+        // Expected shares = 3000e18 (1.5 ETH * 2000 price / 1 yieldFactor)
+        assertEq(posEscrow2.backedPoolShares(), 3000 ether, "PositionEscrow 2 backed shares mismatch");
         // Check remaining balance in StabilizerEscrow 2
         assertEq(IStabilizerEscrow(escrow2Addr).unallocatedStETH(), 3.85 ether, "StabilizerEscrow 2 remaining balance mismatch");
 
