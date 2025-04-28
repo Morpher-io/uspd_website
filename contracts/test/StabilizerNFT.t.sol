@@ -1494,8 +1494,8 @@ contract StabilizerNFTTest is Test {
                  if (sharesToBurn > 0) {
                      IPriceOracle.PriceAttestationQuery memory priceQueryUnalloc = createSignedPriceAttestation(2000 ether, block.timestamp);
                      vm.prank(user); // User approves burner
-                     cuspdToken.approve(owner, sharesToBurn);
-                     vm.prank(owner); // Burner
+                    //  cuspdToken.approve(owner, sharesToBurn);
+                    //  vm.prank(owner); // Burner
                      cuspdToken.burnShares(sharesToBurn, payable(user), priceQueryUnalloc);
                  }
             }
