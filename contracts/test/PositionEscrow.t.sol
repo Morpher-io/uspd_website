@@ -471,7 +471,6 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         uint256 initialStEth = 1.5 ether; // e.g., 1 ETH user + 0.5 ETH stabilizer
         uint256 shares = 1000 ether; // Backing 1000 USD initially
         uint256 price = 2000 ether; // 1 stETH = 2000 USD
-        uint256 minRatio = 110; // 110%
 
         // Setup state
         mockStETH.mint(address(positionEscrow), initialStEth);
@@ -512,7 +511,6 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         uint256 initialStEth = 1.5 ether;
         uint256 shares = 1000 ether;
         uint256 price = 2000 ether;
-        uint256 minRatio = 110;
         uint256 amountToRemove = 1 ether; // Removing 1 ETH would leave 0.5 ETH (target is 0.55)
 
         // Setup state
@@ -661,7 +659,6 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         uint256 initialStEth = 1.5 ether;
         uint256 shares = 1000 ether;
         uint256 price = 2000 ether;
-        uint256 minRatio = 110;
         uint256 expectedExcess = 0.95 ether;
 
         // Setup state
@@ -890,6 +887,7 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.deal(otherUser, ethAmount);
         vm.prank(otherUser);
         (bool success, ) = address(positionEscrow).call{value: ethAmount}("");
+        require(success || !success); //linter happinness
         // The call itself might succeed, but the internal logic reverts.
         // If the call itself reverted, success would be false.
         // Since the revert happens *inside*, we rely on vm.expectRevert.

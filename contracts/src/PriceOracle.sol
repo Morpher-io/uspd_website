@@ -106,7 +106,6 @@ contract PriceOracle is
         IUniswapV3Factory factory = IUniswapV3Factory(
             0x1F98431c8aD98523631AE4a59f267346ea31F984
         );
-        console.log(uniswapRouter.WETH());
         address uniswapV3PoolWethUSDC = factory.getPool(
             uniswapRouter.WETH(),
             usdcAddress,
@@ -117,17 +116,7 @@ contract PriceOracle is
                 uniswapV3PoolWethUSDC
             );
             (uint sqrtPriceX96, , , , , , ) = uniswapPoolState.slot0();
-            console.log(sqrtPriceX96);
-            // Calculate price = (sqrtPriceX96^2 * 10^18) / 2^192
-            // This gives the price of 1 WETH (18 decimals) in terms of USDC, scaled to 18 decimals.
-            // WARNING: Direct calculation of sqrtPriceX96 * sqrtPriceX96 overflows uint256.
-            // Use a safe math library like FullMath.mulDiv:
-            // uint256 price = FullMath.mulDiv(sqrtPriceX96, sqrtPriceX96, 1 << 192); // This calculates price with 6 decimals (USDC)
-            // return price * 1e12; // Scale to 18 decimals
-            // Placeholder calculation demonstrating the formula (prone to overflow):
-            uint256 Q192 = 6277101735386680763835789423207666416102355444464034512896; // 2^192
-            uint256 numerator = uint256(sqrtPriceX96) * uint256(sqrtPriceX96); // OVERFLOWS!
-            return (numerator * 10**18) / Q192; // Conceptual formula - requires safe math
+            return ((sqrtPriceX96 / 2 ** 96) ** 2) * 1e12; //scaling it to 18 decimals from 6 decimals from the usdc
         }
         return 0;
     }
@@ -207,8 +196,6 @@ contract PriceOracle is
             revert PriceDataTooOld(priceQuery.dataTimestamp, block.timestamp);
         }
 
-        
-
         // Get prices from other sources
         uint256 chainlinkPrice = uint256(getChainlinkDataFeedLatestAnswer());
         if (chainlinkPrice == 0) {
@@ -219,10 +206,7 @@ contract PriceOracle is
         if (uniswapV3Price == 0) {
             revert PriceSourceUnavailable("Uniswap V3");
         }
-        console.log(priceQuery.price);
-        console.log(chainlinkPrice);
-        console.log(uniswapV3Price);
-
+      
         // Check price deviations
         if (!_isPriceDeviationAcceptable(priceQuery.price, chainlinkPrice, uniswapV3Price)) {
             revert PriceDeviationTooHigh(priceQuery.price, chainlinkPrice, uniswapV3Price);

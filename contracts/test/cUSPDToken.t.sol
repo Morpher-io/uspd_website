@@ -35,8 +35,8 @@ import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol
 contract TestableCUSPD is cUSPDToken {
     constructor(
         string memory name, string memory symbol, address _oracle, address _stabilizer,
-        address _rateContract, address _admin /*, address _burner */ // Removed burner
-    ) cUSPDToken(name, symbol, _oracle, _stabilizer, _rateContract, _admin /*, _burner */) {} // Removed burner
+        address _rateContract, address _admin
+    ) cUSPDToken(name, symbol, _oracle, _stabilizer, _rateContract, _admin) {}
 
     // Expose internal mint function for test setup
     function mintInternal(address account, uint256 amount) public {
@@ -59,7 +59,6 @@ contract cUSPDTokenTest is Test {
 
     // --- Test Actors & Config ---
     address internal admin;
-    // address internal burner; // BURNER_ROLE removed
     address internal updater;
     address internal user1;
     address internal user2;
@@ -124,9 +123,7 @@ contract cUSPDTokenTest is Test {
             address(priceOracle),     // oracle
             address(stabilizerNFT),   // stabilizer
             address(rateContract),    // rateContract
-            admin,                    // admin role
-            // minter,                // MINTER_ROLE removed
-            burner                    // burner role
+            admin                     // admin role
         );
         cuspdToken = testableToken; // Assign to the state variable
 
@@ -211,16 +208,16 @@ contract cUSPDTokenTest is Test {
 
     function testConstructor_Revert_ZeroAddresses() public {
         vm.expectRevert("cUSPD: Zero oracle address");
-        new cUSPDToken("N", "S", address(0), address(stabilizerNFT), address(rateContract), admin, /* minter, */ burner);
+        new cUSPDToken("N", "S", address(0), address(stabilizerNFT), address(rateContract), admin);
 
         vm.expectRevert("cUSPD: Zero stabilizer address");
-        new cUSPDToken("N", "S", address(priceOracle), address(0), address(rateContract), admin, /* minter, */ burner);
+        new cUSPDToken("N", "S", address(priceOracle), address(0), address(rateContract), admin);
 
         vm.expectRevert("cUSPD: Zero rate contract address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(0), admin, /* minter, */ burner);
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(0), admin);
 
         vm.expectRevert("cUSPD: Zero admin address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0) /*, burner */); // Removed burner
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0) ); // Removed burner
 
         // vm.expectRevert("cUSPD: Zero burner address"); // BURNER_ROLE removed
         // new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, address(0));

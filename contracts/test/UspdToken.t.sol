@@ -32,7 +32,7 @@ contract USPDTokenTest is Test {
     event MintPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
     event BurnPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
     event PriceOracleUpdated(address oldOracle, address newOracle);
-    event RateContractUpdated(address oldRateContract, address newRateContract);
+    event RateContractUpdated(address indexed oldRateContract, address indexed newRateContract);
     event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
 
 
@@ -274,10 +274,10 @@ contract USPDTokenTest is Test {
         assertEq(address(uspdToken.rateContract()), newRateContract, "Rate contract address not updated");
 
         // Check role enforcement (DEFAULT_ADMIN_ROLE)
-        vm.prank(nonAdmin);
+        vm.startPrank(nonAdmin);
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
         uspdToken.updateRateContract(makeAddr("anotherRateContract"));
-
+        vm.stopPrank();
         // Check zero address revert
         vm.expectRevert("USPD: Zero rate contract address"); // Updated error message check
         uspdToken.updateRateContract(address(0));

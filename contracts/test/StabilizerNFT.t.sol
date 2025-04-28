@@ -114,9 +114,7 @@ contract StabilizerNFTTest is Test {
             address(priceOracle),     // oracle
             address(stabilizerNFT),   // stabilizer
             address(rateContract),    // rateContract
-            owner,                    // admin role
-            // owner,                 // MINTER_ROLE removed
-            owner                     // burner role (test contract)
+            owner                     // admin role
         );
         // Grant UPDATER_ROLE if needed for tests (constructor grants to admin/owner)
         // cuspdToken.grantRole(cuspdToken.UPDATER_ROLE(), owner);
