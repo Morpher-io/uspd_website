@@ -905,6 +905,44 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), stabilizerNFT.FACTOR_PRECISION(), "Initial yield snapshot should be 1e18");
     }
 
+    // --- Snapshot Tests via PositionEscrow Callbacks ---
+
+    function testReportCollateralAddition_UpdatesSnapshot_FromZero() public {
+        // Scenario: Test the *very first* collateral addition reported via callback
+        // when the snapshot is zero.
+
+        // Setup: Mint NFT, verify initial snapshot
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
+
+        assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), 0, "Initial ETH snapshot should be 0");
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), stabilizerNFT.FACTOR_PRECISION(), "Initial yield snapshot should be 1e18");
+
+        // Get PositionEscrow
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed");
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+
+        // Action: Directly add ETH collateral to PositionEscrow
+        uint256 ethAmount = 1 ether;
+        uint256 expectedStEthAmount = ethAmount; // Assuming 1:1 MockLido rate
+        address directAdder = makeAddr("directAdder");
+        vm.deal(directAdder, ethAmount);
+
+        vm.prank(directAdder);
+        positionEscrow.addCollateralEth{value: ethAmount}(); // This triggers the callback
+
+        // Assertions: Check StabilizerNFT snapshot state
+        uint256 currentYieldFactor = rateContract.getYieldFactor(); // Should still be FACTOR_PRECISION
+        assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), expectedStEthAmount, "ETH snapshot mismatch after direct add");
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), currentYieldFactor, "Yield snapshot mismatch after direct add");
+        assertEq(currentYieldFactor, stabilizerNFT.FACTOR_PRECISION(), "Yield factor should not have changed yet");
+    }
+
+    // --- End Snapshot Tests via PositionEscrow Callbacks ---
+
+
     function testAllocate_UpdatesSnapshot_FirstAllocation() public {
         // Setup
         uint256 tokenId = 1;
