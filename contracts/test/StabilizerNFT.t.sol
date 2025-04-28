@@ -995,6 +995,70 @@ contract StabilizerNFTTest is Test {
         assertEq(currentYieldFactor, initialYieldSnapshot, "Yield factor should not have changed during test");
     }
 
+    function testReportCollateralAddition_UpdatesSnapshot_WithYieldChange() public {
+        // Prerequisite: MockStETH.rebase() function exists.
+        // Scenario: Test adding collateral directly after a yield change has occurred
+        // since the last snapshot update.
+
+        // --- Setup ---
+        // 1. Mint NFT, add funds, allocate to set initial snapshot
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId);
+        vm.deal(user1, 2 ether); // Stabilizer funds
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
+
+        uint256 userEthForAllocation = 1 ether;
+        vm.deal(address(uspdToken), userEthForAllocation);
+        vm.startPrank(address(uspdToken));
+        IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
+            2000 ether, 18
+        );
+        vm.stopPrank();
+
+        // 2. Store initial snapshot values (ETH1, Yield1)
+        uint256 ethSnapshot1 = stabilizerNFT.totalEthEquivalentAtLastSnapshot();
+        uint256 yieldSnapshot1 = stabilizerNFT.yieldFactorAtLastSnapshot();
+        require(ethSnapshot1 == allocResult.totalEthEquivalentAdded, "Initial snapshot setup failed");
+        require(yieldSnapshot1 == rateContract.getYieldFactor(), "Initial yield factor mismatch");
+        require(yieldSnapshot1 == stabilizerNFT.FACTOR_PRECISION(), "Yield factor should be 1e18 initially"); // Sanity check
+
+        // 3. Get PositionEscrow
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed");
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+
+        // --- Simulate Yield ---
+        // Increase total supply by 10% (e.g., from 1.1 ETH + 0.001 ETH initial rate deposit)
+        uint256 currentTotalSupply = mockStETH.totalSupply();
+        uint256 newTotalSupply = (currentTotalSupply * 110) / 100; // 10% increase
+        vm.prank(owner); // Only owner can rebase MockStETH
+        mockStETH.rebase(newTotalSupply);
+
+        // 4. Get new yield factor (Yield2)
+        uint256 yieldSnapshot2 = rateContract.getYieldFactor();
+        assertTrue(yieldSnapshot2 > yieldSnapshot1, "Yield factor did not increase after rebase");
+
+        // --- Action ---
+        // Directly add more ETH collateral to PositionEscrow
+        uint256 directEthAmount = 0.5 ether;
+        uint256 expectedDirectStEthAmount = directEthAmount; // Assuming 1:1 MockLido rate
+        address directAdder = makeAddr("directAdder");
+        vm.deal(directAdder, directEthAmount);
+
+        vm.prank(directAdder);
+        positionEscrow.addCollateralEth{value: directEthAmount}(); // This triggers the callback
+
+        // --- Assertions ---
+        // Calculate expected final ETH snapshot: (ETH1 * Yield2 / Yield1) + directStEthAdded
+        uint256 projectedEth1 = (ethSnapshot1 * yieldSnapshot2) / yieldSnapshot1;
+        uint256 expectedFinalEthSnapshot = projectedEth1 + expectedDirectStEthAmount;
+
+        assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), expectedFinalEthSnapshot, "ETH snapshot mismatch after direct add with yield change");
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), yieldSnapshot2, "Yield snapshot mismatch after direct add with yield change");
+    }
+
 
     // --- End Snapshot Tests via PositionEscrow Callbacks ---
 
