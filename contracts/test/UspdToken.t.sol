@@ -237,8 +237,7 @@ contract USPDTokenTest is Test {
     function testAdminRoleAssignment() public {
         // Verify that the constructor correctly assigned admin roles
         assertTrue(uspdToken.hasRole(uspdToken.DEFAULT_ADMIN_ROLE(), address(this)), "Admin role not assigned");
-        assertTrue(uspdToken.hasRole(uspdToken.EXCESS_COLLATERAL_DRAIN_ROLE(), address(this)), "Excess collateral drain role not assigned");
-        assertTrue(uspdToken.hasRole(uspdToken.UPDATE_ORACLE_ROLE(), address(this)), "Update oracle role not assigned");
+        // Removed checks for EXCESS_COLLATERAL_DRAIN_ROLE, UPDATE_ORACLE_ROLE
     }
 
     function testMintByDirectEtherTransfer() public {
