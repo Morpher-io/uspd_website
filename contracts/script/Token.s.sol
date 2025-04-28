@@ -9,7 +9,8 @@ import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
-import "../src/UspdToken.sol";
+import "../src/UspdToken.sol"; // View layer token
+import "../src/cUSPDToken.sol"; // Core share token
 // Removed UspdCollateralizedPositionNFT import
 import "../src/PoolSharesConversionRate.sol"; // Import the new contract
 import "../src/interfaces/ILido.sol"; // Import Lido interface
@@ -39,7 +40,8 @@ contract DeployScript is Script {
     bytes32 ORACLE_PROXY_SALT;
     // bytes32 POSITION_NFT_PROXY_SALT; // Removed
     bytes32 STABILIZER_PROXY_SALT;
-    bytes32 TOKEN_SALT;
+    bytes32 CUSPD_TOKEN_SALT; // Salt for cUSPD Token
+    bytes32 USPD_TOKEN_SALT; // Renamed salt for USPD Token (view layer)
     bytes32 RATE_CONTRACT_SALT; // Salt for the rate contract
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
@@ -54,7 +56,8 @@ contract DeployScript is Script {
     // address positionNFTProxyAddress; // Removed
     address stabilizerImplAddress;
     address stabilizerProxyAddress;
-    address tokenAddress;
+    address cuspdTokenAddress; // Address for cUSPD Token
+    address uspdTokenAddress; // Address for USPD Token (view layer)
     address rateContractAddress; // Address for the rate contract
 
     // Configuration for PriceOracle
@@ -87,7 +90,8 @@ contract DeployScript is Script {
         ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
         // POSITION_NFT_PROXY_SALT = generateSalt("USPD_POSITION_NFT_PROXY_v1"); // Removed
         STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
-        TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
+        CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1"); // Initialize cUSPD salt
+        USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1"); // Initialize USPD salt (renamed from TOKEN_SALT)
         RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1"); // Initialize salt
 
         console2.log("Deploying to chain ID:", chainId);
@@ -163,13 +167,14 @@ contract DeployScript is Script {
             // 3. Deploy Proxies (Admin, Oracle already done) - No Init Data
             deployStabilizerNFTProxy_NoInit(); // Deploy proxy, get address
             // deployPositionNFTProxy_NoInit(); // Removed
-            // 4. Deploy Token (Needs Oracle, Stabilizer Proxy Address)
-            deployUspdToken(); // Pass stabilizerProxyAddress
+            // 4. Deploy Tokens (cUSPD first, then USPD)
+            deployCUSPDToken(); // Deploy core token
+            deployUspdToken(); // Deploy view token, linking to cUSPD
             // 5. Initialize Proxies
-            initializeStabilizerNFTProxy(); // Pass tokenAddress, stETH, lido, rateContract, admin
+            initializeStabilizerNFTProxy(); // Pass cuspdTokenAddress, stETH, lido, rateContract, admin
             // initializePositionNFTProxy(); // Removed
             // 6. Setup Roles
-            setupRolesAndPermissions();
+            setupRolesAndPermissions(); // Setup roles on cUSPD and Stabilizer
         } else {
             console2.log("Deploying Bridged Token Only...");
             // --- Bridged Token Deployment ---
@@ -180,10 +185,11 @@ contract DeployScript is Script {
             stabilizerProxyAddress = address(0);
             rateContractAddress = address(0);
 
-            // Deploy Token with address(0) for stabilizer
-            deployUspdToken_Bridged();
-            // Setup minimal roles for Token
-            setupRolesAndPermissions_Bridged();
+            // Deploy Tokens (cUSPD first, then USPD)
+            deployCUSPDToken_Bridged(); // Deploy core token with zero addresses
+            deployUspdToken_Bridged(); // Deploy view token, linking to cUSPD
+            // Setup minimal roles
+            setupRolesAndPermissions_Bridged(); // Setup roles on cUSPD
         }
 
         // --- Always Save ---
@@ -264,41 +270,97 @@ contract DeployScript is Script {
         );
     }
 
-    // Deploy token for full system
-    function deployUspdToken() internal {
-        console2.log("Deploying UspdToken for full system...");
-        require(oracleProxyAddress != address(0), "Oracle proxy not deployed yet");
-        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed yet"); // Safety check
+    // Deploy cUSPD token for full system
+    function deployCUSPDToken() internal {
+        console2.log("Deploying cUSPDToken for full system...");
+        require(oracleProxyAddress != address(0), "Oracle proxy not deployed");
+        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
+        require(rateContractAddress != address(0), "Rate contract not deployed");
 
-        require(rateContractAddress != address(0), "Rate contract not deployed yet"); // Add check
-
-        // Get the bytecode of UspdToken with constructor arguments
+        // Get the bytecode of cUSPDToken with constructor arguments
         bytes memory bytecode = abi.encodePacked(
-            type(USPDToken).creationCode,
-            abi.encode(oracleProxyAddress, stabilizerProxyAddress, rateContractAddress, deployer) // Add rateContractAddress
+            type(cUSPDToken).creationCode,
+            abi.encode(
+                "Core USPD Share",        // name
+                "cUSPD",                  // symbol
+                oracleProxyAddress,       // oracle
+                stabilizerProxyAddress,   // stabilizer
+                rateContractAddress,      // rateContract
+                deployer,                 // admin
+                deployer,                 // minter (deployer initially)
+                deployer                  // burner (deployer initially)
+            )
         );
 
         // Deploy using CREATE2 for deterministic address using CreateX
-        tokenAddress = createX.deployCreate2{value: 0}(TOKEN_SALT, bytecode);
-
-        console2.log("UspdToken deployed at:", tokenAddress);
+        cuspdTokenAddress = createX.deployCreate2{value: 0}(CUSPD_TOKEN_SALT, bytecode);
+        console2.log("cUSPDToken deployed at:", cuspdTokenAddress);
     }
 
-    // Deploy token for bridged scenario
-    function deployUspdToken_Bridged() internal {
-        console2.log("Deploying UspdToken for bridged scenario...");
-        require(oracleProxyAddress != address(0), "Oracle proxy not deployed yet");
+    // Deploy USPD token (view layer) for full system
+    function deployUspdToken() internal {
+        console2.log("Deploying USPDToken (view layer) for full system...");
+        require(cuspdTokenAddress != address(0), "cUSPD token not deployed");
+        require(rateContractAddress != address(0), "Rate contract not deployed");
 
-        // Get the bytecode of UspdToken with constructor arguments
+        // Get the bytecode of USPDToken with constructor arguments
         bytes memory bytecode = abi.encodePacked(
             type(USPDToken).creationCode,
-            abi.encode(oracleProxyAddress, address(0), address(0), deployer) // Pass address(0) for stabilizer and rateContract
+            abi.encode(
+                "Unified Stable Passive Dollar", // name
+                "USPD",                          // symbol
+                cuspdTokenAddress,               // link to core token
+                rateContractAddress,             // rateContract
+                deployer                         // admin
+            )
         );
 
         // Deploy using CREATE2 for deterministic address using CreateX
-        tokenAddress = createX.deployCreate2{value: 0}(TOKEN_SALT, bytecode);
+        uspdTokenAddress = createX.deployCreate2{value: 0}(USPD_TOKEN_SALT, bytecode);
+        console2.log("USPDToken (view layer) deployed at:", uspdTokenAddress);
+    }
 
-        console2.log("UspdToken (bridged) deployed at:", tokenAddress);
+    // Deploy cUSPD token for bridged scenario
+    function deployCUSPDToken_Bridged() internal {
+        console2.log("Deploying cUSPDToken for bridged scenario...");
+        require(oracleProxyAddress != address(0), "Oracle proxy not deployed");
+        // Stabilizer and RateContract are address(0) in bridged mode
+
+        bytes memory bytecode = abi.encodePacked(
+            type(cUSPDToken).creationCode,
+            abi.encode(
+                "Core USPD Share",        // name
+                "cUSPD",                  // symbol
+                oracleProxyAddress,       // oracle
+                address(0),               // stabilizer (zero address)
+                address(0),               // rateContract (zero address)
+                deployer,                 // admin
+                deployer,                 // minter
+                deployer                  // burner
+            )
+        );
+        cuspdTokenAddress = createX.deployCreate2{value: 0}(CUSPD_TOKEN_SALT, bytecode);
+        console2.log("cUSPDToken (bridged) deployed at:", cuspdTokenAddress);
+    }
+
+    // Deploy USPD token (view layer) for bridged scenario
+    function deployUspdToken_Bridged() internal {
+        console2.log("Deploying USPDToken (view layer) for bridged scenario...");
+        require(cuspdTokenAddress != address(0), "cUSPD token not deployed");
+        // RateContract is address(0) in bridged mode
+
+        bytes memory bytecode = abi.encodePacked(
+            type(USPDToken).creationCode,
+            abi.encode(
+                "Unified Stable Passive Dollar", // name
+                "USPD",                          // symbol
+                cuspdTokenAddress,               // link to core token
+                address(0),                      // rateContract (zero address)
+                deployer                         // admin
+            )
+        );
+        uspdTokenAddress = createX.deployCreate2{value: 0}(USPD_TOKEN_SALT, bytecode);
+        console2.log("USPDToken (view layer, bridged) deployed at:", uspdTokenAddress);
     }
 
 
@@ -317,17 +379,16 @@ contract DeployScript is Script {
     function initializeStabilizerNFTProxy() internal {
         console2.log("Initializing StabilizerNFT proxy at:", stabilizerProxyAddress);
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
-        // require(positionNFTProxyAddress != address(0), "PositionNFT proxy not deployed"); // Removed
-        require(tokenAddress != address(0), "Token not deployed");
+        require(cuspdTokenAddress != address(0), "cUSPD Token not deployed"); // Check cUSPD
         require(stETHAddress != address(0), "stETH address not set");
         require(lidoAddress != address(0), "Lido address not set");
         require(rateContractAddress != address(0), "Rate contract not deployed yet"); // Add check
 
         // Prepare initialization data
-        // StabilizerNFT.initialize(address _uspdToken, address _stETH, address _lido, address _rateContract, address _admin)
+        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _admin)
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (tokenAddress, stETHAddress, lidoAddress, rateContractAddress, deployer) // Removed positionNFTProxyAddress
+            (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, deployer) // Pass cUSPD address, removed USPD address
         );
 
          // Call initialize via the proxy
@@ -391,12 +452,18 @@ contract DeployScript is Script {
         // Grant MINTER_ROLE to deployer (or a dedicated minter address)
         stabilizer.grantRole(stabilizer.MINTER_ROLE(), deployer);
 
-        // Grant roles to the UspdToken
-        console2.log("Granting Token roles...");
-        USPDToken token = USPDToken(payable(tokenAddress));
-        // Deployer already has DEFAULT_ADMIN_ROLE, EXCESS_COLLATERAL_DRAIN_ROLE, UPDATE_ORACLE_ROLE from constructor
-        // Grant STABILIZER_ROLE to StabilizerNFT
-        token.grantRole(token.STABILIZER_ROLE(), stabilizerProxyAddress);
+        // Grant roles to the cUSPDToken
+        console2.log("Granting cUSPDToken roles...");
+        cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
+        // Deployer already has ADMIN, MINTER, BURNER, UPDATER roles from constructor
+        // Grant MINTER_ROLE/BURNER_ROLE to specific frontend/automation contracts if needed
+        // coreToken.grantRole(coreToken.MINTER_ROLE(), address(FRONTEND_MINTER));
+        // coreToken.grantRole(coreToken.BURNER_ROLE(), address(FRONTEND_BURNER));
+
+        // Grant roles to the USPDToken (View Layer) - Only admin needed
+        console2.log("Granting USPDToken (view) roles...");
+        USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
+        // Deployer already has DEFAULT_ADMIN_ROLE from constructor
 
         console2.log("Roles setup complete.");
     }
@@ -411,11 +478,16 @@ contract DeployScript is Script {
         oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
         oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
 
-        // Grant roles to the UspdToken
-        console2.log("Granting Token roles...");
-        USPDToken token = USPDToken(payable(tokenAddress));
-        // Deployer already has DEFAULT_ADMIN_ROLE, EXCESS_COLLATERAL_DRAIN_ROLE, UPDATE_ORACLE_ROLE from constructor
-        // No STABILIZER_ROLE to grant as stabilizer is address(0)
+        // Grant roles to the cUSPDToken
+        console2.log("Granting cUSPDToken (bridged) roles...");
+        cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
+        // Deployer already has ADMIN, MINTER, BURNER, UPDATER roles from constructor
+        // Grant MINTER_ROLE/BURNER_ROLE to specific frontend/automation contracts if needed
+
+        // Grant roles to the USPDToken (View Layer) - Only admin needed
+        console2.log("Granting USPDToken (view, bridged) roles...");
+        USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
+        // Deployer already has DEFAULT_ADMIN_ROLE from constructor
 
         console2.log("Bridged roles setup complete.");
     }
@@ -433,7 +505,8 @@ contract DeployScript is Script {
                 // '"positionNFT": "0x0000000000000000000000000000000000000000",' // Removed
                 '"stabilizerImpl": "0x0000000000000000000000000000000000000000",'
                 '"stabilizer": "0x0000000000000000000000000000000000000000",'
-                '"token": "0x0000000000000000000000000000000000000000",'
+                '"cuspdToken": "0x0000000000000000000000000000000000000000",' // Added cUSPD
+                '"uspdToken": "0x0000000000000000000000000000000000000000",' // Renamed from token
                 '"rateContract": "0x0000000000000000000000000000000000000000"'
             '},'
             '"config": {'
@@ -465,7 +538,8 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(proxyAdminAddress), deploymentPath, ".contracts.proxyAdmin");
         vm.writeJson(vm.toString(oracleImplAddress), deploymentPath, ".contracts.oracleImpl");
         vm.writeJson(vm.toString(oracleProxyAddress), deploymentPath, ".contracts.oracle");
-        vm.writeJson(vm.toString(tokenAddress), deploymentPath, ".contracts.token"); // Token is always deployed
+        vm.writeJson(vm.toString(cuspdTokenAddress), deploymentPath, ".contracts.cuspdToken"); // Save cUSPD address
+        vm.writeJson(vm.toString(uspdTokenAddress), deploymentPath, ".contracts.uspdToken"); // Save USPD address
 
         // Conditionally save full system contracts (use the addresses stored in state variables)
         // vm.writeJson(vm.toString(positionNFTImplAddress), deploymentPath, ".contracts.positionNFTImpl"); // Removed
