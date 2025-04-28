@@ -469,9 +469,99 @@ contract cUSPDTokenTest is Test {
     }
 
     // =============================================
-    // IV. Admin Functions Tests (Placeholder)
+    // IV. Admin Functions Tests
     // =============================================
-    // TODO: Add tests for updateOracle, updateStabilizer, updateRateContract
+
+    // --- updateOracle ---
+
+    function testUpdateOracle_Success() public {
+        address newOracle = makeAddr("newOracle");
+        address oldOracle = address(cuspdToken.oracle());
+
+        vm.expectEmit(true, true, false, true, address(cuspdToken));
+        emit cUSPDToken.PriceOracleUpdated(oldOracle, newOracle);
+
+        vm.prank(updater); // Updater has the role
+        cuspdToken.updateOracle(newOracle);
+
+        assertEq(address(cuspdToken.oracle()), newOracle, "Oracle address not updated");
+    }
+
+    function testUpdateOracle_Revert_NotUpdater() public {
+        address newOracle = makeAddr("newOracle");
+        address nonUpdater = user1; // User1 doesn't have the role
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonUpdater, cuspdToken.UPDATER_ROLE()));
+        vm.prank(nonUpdater);
+        cuspdToken.updateOracle(newOracle);
+    }
+
+    function testUpdateOracle_Revert_ZeroAddress() public {
+        vm.expectRevert("cUSPD: Zero oracle address");
+        vm.prank(updater);
+        cuspdToken.updateOracle(address(0));
+    }
+
+    // --- updateStabilizer ---
+
+    function testUpdateStabilizer_Success() public {
+        address newStabilizer = makeAddr("newStabilizer");
+        address oldStabilizer = address(cuspdToken.stabilizer());
+
+        vm.expectEmit(true, true, false, true, address(cuspdToken));
+        emit cUSPDToken.StabilizerUpdated(oldStabilizer, newStabilizer);
+
+        vm.prank(updater);
+        cuspdToken.updateStabilizer(newStabilizer);
+
+        assertEq(address(cuspdToken.stabilizer()), newStabilizer, "Stabilizer address not updated");
+    }
+
+    function testUpdateStabilizer_Revert_NotUpdater() public {
+        address newStabilizer = makeAddr("newStabilizer");
+        address nonUpdater = user1;
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonUpdater, cuspdToken.UPDATER_ROLE()));
+        vm.prank(nonUpdater);
+        cuspdToken.updateStabilizer(newStabilizer);
+    }
+
+    function testUpdateStabilizer_Revert_ZeroAddress() public {
+        vm.expectRevert("cUSPD: Zero stabilizer address");
+        vm.prank(updater);
+        cuspdToken.updateStabilizer(address(0));
+    }
+
+    // --- updateRateContract ---
+
+    function testUpdateRateContract_Success() public {
+        address newRateContract = makeAddr("newRateContract");
+        address oldRateContract = address(cuspdToken.rateContract());
+
+        vm.expectEmit(true, true, false, true, address(cuspdToken));
+        emit cUSPDToken.RateContractUpdated(oldRateContract, newRateContract);
+
+        vm.prank(updater);
+        cuspdToken.updateRateContract(newRateContract);
+
+        assertEq(address(cuspdToken.rateContract()), newRateContract, "RateContract address not updated");
+    }
+
+    function testUpdateRateContract_Revert_NotUpdater() public {
+        address newRateContract = makeAddr("newRateContract");
+        address nonUpdater = user1;
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonUpdater, cuspdToken.UPDATER_ROLE()));
+        vm.prank(nonUpdater);
+        cuspdToken.updateRateContract(newRateContract);
+    }
+
+    function testUpdateRateContract_Revert_ZeroAddress() public {
+        vm.expectRevert("cUSPD: Zero rate contract address");
+        vm.prank(updater);
+        cuspdToken.updateRateContract(address(0));
+    }
+
 
     // =============================================
     // V. ERC20 Standard Tests (Placeholder)
