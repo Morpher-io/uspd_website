@@ -35,8 +35,8 @@ import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol
 contract TestableCUSPD is cUSPDToken {
     constructor(
         string memory name, string memory symbol, address _oracle, address _stabilizer,
-        address _rateContract, address _admin, address _minter, address _burner
-    ) cUSPDToken(name, symbol, _oracle, _stabilizer, _rateContract, _admin, _minter, _burner) {}
+        address _rateContract, address _admin, /* address _minter, */ address _burner
+    ) cUSPDToken(name, symbol, _oracle, _stabilizer, _rateContract, _admin, /* _minter, */ _burner) {}
 
     // Expose internal mint function for test setup
     function mintInternal(address account, uint256 amount) public {
@@ -444,21 +444,21 @@ contract cUSPDTokenTest is Test {
     function testBurnShares_Revert_InsufficientBalance() public {
         // Setup: Mint shares first
         uint256 tokenId = 1;
-        vm.prank(admin); 
+        vm.prank(admin);
         stabilizerNFT.mint(user1, tokenId);
-        vm.deal(user1, 2 ether); 
-        vm.prank(user1); 
+        vm.deal(user1, 2 ether);
+        vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.deal(minter, 1 ether); 
-        vm.prank(minter); 
-        cuspdToken.mintShares{value: 1 ether}(burner, mintQuery); // Mint to burner
-        uint256 currentShares = cuspdToken.balanceOf(burner);
+        vm.deal(user1, 1 ether); // Fund user1
+        vm.prank(user1); // User1 mints
+        cuspdToken.mintShares{value: 1 ether}(user1, mintQuery); // Mint to user1
+        uint256 currentShares = cuspdToken.balanceOf(user1);
 
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, burner, currentShares, currentShares + 1));
-        vm.prank(burner);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, user1, currentShares, currentShares + 1));
+        vm.prank(user1); // User1 owns the shares
         cuspdToken.burnShares(currentShares + 1, payable(recipient), burnQuery); // Try to burn more than balance
     }
 
