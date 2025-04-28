@@ -16,20 +16,24 @@ import "./interfaces/IPoolSharesConversionRate.sol";
  */
 contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     // --- State Variables ---
-    IPriceOracle public immutable oracle;
-    IStabilizerNFT public immutable stabilizer; // Stabilizer is mandatory for cUSPD logic
-    IPoolSharesConversionRate public immutable rateContract;
+    IPriceOracle public oracle; // Made mutable
+    IStabilizerNFT public stabilizer; // Made mutable
+    IPoolSharesConversionRate public rateContract; // Made mutable
     uint256 public constant FACTOR_PRECISION = 1e18; // Match rate contract precision
 
     // --- Roles ---
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE"); // Role allowed to initiate minting (e.g., a frontend contract or EOA)
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");   // Role allowed to initiate burning (e.g., a frontend contract or EOA)
+    bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE"); // Role for updating dependencies
     // Note: STABILIZER_ROLE is likely needed *by* StabilizerNFT *on* this contract if StabilizerNFT needs to call back (e.g., for adjustments),
     // but StabilizerNFT itself initiates the calls *to* PositionEscrow during mint/burn triggered here.
     // Let's assume no direct callbacks needed from StabilizerNFT to cUSPD for now.
 
     // --- Events ---
     // Standard ERC20 Transfer event will track cUSPD share transfers.
+    event PriceOracleUpdated(address indexed oldOracle, address indexed newOracle);
+    event StabilizerUpdated(address indexed oldStabilizer, address indexed newStabilizer);
+    event RateContractUpdated(address indexed oldRateContract, address indexed newRateContract);
     event SharesMinted(
         address indexed minter,
         address indexed to,
@@ -71,6 +75,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(MINTER_ROLE, _minter);
         _grantRole(BURNER_ROLE, _burner);
+        _grantRole(UPDATER_ROLE, _admin); // Grant admin updater role initially
         // Grant StabilizerNFT any roles it might need on cUSPD if callbacks are added later
     }
 
@@ -181,9 +186,39 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     }
 
     // --- Admin Functions ---
-    // Functions to update dependencies might be needed if they are upgradeable proxies themselves,
-    // but the core dependencies (oracle, stabilizer, rateContract) are immutable here.
-    // Add update functions if necessary, protected by DEFAULT_ADMIN_ROLE.
+
+    /**
+     * @notice Updates the PriceOracle address.
+     * @param newOracle The address of the new PriceOracle contract.
+     * @dev Callable only by addresses with UPDATER_ROLE.
+     */
+    function updateOracle(address newOracle) external onlyRole(UPDATER_ROLE) {
+        require(newOracle != address(0), "cUSPD: Zero oracle address");
+        emit PriceOracleUpdated(address(oracle), newOracle);
+        oracle = IPriceOracle(newOracle);
+    }
+
+    /**
+     * @notice Updates the StabilizerNFT address.
+     * @param newStabilizer The address of the new StabilizerNFT contract.
+     * @dev Callable only by addresses with UPDATER_ROLE.
+     */
+    function updateStabilizer(address newStabilizer) external onlyRole(UPDATER_ROLE) {
+        require(newStabilizer != address(0), "cUSPD: Zero stabilizer address");
+        emit StabilizerUpdated(address(stabilizer), newStabilizer);
+        stabilizer = IStabilizerNFT(newStabilizer);
+    }
+
+    /**
+     * @notice Updates the PoolSharesConversionRate address.
+     * @param newRateContract The address of the new RateContract.
+     * @dev Callable only by addresses with UPDATER_ROLE.
+     */
+    function updateRateContract(address newRateContract) external onlyRole(UPDATER_ROLE) {
+        require(newRateContract != address(0), "cUSPD: Zero rate contract address");
+        emit RateContractUpdated(address(rateContract), newRateContract);
+        rateContract = IPoolSharesConversionRate(newRateContract);
+    }
 
     // --- ERC20 Standard Functions ---
     // Inherited: balanceOf, totalSupply, transfer, transferFrom, approve, allowance, etc.

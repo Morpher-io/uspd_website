@@ -4,348 +4,188 @@ pragma solidity ^0.8.20;
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
-import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol"; // Import Math library
-import "./PriceOracle.sol";
-import "./interfaces/IStabilizerNFT.sol";
 import "./interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contract interface
+import "./interfaces/IcUSPDToken.sol"; // Import cUSPD interface
 
+/**
+ * @title USPDToken (Rebasing View Layer)
+ * @notice Provides a rebasing balance view based on underlying cUSPD shares and yield factor.
+ * Transfers and approvals initiated here are converted to cUSPD share amounts.
+ */
 contract USPDToken is
     ERC20,
     ERC20Permit,
     AccessControl
 {
-    PriceOracle public oracle; // Made public for easier access if needed elsewhere
-    IStabilizerNFT public stabilizer; // Made public
-    IPoolSharesConversionRate public rateContract; // Keep public
-
-    // --- Pool Share State ---
-    mapping(address => uint256) private _poolShareBalances;
-    uint256 private _totalPoolShares;
+    // --- State Variables ---
+    IcUSPDToken public cuspdToken; // The core, non-rebasing share token
+    IPoolSharesConversionRate public rateContract; // Tracks yield factor
     uint256 public constant FACTOR_PRECISION = 1e18; // Assuming rate contract uses 1e18
 
     // --- Roles ---
-    bytes32 public constant EXCESS_COLLATERAL_DRAIN_ROLE =
-        keccak256("EXCESS_COLLATERAL_DRAIN_ROLE");
-    bytes32 public constant UPDATE_ORACLE_ROLE =
-        keccak256("UPDATE_ORACLE_ROLE");
-    bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
+    // Only DEFAULT_ADMIN_ROLE is needed for managing this view contract's dependencies
 
-    event Payout(address to, uint psdAmount, uint ethAmount, uint askPrice);
-    event ExcessCollateralPayout(address to, uint ethAmount);
-    event PriceOracleUpdated(address oldOracle, address newOracle);
-    event StabilizerUpdated(address oldStabilizer, address newStabilizer);
-    // Add event for Rate Contract update if needed
-    event RateContractUpdated(address oldRateContract, address newRateContract);
+    // --- Events ---
+    // Standard ERC20 Transfer and Approval events are emitted by the underlying cUSPD token.
+    // This contract *could* re-emit them, but it adds complexity. Let's rely on cUSPD events.
+    event RateContractUpdated(address indexed oldRateContract, address indexed newRateContract);
+    event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
 
-    // Custom events for pool share tracking
-    event MintPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
-    event BurnPoolShares(address indexed from, address indexed to, uint256 uspdAmount, uint256 poolShares, uint256 yieldFactor);
-
-    uint maxMintingSum = 1000;
-
+    // --- Constructor ---
     constructor(
-        address _oracle,
-        address _stabilizer,
-        address _rateContractAddress, // Add rate contract address
+        string memory name, // e.g., "Unified Stable Passive Dollar"
+        string memory symbol, // e.g., "USPD"
+        address _cuspdTokenAddress,
+        address _rateContractAddress,
         address _admin
-    ) ERC20("USPD Demo", "USPDDEMO") ERC20Permit("USPDDEMO") {
-         require(_oracle != address(0), "Oracle address cannot be zero");
-        // Allow stabilizer to be zero for bridged token scenario
-        // require(_stabilizer != address(0), "Stabilizer address cannot be zero");
-        require(_rateContractAddress != address(0), "Rate contract address cannot be zero");
-        require(_admin != address(0), "Admin address cannot be zero");
+    ) ERC20(name, symbol) ERC20Permit(name) {
+        require(_cuspdTokenAddress != address(0), "USPD: Zero cUSPD address");
+        require(_rateContractAddress != address(0), "USPD: Zero rate contract address");
+        require(_admin != address(0), "USPD: Zero admin address");
 
-        oracle = PriceOracle(_oracle);
-        if (_stabilizer != address(0)) {
-            stabilizer = IStabilizerNFT(_stabilizer);
-            // Grant STABILIZER_ROLE only if stabilizer is provided
-             _grantRole(STABILIZER_ROLE, _stabilizer);
-        }
-        rateContract = IPoolSharesConversionRate(_rateContractAddress); // Store rate contract
+        cuspdToken = IcUSPDToken(_cuspdTokenAddress);
+        rateContract = IPoolSharesConversionRate(_rateContractAddress);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(EXCESS_COLLATERAL_DRAIN_ROLE, _admin);
-        _grantRole(UPDATE_ORACLE_ROLE, _admin);
     }
 
-    function mint(
-        address to,
-        // uint256 maxUspdAmount, // Removed maxUspdAmount - minting based on ETH value
-        IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) public payable {
-        require(msg.value > 0, "Must send ETH to mint");
-        IPriceOracle.PriceResponse memory oracleResponse = oracle
-            .attestationService(priceQuery);
-        uint256 ethForAllocation = msg.value;
-        uint256 initialUSDValue = (ethForAllocation * oracleResponse.price) /
-            (10 ** oracleResponse.decimals);
-
-        // --- Pool Share Calculation ---
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        // poolShares = initialValue * factorPrecision / yieldFactor
-        uint256 poolSharesToMint = (initialUSDValue * FACTOR_PRECISION) /
-            yieldFactor;
-
-        // --- Internal Accounting (Optimistic) ---
-        // Note: _update handles the actual balance changes and event emission
-        // We calculate the shares here to pass to the stabilizer.
-
-        // Allocate funds through stabilizer NFTs
-        // Pass poolSharesToMint as the liability amount to back
-        IStabilizerNFT.AllocationResult memory result;
-        if (address(stabilizer) != address(0)) {
-            result = stabilizer.allocateStabilizerFunds{
-                value: ethForAllocation
-            }(
-                // poolSharesToMint removed
-                oracleResponse.price,
-                oracleResponse.decimals
-            );
-        } else {
-            // Handle bridged scenario - no allocation, use all ETH sent
-            result.allocatedEth = ethForAllocation;
-        }
-
-        uint256 actualPoolSharesMinted;
-        uint256 uspdAmountMinted;
-
-        // If allocation was partial or failed (or bridged), adjust minted pool shares proportionally
-        if (result.allocatedEth < ethForAllocation) {
-            uint256 allocatedUSDValue = (result.allocatedEth *
-                oracleResponse.price) / (10 ** oracleResponse.decimals);
-            actualPoolSharesMinted =
-                (allocatedUSDValue * FACTOR_PRECISION) /
-                yieldFactor;
-        } else {
-            actualPoolSharesMinted = poolSharesToMint;
-        }
-
-        // Calculate actual USPD amount based on *actually minted* shares and current yield
-        uspdAmountMinted =
-            (actualPoolSharesMinted * yieldFactor) /
-            FACTOR_PRECISION;
-
-        // --- Update Balances and Emit Events using _update ---
-        // _update handles internal share balances and emits the standard Transfer event with USPD value
-        if (actualPoolSharesMinted > 0) {
-            _update(address(0), to, uspdAmountMinted); // This will calculate shares internally and update balances
-            emit MintPoolShares(
-                address(0),
-                to,
-                uspdAmountMinted,
-                actualPoolSharesMinted,
-                yieldFactor
-            ); // Emit custom event
-        }
-
-        // Return any unallocated ETH
-        uint256 leftover = msg.value - result.allocatedEth;
-        if (leftover > 0) {
-            payable(msg.sender).transfer(leftover);
-        }
-    }
-
-    // Fallback mint function removed.
-    // Users must always call the primary mint function.
-
-    function burn(
-        uint amount,
-        address payable to,
-        IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) public {
-        require(amount > 0, "Amount must be greater than 0"); // amount is USPD value
-        require(to != address(0), "Invalid recipient");
-
-        // --- Pool Share Calculation ---
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        // poolShares = uspdAmount * factorPrecision / yieldFactor
-        uint256 poolSharesToBurn = (amount * FACTOR_PRECISION) / yieldFactor;
-
-        // --- Update Balances and Emit Events using _update ---
-        // _update handles internal share balances and emits the standard Transfer event with USPD value
-        _update(msg.sender, address(0), amount); // This calculates shares internally and updates balances
-        emit BurnPoolShares(
-            msg.sender,
-            address(0),
-            amount,
-            poolSharesToBurn,
-            yieldFactor
-        ); // Emit custom event
-
-        // Get current ETH price (needed for unallocation value calculation within stabilizer)
-        IPriceOracle.PriceResponse memory oracleResponse = oracle
-            .attestationService(priceQuery);
-
-        // Unallocate funds from stabilizers, passing the pool shares being burned
-        uint256 unallocatedEth = 0;
-        if (address(stabilizer) != address(0)) {
-            unallocatedEth = stabilizer.unallocateStabilizerFunds(
-                poolSharesToBurn, // Pass pool shares representing the liability reduction
-                oracleResponse
-            );
-        } else {
-            // Handle bridged scenario - no stabilizer to unallocate from
-            // Maybe revert, or handle differently depending on requirements
-            revert("Burning not supported in bridged mode without stabilizer");
-        }
-
-        emit Payout(to, amount, unallocatedEth, oracleResponse.price);
-
-        // Transfer unallocated ETH to recipient
-        if (unallocatedEth > 0) {
-            (bool success, ) = to.call{value: unallocatedEth}("");
-            require(success, "ETH transfer failed");
-        }
-    }
-
-    // --- Pool Share View Functions (Optional but helpful) ---
-
-    /**
-     * @notice Returns the raw pool share balance of an account.
-     * @param account The address to query the balance for.
-     * @return The pool share balance.
-     */
-    function poolSharesOf(address account) external view returns (uint256) {
-        return _poolShareBalances[account];
-    }
-
-    /**
-     * @notice Returns the total raw pool shares in circulation.
-     */
-    function totalPoolShares() external view returns (uint256) {
-        return _totalPoolShares;
-    }
+    // --- Core Logic (Mint/Burn Removed) ---
+    // Minting and Burning are handled by the cUSPDToken contract directly.
 
     // --- ERC20 Overrides ---
+
     /**
-     * @notice Gets the USPD balance of the specified address, calculated from pool shares and yield factor.
+     * @notice Gets the USPD balance of the specified address, calculated from cUSPD shares and yield factor.
      * @param account The address to query the balance for.
      * @return The USPD balance.
      */
     function balanceOf(address account) public view virtual override returns (uint256) {
-        if (address(rateContract) == address(0)) return _poolShareBalances[account]; // Fallback if rate contract not set (e.g., during init)
+        if (address(rateContract) == address(0) || address(cuspdToken) == address(0)) return 0; // Not initialized
         uint256 yieldFactor = rateContract.getYieldFactor();
-        // uspdBalance = poolShares * yieldFactor / factorPrecision
-        // Use SafeMath potentially or ensure Solidity 0.8+ checks
-        return (_poolShareBalances[account] * yieldFactor) / FACTOR_PRECISION;
+        if (yieldFactor == 0) return 0; // Avoid division by zero if rate contract returns 0
+        // uspdBalance = cUSPD_shares * yieldFactor / factorPrecision
+        return (cuspdToken.balanceOf(account) * yieldFactor) / FACTOR_PRECISION;
     }
 
     /**
-     * @notice Gets the total USPD supply, calculated from total pool shares and yield factor.
+     * @notice Gets the total USPD supply, calculated from total cUSPD shares and yield factor.
      * @return The total USPD supply.
      */
     function totalSupply() public view virtual override returns (uint256) {
-        if (address(rateContract) == address(0)) return _totalPoolShares; // Fallback if rate contract not set
+        if (address(rateContract) == address(0) || address(cuspdToken) == address(0)) return 0; // Not initialized
         uint256 yieldFactor = rateContract.getYieldFactor();
-        // totalSupply = totalPoolShares * yieldFactor / factorPrecision
-        // Use SafeMath potentially or ensure Solidity 0.8+ checks
-        return (_totalPoolShares * yieldFactor) / FACTOR_PRECISION;
-    }
-
-    function updateOracle(
-        address newOracle
-    ) public onlyRole(UPDATE_ORACLE_ROLE) {
-        emit PriceOracleUpdated(address(oracle), newOracle);
-        oracle = PriceOracle(newOracle);
-    }
-
-    function updateStabilizer(
-        address newStabilizer
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit StabilizerUpdated(address(stabilizer), newStabilizer);
-        stabilizer = IStabilizerNFT(newStabilizer);
+        if (yieldFactor == 0) return 0; // Avoid division by zero
+        // totalSupply = total_cUSPD_shares * yieldFactor / factorPrecision
+        return (cuspdToken.totalSupply() * yieldFactor) / FACTOR_PRECISION;
     }
 
     /**
-     * @dev Updates rate contract address. Only callable by admin.
+     * @notice Transfers `uspdAmount` USPD tokens from `msg.sender` to `to`.
+     * @dev Calculates the corresponding cUSPD share amount based on the current yield factor
+     *      and calls `transfer` on the cUSPD token contract.
+     * @param to The recipient address.
+     * @param uspdAmount The amount of USPD tokens to transfer.
+     * @return A boolean indicating success.
      */
-    function updateRateContract(
-        address newRateContract
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(
-            newRateContract != address(0),
-            "Rate contract address cannot be zero"
-        );
+    function transfer(address to, uint256 uspdAmount) public virtual override returns (bool) {
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        require(yieldFactor > 0, "USPD: Invalid yield factor");
+        // Calculate shares to transfer: shares = uspdAmount * precision / yieldFactor
+        uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
+        require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield"); // Prevent transferring 0 shares unless amount is 0
+
+        // Call transfer on the underlying cUSPD token
+        return cuspdToken.transfer(to, sharesToTransfer);
+        // Note: The Transfer event emitted by cUSPD will reflect the share amount, not the USPD amount.
+    }
+
+    /**
+     * @notice Returns the remaining number of USPD tokens that `spender` will be
+     * allowed to spend on behalf of `owner` through {transferFrom}.
+     * @dev Calculates the USPD allowance based on the cUSPD share allowance and the current yield factor.
+     * @param owner The address owning the funds.
+     * @param spender The address allowed to spend the funds.
+     * @return The USPD allowance amount.
+     */
+    function allowance(address owner, address spender) public view virtual override returns (uint256) {
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        if (yieldFactor == 0) return 0; // Avoid division by zero
+        // Get share allowance from cUSPD
+        uint256 shareAllowance = cuspdToken.allowance(owner, spender);
+        // Convert share allowance to USPD allowance: uspdAllowance = shareAllowance * yieldFactor / precision
+        return (shareAllowance * yieldFactor) / FACTOR_PRECISION;
+    }
+
+    /**
+     * @notice Sets `uspdAmount` as the allowance of `spender` over the caller's USPD tokens.
+     * @dev Calculates the corresponding cUSPD share amount based on the current yield factor
+     *      and calls `approve` on the cUSPD token contract.
+     * @param spender The address authorized to spend.
+     * @param uspdAmount The amount of USPD tokens to approve.
+     * @return A boolean indicating success.
+     */
+    function approve(address spender, uint256 uspdAmount) public virtual override returns (bool) {
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        require(yieldFactor > 0, "USPD: Invalid yield factor");
+        // Calculate share amount to approve: shares = uspdAmount * precision / yieldFactor
+        uint256 sharesToApprove = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
+
+        // Call approve on the underlying cUSPD token
+        return cuspdToken.approve(spender, sharesToApprove);
+        // Note: The Approval event emitted by cUSPD will reflect the share amount, not the USPD amount.
+    }
+
+    /**
+     * @notice Transfers `uspdAmount` USPD tokens from `from` to `to` using the
+     * allowance mechanism. `uspdAmount` is deducted from the caller's allowance.
+     * @dev Calculates the corresponding cUSPD share amount based on the current yield factor
+     *      and calls `transferFrom` on the cUSPD token contract.
+     * @param from The address to transfer funds from.
+     * @param to The recipient address.
+     * @param uspdAmount The amount of USPD tokens to transfer.
+     * @return A boolean indicating success.
+     */
+    function transferFrom(address from, address to, uint256 uspdAmount) public virtual override returns (bool) {
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        require(yieldFactor > 0, "USPD: Invalid yield factor");
+        // Calculate shares to transfer: shares = uspdAmount * precision / yieldFactor
+        uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
+        require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield");
+
+        // Call transferFrom on the underlying cUSPD token
+        // The allowance check happens within cUSPD's transferFrom
+        return cuspdToken.transferFrom(from, to, sharesToTransfer);
+    }
+
+    // --- Admin Functions ---
+
+    /**
+     * @notice Updates the PoolSharesConversionRate contract address.
+     * @param newRateContract The address of the new RateContract.
+     * @dev Callable only by admin.
+     */
+    function updateRateContract(address newRateContract) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newRateContract != address(0), "USPD: Zero rate contract address");
         emit RateContractUpdated(address(rateContract), newRateContract);
         rateContract = IPoolSharesConversionRate(newRateContract);
     }
 
-    // Function to receive ETH returns from stabilizer during minting
-    function receiveStabilizerReturn() external payable {
-        require(
-            msg.sender == address(stabilizer),
-            "Only stabilizer can return ETH"
-        );
-        // ETH will be held here until transferred to user in mint or burn
-    }
-
-    // Function to receive ETH returns from stabilizer (now called receiveUserStETH)
-    // This should ideally receive stETH, not ETH, after unallocation
-    function receiveUserStETH(
-        address user,
-        uint256 stETHAmount
-    ) external onlyRole(STABILIZER_ROLE) {
-        // This function is called by StabilizerNFT after it receives stETH from PositionNFT during unallocation.
-        // It should forward the stETH to the original user who initiated the burn.
-        // Requires stETH transfer logic here.
-        // For now, placeholder - needs implementation based on stETH interface.
-        // IERC20(stETHAddress).transfer(user, stETHAmount); // Example
-        revert("receiveUserStETH not fully implemented"); // Placeholder
-    }
-
-    // --- Internal ---
-
     /**
-     * @dev Overrides the internal ERC20 _update function.
-     * Calculates pool share changes based on USPD amount and yield factor.
-     * Updates internal pool share balances and emits standard Transfer event with USPD amount.
+     * @notice Updates the cUSPDToken contract address.
+     * @param newCUSPDAddress The address of the new cUSPDToken contract.
+     * @dev Callable only by admin.
      */
-    function _update(
-        address from,
-        address to,
-        uint256 uspdAmount
-    ) internal virtual override {
-        if (from == address(0)) {
-            // Minting: uspdAmount is the value being minted
-            uint256 yieldFactor = rateContract.getYieldFactor();
-            uint256 poolSharesToMint = (uspdAmount * FACTOR_PRECISION) /
-                yieldFactor;
-            _totalPoolShares += poolSharesToMint;
-            _poolShareBalances[to] += poolSharesToMint;
-            emit Transfer(from, to, uspdAmount); // Emit standard event with USPD value
-        } else if (to == address(0)) {
-            // Burning: uspdAmount is the value being burned
-            uint256 yieldFactor = rateContract.getYieldFactor();
-            uint256 poolSharesToBurn = (uspdAmount * FACTOR_PRECISION) /
-                yieldFactor;
-            uint256 fromShares = _poolShareBalances[from];
-            require(
-                fromShares >= poolSharesToBurn,
-                "ERC20: burn amount exceeds balance"
-            ); // Check shares
-            _poolShareBalances[from] = fromShares - poolSharesToBurn;
-            _totalPoolShares -= poolSharesToBurn;
-            emit Transfer(from, to, uspdAmount); // Emit standard event with USPD value
-        } else {
-            // Transferring: uspdAmount is the value being transferred
-            uint256 yieldFactor = rateContract.getYieldFactor();
-            uint256 poolSharesToTransfer = (uspdAmount * FACTOR_PRECISION) /
-                yieldFactor;
-            uint256 fromShares = _poolShareBalances[from];
-            require(
-                fromShares >= poolSharesToTransfer,
-                "ERC20: transfer amount exceeds balance"
-            ); // Check shares
-            _poolShareBalances[from] = fromShares - poolSharesToTransfer;
-            _poolShareBalances[to] += poolSharesToTransfer;
-            emit Transfer(from, to, uspdAmount); // Emit standard event with USPD value
-        }
+    function updateCUSPDAddress(address newCUSPDAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newCUSPDAddress != address(0), "USPD: Zero cUSPD address");
+        emit CUSPDAddressUpdated(address(cuspdToken), newCUSPDAddress);
+        cuspdToken = IcUSPDToken(newCUSPDAddress);
     }
 
-    // Disabled direct ETH receiving since we need price attestation
+    // --- Internal (Removed _update override) ---
+
+    // --- Fallback ---
+    // Prevent direct ETH transfers
     receive() external payable {
-        revert(
-            "Direct ETH transfers not supported. Use mint() with price attestation."
-        );
+        revert("USPD: Direct ETH transfers not allowed");
     }
 }
