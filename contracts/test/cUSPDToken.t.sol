@@ -211,16 +211,16 @@ contract cUSPDTokenTest is Test {
 
     function testConstructor_Revert_ZeroAddresses() public {
         vm.expectRevert("cUSPD: Zero oracle address");
-        new cUSPDToken("N", "S", address(0), address(stabilizerNFT), address(rateContract), admin, minter, burner);
+        new cUSPDToken("N", "S", address(0), address(stabilizerNFT), address(rateContract), admin, /* minter, */ burner);
 
         vm.expectRevert("cUSPD: Zero stabilizer address");
-        new cUSPDToken("N", "S", address(priceOracle), address(0), address(rateContract), admin, minter, burner);
+        new cUSPDToken("N", "S", address(priceOracle), address(0), address(rateContract), admin, /* minter, */ burner);
 
         vm.expectRevert("cUSPD: Zero rate contract address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(0), admin, minter, burner);
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(0), admin, /* minter, */ burner);
 
         vm.expectRevert("cUSPD: Zero admin address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0), burner);
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0), /* minter, */ burner);
 
         vm.expectRevert("cUSPD: Zero burner address");
         new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, address(0));
