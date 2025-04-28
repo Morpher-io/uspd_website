@@ -860,7 +860,7 @@ contract StabilizerNFT is
              return 0; // Or handle as error/undefined
         }
 
-        uint256 currentYieldFactor = rateContract.getYieldFactor();
+       
         // Estimate current total stETH value by projecting the snapshot forward
         // estimated_stETH = eth_snapshot * current_yield / snapshot_yield
         uint256 estimatedCurrentCollateralStEth = (ethSnapshot * currentYieldFactor) / yieldSnapshot;

@@ -62,7 +62,7 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate {
 
         // Call Lido's submit function to stake the received ETH
         // The stETH will be minted to this contract's address
-        uint256 receivedStEth = ILido(_lidoAddress).submit{value: msg.value}(
+        ILido(_lidoAddress).submit{value: msg.value}(
             address(0) // No referral
         );
 

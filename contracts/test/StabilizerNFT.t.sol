@@ -937,12 +937,13 @@ contract StabilizerNFTTest is Test {
 
         // Unallocate half the liability (1000 cUSPD Shares)
         uint256 poolSharesToUnallocate = 1000 ether;
+        assertEq(cuspdToken.balanceOf(user1), 2000 ether, "User does not have 2000 pool Shares");
         IPriceOracle.PriceAttestationQuery memory priceQueryUnalloc = createSignedPriceAttestation(2000 ether, block.timestamp);
 
         // User1 approves burner (owner), burner calls burnShares
-        vm.prank(user1);
-        cuspdToken.approve(owner, poolSharesToUnallocate);
-        vm.prank(owner); // Burner
+        // vm.prank(user1);
+        // cuspdToken.approve(owner, poolSharesToUnallocate);
+        vm.prank(user1); // Burner
         uint256 returnedEthForUser = cuspdToken.burnShares(poolSharesToUnallocate, payable(user1), priceQueryUnalloc);
 
         // Verify unallocation result (ETH returned for user)

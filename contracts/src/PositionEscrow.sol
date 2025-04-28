@@ -7,6 +7,7 @@ import "./interfaces/IPositionEscrow.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol"; // Import AccessControl
 import "./interfaces/IPoolSharesConversionRate.sol";
 import "./interfaces/IPriceOracle.sol"; // Use interface for PriceOracle
+import "./interfaces/IStabilizerNFT.sol"; // Use interface for PriceOracle
 import "./PriceOracle.sol"; // Import implementation for type casting if needed
 
 /**
