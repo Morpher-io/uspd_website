@@ -220,10 +220,10 @@ contract cUSPDTokenTest is Test {
         new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(0), admin, /* minter, */ burner);
 
         vm.expectRevert("cUSPD: Zero admin address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0), /* minter, */ burner);
+        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), address(0) /*, burner */); // Removed burner
 
-        vm.expectRevert("cUSPD: Zero burner address");
-        new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, address(0));
+        // vm.expectRevert("cUSPD: Zero burner address"); // BURNER_ROLE removed
+        // new cUSPDToken("N", "S", address(priceOracle), address(stabilizerNFT), address(rateContract), admin, address(0));
     }
 
     // =============================================
