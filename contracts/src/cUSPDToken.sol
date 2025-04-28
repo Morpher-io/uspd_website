@@ -156,7 +156,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         uint256 sharesAmount,
         address payable to,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) external onlyRole(BURNER_ROLE) {
+    ) external onlyRole(BURNER_ROLE) returns (uint256 unallocatedStEthReturned) { // Added return variable
         require(sharesAmount > 0, "cUSPD: Shares amount must be positive");
         require(to != address(0), "cUSPD: Burn to zero address");
 
@@ -187,6 +187,8 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
             bool success = IERC20(stETHAddress).transfer(to, unallocatedStEth);
             require(success, "cUSPD: stETH transfer failed");
         }
+
+        return unallocatedStEth; // Return the amount of stETH transferred
     }
 
     // --- Admin Functions ---
