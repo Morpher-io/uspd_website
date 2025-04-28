@@ -1059,6 +1059,111 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), yieldSnapshot2, "Yield snapshot mismatch after direct add with yield change");
     }
 
+    function testReportCollateralRemoval_UpdatesSnapshot() public {
+        // Scenario: Test removing excess collateral directly and ensure the snapshot is decreased.
+
+        // --- Setup ---
+        // 1. Mint NFT, add funds, allocate to set initial snapshot
+        uint256 tokenId = 1;
+        vm.prank(owner);
+        stabilizerNFT.mint(user1, tokenId); // user1 is the stabilizer owner
+        vm.deal(user1, 2 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
+
+        uint256 userEthForAllocation = 1 ether;
+        vm.deal(address(uspdToken), userEthForAllocation);
+        vm.startPrank(address(uspdToken));
+        IStabilizerNFT.AllocationResult memory allocResult = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
+            2000 ether, 18
+        );
+        vm.stopPrank();
+
+        // 2. Get PositionEscrow and StabilizerEscrow addresses
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        require(positionEscrowAddr != address(0), "PositionEscrow not deployed");
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+        address stabilizerEscrowAddr = stabilizerNFT.stabilizerEscrows(tokenId);
+        require(stabilizerEscrowAddr != address(0), "StabilizerEscrow not deployed");
+
+        // 3. Add *extra* collateral directly to create excess (this also updates snapshot via reportCollateralAddition)
+        uint256 extraEth = 0.5 ether;
+        uint256 expectedExtraStEth = extraEth; // Assuming 1:1 MockLido rate
+        address directAdder = makeAddr("directAdder");
+        vm.deal(directAdder, extraEth);
+        vm.prank(directAdder);
+        positionEscrow.addCollateralEth{value: extraEth}(); // Triggers reportCollateralAddition
+
+        // 4. Store intermediate snapshot values (after allocation + direct addition)
+        uint256 intermediateEthSnapshot = stabilizerNFT.totalEthEquivalentAtLastSnapshot();
+        uint256 intermediateYieldSnapshot = stabilizerNFT.yieldFactorAtLastSnapshot();
+        // Sanity check: intermediate snapshot = initial alloc + extra stETH
+        require(intermediateEthSnapshot == allocResult.totalEthEquivalentAdded + expectedExtraStEth, "Intermediate snapshot calculation failed");
+
+        // 5. Prepare Price Attestation Query (using helper which mocks price)
+        // Need to create a signed query for the *actual* PriceOracle used by PositionEscrow
+        IPriceOracle.PriceAttestationQuery memory priceQuery = _createSignedPriceAttestationForOracle(
+             address(priceOracle), // Use the actual oracle instance
+             2000 ether, // Match the price used in helper/setup
+             block.timestamp * 1000 // Use current timestamp (ms)
+         );
+
+        // Mock the oracle call for PositionEscrow's attestationService
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp);
+        vm.mockCall(
+            address(priceOracle),
+            abi.encodeWithSelector(priceOracle.attestationService.selector, priceQuery),
+            abi.encode(mockResponse)
+        );
+
+
+        // --- Action ---
+        // Remove some of the excess collateral
+        uint256 amountToRemove = 0.2 ether; // Remove less than the 'extra' added
+        require(amountToRemove <= expectedExtraStEth, "Test setup error: removing more than excess");
+
+        vm.prank(user1); // user1 is stabilizerOwner, has EXCESSCOLLATERALMANAGER_ROLE on PositionEscrow
+        // Recipient should be the StabilizerEscrow for the owner
+        positionEscrow.removeExcessCollateral(payable(stabilizerEscrowAddr), amountToRemove, priceQuery); // Triggers reportCollateralRemoval
+
+        // --- Assertions ---
+        // Check StabilizerNFT snapshot state
+        uint256 currentYieldFactor = rateContract.getYieldFactor(); // Should still be the same if no rebase
+        uint256 expectedFinalEthSnapshot = intermediateEthSnapshot - amountToRemove;
+
+        assertEq(stabilizerNFT.totalEthEquivalentAtLastSnapshot(), expectedFinalEthSnapshot, "ETH snapshot mismatch after direct removal");
+        // Yield factor snapshot should update to the current one (which hasn't changed in this test)
+        assertEq(stabilizerNFT.yieldFactorAtLastSnapshot(), currentYieldFactor, "Yield snapshot mismatch after direct removal");
+        assertEq(currentYieldFactor, intermediateYieldSnapshot, "Yield factor should not have changed during test");
+
+        // Optional: Check StabilizerEscrow balance increased
+        // Initial balance = 2 (added) - 0.1 (allocated) = 1.9
+        // Final balance = 1.9 + 0.2 (removed) = 2.1
+        assertEq(IStabilizerEscrow(stabilizerEscrowAddr).unallocatedStETH(), 2.1 ether, "StabilizerEscrow balance mismatch after removal");
+    }
+
+    // Helper to create signed attestation for a specific oracle instance
+    function _createSignedPriceAttestationForOracle(
+        address oracleAddress, // Pass the specific oracle instance
+        uint256 price,
+        uint256 timestampMs
+    ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
+        // Note: This helper assumes the test contract's 'signer' is authorized on the passed oracleAddress
+        bytes32 assetPair = keccak256("MORPHER:ETH_USD"); // Consistent pair
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
+            price: price,
+            decimals: 18,
+            dataTimestamp: timestampMs,
+            assetPair: assetPair,
+            signature: bytes("")
+        });
+        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
+        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
+        query.signature = abi.encodePacked(r, s, v);
+        return query;
+    }
+
 
     // --- End Snapshot Tests via PositionEscrow Callbacks ---
 
