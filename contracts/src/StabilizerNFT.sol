@@ -914,4 +914,111 @@ contract StabilizerNFT is
 
     // --- End Admin Collateral Reset ---
 
+
+    // --- Ratio Drift Test ---
+
+    function testRatioDrift_MultipleRounds() public {
+        // Scenario: Simulate multiple rounds of allocation, rebase, and unallocation
+        // to observe potential drift between the snapshot ratio and the actual ratio.
+
+        // --- Setup ---
+        uint256 numRounds = 5;
+        uint256 numStabilizers = 3;
+        uint256 initialStabilizerFunding = 5 ether;
+        uint256 userEthPerAllocRound = 0.5 ether;
+        uint256 uspdToBurnPerUnallocRound = 200 ether; // Approx 0.1 ETH worth at 2000 price
+        uint256 rebaseIncreasePercent = 5; // 5% yield increase per round
+
+        // Mint and fund stabilizers
+        for (uint256 i = 1; i <= numStabilizers; i++) {
+            address stabilizerOwner = vm.addr(uint160(i)); // Create unique owners
+            vm.deal(stabilizerOwner, initialStabilizerFunding + 1 ether); // Fund owner
+            vm.prank(owner); // Admin mints
+            stabilizerNFT.mint(stabilizerOwner, i);
+            vm.prank(stabilizerOwner);
+            stabilizerNFT.addUnallocatedFundsEth{value: initialStabilizerFunding}(i);
+            // Set a slightly higher ratio to avoid edge cases with rounding during unallocation
+            vm.prank(stabilizerOwner);
+            stabilizerNFT.setMinCollateralizationRatio(i, 115);
+        }
+
+        address user = makeAddr("user");
+        vm.deal(user, 10 ether); // Fund user for allocations
+
+        console.log("--- Starting Ratio Drift Test (Rounds: %d) ---", numRounds);
+        console.log("Round | Snapshot Ratio | Actual Ratio | Difference (%)");
+        console.log("------------------------------------------------------");
+
+        // --- Simulation Loop ---
+        for (uint256 round = 1; round <= numRounds; round++) {
+            // 1. Allocation
+            vm.deal(address(uspdToken), userEthPerAllocRound); // Fund USPD contract for allocation call
+            vm.startPrank(address(uspdToken));
+            stabilizerNFT.allocateStabilizerFunds{value: userEthPerAllocRound}(2000 ether, 18); // Use fixed price for simplicity
+            vm.stopPrank();
+
+            // 2. Rebase (Simulate Yield)
+            uint256 currentTotalSupply = mockStETH.totalSupply();
+            if (currentTotalSupply > 0) {
+                uint256 newTotalSupply = (currentTotalSupply * (100 + rebaseIncreasePercent)) / 100;
+                vm.prank(owner); // MockStETH owner
+                mockStETH.rebase(newTotalSupply);
+            }
+
+            // 3. Unallocation (Optional - e.g., every other round)
+            if (round % 2 == 0 && uspdToken.totalSupply() > uspdToBurnPerUnallocRound) {
+                 IPriceOracle.PriceResponse memory priceRespUnalloc = createPriceResponse(); // Get current price
+                 uint256 currentYieldFactor = rateContract.getYieldFactor();
+                 uint256 sharesToBurn = (uspdToBurnPerUnallocRound * FACTOR_PRECISION) / currentYieldFactor;
+
+                 // Ensure user has enough balance before attempting burn
+                 if (uspdToken.balanceOf(user) >= uspdToBurnPerUnallocRound) {
+                     vm.startPrank(address(uspdToken));
+                     stabilizerNFT.unallocateStabilizerFunds(sharesToBurn, priceRespUnalloc);
+                     vm.stopPrank();
+                     // Note: We don't handle the returned ETH/stETH transfer back to the user in this simplified test setup.
+                 } else {
+                     // If user doesn't have enough, mint some for them (simplification for test flow)
+                     // This isn't realistic but prevents reverts in the drift test.
+                     vm.deal(address(uspdToken), 0.1 ether);
+                     vm.startPrank(address(uspdToken));
+                     stabilizerNFT.allocateStabilizerFunds{value: 0.1 ether}(2000 ether, 18);
+                     vm.stopPrank();
+                 }
+            }
+
+            // 4. Calculate Ratios
+            IPriceOracle.PriceResponse memory priceResp = createPriceResponse(); // Get current price
+            uint256 snapshotRatio = stabilizerNFT.getSystemCollateralizationRatio(priceResp);
+            uint256 actualRatio = _calculateActualSystemRatio(priceResp);
+
+            // 5. Log and Compare
+            int256 differenceBps = int256(actualRatio) - int256(snapshotRatio); // Difference in basis points (x100)
+            // Convert difference to percentage string for logging
+            string memory diffStr;
+            if (differenceBps >= 0) {
+                 diffStr = string.concat("+", vm.toString(uint256(differenceBps) / 100), ".", vm.toString(uint256(differenceBps) % 100));
+            } else {
+                 diffStr = string.concat("-", vm.toString(uint256(-differenceBps) / 100), ".", vm.toString(uint256(-differenceBps) % 100));
+            }
+
+            console.log("  %d   |      %d.%d%%    |    %d.%d%%   |   %s%%",
+                round,
+                snapshotRatio / 100, snapshotRatio % 100,
+                actualRatio / 100, actualRatio % 100,
+                diffStr
+            );
+
+            // Assert that the snapshot ratio doesn't deviate too much from the actual ratio.
+            // Allow a small drift (e.g., 2% = 200 basis points).
+            // The snapshot ratio is expected to potentially lag slightly behind (be lower) after yield.
+            assertTrue(actualRatio >= snapshotRatio, "Snapshot ratio should generally not exceed actual ratio");
+            assertLt(actualRatio - snapshotRatio, 200, "Drift between actual and snapshot ratio exceeds threshold (2%)");
+
+        }
+         console.log("------------------------------------------------------");
+    }
+
+    // --- End Ratio Drift Test ---
+
 }
