@@ -156,8 +156,8 @@ contract StabilizerNFTTest is Test {
             if (positionEscrowAddr != address(0)) {
                 totalStEthCollateral += IPositionEscrow(positionEscrowAddr).getCurrentStEthBalance();
             }
-            // Move to the next allocated ID
-            (, , , , , uint256 nextAllocated) = stabilizerNFT.positions(currentAllocatedId);
+            // Move to the next allocated ID (Struct has 5 members now)
+            (, , , , uint256 nextAllocated) = stabilizerNFT.positions(currentAllocatedId);
             currentAllocatedId = nextAllocated;
         }
 
