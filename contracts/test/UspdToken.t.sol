@@ -21,6 +21,7 @@ import "../src/interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contrac
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol"; // For mocking WETH()
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // For mocking getPool
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol"; // For mocking slot0
+import "../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol"; // Import AccessControl for error selector
 // StabilizerNFT needed for cUSPD deployment dependency
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
