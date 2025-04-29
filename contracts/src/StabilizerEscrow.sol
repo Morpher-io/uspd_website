@@ -2,16 +2,17 @@
 pragma solidity ^0.8.20;
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol"; // <-- Import Initializable
 import "./interfaces/ILido.sol";
-import "./interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
+import "./interfaces/IStabilizerEscrow.sol";
 
 
 /**
  * @title StabilizerEscrow
  * @notice A dedicated vault for a single Stabilizer NFT, holding and managing stETH collateral.
- * @dev Deployed and controlled by the StabilizerNFT contract. Implements IStabilizerEscrow.
+ * @dev Deployed and controlled by the StabilizerNFT contract. Implements IStabilizerEscrow. Meant to be deployed as a clone.
  */
-contract StabilizerEscrow is IStabilizerEscrow {
+contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit Initializable
     // --- Errors ---
     error ZeroAddress();
     error ZeroAmount();
@@ -35,21 +36,26 @@ contract StabilizerEscrow is IStabilizerEscrow {
         _;
     }
 
-    // --- Constructor ---
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers(); // Disable constructor-based initialization
+    }
+
+    // --- Initializer ---
     /**
-     * @notice Deploys the escrow contract with an initial ETH deposit.
+     * @notice Initializes the escrow contract state.
      * @param _stabilizerNFT The address of the controlling StabilizerNFT contract.
      * @param _owner The address of the Stabilizer NFT owner.
      * @param _stETH The address of the stETH token.
      * @param _lido The address of the Lido staking pool.
-     * @dev Sets immutable addresses. Initial deposit happens via separate `deposit` call.
+     * @dev Sets immutable addresses. Meant to be called once after clone deployment.
      */
-    constructor(
+    function initialize( // <-- Renamed from constructor
         address _stabilizerNFT,
         address _owner,
         address _stETH,
         address _lido
-    ) /* removed payable */ {
+    ) external initializer { // <-- Added initializer modifier
         if (_stabilizerNFT == address(0) || _owner == address(0) || _stETH == address(0) || _lido == address(0)) {
             revert ZeroAddress();
         }

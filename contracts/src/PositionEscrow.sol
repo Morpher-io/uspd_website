@@ -2,20 +2,21 @@
 pragma solidity ^0.8.20;
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol"; // <-- Import Initializable
+import {AccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol"; // <-- Import AccessControlUpgradeable
 import "./interfaces/ILido.sol";
 import "./interfaces/IPositionEscrow.sol";
-import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol"; // Import AccessControl
 import "./interfaces/IPoolSharesConversionRate.sol";
-import "./interfaces/IPriceOracle.sol"; // Use interface for PriceOracle
-import "./interfaces/IStabilizerNFT.sol"; // Use interface for PriceOracle
-import "./PriceOracle.sol"; // Import implementation for type casting if needed
+import "./interfaces/IPriceOracle.sol";
+import "./interfaces/IStabilizerNFT.sol";
+import "./PriceOracle.sol";
 
 /**
  * @title PositionEscrow
  * @notice Holds and manages the pooled stETH collateral for a single collateralized position.
- * @dev Deployed and controlled by the StabilizerNFT contract. Implements IPositionEscrow and AccessControl.
+ * @dev Deployed and controlled by the StabilizerNFT contract. Implements IPositionEscrow and AccessControl. Meant to be deployed as a clone.
  */
-contract PositionEscrow is IPositionEscrow, AccessControl {
+contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradeable { // <-- Inherit Initializable and AccessControlUpgradeable
 
     // --- Roles (defined in interface, constants here for convenience) ---
     bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
@@ -34,9 +35,14 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
     uint256 public override backedPoolShares; // Liability tracked in pool shares
 
 
-    // --- Constructor ---
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers(); // Disable constructor-based initialization
+    }
+
+    // --- Initializer ---
     /**
-     * @notice Deploys the PositionEscrow contract.
+     * @notice Initializes the PositionEscrow contract state.
      * @param _stabilizerNFT The address of the controlling StabilizerNFT contract.
      * @param _stETHAddress The address of the stETH token.
      * @param _lidoAddress The address of the Lido staking pool.
@@ -44,14 +50,16 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
      * @param _oracleAddress The address of the PriceOracle contract.
      * @param _stabilizerOwner The address of the owner of the corresponding StabilizerNFT.
      */
-    constructor(
+    function initialize( // <-- Renamed from constructor
         address _stabilizerNFT,
-        address _stabilizerOwner, // Add owner parameter
+        address _stabilizerOwner,
         address _stETHAddress,
-        address _lidoAddress, // Keep for consistency, might be removed later
+        address _lidoAddress,
         address _rateContractAddress,
         address _oracleAddress
-    ) {
+    ) external initializer { // <-- Added initializer modifier
+        __AccessControl_init(); // <-- Initialize AccessControl
+
         if (_stabilizerNFT == address(0) || _stabilizerOwner == address(0) || _stETHAddress == address(0) || _lidoAddress == address(0) || _rateContractAddress == address(0) || _oracleAddress == address(0)) {
             revert ZeroAddress();
         }
@@ -61,10 +69,10 @@ contract PositionEscrow is IPositionEscrow, AccessControl {
         lido = _lidoAddress; // Store Lido address
         rateContract = _rateContractAddress;
         oracle = _oracleAddress;
-        backedPoolShares = 0; // Initialize liability to zero
+        backedPoolShares = 0;
 
         // Grant roles
-        _grantRole(DEFAULT_ADMIN_ROLE, _stabilizerNFT); // StabilizerNFT is admin
+        _grantRole(DEFAULT_ADMIN_ROLE, _stabilizerNFT);
         _grantRole(STABILIZER_ROLE, _stabilizerNFT);
         _grantRole(EXCESSCOLLATERALMANAGER_ROLE, _stabilizerOwner);
     }
