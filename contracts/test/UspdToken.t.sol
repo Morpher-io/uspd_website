@@ -213,6 +213,10 @@ contract USPDTokenTest is Test {
         );
         cuspdToken.grantRole(cuspdToken.UPDATER_ROLE(), address(this));
 
+        // Deploy Escrow Implementations
+        StabilizerEscrow stabilizerEscrowImpl = new StabilizerEscrow();
+        PositionEscrow positionEscrowImpl = new PositionEscrow();
+
         // Deploy USPD token (Contract Under Test)
         uspdToken = new USPD(
             "Unified Stable Passive Dollar", // name
