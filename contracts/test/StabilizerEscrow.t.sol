@@ -69,16 +69,14 @@ contract StabilizerEscrowTest is Test {
     // --- Test Initializer ---
 
     function test_Initialize_Success() public { // Renamed from test_Constructor_Success
-        // Already tested implicitly in setUp, but add explicit checks
+        // Assert state set by initialize (called via proxy in setUp)
         assertEq(escrow.stabilizerNFTContract(), stabilizerNFT, "StabilizerNFT address mismatch");
         assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch");
         assertEq(escrow.stETH(), address(mockStETH), "stETH address mismatch");
         assertEq(escrow.lido(), address(mockLido), "Lido address mismatch");
-        // Deploy new instance to check initial state
-        StabilizerEscrow impl = new StabilizerEscrow();
-        StabilizerEscrow newEscrow = StabilizerEscrow(payable(address(impl)));
-        newEscrow.initialize(stabilizerNFT, stabilizerOwner, address(mockStETH), address(mockLido));
-        assertEq(newEscrow.unallocatedStETH(), 0, "Initial unallocatedStETH should be 0");
+
+        // Check initial balance (after setUp's deposit)
+        assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT, "Initial unallocatedStETH after setUp deposit mismatch");
     }
 
     function test_Initialize_Revert_ZeroStabilizerNFT() public { // Renamed from test_Constructor_Revert_ZeroStabilizerNFT
