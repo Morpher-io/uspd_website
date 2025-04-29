@@ -288,8 +288,8 @@ contract PositionEscrowTest is
 
     function test_initialize_revert_zeroLido() public {
         // Renamed from test_constructor_revert_zeroLido
-        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
         PositionEscrow impl = new PositionEscrow();
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
         PositionEscrow(payable(address(impl))).initialize(
             admin,
             stabilizerOwner,
