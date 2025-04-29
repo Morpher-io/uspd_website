@@ -159,8 +159,8 @@ contract cUSPDTokenTest is Test {
             address(cuspdToken),      // Pass cUSPD address
             address(mockStETH),
             address(mockLido),
-            address(reporter),
-            address(rateContract),
+            address(rateContract),    // Correct order: rateContract
+            address(reporter),        // Correct order: reporter
             admin                     // Admin
         );
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), admin);
