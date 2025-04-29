@@ -14,9 +14,9 @@ import "./interfaces/IPositionEscrow.sol";
 import "./interfaces/IStabilizerEscrow.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
 import "./interfaces/IOvercollateralizationReporter.sol";
-import "./StabilizerEscrow.sol";
-import "./PositionEscrow.sol";
-// Removed Base64 import
+import "./StabilizerEscrow.sol"; // Keep for type casting if needed, but not for `new`
+import "./PositionEscrow.sol"; // Keep for type casting if needed, but not for `new`
+import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol"; // <-- Import Clones library
 
 import {console} from "forge-std/console.sol";
 
@@ -61,9 +61,9 @@ contract StabilizerNFT is
     // Addresses needed for Escrow deployment/interaction
     address public stETH;
     address public lido;
-    IPoolSharesConversionRate public rateContract; // Add Rate Contract reference
-    // Optional: CREATE2 factory address if used
-    // ICreateX public createX;
+    IPoolSharesConversionRate public rateContract;
+    address public stabilizerEscrowImplementation; // <-- Add implementation address
+    address public positionEscrowImplementation; // <-- Add implementation address
 
     // Mapping from NFT ID to its dedicated StabilizerEscrow contract address (unallocated funds)
     mapping(uint256 => address) public stabilizerEscrows;
@@ -112,12 +112,14 @@ contract StabilizerNFT is
         address _lido,
         address _rateContract,
         address _reporterAddress,
-        string memory _baseURI, // <-- Add base URI parameter
+        string memory _baseURI,
+        address _stabilizerEscrowImpl, // <-- Add StabilizerEscrow implementation address
+        address _positionEscrowImpl, // <-- Add PositionEscrow implementation address
         // address _createX, // Uncomment if using CREATE2 factory
         address _admin
     ) public initializer {
         __ERC721_init("USPD Stabilizer", "USPDS");
-        __ERC721Enumerable_init(); // Keep if still needed, otherwise remove
+        __ERC721Enumerable_init();
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -126,7 +128,9 @@ contract StabilizerNFT is
         lido = _lido;
         rateContract = IPoolSharesConversionRate(_rateContract);
         reporter = IOvercollateralizationReporter(_reporterAddress);
-        baseURI = _baseURI; // <-- Store base URI
+        baseURI = _baseURI;
+        stabilizerEscrowImplementation = _stabilizerEscrowImpl; // <-- Store implementation address
+        positionEscrowImplementation = _positionEscrowImpl; // <-- Store implementation address
 
         // Snapshot state is now managed by the reporter contract
     }
@@ -142,35 +146,40 @@ contract StabilizerNFT is
         });
 
         _safeMint(to, tokenId);
-        emit StabilizerPositionCreated(tokenId, to); // Removed totalEth
+        emit StabilizerPositionCreated(tokenId, to);
 
-        // Deploy the dedicated StabilizerEscrow contract for unallocated funds
-        StabilizerEscrow stabilizerEscrow = new StabilizerEscrow(
+        // --- Deploy Clones using EIP-1167 ---
+        require(stabilizerEscrowImplementation != address(0), "StabilizerEscrow impl not set");
+        require(positionEscrowImplementation != address(0), "PositionEscrow impl not set");
+
+        // Deploy StabilizerEscrow clone
+        address stabilizerEscrowClone = Clones.clone(stabilizerEscrowImplementation);
+        require(stabilizerEscrowClone != address(0), "StabilizerEscrow clone failed");
+        // Initialize the clone
+        StabilizerEscrow(payable(stabilizerEscrowClone)).initialize(
             address(this), // This StabilizerNFT contract is the controller
             to,            // The NFT owner is the beneficiary
             stETH,         // stETH address
             lido           // Lido address
         );
-        require(address(stabilizerEscrow) != address(0), "StabilizerEscrow deployment failed");
-        stabilizerEscrows[tokenId] = address(stabilizerEscrow);
+        stabilizerEscrows[tokenId] = stabilizerEscrowClone;
 
-        // Deploy the dedicated PositionEscrow contract for the collateralized position
-        PositionEscrow positionEscrow = new PositionEscrow(
+        // Deploy PositionEscrow clone
+        address positionEscrowClone = Clones.clone(positionEscrowImplementation);
+        require(positionEscrowClone != address(0), "PositionEscrow clone failed");
+        // Initialize the clone
+        PositionEscrow(payable(positionEscrowClone)).initialize(
             address(this), // This StabilizerNFT contract is the controller/admin/stabilizer role holder
             to,            // The NFT owner gets EXCESSCOLLATERALMANAGER_ROLE
             stETH,         // stETH address
             lido,          // Lido address
             address(rateContract), // Rate contract address
-            address(cuspdToken.oracle()) // Oracle address from USPDToken
+            address(cuspdToken.oracle()) // Oracle address from cUSPDToken
         );
-        require(address(positionEscrow) != address(0), "PositionEscrow deployment failed");
-        positionEscrows[tokenId] = address(positionEscrow);
+        positionEscrows[tokenId] = positionEscrowClone;
 
-        // Grant the new PositionEscrow the role needed to call back
-        _grantRole(POSITION_ESCROW_ROLE, address(positionEscrow));
-
-        // Optional: Emit an event for deployment tracking
-        // emit EscrowDeployed(tokenId, address(escrow));
+        // Grant the new PositionEscrow clone the role needed to call back
+        _grantRole(POSITION_ESCROW_ROLE, positionEscrowClone);
     }
 
     /**
