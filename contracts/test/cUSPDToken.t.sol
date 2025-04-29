@@ -161,6 +161,7 @@ contract cUSPDTokenTest is Test {
             address(mockLido),
             address(rateContract),    // Correct order: rateContract
             address(reporter),        // Correct order: reporter
+            "http://test.uri/",       // <-- Add placeholder baseURI
             admin                     // Admin
         );
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), admin);

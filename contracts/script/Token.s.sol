@@ -138,8 +138,16 @@ contract DeployScript is Script {
             // Stabilizer system components are not deployed
             lidoAddress = address(0);
             stETHAddress = address(0);
-            initialRateContractDeposit = 0; // No rate contract deposit needed
+            initialRateContractDeposit = 0;
         }
+
+        // Set Base URI based on chain
+        if (chainId == 1) { // Mainnet
+            baseURI = "https://uspd.io/api/stabilizer/metadata/";
+        } else { // Sepolia, Local, Others
+            baseURI = "http://localhost:3000/api/stabilizer/metadata/"; // Default to localhost for others
+        }
+        console2.log("StabilizerNFT Base URI set to:", baseURI);
     }
 
     function run() public {
@@ -400,13 +408,13 @@ contract DeployScript is Script {
         require(stETHAddress != address(0), "stETH address not set");
         require(lidoAddress != address(0), "Lido address not set");
         require(rateContractAddress != address(0), "Rate contract not deployed yet");
-        require(reporterAddress != address(0), "Reporter not deployed yet"); // <-- Check reporter
+        require(reporterAddress != address(0), "Reporter not deployed yet");
 
         // Prepare initialization data
-        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _reporterAddress, address _admin)
+        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _reporterAddress, string memory _baseURI, address _admin)
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, reporterAddress, deployer) // <-- Pass reporter address
+            (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, reporterAddress, baseURI, deployer) // <-- Pass baseURI
         );
 
          // Call initialize via the proxy
@@ -536,7 +544,8 @@ contract DeployScript is Script {
                 '"uniswapRouter": "0x0",'
                 '"chainlinkAggregator": "0x0",'
                 '"lidoAddress": "0x0",'
-                '"stETHAddress": "0x0"'
+                '"stETHAddress": "0x0",'
+                '"stabilizerBaseURI": ""' // <-- Add baseURI field
             '},'
             '"metadata": {'
                 '"chainId": 0,'
@@ -569,6 +578,7 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(chainlinkAggregator), deploymentPath, ".config.chainlinkAggregator");
         vm.writeJson(vm.toString(lidoAddress), deploymentPath, ".config.lidoAddress");
         vm.writeJson(vm.toString(stETHAddress), deploymentPath, ".config.stETHAddress");
+        vm.writeJson(vm.toString(baseURI), deploymentPath, ".config.stabilizerBaseURI"); // <-- Save baseURI
 
         // Add metadata
         vm.writeJson(vm.toString(chainId), deploymentPath, ".metadata.chainId");

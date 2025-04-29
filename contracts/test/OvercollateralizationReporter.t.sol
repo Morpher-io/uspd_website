@@ -116,7 +116,8 @@ contract OvercollateralizationReporterTest is Test {
             address(mockStETH),
             address(mockLido),
             address(rateContract),
-            address(reporter), // Pass reporter address
+            address(reporter),        // Pass reporter address
+            "http://test.uri/",       // <-- Add placeholder baseURI
             admin
         );
 

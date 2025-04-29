@@ -150,6 +150,7 @@ contract StabilizerNFTTest is Test {
             address(mockLido),
             address(rateContract),
             address(reporter),        // Pass reporter address
+            "http://test.uri/",       // <-- Add placeholder baseURI
             owner                     // Admin
         );
 
