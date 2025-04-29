@@ -477,10 +477,10 @@ contract DeployScript is Script {
 
         // Grant roles to the Reporter
         console2.log("Granting Reporter roles...");
-        IOvercollateralizationReporter reporter = IOvercollateralizationReporter(reporterAddress);
+        OvercollateralizationReporter reporter = OvercollateralizationReporter(payable(reporterAddress)); // Cast to implementation type
         // Deployer already has DEFAULT_ADMIN_ROLE from initialization
         // Grant UPDATER_ROLE to StabilizerNFT proxy
-        reporter.grantRole(reporter.UPDATER_ROLE(), stabilizerProxyAddress);
+        reporter.grantRole(reporter.UPDATER_ROLE(), stabilizerProxyAddress); // Now UPDATER_ROLE is accessible
 
         console2.log("Roles setup complete.");
     }
