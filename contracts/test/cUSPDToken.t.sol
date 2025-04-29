@@ -141,7 +141,7 @@ contract cUSPDTokenTest is Test {
             admin                     // Admin
         );
 
-        // 5. Deploy OvercollateralizationReporter
+        // 5. Deploy OvercollateralizationReporter (Using Proxy)
         OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
         bytes memory reporterInitData = abi.encodeWithSelector(
             OvercollateralizationReporter.initialize.selector,
@@ -150,11 +150,11 @@ contract cUSPDTokenTest is Test {
             address(rateContract), // rateContract
             address(cuspdToken)    // cuspdToken
         );
-        // Deploy directly for simplicity in test setup
-        reporter = new OvercollateralizationReporter();
-        reporter.initialize(admin, address(stabilizerNFT), address(rateContract), address(cuspdToken));
+        // Deploy proxy and initialize through proxy data
+        ERC1967Proxy reporterProxy = new ERC1967Proxy(address(reporterImpl), reporterInitData);
+        reporter = OvercollateralizationReporter(payable(address(reporterProxy))); // Assign proxy address
 
-        // 6. Initialize StabilizerNFT (Needs cUSPD address)
+        // 6. Initialize StabilizerNFT (Needs Reporter address)
         stabilizerNFT.initialize(
             address(cuspdToken),      // Pass cUSPD address
             address(mockStETH),
