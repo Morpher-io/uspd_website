@@ -288,16 +288,25 @@ contract PositionEscrowTest is
 
     function test_initialize_revert_zeroLido() public {
         // Renamed from test_constructor_revert_zeroLido
-        PositionEscrow impl = new PositionEscrow();
-        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        PositionEscrow(payable(address(impl))).initialize(
-            admin,
-            stabilizerOwner,
-            address(mockStETH),
-            address(0),
-            address(rateContract),
-            address(priceOracle)
+        PositionEscrow impl = new PositionEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero Lido address
+        bytes memory initData = abi.encodeCall(
+            PositionEscrow.initialize,
+            (
+                admin,
+                stabilizerOwner,
+                address(mockStETH),
+                address(0), // Invalid Lido address
+                address(rateContract),
+                address(priceOracle)
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     function test_initialize_revert_zeroRateContract() public {
