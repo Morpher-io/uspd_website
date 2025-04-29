@@ -246,44 +246,71 @@ contract PositionEscrowTest is
 
     function test_initialize_revert_zeroStabilizerNFT() public {
         // Renamed from test_constructor_revert_zeroStabilizerNFT
-        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        PositionEscrow impl = new PositionEscrow();
-        PositionEscrow(payable(address(impl))).initialize(
-            address(0),
-            stabilizerOwner,
-            address(mockStETH),
-            address(mockLido),
-            address(rateContract),
-            address(priceOracle)
+        PositionEscrow impl = new PositionEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero StabilizerNFT address
+        bytes memory initData = abi.encodeCall(
+            PositionEscrow.initialize,
+            (
+                address(0), // Invalid StabilizerNFT address
+                stabilizerOwner,
+                address(mockStETH),
+                address(mockLido),
+                address(rateContract),
+                address(priceOracle)
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     function test_initialize_revert_zeroStabilizerOwner() public {
         // Renamed from test_constructor_revert_zeroStabilizerOwner
-        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        PositionEscrow impl = new PositionEscrow();
-        PositionEscrow(payable(address(impl))).initialize(
-            admin,
-            address(0),
-            address(mockStETH),
-            address(mockLido),
-            address(rateContract),
-            address(priceOracle)
+        PositionEscrow impl = new PositionEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero StabilizerOwner address
+        bytes memory initData = abi.encodeCall(
+            PositionEscrow.initialize,
+            (
+                admin,
+                address(0), // Invalid StabilizerOwner address
+                address(mockStETH),
+                address(mockLido),
+                address(rateContract),
+                address(priceOracle)
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     function test_initialize_revert_zeroStETH() public {
         // Renamed from test_constructor_revert_zeroStETH
-        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        PositionEscrow impl = new PositionEscrow();
-        PositionEscrow(payable(address(impl))).initialize(
-            admin,
-            stabilizerOwner,
-            address(0),
-            address(mockLido),
-            address(rateContract),
-            address(priceOracle)
+        PositionEscrow impl = new PositionEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero stETH address
+        bytes memory initData = abi.encodeCall(
+            PositionEscrow.initialize,
+            (
+                admin,
+                stabilizerOwner,
+                address(0), // Invalid stETH address
+                address(mockLido),
+                address(rateContract),
+                address(priceOracle)
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     function test_initialize_revert_zeroLido() public {
@@ -311,30 +338,48 @@ contract PositionEscrowTest is
 
     function test_initialize_revert_zeroRateContract() public {
         // Renamed from test_constructor_revert_zeroRateContract
-        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        PositionEscrow impl = new PositionEscrow();
-        PositionEscrow(payable(address(impl))).initialize(
-            admin,
-            stabilizerOwner,
-            address(mockStETH),
-            address(mockLido),
-            address(0),
-            address(priceOracle)
+        PositionEscrow impl = new PositionEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero RateContract address
+        bytes memory initData = abi.encodeCall(
+            PositionEscrow.initialize,
+            (
+                admin,
+                stabilizerOwner,
+                address(mockStETH),
+                address(mockLido),
+                address(0), // Invalid RateContract address
+                address(priceOracle)
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     function test_initialize_revert_zeroOracle() public {
         // Renamed from test_constructor_revert_zeroOracle
-        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        PositionEscrow impl = new PositionEscrow();
-        PositionEscrow(payable(address(impl))).initialize(
-            admin,
-            stabilizerOwner,
-            address(mockStETH),
-            address(mockLido),
-            address(rateContract),
-            address(0)
+        PositionEscrow impl = new PositionEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero Oracle address
+        bytes memory initData = abi.encodeCall(
+            PositionEscrow.initialize,
+            (
+                admin,
+                stabilizerOwner,
+                address(mockStETH),
+                address(mockLido),
+                address(rateContract),
+                address(0) // Invalid Oracle address
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     // Note: The tests test_constructor_initialState and test_constructor_roles are now covered by testInitialize
