@@ -10,10 +10,11 @@ import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol"; // View layer token
-import "../src/cUSPDToken.sol"; // Core share token
-// Removed UspdCollateralizedPositionNFT import
-import "../src/PoolSharesConversionRate.sol"; // Import the new contract
-import "../src/interfaces/ILido.sol"; // Import Lido interface
+import "../src/cUSPDToken.sol";
+import "../src/PoolSharesConversionRate.sol";
+import "../src/OvercollateralizationReporter.sol"; // <-- Add Reporter implementation
+import "../src/interfaces/IOvercollateralizationReporter.sol"; // <-- Add Reporter interface
+import "../src/interfaces/ILido.sol";
 import "../test/mocks/MockStETH.sol";
 import "../test/mocks/MockLido.sol";
 
@@ -37,6 +38,7 @@ contract DeployScript is Script {
     bytes32 CUSPD_TOKEN_SALT;
     bytes32 USPD_TOKEN_SALT;
     bytes32 RATE_CONTRACT_SALT;
+    bytes32 REPORTER_SALT; // <-- Add Reporter salt
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
@@ -53,6 +55,8 @@ contract DeployScript is Script {
     address cuspdTokenAddress;
     address uspdTokenAddress;
     address rateContractAddress;
+    address reporterImplAddress; // <-- Add Reporter implementation address
+    address reporterAddress; // <-- Add Reporter proxy/contract address
 
     // Configuration for PriceOracle
     uint256 maxPriceDeviation = 500; // 5%
@@ -86,6 +90,7 @@ contract DeployScript is Script {
         CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1");
         USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
         RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1");
+        REPORTER_SALT = generateSalt("USPD_REPORTER_v1"); // <-- Initialize Reporter salt
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
@@ -152,16 +157,20 @@ contract DeployScript is Script {
             console2.log("Deploying Full System...");
             deployStabilizerNFTImplementation();
             deployPoolSharesConversionRate();
+            deployReporterImplementation(); // <-- Deploy Reporter Impl
             deployStabilizerNFTProxy_NoInit();
             deployCUSPDToken();
             deployUspdToken();
-            initializeStabilizerNFTProxy();
-            setupRolesAndPermissions();
+            deployReporterProxy(); // <-- Deploy Reporter Proxy (needs dependencies)
+            initializeStabilizerNFTProxy(); // <-- Pass reporter address
+            setupRolesAndPermissions(); // <-- Grant roles on reporter
         } else {
             console2.log("Deploying Bridged Token Only...");
             stabilizerImplAddress = address(0);
             stabilizerProxyAddress = address(0);
             rateContractAddress = address(0);
+            reporterImplAddress = address(0); // <-- Set reporter impl to 0
+            reporterAddress = address(0); // <-- Set reporter proxy to 0
             deployCUSPDToken_Bridged();
             deployUspdToken_Bridged();
             setupRolesAndPermissions_Bridged();
@@ -330,6 +339,47 @@ contract DeployScript is Script {
         console2.log("USPDToken (view layer, bridged) deployed at:", uspdTokenAddress);
     }
 
+    function deployReporterImplementation() internal {
+        // Deploy Reporter implementation with regular CREATE
+        console2.log("Deploying OvercollateralizationReporter implementation...");
+        OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
+        reporterImplAddress = address(reporterImpl);
+        console2.log(
+            "OvercollateralizationReporter implementation deployed at:",
+            reporterImplAddress
+        );
+    }
+
+    function deployReporterProxy() internal {
+        // Deploy Reporter Proxy and Initialize
+        console2.log("Deploying OvercollateralizationReporter proxy...");
+        require(reporterImplAddress != address(0), "Reporter implementation not deployed");
+        require(proxyAdminAddress != address(0), "ProxyAdmin not deployed");
+        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
+        require(rateContractAddress != address(0), "Rate contract not deployed");
+        require(cuspdTokenAddress != address(0), "cUSPD token not deployed");
+
+        // Prepare initialization data
+        bytes memory initData = abi.encodeCall(
+            OvercollateralizationReporter.initialize,
+            (
+                deployer,               // admin
+                stabilizerProxyAddress, // stabilizerNFTContract (granted UPDATER_ROLE)
+                rateContractAddress,    // rateContract
+                cuspdTokenAddress       // cuspdToken
+            )
+        );
+
+        // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
+        bytes memory bytecode = abi.encodePacked(
+            type(TransparentUpgradeableProxy).creationCode,
+            abi.encode(reporterImplAddress, proxyAdminAddress, initData)
+        );
+
+        reporterAddress = createX.deployCreate2{value: 0}(REPORTER_SALT, bytecode);
+        console2.log("OvercollateralizationReporter proxy deployed at:", reporterAddress);
+    }
+
 
     // Deploy StabilizerNFT Proxy without initializing
     function deployStabilizerNFTProxy_NoInit() internal {
@@ -350,11 +400,13 @@ contract DeployScript is Script {
         require(stETHAddress != address(0), "stETH address not set");
         require(lidoAddress != address(0), "Lido address not set");
         require(rateContractAddress != address(0), "Rate contract not deployed yet");
+        require(reporterAddress != address(0), "Reporter not deployed yet"); // <-- Check reporter
 
         // Prepare initialization data
+        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _reporterAddress, address _admin)
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, deployer)
+            (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, reporterAddress, deployer) // <-- Pass reporter address
         );
 
          // Call initialize via the proxy
@@ -423,6 +475,13 @@ contract DeployScript is Script {
         console2.log("Granting USPDToken (view) roles...");
         USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
 
+        // Grant roles to the Reporter
+        console2.log("Granting Reporter roles...");
+        IOvercollateralizationReporter reporter = IOvercollateralizationReporter(reporterAddress);
+        // Deployer already has DEFAULT_ADMIN_ROLE from initialization
+        // Grant UPDATER_ROLE to StabilizerNFT proxy
+        reporter.grantRole(reporter.UPDATER_ROLE(), stabilizerProxyAddress);
+
         console2.log("Roles setup complete.");
     }
 
@@ -461,7 +520,9 @@ contract DeployScript is Script {
                 '"stabilizer": "0x0000000000000000000000000000000000000000",'
                 '"cuspdToken": "0x0000000000000000000000000000000000000000",'
                 '"uspdToken": "0x0000000000000000000000000000000000000000",'
-                '"rateContract": "0x0000000000000000000000000000000000000000"'
+                '"rateContract": "0x0000000000000000000000000000000000000000",'
+                '"reporterImpl": "0x0000000000000000000000000000000000000000",' // <-- Add reporter impl
+                '"reporter": "0x0000000000000000000000000000000000000000"' // <-- Add reporter proxy/contract
             '},'
             '"config": {'
                 '"usdcAddress": "0x0000000000000000000000000000000000000000",'
@@ -499,6 +560,8 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
         vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
         vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
+        vm.writeJson(vm.toString(reporterImplAddress), deploymentPath, ".contracts.reporterImpl"); // <-- Save reporter impl
+        vm.writeJson(vm.toString(reporterAddress), deploymentPath, ".contracts.reporter"); // <-- Save reporter proxy/contract
 
         // Save configuration
         vm.writeJson(vm.toString(usdcAddress), deploymentPath, ".config.usdcAddress");
