@@ -34,15 +34,19 @@ contract StabilizerEscrowTest is Test {
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
 
-        // 2. Deploy StabilizerEscrow (constructor is not payable)
-        escrow = new StabilizerEscrow(
-            stabilizerNFT,
-            stabilizerOwner,
-            address(mockStETH),
-            address(mockLido)
+        // 2. Deploy StabilizerEscrow Implementation
+        StabilizerEscrow escrowImpl = new StabilizerEscrow();
+
+        // 3. Deploy StabilizerEscrow using initialize
+        escrow = StabilizerEscrow(payable(address(escrowImpl))); // Use implementation address directly for testing
+        escrow.initialize(
+            stabilizerNFT, // _stabilizerNFT
+            stabilizerOwner, // _owner
+            address(mockStETH), // _stETH
+            address(mockLido) // _lido
         );
 
-        // 3. Simulate initial deposit via the deposit() function called by stabilizerNFT
+        // 4. Simulate initial deposit via the deposit() function called by stabilizerNFT
         vm.deal(stabilizerNFT, INITIAL_DEPOSIT); // Fund the stabilizerNFT contract address
         vm.prank(stabilizerNFT); // Set the caller for the next call
         escrow.deposit{value: INITIAL_DEPOSIT}();
@@ -52,46 +56,49 @@ contract StabilizerEscrowTest is Test {
         assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT, "Unallocated stETH after initial deposit mismatch"); // Check view function
     }
 
-    // --- Test Constructor ---
+    // --- Test Initializer ---
 
-    function test_Constructor_Success() public {
+    function test_Initialize_Success() public { // Renamed from test_Constructor_Success
         // Already tested implicitly in setUp, but add explicit checks
         assertEq(escrow.stabilizerNFTContract(), stabilizerNFT, "StabilizerNFT address mismatch");
         assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch");
         assertEq(escrow.stETH(), address(mockStETH), "stETH address mismatch");
         assertEq(escrow.lido(), address(mockLido), "Lido address mismatch");
-        StabilizerEscrow newEscrow = new StabilizerEscrow(stabilizerNFT, stabilizerOwner, address(mockStETH), address(mockLido));
+        // Deploy new instance to check initial state
+        StabilizerEscrow impl = new StabilizerEscrow();
+        StabilizerEscrow newEscrow = StabilizerEscrow(payable(address(impl)));
+        newEscrow.initialize(stabilizerNFT, stabilizerOwner, address(mockStETH), address(mockLido));
         assertEq(newEscrow.unallocatedStETH(), 0, "Initial unallocatedStETH should be 0");
     }
 
-    function test_Constructor_Revert_ZeroStabilizerNFT() public {
+    function test_Initialize_Revert_ZeroStabilizerNFT() public { // Renamed from test_Constructor_Revert_ZeroStabilizerNFT
         vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        // Constructor is not payable, remove value
-        new StabilizerEscrow(
+        StabilizerEscrow impl = new StabilizerEscrow();
+        StabilizerEscrow(payable(address(impl))).initialize(
             address(0), stabilizerOwner, address(mockStETH), address(mockLido)
         );
     }
 
-    function test_Constructor_Revert_ZeroOwner() public {
+    function test_Initialize_Revert_ZeroOwner() public { // Renamed from test_Constructor_Revert_ZeroOwner
         vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        // Constructor is not payable, remove value
-        new StabilizerEscrow(
+        StabilizerEscrow impl = new StabilizerEscrow();
+        StabilizerEscrow(payable(address(impl))).initialize(
             stabilizerNFT, address(0), address(mockStETH), address(mockLido)
         );
     }
 
-    function test_Constructor_Revert_ZeroStETH() public {
+    function test_Initialize_Revert_ZeroStETH() public { // Renamed from test_Constructor_Revert_ZeroStETH
         vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        // Constructor is not payable, remove value
-        new StabilizerEscrow(
+        StabilizerEscrow impl = new StabilizerEscrow();
+        StabilizerEscrow(payable(address(impl))).initialize(
             stabilizerNFT, stabilizerOwner, address(0), address(mockLido)
         );
     }
 
-     function test_Constructor_Revert_ZeroLido() public {
+     function test_Initialize_Revert_ZeroLido() public { // Renamed from test_Constructor_Revert_ZeroLido
         vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        // Constructor is not payable, remove value
-        new StabilizerEscrow(
+        StabilizerEscrow impl = new StabilizerEscrow();
+        StabilizerEscrow(payable(address(impl))).initialize(
             stabilizerNFT, stabilizerOwner, address(mockStETH), address(0)
         );
     }

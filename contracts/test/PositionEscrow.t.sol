@@ -78,14 +78,18 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
             address(mockStETH), address(mockLido)
         );
 
-        // Deploy PositionEscrow
-        positionEscrow = new PositionEscrow(
-            admin, // StabilizerNFT contract address
-            stabilizerOwner,
-            address(mockStETH),
-            address(mockLido),
-            address(rateContract),
-            address(priceOracle)
+        // Deploy PositionEscrow Implementation
+        PositionEscrow escrowImpl = new PositionEscrow();
+
+        // Deploy PositionEscrow using initialize
+        positionEscrow = PositionEscrow(payable(address(escrowImpl))); // Use implementation address directly for testing
+        positionEscrow.initialize(
+            admin, // _stabilizerNFT
+            stabilizerOwner, // _stabilizerOwner
+            address(mockStETH), // _stETHAddress
+            address(mockLido), // _lidoAddress
+            address(rateContract), // _rateContractAddress
+            address(priceOracle) // _oracleAddress
         );
     }
 
@@ -143,7 +147,7 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
     // I. Deployment and Initialization Tests
     // =============================================
 
-    function test_constructor_success() public {
+    function test_initialize_success() public { // Renamed from test_constructor_success
         assertEq(positionEscrow.stabilizerNFTContract(), admin);
         assertEq(positionEscrow.stETH(), address(mockStETH));
         assertEq(positionEscrow.lido(), address(mockLido));

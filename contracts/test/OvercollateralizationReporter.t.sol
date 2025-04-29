@@ -88,8 +88,8 @@ contract OvercollateralizationReporterTest is Test {
         updater = address(stabilizerNFT); // Assign StabilizerNFT address as the updater
 
         // Deploy cUSPD Token
-        cUSPDToken cuspdImpl = new cUSPDToken( // Deploy implementation directly for simplicity if not testing upgradeability here
-            "Core USPD Share", "cUSPD", address(priceOracle), address(stabilizerNFT), address(rateContract), admin
+        cUSPDToken cuspdImpl = new cUSPDToken(
+            "Core USPD Share", "cUSPD", address(priceOracle), address(stabilizerNFT), address(rateContract), admin // Removed burner arg
         );
         cuspdToken = cuspdImpl;
 
