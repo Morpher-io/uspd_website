@@ -239,6 +239,7 @@ contract USPDTokenTest is Test {
             address(mockLido),
             address(rateContract),
             address(reporter),        // Pass reporter address
+            "http://localhost:3000/api/metadata", //baseURI
             address(this)                      // Admin
         );
 
