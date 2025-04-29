@@ -228,6 +228,28 @@ contract DeployScript is Script {
         );
     }
 
+    function deployStabilizerEscrowImplementation() internal {
+        // Deploy StabilizerEscrow implementation with regular CREATE
+        console2.log("Deploying StabilizerEscrow implementation...");
+        StabilizerEscrow impl = new StabilizerEscrow(); // Constructor takes no args now
+        stabilizerEscrowImplAddress = address(impl);
+        console2.log(
+            "StabilizerEscrow implementation deployed at:",
+            stabilizerEscrowImplAddress
+        );
+    }
+
+    function deployPositionEscrowImplementation() internal {
+        // Deploy PositionEscrow implementation with regular CREATE
+        console2.log("Deploying PositionEscrow implementation...");
+        PositionEscrow impl = new PositionEscrow(); // Constructor takes no args now
+        positionEscrowImplAddress = address(impl);
+        console2.log(
+            "PositionEscrow implementation deployed at:",
+            positionEscrowImplAddress
+        );
+    }
+
     function deployOracleProxy() internal {
         // Prepare initialization data
         bytes memory initData = abi.encodeCall(
