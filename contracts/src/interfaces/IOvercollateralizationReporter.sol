@@ -4,13 +4,13 @@ pragma solidity ^0.8.20;
 import "./IPriceOracle.sol";
 import "./IPoolSharesConversionRate.sol";
 import "./IcUSPDToken.sol";
-import {IAccessControlUpgradeable} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/IAccessControlUpgradeable.sol";
+// Removed IAccessControlUpgradeable import
 
 /**
  * @title IOvercollateralizationReporter Interface
  * @notice Interface for the contract responsible for tracking collateral snapshots and calculating system ratio.
  */
-interface IOvercollateralizationReporter is IAccessControlUpgradeable {
+interface IOvercollateralizationReporter /* Removed is IAccessControlUpgradeable */ {
     // --- Events ---
     event SnapshotUpdated(uint256 newEthEquivalent, uint256 newYieldFactor);
     event SnapshotReset(uint256 newEthEquivalent, uint256 newYieldFactor);

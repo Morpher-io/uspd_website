@@ -215,10 +215,12 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
     }
 
     // --- Supports Interface ---
+    // Removed override as IAccessControlUpgradeable is not inherited in the interface anymore.
+    // The base AccessControlUpgradeable supports IAccessControl's interfaceId.
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, IAccessControlUpgradeable) returns (bool) {
-        return interfaceId == type(IOvercollateralizationReporter).interfaceId || super.supportsInterface(interfaceId);
-    }
+    // function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, IAccessControlUpgradeable) returns (bool) {
+    //     return interfaceId == type(IOvercollateralizationReporter).interfaceId || super.supportsInterface(interfaceId);
+    // }
 }
