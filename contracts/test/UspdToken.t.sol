@@ -13,6 +13,9 @@ import {IPriceOracle, PriceOracle} from "../src/PriceOracle.sol";
 import {IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol"; // Import ERC20 errors
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import "../src/OvercollateralizationReporter.sol"; // <-- Add Reporter
+import "../src/interfaces/IOvercollateralizationReporter.sol"; // <-- Add Reporter interface
+
 // Mocks & Dependencies
 import "./mocks/MockStETH.sol";
 import "./mocks/MockLido.sol";
@@ -43,6 +46,7 @@ contract USPDTokenTest is Test {
     MockStETH internal mockStETH;
     MockLido internal mockLido;
     PoolSharesConversionRate internal rateContract;
+    OvercollateralizationReporter public reporter; // <-- Add Reporter instance
     PriceOracle priceOracle;
     cUSPDToken cuspdToken;
 
@@ -214,14 +218,28 @@ contract USPDTokenTest is Test {
             address(rateContract),           // rateContract
             address(this)                    // admin
         );
+        
+        // Deploy OvercollateralizationReporter
+        OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
+        bytes memory reporterInitData = abi.encodeWithSelector(
+            OvercollateralizationReporter.initialize.selector,
+            address(this) ,                 // admin
+            address(stabilizerNFTInstance),// stabilizerNFTContract (updater)
+            address(rateContract), // rateContract
+            address(cuspdToken)    // cuspdToken
+        );
+        // Deploy directly for simplicity in test setup
+        reporter = new OvercollateralizationReporter();
+        reporter.initialize(address(this) , address(stabilizerNFTInstance), address(rateContract), address(cuspdToken));
 
-        // Initialize StabilizerNFT Proxy (Needs cUSPD address)
+        // Initialize StabilizerNFT Proxy (Needs Reporter address)
         stabilizerNFTInstance.initialize(
-            address(cuspdToken),      // Pass cUSPD address
+            address(cuspdToken),       // Pass cUSPD address
             address(mockStETH),
             address(mockLido),
             address(rateContract),
-            address(this)             // Admin
+            address(reporter),        // Pass reporter address
+            address(this)                      // Admin
         );
 
         // --- Verify Initialization ---
