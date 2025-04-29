@@ -31,7 +31,9 @@ import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // F
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
 
 import "../src/OvercollateralizationReporter.sol"; // <-- Add Reporter
-import "../src/interfaces/IOvercollateralizationReporter.sol"; // <-- Add Reporter interface
+import "../src/interfaces/IOvercollateralizationReporter.sol";
+import "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow impl
+import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow impl
 
 
 // Helper contract to expose internal _mint for testing
@@ -108,8 +110,12 @@ contract cUSPDTokenTest is Test {
         vm.deal(admin, 0.001 ether);
         rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
 
-        // Deploy StabilizerNFT (Implementation + Proxy, NO Init yet)
+        // Deploy StabilizerNFT Implementation
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
+        // Deploy Escrow Implementations
+        StabilizerEscrow stabilizerEscrowImpl = new StabilizerEscrow();
+        PositionEscrow positionEscrowImpl = new PositionEscrow();
+        // Deploy StabilizerNFT Proxy (NO Init yet)
         ERC1967Proxy stabilizerProxy = new ERC1967Proxy(address(stabilizerImpl), bytes(""));
         stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy)));
 
@@ -159,9 +165,11 @@ contract cUSPDTokenTest is Test {
             address(cuspdToken),      // Pass cUSPD address
             address(mockStETH),
             address(mockLido),
-            address(rateContract),    // Correct order: rateContract
-            address(reporter),        // Correct order: reporter
-            "http://test.uri/",       // <-- Add placeholder baseURI
+            address(rateContract),
+            address(reporter),
+            "http://test.uri/",
+            address(stabilizerEscrowImpl), // <-- Pass StabilizerEscrow impl
+            address(positionEscrowImpl), // <-- Pass PositionEscrow impl
             admin                     // Admin
         );
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), admin);
