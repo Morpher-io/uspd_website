@@ -12,8 +12,10 @@ import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol"; // View layer token
 import "../src/cUSPDToken.sol";
 import "../src/PoolSharesConversionRate.sol";
-import "../src/OvercollateralizationReporter.sol"; // <-- Add Reporter implementation
-import "../src/interfaces/IOvercollateralizationReporter.sol"; // <-- Add Reporter interface
+import "../src/OvercollateralizationReporter.sol";
+import "../src/interfaces/IOvercollateralizationReporter.sol";
+import "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow implementation
+import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow implementation
 import "../src/interfaces/ILido.sol";
 import "../test/mocks/MockStETH.sol";
 import "../test/mocks/MockLido.sol";
@@ -55,8 +57,10 @@ contract DeployScript is Script {
     address cuspdTokenAddress;
     address uspdTokenAddress;
     address rateContractAddress;
-    address reporterImplAddress; // <-- Add Reporter implementation address
-    address reporterAddress; // <-- Add Reporter proxy/contract address
+    address reporterImplAddress;
+    address reporterAddress;
+    address stabilizerEscrowImplAddress; // <-- Add StabilizerEscrow implementation address
+    address positionEscrowImplAddress; // <-- Add PositionEscrow implementation address
 
     // Configuration for PriceOracle
     uint256 maxPriceDeviation = 500; // 5%
@@ -165,21 +169,25 @@ contract DeployScript is Script {
         if (deployFullSystem) {
             console2.log("Deploying Full System...");
             deployStabilizerNFTImplementation();
+            deployStabilizerEscrowImplementation(); // <-- Deploy StabilizerEscrow Impl
+            deployPositionEscrowImplementation(); // <-- Deploy PositionEscrow Impl
             deployPoolSharesConversionRate();
-            deployReporterImplementation(); // <-- Deploy Reporter Impl
+            deployReporterImplementation();
             deployStabilizerNFTProxy_NoInit();
             deployCUSPDToken();
             deployUspdToken();
-            deployReporterProxy(); // <-- Deploy Reporter Proxy (needs dependencies)
-            initializeStabilizerNFTProxy(); // <-- Pass reporter address
-            setupRolesAndPermissions(); // <-- Grant roles on reporter
+            deployReporterProxy();
+            initializeStabilizerNFTProxy(); // <-- Pass escrow impl addresses
+            setupRolesAndPermissions();
         } else {
             console2.log("Deploying Bridged Token Only...");
             stabilizerImplAddress = address(0);
             stabilizerProxyAddress = address(0);
             rateContractAddress = address(0);
-            reporterImplAddress = address(0); // <-- Set reporter impl to 0
-            reporterAddress = address(0); // <-- Set reporter proxy to 0
+            reporterImplAddress = address(0);
+            reporterAddress = address(0);
+            stabilizerEscrowImplAddress = address(0); // <-- Set escrow impls to 0
+            positionEscrowImplAddress = address(0); // <-- Set escrow impls to 0
             deployCUSPDToken_Bridged();
             deployUspdToken_Bridged();
             setupRolesAndPermissions_Bridged();
@@ -410,12 +418,24 @@ contract DeployScript is Script {
         require(lidoAddress != address(0), "Lido address not set");
         require(rateContractAddress != address(0), "Rate contract not deployed yet");
         require(reporterAddress != address(0), "Reporter not deployed yet");
+        require(stabilizerEscrowImplAddress != address(0), "StabilizerEscrow impl not deployed"); // <-- Check impl
+        require(positionEscrowImplAddress != address(0), "PositionEscrow impl not deployed"); // <-- Check impl
 
         // Prepare initialization data
-        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _reporterAddress, string memory _baseURI, address _admin)
+        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _reporterAddress, string memory _baseURI, address _stabilizerEscrowImpl, address _positionEscrowImpl, address _admin)
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
-            (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, reporterAddress, baseURI, deployer) // <-- Pass baseURI
+            (
+                cuspdTokenAddress,
+                stETHAddress,
+                lidoAddress,
+                rateContractAddress,
+                reporterAddress,
+                baseURI,
+                stabilizerEscrowImplAddress, // <-- Pass StabilizerEscrow impl
+                positionEscrowImplAddress, // <-- Pass PositionEscrow impl
+                deployer
+            )
         );
 
          // Call initialize via the proxy
@@ -530,8 +550,10 @@ contract DeployScript is Script {
                 '"cuspdToken": "0x0000000000000000000000000000000000000000",'
                 '"uspdToken": "0x0000000000000000000000000000000000000000",'
                 '"rateContract": "0x0000000000000000000000000000000000000000",'
-                '"reporterImpl": "0x0000000000000000000000000000000000000000",' // <-- Add reporter impl
-                '"reporter": "0x0000000000000000000000000000000000000000"' // <-- Add reporter proxy/contract
+                '"reporterImpl": "0x0000000000000000000000000000000000000000",'
+                '"reporter": "0x0000000000000000000000000000000000000000",'
+                '"stabilizerEscrowImpl": "0x0000000000000000000000000000000000000000",' // <-- Add StabilizerEscrow impl
+                '"positionEscrowImpl": "0x0000000000000000000000000000000000000000"' // <-- Add PositionEscrow impl
             '},'
             '"config": {'
                 '"usdcAddress": "0x0000000000000000000000000000000000000000",'
@@ -570,8 +592,10 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
         vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
         vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
-        vm.writeJson(vm.toString(reporterImplAddress), deploymentPath, ".contracts.reporterImpl"); // <-- Save reporter impl
-        vm.writeJson(vm.toString(reporterAddress), deploymentPath, ".contracts.reporter"); // <-- Save reporter proxy/contract
+        vm.writeJson(vm.toString(reporterImplAddress), deploymentPath, ".contracts.reporterImpl");
+        vm.writeJson(vm.toString(reporterAddress), deploymentPath, ".contracts.reporter");
+        vm.writeJson(vm.toString(stabilizerEscrowImplAddress), deploymentPath, ".contracts.stabilizerEscrowImpl"); // <-- Save StabilizerEscrow impl
+        vm.writeJson(vm.toString(positionEscrowImplAddress), deploymentPath, ".contracts.positionEscrowImpl"); // <-- Save PositionEscrow impl
 
         // Save configuration
         vm.writeJson(vm.toString(usdcAddress), deploymentPath, ".config.usdcAddress");
