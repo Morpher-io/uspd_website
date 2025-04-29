@@ -13,6 +13,8 @@ import "../src/StabilizerNFT.sol";
 import "../src/cUSPDToken.sol";
 import "../src/PoolSharesConversionRate.sol";
 import "../src/PriceOracle.sol";
+import "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow impl
+import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow impl
 import "./mocks/MockStETH.sol";
 import "./mocks/MockLido.sol";
 
@@ -81,8 +83,12 @@ contract OvercollateralizationReporterTest is Test {
         vm.deal(admin, 0.001 ether);
         rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
 
-        // Deploy StabilizerNFT (Implementation + Proxy, NO Init yet)
+        // Deploy StabilizerNFT Implementation
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
+        // Deploy Escrow Implementations
+        StabilizerEscrow stabilizerEscrowImpl = new StabilizerEscrow();
+        PositionEscrow positionEscrowImpl = new PositionEscrow();
+        // Deploy StabilizerNFT Proxy (NO Init yet)
         ERC1967Proxy stabilizerProxy = new ERC1967Proxy(address(stabilizerImpl), bytes(""));
         stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy)));
         updater = address(stabilizerNFT); // Assign StabilizerNFT address as the updater
@@ -116,8 +122,10 @@ contract OvercollateralizationReporterTest is Test {
             address(mockStETH),
             address(mockLido),
             address(rateContract),
-            address(reporter),        // Pass reporter address
-            "http://test.uri/",       // <-- Add placeholder baseURI
+            address(reporter),
+            "http://test.uri/",
+            address(stabilizerEscrowImpl), // <-- Pass StabilizerEscrow impl
+            address(positionEscrowImpl), // <-- Pass PositionEscrow impl
             admin
         );
 

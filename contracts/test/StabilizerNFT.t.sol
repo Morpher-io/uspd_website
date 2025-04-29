@@ -9,6 +9,8 @@ import "../src/cUSPDToken.sol"; // Core share token
 import "../src/interfaces/IcUSPDToken.sol";
 import "../src/OvercollateralizationReporter.sol";
 import "../src/interfaces/IOvercollateralizationReporter.sol";
+import "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow impl
+import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow impl
 import {IERC721Errors, IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
@@ -105,6 +107,8 @@ contract StabilizerNFTTest is Test {
 
         // 2. Deploy Implementations
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
+        StabilizerEscrow stabilizerEscrowImpl = new StabilizerEscrow(); // <-- Deploy StabilizerEscrow Impl
+        PositionEscrow positionEscrowImpl = new PositionEscrow(); // <-- Deploy PositionEscrow Impl
 
         // 3. Deploy Proxies (without init data)
         ERC1967Proxy stabilizerProxy_NoInit = new ERC1967Proxy(address(stabilizerNFTImpl), bytes(""));
@@ -149,8 +153,10 @@ contract StabilizerNFTTest is Test {
             address(mockStETH),
             address(mockLido),
             address(rateContract),
-            address(reporter),        // Pass reporter address
-            "http://test.uri/",       // <-- Add placeholder baseURI
+            address(reporter),
+            "http://test.uri/",
+            address(stabilizerEscrowImpl), // <-- Pass StabilizerEscrow impl
+            address(positionEscrowImpl), // <-- Pass PositionEscrow impl
             owner                     // Admin
         );
 
