@@ -30,6 +30,9 @@ import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol"
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol"; // For mocking getPool
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
 
+import "../src/OvercollateralizationReporter.sol"; // <-- Add Reporter
+import "../src/interfaces/IOvercollateralizationReporter.sol"; // <-- Add Reporter interface
+
 
 // Helper contract to expose internal _mint for testing
 contract TestableCUSPD is cUSPDToken {
@@ -53,6 +56,8 @@ contract cUSPDTokenTest is Test {
     PriceOracle internal priceOracle;
     StabilizerNFT internal stabilizerNFT;
     USPDToken internal uspdTokenView; // The view-layer token
+    OvercollateralizationReporter public reporter; // <-- Add Reporter instance
+
 
     // --- Contract Under Test ---
     cUSPDToken internal cuspdToken;
@@ -136,11 +141,25 @@ contract cUSPDTokenTest is Test {
             admin                     // Admin
         );
 
-        // 5. Initialize StabilizerNFT (Needs cUSPD address)
+        // 5. Deploy OvercollateralizationReporter
+        OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
+        bytes memory reporterInitData = abi.encodeWithSelector(
+            OvercollateralizationReporter.initialize.selector,
+            admin,                 // admin
+            address(stabilizerNFT),// stabilizerNFTContract (updater)
+            address(rateContract), // rateContract
+            address(cuspdToken)    // cuspdToken
+        );
+        // Deploy directly for simplicity in test setup
+        reporter = new OvercollateralizationReporter();
+        reporter.initialize(admin, address(stabilizerNFT), address(rateContract), address(cuspdToken));
+
+        // 6. Initialize StabilizerNFT (Needs cUSPD address)
         stabilizerNFT.initialize(
             address(cuspdToken),      // Pass cUSPD address
             address(mockStETH),
             address(mockLido),
+            address(reporter),
             address(rateContract),
             admin                     // Admin
         );
