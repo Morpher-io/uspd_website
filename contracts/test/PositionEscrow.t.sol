@@ -187,13 +187,28 @@ contract PositionEscrowTest is
     // I. Deployment and Initialization Tests
     // =============================================
 
-    function test_initialize_success() public {
-        // Renamed from test_constructor_success
-        assertEq(positionEscrow.stabilizerNFTContract(), admin);
-        assertEq(positionEscrow.stETH(), address(mockStETH));
-        assertEq(positionEscrow.lido(), address(mockLido));
-        assertEq(positionEscrow.rateContract(), address(rateContract));
-        assertEq(positionEscrow.oracle(), address(priceOracle));
+    // Test the initialize function specifically
+    function testInitialize() public {
+        PositionEscrow impl = new PositionEscrow();
+        PositionEscrow instanceToInit = PositionEscrow(payable(address(impl)));
+
+        // Call initialize
+        instanceToInit.initialize(
+            admin, stabilizerOwner, address(mockStETH), address(mockLido), address(rateContract), address(priceOracle)
+        );
+
+        // Assert state set by initialize
+        assertEq(instanceToInit.stabilizerNFTContract(), admin);
+        assertEq(instanceToInit.stETH(), address(mockStETH));
+        assertEq(instanceToInit.lido(), address(mockLido));
+        assertEq(instanceToInit.rateContract(), address(rateContract));
+        assertEq(instanceToInit.oracle(), address(priceOracle));
+        assertEq(instanceToInit.backedPoolShares(), 0, "Initial backed shares should be 0");
+
+        // Assert roles granted by initialize
+        assertTrue(instanceToInit.hasRole(instanceToInit.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
+        assertTrue(instanceToInit.hasRole(instanceToInit.STABILIZER_ROLE(), admin), "Stabilizer role mismatch");
+        assertTrue(instanceToInit.hasRole(instanceToInit.EXCESSCOLLATERALMANAGER_ROLE(), stabilizerOwner), "Manager role mismatch");
     }
 
     function test_initialize_initialState() public {
@@ -312,6 +327,8 @@ contract PositionEscrowTest is
             address(0)
         );
     }
+
+    // Note: The tests test_constructor_initialState and test_constructor_roles are now covered by testInitialize
 
     // =============================================
     // II. Access Control Tests
