@@ -6,6 +6,8 @@ import "../src/StabilizerEscrow.sol";
 import "./mocks/MockStETH.sol";
 import "./mocks/MockLido.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 
 contract StabilizerEscrowTest is Test {
     // --- Mocks & Contract ---
