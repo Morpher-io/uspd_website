@@ -67,6 +67,7 @@ contract DeployScript is Script {
     address lidoAddress; // Lido staking pool address
     address stETHAddress; // stETH token address
     uint256 initialRateContractDeposit = 0.001 ether; // ETH to deposit into rate contract
+    string baseURI;
 
     function setUp() public {
         // Get the deployer address and chain ID
@@ -578,7 +579,7 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(chainlinkAggregator), deploymentPath, ".config.chainlinkAggregator");
         vm.writeJson(vm.toString(lidoAddress), deploymentPath, ".config.lidoAddress");
         vm.writeJson(vm.toString(stETHAddress), deploymentPath, ".config.stETHAddress");
-        vm.writeJson(vm.toString(baseURI), deploymentPath, ".config.stabilizerBaseURI"); // <-- Save baseURI
+        vm.writeJson(baseURI, deploymentPath, ".config.stabilizerBaseURI"); // <-- Save baseURI
 
         // Add metadata
         vm.writeJson(vm.toString(chainId), deploymentPath, ".metadata.chainId");
