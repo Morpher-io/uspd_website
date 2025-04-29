@@ -37,16 +37,24 @@ contract StabilizerEscrowTest is Test {
         // 2. Deploy StabilizerEscrow Implementation
         StabilizerEscrow escrowImpl = new StabilizerEscrow();
 
-        // 3. Deploy StabilizerEscrow using initialize
-        escrow = StabilizerEscrow(payable(address(escrowImpl))); // Use implementation address directly for testing
-        escrow.initialize(
-            stabilizerNFT, // _stabilizerNFT
-            stabilizerOwner, // _owner
-            address(mockStETH), // _stETH
-            address(mockLido) // _lido
+        // 3. Prepare initialization data
+        bytes memory initData = abi.encodeCall(
+            StabilizerEscrow.initialize,
+            (
+                stabilizerNFT, // _stabilizerNFT
+                stabilizerOwner, // _owner
+                address(mockStETH), // _stETH
+                address(mockLido) // _lido
+            )
         );
 
-        // 4. Simulate initial deposit via the deposit() function called by stabilizerNFT
+        // 4. Deploy the proxy and initialize it
+        ERC1967Proxy proxy = new ERC1967Proxy(address(escrowImpl), initData);
+
+        // 5. Assign the initialized proxy address to the state variable
+        escrow = StabilizerEscrow(payable(address(proxy)));
+
+        // 6. Simulate initial deposit via the deposit() function called by stabilizerNFT (using the proxy address now stored in 'escrow')
         vm.deal(stabilizerNFT, INITIAL_DEPOSIT); // Fund the stabilizerNFT contract address
         vm.prank(stabilizerNFT); // Set the caller for the next call
         escrow.deposit{value: INITIAL_DEPOSIT}();
