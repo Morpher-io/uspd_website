@@ -21,7 +21,10 @@ import "../src/interfaces/IPoolSharesConversionRate.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizerNFT
+contract PositionEscrowTest is
+    Test,
+    IStabilizerNFT // <-- Inherit IStabilizerNFT
+{
     // --- Mocks & Dependencies ---
     MockStETH internal mockStETH;
     MockLido internal mockLido;
@@ -45,7 +48,8 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
     // --- Signer for Price Oracle ---
     uint256 internal signerPrivateKey;
     address internal signer;
-    uint256 internal badSignerPrivateKey = 0xbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad1; // Define a bad key
+    uint256 internal badSignerPrivateKey =
+        0xbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad1; // Define a bad key
     bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD"); // Example pair
 
     // --- Setup ---
@@ -66,17 +70,26 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // Deploy PriceOracle
         PriceOracle oracleImpl = new PriceOracle();
         bytes memory oracleInitData = abi.encodeWithSelector(
-            PriceOracle.initialize.selector, 500, 3600, address(0xdead), address(0xbeef), address(0xcafe), admin
+            PriceOracle.initialize.selector,
+            500,
+            3600,
+            address(0xdead),
+            address(0xbeef),
+            address(0xcafe),
+            admin
         );
-        ERC1967Proxy oracleProxy = new ERC1967Proxy(address(oracleImpl), oracleInitData);
+        ERC1967Proxy oracleProxy = new ERC1967Proxy(
+            address(oracleImpl),
+            oracleInitData
+        );
         priceOracle = PriceOracle(payable(address(oracleProxy)));
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer); // Grant signer role
 
         // Deploy RateContract
         vm.deal(admin, INITIAL_RATE_DEPOSIT);
-        rateContract = new PoolSharesConversionRate{value: INITIAL_RATE_DEPOSIT}(
-            address(mockStETH), address(mockLido)
-        );
+        rateContract = new PoolSharesConversionRate{
+            value: INITIAL_RATE_DEPOSIT
+        }(address(mockStETH), address(mockLido));
 
         // Deploy PositionEscrow Implementation
         PositionEscrow escrowImpl = new PositionEscrow();
@@ -95,50 +108,67 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
 
     // --- IStabilizerNFT Implementation (Dummy for Callbacks) ---
 
-    function reportCollateralAddition(uint256 /* stEthAmount */) external override {
+    function reportCollateralAddition(
+        uint256 /* stEthAmount */
+    ) external override {
         // Dummy implementation - does nothing, just prevents revert
     }
 
-    function reportCollateralRemoval(uint256 /* stEthAmount */) external override {
+    function reportCollateralRemoval(
+        uint256 /* stEthAmount */
+    ) external override {
         // Dummy implementation - does nothing, just prevents revert
     }
 
     // Dummy implementations for other IStabilizerNFT functions (not used in these tests)
-    function allocateStabilizerFunds(uint256 /* ethUsdPrice */, uint256 /* priceDecimals */)
-        external
-        payable
-        override
-        returns (AllocationResult memory)
-    {
-        revert("allocateStabilizerFunds: Not implemented in PositionEscrowTest");
+    function allocateStabilizerFunds(
+        uint256 /* ethUsdPrice */,
+        uint256 /* priceDecimals */
+    ) external payable override returns (AllocationResult memory) {
+        revert(
+            "allocateStabilizerFunds: Not implemented in PositionEscrowTest"
+        );
     }
 
-    function unallocateStabilizerFunds(uint256 /* poolSharesToUnallocate */, IPriceOracle.PriceResponse memory /* priceResponse */)
-        external
-        override
-        returns (uint256 /* unallocatedEth */)
-    {
-        revert("unallocateStabilizerFunds: Not implemented in PositionEscrowTest");
+    function unallocateStabilizerFunds(
+        uint256 /* poolSharesToUnallocate */,
+        IPriceOracle.PriceResponse memory /* priceResponse */
+    ) external override returns (uint256 /* unallocatedEth */) {
+        revert(
+            "unallocateStabilizerFunds: Not implemented in PositionEscrowTest"
+        );
     }
 
     // --- End IStabilizerNFT Implementation ---
-
 
     // --- Helper Functions ---
     function createSignedPriceAttestation(
         uint256 price,
         uint256 timestamp
     ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
-            price: price,
-            decimals: 18,
-            dataTimestamp: timestamp,
-            assetPair: ETH_USD_PAIR,
-            signature: bytes("")
-        });
-        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
-        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: price,
+                decimals: 18,
+                dataTimestamp: timestamp,
+                assetPair: ETH_USD_PAIR,
+                signature: bytes("")
+            });
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                query.price,
+                query.decimals,
+                query.dataTimestamp,
+                query.assetPair
+            )
+        );
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            signerPrivateKey,
+            prefixedHash
+        );
         query.signature = abi.encodePacked(r, s, v);
         return query;
     }
@@ -147,7 +177,8 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
     // I. Deployment and Initialization Tests
     // =============================================
 
-    function test_initialize_success() public { // Renamed from test_constructor_success
+    function test_initialize_success() public {
+        // Renamed from test_constructor_success
         assertEq(positionEscrow.stabilizerNFTContract(), admin);
         assertEq(positionEscrow.stETH(), address(mockStETH));
         assertEq(positionEscrow.lido(), address(mockLido));
@@ -155,45 +186,121 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         assertEq(positionEscrow.oracle(), address(priceOracle));
     }
 
-    function test_constructor_initialState() public {
-        assertEq(positionEscrow.backedPoolShares(), 0, "Initial backed shares should be 0");
-        assertEq(positionEscrow.getCurrentStEthBalance(), 0, "Initial stETH balance should be 0");
+    function test_initialize_initialState() public {
+        // Renamed from test_constructor_initialState
+        assertEq(
+            positionEscrow.backedPoolShares(),
+            0,
+            "Initial backed shares should be 0"
+        );
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            0,
+            "Initial stETH balance should be 0"
+        );
     }
 
-    function test_constructor_roles() public {
-        assertTrue(positionEscrow.hasRole(positionEscrow.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
-        assertTrue(positionEscrow.hasRole(positionEscrow.STABILIZER_ROLE(), admin), "Stabilizer role mismatch");
-        assertTrue(positionEscrow.hasRole(positionEscrow.EXCESSCOLLATERALMANAGER_ROLE(), stabilizerOwner), "Manager role mismatch");
+    function test_initialize_roles() public {
+        // Renamed from test_constructor_roles
+        assertTrue(
+            positionEscrow.hasRole(positionEscrow.DEFAULT_ADMIN_ROLE(), admin),
+            "Admin role mismatch"
+        );
+        assertTrue(
+            positionEscrow.hasRole(positionEscrow.STABILIZER_ROLE(), admin),
+            "Stabilizer role mismatch"
+        );
+        assertTrue(
+            positionEscrow.hasRole(
+                positionEscrow.EXCESSCOLLATERALMANAGER_ROLE(),
+                stabilizerOwner
+            ),
+            "Manager role mismatch"
+        );
     }
 
-    function test_constructor_revert_zeroStabilizerNFT() public {
+    function test_initialize_revert_zeroStabilizerNFT() public {
+        // Renamed from test_constructor_revert_zeroStabilizerNFT
         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        new PositionEscrow(address(0), stabilizerOwner, address(mockStETH), address(mockLido), address(rateContract), address(priceOracle));
+        PositionEscrow impl = new PositionEscrow();
+        PositionEscrow(payable(address(impl))).initialize(
+            address(0),
+            stabilizerOwner,
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            address(priceOracle)
+        );
     }
 
-    function test_constructor_revert_zeroStabilizerOwner() public {
-         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        new PositionEscrow(admin, address(0), address(mockStETH), address(mockLido), address(rateContract), address(priceOracle));
+    function test_initialize_revert_zeroStabilizerOwner() public {
+        // Renamed from test_constructor_revert_zeroStabilizerOwner
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        PositionEscrow impl = new PositionEscrow();
+        PositionEscrow(payable(address(impl))).initialize(
+            admin,
+            address(0),
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            address(priceOracle)
+        );
     }
 
-     function test_constructor_revert_zeroStETH() public {
-         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        new PositionEscrow(admin, stabilizerOwner, address(0), address(mockLido), address(rateContract), address(priceOracle));
+    function test_initialize_revert_zeroStETH() public {
+        // Renamed from test_constructor_revert_zeroStETH
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        PositionEscrow impl = new PositionEscrow();
+        PositionEscrow(payable(address(impl))).initialize(
+            admin,
+            stabilizerOwner,
+            address(0),
+            address(mockLido),
+            address(rateContract),
+            address(priceOracle)
+        );
     }
 
-     function test_constructor_revert_zeroLido() public {
-         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        new PositionEscrow(admin, stabilizerOwner, address(mockStETH), address(0), address(rateContract), address(priceOracle));
+    function test_initialize_revert_zeroLido() public {
+        // Renamed from test_constructor_revert_zeroLido
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        PositionEscrow impl = new PositionEscrow();
+        PositionEscrow(payable(address(impl))).initialize(
+            admin,
+            stabilizerOwner,
+            address(mockStETH),
+            address(0),
+            address(rateContract),
+            address(priceOracle)
+        );
     }
 
-     function test_constructor_revert_zeroRateContract() public {
-         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        new PositionEscrow(admin, stabilizerOwner, address(mockStETH), address(mockLido), address(0), address(priceOracle));
+    function test_initialize_revert_zeroRateContract() public {
+        // Renamed from test_constructor_revert_zeroRateContract
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        PositionEscrow impl = new PositionEscrow();
+        PositionEscrow(payable(address(impl))).initialize(
+            admin,
+            stabilizerOwner,
+            address(mockStETH),
+            address(mockLido),
+            address(0),
+            address(priceOracle)
+        );
     }
 
-     function test_constructor_revert_zeroOracle() public {
-         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
-        new PositionEscrow(admin, stabilizerOwner, address(mockStETH), address(mockLido), address(rateContract), address(0));
+    function test_initialize_revert_zeroOracle() public {
+        // Renamed from test_constructor_revert_zeroOracle
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        PositionEscrow impl = new PositionEscrow();
+        PositionEscrow(payable(address(impl))).initialize(
+            admin,
+            stabilizerOwner,
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            address(0)
+        );
     }
 
     // =============================================
@@ -201,36 +308,76 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
     // =============================================
 
     function test_addCollateral_revert_notStabilizerRole() public {
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                otherUser,
+                positionEscrow.STABILIZER_ROLE()
+            )
+        );
         vm.prank(otherUser);
         positionEscrow.addCollateral(1 ether);
     }
 
-    function test_addCollateralFromStabilizer_revert_notStabilizerRole() public {
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+    function test_addCollateralFromStabilizer_revert_notStabilizerRole()
+        public
+    {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                otherUser,
+                positionEscrow.STABILIZER_ROLE()
+            )
+        );
         vm.deal(otherUser, 1 ether);
         vm.prank(otherUser);
         positionEscrow.addCollateralFromStabilizer{value: 1 ether}(0);
     }
 
     function test_modifyAllocation_revert_notStabilizerRole() public {
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                otherUser,
+                positionEscrow.STABILIZER_ROLE()
+            )
+        );
         vm.prank(otherUser);
         positionEscrow.modifyAllocation(100 ether);
     }
 
     function test_removeCollateral_revert_notStabilizerRole() public {
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.STABILIZER_ROLE()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                otherUser,
+                positionEscrow.STABILIZER_ROLE()
+            )
+        );
         vm.prank(otherUser);
         positionEscrow.removeCollateral(1 ether, 0.5 ether, payable(recipient));
     }
 
     function test_removeExcessCollateral_revert_notManagerRole() public {
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, otherUser, positionEscrow.EXCESSCOLLATERALMANAGER_ROLE()));
+        IPriceOracle.PriceAttestationQuery
+            memory query = createSignedPriceAttestation(
+                2000 ether,
+                block.timestamp * 1000
+            );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                otherUser,
+                positionEscrow.EXCESSCOLLATERALMANAGER_ROLE()
+            )
+        );
         vm.prank(otherUser);
         // Add a placeholder amountToRemove (e.g., 0.1 ether) to match the function signature
-        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, query);
+        positionEscrow.removeExcessCollateral(
+            payable(recipient),
+            0.1 ether,
+            query
+        );
     }
 
     // =============================================
@@ -268,10 +415,14 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.prank(admin); // Has STABILIZER_ROLE
         positionEscrow.addCollateralFromStabilizer{value: userEthAmount}(0);
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), expectedStEth, "stETH balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            expectedStEth,
+            "stETH balance mismatch"
+        );
     }
 
-     function test_addCollateralFromStabilizer_onlyStETH() public {
+    function test_addCollateralFromStabilizer_onlyStETH() public {
         uint256 stabilizerStEthAmount = 0.5 ether;
 
         // Pre-transfer stETH (simulate transfer from StabilizerEscrow)
@@ -283,7 +434,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.prank(admin); // Has STABILIZER_ROLE
         positionEscrow.addCollateralFromStabilizer(stabilizerStEthAmount);
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), stabilizerStEthAmount, "stETH balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            stabilizerStEthAmount,
+            "stETH balance mismatch"
+        );
     }
 
     function test_addCollateralFromStabilizer_both() public {
@@ -301,9 +456,15 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.deal(admin, userEthAmount);
 
         vm.prank(admin); // Has STABILIZER_ROLE
-        positionEscrow.addCollateralFromStabilizer{value: userEthAmount}(stabilizerStEthAmount);
+        positionEscrow.addCollateralFromStabilizer{value: userEthAmount}(
+            stabilizerStEthAmount
+        );
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), expectedTotalStEth, "stETH balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            expectedTotalStEth,
+            "stETH balance mismatch"
+        );
     }
 
     function test_addCollateralFromStabilizer_revert_zeroInput() public {
@@ -314,7 +475,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
 
     function test_addCollateralFromStabilizer_revert_lidoSubmitFails() public {
         // Mock Lido to revert
-        vm.mockCallRevert(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), "Lido submit failed");
+        vm.mockCallRevert(
+            address(mockLido),
+            abi.encodeWithSelector(mockLido.submit.selector, address(0)),
+            "Lido submit failed"
+        );
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
         vm.deal(admin, 1 ether);
@@ -322,9 +487,13 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         positionEscrow.addCollateralFromStabilizer{value: 1 ether}(0);
     }
 
-     function test_addCollateralFromStabilizer_revert_lidoReturnsZero() public {
+    function test_addCollateralFromStabilizer_revert_lidoReturnsZero() public {
         // Mock Lido to return 0
-        vm.mockCall(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), abi.encode(uint256(0)));
+        vm.mockCall(
+            address(mockLido),
+            abi.encodeWithSelector(mockLido.submit.selector, address(0)),
+            abi.encode(uint256(0))
+        );
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
         vm.deal(admin, 1 ether);
@@ -346,7 +515,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.prank(admin);
         positionEscrow.modifyAllocation(delta);
 
-        assertEq(positionEscrow.backedPoolShares(), expectedShares, "Shares mismatch after positive delta");
+        assertEq(
+            positionEscrow.backedPoolShares(),
+            expectedShares,
+            "Shares mismatch after positive delta"
+        );
     }
 
     function test_modifyAllocation_negativeDelta() public {
@@ -354,7 +527,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         int256 initialDelta = 2000 ether;
         vm.prank(admin);
         positionEscrow.modifyAllocation(initialDelta);
-        assertEq(positionEscrow.backedPoolShares(), 2000 ether, "Initial shares setup failed");
+        assertEq(
+            positionEscrow.backedPoolShares(),
+            2000 ether,
+            "Initial shares setup failed"
+        );
 
         // Apply negative delta
         int256 negativeDelta = -500 ether;
@@ -366,7 +543,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.prank(admin);
         positionEscrow.modifyAllocation(negativeDelta);
 
-        assertEq(positionEscrow.backedPoolShares(), expectedShares, "Shares mismatch after negative delta");
+        assertEq(
+            positionEscrow.backedPoolShares(),
+            expectedShares,
+            "Shares mismatch after negative delta"
+        );
     }
 
     function test_modifyAllocation_zeroDelta() public {
@@ -379,11 +560,15 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.prank(admin);
         positionEscrow.modifyAllocation(0); // Should not emit event
 
-        assertEq(positionEscrow.backedPoolShares(), 2000 ether, "Shares should not change for zero delta");
+        assertEq(
+            positionEscrow.backedPoolShares(),
+            2000 ether,
+            "Shares should not change for zero delta"
+        );
     }
 
     function test_modifyAllocation_revert_underflow() public {
-         // Setup initial shares
+        // Setup initial shares
         int256 initialDelta = 500 ether;
         vm.prank(admin);
         positionEscrow.modifyAllocation(initialDelta);
@@ -410,13 +595,29 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         mockStETH.mint(address(positionEscrow), initialBalance);
 
         vm.expectEmit(true, true, false, true, address(positionEscrow)); // recipient is indexed
-        emit IPositionEscrow.CollateralRemoved(recipient, userShare, stabilizerShare);
+        emit IPositionEscrow.CollateralRemoved(
+            recipient,
+            userShare,
+            stabilizerShare
+        );
 
         vm.prank(admin);
-        positionEscrow.removeCollateral(totalToRemove, userShare, payable(recipient));
+        positionEscrow.removeCollateral(
+            totalToRemove,
+            userShare,
+            payable(recipient)
+        );
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), initialBalance - totalToRemove, "Escrow balance mismatch");
-        assertEq(mockStETH.balanceOf(recipient), totalToRemove, "Recipient balance mismatch"); // Receives both shares
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            initialBalance - totalToRemove,
+            "Escrow balance mismatch"
+        );
+        assertEq(
+            mockStETH.balanceOf(recipient),
+            totalToRemove,
+            "Recipient balance mismatch"
+        ); // Receives both shares
     }
 
     function test_removeCollateral_revert_zeroAmount() public {
@@ -428,7 +629,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
     function test_removeCollateral_revert_zeroRecipient() public {
         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
         vm.prank(admin);
-        positionEscrow.removeCollateral(1 ether, 0.5 ether, payable(address(0)));
+        positionEscrow.removeCollateral(
+            1 ether,
+            0.5 ether,
+            payable(address(0))
+        );
     }
 
     function test_removeCollateral_revert_userShareTooLarge() public {
@@ -445,9 +650,20 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // Fund escrow
         mockStETH.mint(address(positionEscrow), initialBalance);
 
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(positionEscrow), initialBalance, totalToRemove));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientBalance.selector,
+                address(positionEscrow),
+                initialBalance,
+                totalToRemove
+            )
+        );
         vm.prank(admin);
-        positionEscrow.removeCollateral(totalToRemove, userShare, payable(recipient));
+        positionEscrow.removeCollateral(
+            totalToRemove,
+            userShare,
+            payable(recipient)
+        );
     }
 
     function test_removeCollateral_revert_transferFails() public {
@@ -459,11 +675,23 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         mockStETH.mint(address(positionEscrow), initialBalance);
 
         // Mock transfer to fail
-        vm.mockCall(address(mockStETH), abi.encodeWithSelector(mockStETH.transfer.selector, recipient, userShare), abi.encode(false));
+        vm.mockCall(
+            address(mockStETH),
+            abi.encodeWithSelector(
+                mockStETH.transfer.selector,
+                recipient,
+                userShare
+            ),
+            abi.encode(false)
+        );
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
         vm.prank(admin);
-        positionEscrow.removeCollateral(totalToRemove, userShare, payable(recipient));
+        positionEscrow.removeCollateral(
+            totalToRemove,
+            userShare,
+            payable(recipient)
+        );
     }
 
     // =============================================
@@ -488,13 +716,21 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // Excess = 1.5 - 0.55 = 0.95 ether
         uint256 expectedExcess = 0.95 ether;
 
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+        IPriceOracle.PriceAttestationQuery
+            memory query = createSignedPriceAttestation(
+                price,
+                block.timestamp * 1000
+            );
 
         // Mock the oracle call to return a valid response matching the query price
-        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle
+            .PriceResponse(query.price, query.decimals, query.dataTimestamp);
         vm.mockCall(
             address(priceOracle),
-            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encodeWithSelector(
+                priceOracle.attestationService.selector,
+                query
+            ),
             abi.encode(mockResponse)
         );
 
@@ -504,14 +740,28 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // Action: Remove the calculated excess
         vm.prank(stabilizerOwner); // Has EXCESSCOLLATERALMANAGER_ROLE
         // The call to removeExcessCollateral will trigger reportCollateralRemoval back to this test contract
-        positionEscrow.removeExcessCollateral(payable(recipient), expectedExcess, query); // Removed minRatio arg
+        positionEscrow.removeExcessCollateral(
+            payable(recipient),
+            expectedExcess,
+            query
+        ); // Removed minRatio arg
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), initialStEth - expectedExcess, "Escrow balance mismatch");
-        assertEq(mockStETH.balanceOf(recipient), expectedExcess, "Recipient balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            initialStEth - expectedExcess,
+            "Escrow balance mismatch"
+        );
+        assertEq(
+            mockStETH.balanceOf(recipient),
+            expectedExcess,
+            "Recipient balance mismatch"
+        );
     }
 
     // New test: Attempt to remove more than allowed by ratio
-    function test_removeExcessCollateral_revert_belowMinRatioAfterRemoval() public {
+    function test_removeExcessCollateral_revert_belowMinRatioAfterRemoval()
+        public
+    {
         uint256 initialStEth = 1.5 ether;
         uint256 shares = 1000 ether;
         uint256 price = 2000 ether;
@@ -522,36 +772,56 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+        IPriceOracle.PriceAttestationQuery
+            memory query = createSignedPriceAttestation(
+                price,
+                block.timestamp * 1000
+            );
 
         // Mock the oracle call
-        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle
+            .PriceResponse(query.price, query.decimals, query.dataTimestamp);
         vm.mockCall(
             address(priceOracle),
-            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encodeWithSelector(
+                priceOracle.attestationService.selector,
+                query
+            ),
             abi.encode(mockResponse)
         );
 
         // Expect revert because removing 1 ETH drops ratio below MINIMUM_COLLATERAL_RATIO (110)
         vm.expectRevert(IPositionEscrow.BelowMinimumRatio.selector);
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), amountToRemove, query); // Removed minRatio arg
+        positionEscrow.removeExcessCollateral(
+            payable(recipient),
+            amountToRemove,
+            query
+        ); // Removed minRatio arg
     }
 
-     function test_removeExcessCollateral_success_zeroLiability() public {
+    function test_removeExcessCollateral_success_zeroLiability() public {
         uint256 initialStEth = 0.5 ether;
         // backedPoolShares = 0
 
         // Setup state
         mockStETH.mint(address(positionEscrow), initialStEth);
 
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
+        IPriceOracle.PriceAttestationQuery
+            memory query = createSignedPriceAttestation(
+                2000 ether,
+                block.timestamp * 1000
+            );
 
         // Mock the oracle call
-        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle
+            .PriceResponse(query.price, query.decimals, query.dataTimestamp);
         vm.mockCall(
             address(priceOracle),
-            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encodeWithSelector(
+                priceOracle.attestationService.selector,
+                query
+            ),
             abi.encode(mockResponse)
         );
 
@@ -561,10 +831,22 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // Action: Remove the full balance (since shares are 0)
         vm.prank(stabilizerOwner);
         // The call to removeExcessCollateral will trigger reportCollateralRemoval back to this test contract
-        positionEscrow.removeExcessCollateral(payable(recipient), initialStEth, query); // Removed minRatio arg
+        positionEscrow.removeExcessCollateral(
+            payable(recipient),
+            initialStEth,
+            query
+        ); // Removed minRatio arg
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), 0, "Escrow balance should be 0");
-        assertEq(mockStETH.balanceOf(recipient), initialStEth, "Recipient balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            0,
+            "Escrow balance should be 0"
+        );
+        assertEq(
+            mockStETH.balanceOf(recipient),
+            initialStEth,
+            "Recipient balance mismatch"
+        );
     }
 
     function test_removeExcessCollateral_success_noExcess() public {
@@ -580,13 +862,21 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+        IPriceOracle.PriceAttestationQuery
+            memory query = createSignedPriceAttestation(
+                price,
+                block.timestamp * 1000
+            );
 
         // Mock the oracle call
-        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle
+            .PriceResponse(query.price, query.decimals, query.dataTimestamp);
         vm.mockCall(
             address(priceOracle),
-            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encodeWithSelector(
+                priceOracle.attestationService.selector,
+                query
+            ),
             abi.encode(mockResponse)
         );
 
@@ -597,18 +887,38 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
 
         vm.expectRevert(IPositionEscrow.BelowMinimumRatio.selector);
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), tinyAmountToRemove, query);
+        positionEscrow.removeExcessCollateral(
+            payable(recipient),
+            tinyAmountToRemove,
+            query
+        );
 
         // Verify state unchanged
-        assertEq(positionEscrow.getCurrentStEthBalance(), initialStEth, "Escrow balance should not change");
-        assertEq(mockStETH.balanceOf(recipient), 0, "Recipient balance should be 0");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            initialStEth,
+            "Escrow balance should not change"
+        );
+        assertEq(
+            mockStETH.balanceOf(recipient),
+            0,
+            "Recipient balance should be 0"
+        );
     }
 
     function test_removeExcessCollateral_revert_zeroRecipient() public {
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(2000 ether, block.timestamp * 1000);
+        IPriceOracle.PriceAttestationQuery
+            memory query = createSignedPriceAttestation(
+                2000 ether,
+                block.timestamp * 1000
+            );
         vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(address(0)), 0.1 ether, query); // Removed minRatio arg
+        positionEscrow.removeExcessCollateral(
+            payable(address(0)),
+            0.1 ether,
+            query
+        ); // Removed minRatio arg
     }
 
     // Remove test for minRatioTooLow as it's now checked against a constant
@@ -616,25 +926,42 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
 
     function test_removeExcessCollateral_revert_invalidPriceQuery() public {
         // Create query data
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle.PriceAttestationQuery({
-            price: 2000 ether,
-            decimals: 18,
-            dataTimestamp: block.timestamp * 1000,
-            assetPair: ETH_USD_PAIR,
-            signature: bytes("")
-        });
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: 2000 ether,
+                decimals: 18,
+                dataTimestamp: block.timestamp * 1000,
+                assetPair: ETH_USD_PAIR,
+                signature: bytes("")
+            });
 
         // Calculate the *prefixed* hash the oracle expects
-        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
-        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                query.price,
+                query.decimals,
+                query.dataTimestamp,
+                query.assetPair
+            )
+        );
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
 
         // Sign the prefixed hash with the *wrong* private key
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(badSignerPrivateKey, prefixedHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            badSignerPrivateKey,
+            prefixedHash
+        );
         query.signature = abi.encodePacked(r, s, v);
 
         vm.expectRevert(InvalidSignature.selector); // From PriceOracle
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, query); // Removed minRatio arg
+        positionEscrow.removeExcessCollateral(
+            payable(recipient),
+            0.1 ether,
+            query
+        ); // Removed minRatio arg
     }
 
     function test_removeExcessCollateral_revert_zeroOraclePrice() public {
@@ -644,19 +971,31 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         positionEscrow.modifyAllocation(1000 ether);
 
         // Create query with price 0
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(0, block.timestamp * 1000);
+        IPriceOracle.PriceAttestationQuery
+            memory query = createSignedPriceAttestation(
+                0,
+                block.timestamp * 1000
+            );
 
         // Mock the oracle call to return price 0
-        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(0, query.decimals, query.dataTimestamp);
-         vm.mockCall(
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle
+            .PriceResponse(0, query.decimals, query.dataTimestamp);
+        vm.mockCall(
             address(priceOracle),
-            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encodeWithSelector(
+                priceOracle.attestationService.selector,
+                query
+            ),
             abi.encode(mockResponse)
         );
 
         vm.expectRevert(IPositionEscrow.ZeroAmount.selector); // Reverts due to price 0 in calculation
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), 0.1 ether, query); // Removed minRatio arg
+        positionEscrow.removeExcessCollateral(
+            payable(recipient),
+            0.1 ether,
+            query
+        ); // Removed minRatio arg
     }
 
     function test_removeExcessCollateral_revert_transferFails() public {
@@ -670,22 +1009,42 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
-        IPriceOracle.PriceAttestationQuery memory query = createSignedPriceAttestation(price, block.timestamp * 1000);
+        IPriceOracle.PriceAttestationQuery
+            memory query = createSignedPriceAttestation(
+                price,
+                block.timestamp * 1000
+            );
 
         // Mock the oracle call to succeed
-        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle.PriceResponse(query.price, query.decimals, query.dataTimestamp);
-         vm.mockCall(
+        IPriceOracle.PriceResponse memory mockResponse = IPriceOracle
+            .PriceResponse(query.price, query.decimals, query.dataTimestamp);
+        vm.mockCall(
             address(priceOracle),
-            abi.encodeWithSelector(priceOracle.attestationService.selector, query),
+            abi.encodeWithSelector(
+                priceOracle.attestationService.selector,
+                query
+            ),
             abi.encode(mockResponse)
         );
 
         // Mock transfer to fail
-        vm.mockCall(address(mockStETH), abi.encodeWithSelector(mockStETH.transfer.selector, recipient, expectedExcess), abi.encode(false));
+        vm.mockCall(
+            address(mockStETH),
+            abi.encodeWithSelector(
+                mockStETH.transfer.selector,
+                recipient,
+                expectedExcess
+            ),
+            abi.encode(false)
+        );
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
         vm.prank(stabilizerOwner);
-        positionEscrow.removeExcessCollateral(payable(recipient), expectedExcess, query); // Removed minRatio arg
+        positionEscrow.removeExcessCollateral(
+            payable(recipient),
+            expectedExcess,
+            query
+        ); // Removed minRatio arg
     }
 
     // =============================================
@@ -693,15 +1052,25 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
     // =============================================
 
     function test_getCollateralizationRatio_zeroShares() public {
-        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
-        assertEq(positionEscrow.getCollateralizationRatio(priceResponse), type(uint256).max, "Ratio should be max for zero shares");
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
+            .PriceResponse(2000 ether, 18, block.timestamp * 1000);
+        assertEq(
+            positionEscrow.getCollateralizationRatio(priceResponse),
+            type(uint256).max,
+            "Ratio should be max for zero shares"
+        );
     }
 
     function test_getCollateralizationRatio_zeroCollateral() public {
         vm.prank(admin);
         positionEscrow.modifyAllocation(1000 ether); // Set shares > 0
-        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
-        assertEq(positionEscrow.getCollateralizationRatio(priceResponse), 0, "Ratio should be 0 for zero collateral");
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
+            .PriceResponse(2000 ether, 18, block.timestamp * 1000);
+        assertEq(
+            positionEscrow.getCollateralizationRatio(priceResponse),
+            0,
+            "Ratio should be 0 for zero collateral"
+        );
     }
 
     function test_getCollateralizationRatio_normal() public {
@@ -718,8 +1087,13 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // Ratio = (1100e18 * 1e18 * 100) / (1000e18 * 1e18) = 110
         uint256 expectedRatio = 110;
 
-        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(price, 18, block.timestamp * 1000);
-        assertEq(positionEscrow.getCollateralizationRatio(priceResponse), expectedRatio, "Ratio calculation mismatch (no yield)");
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
+            .PriceResponse(price, 18, block.timestamp * 1000);
+        assertEq(
+            positionEscrow.getCollateralizationRatio(priceResponse),
+            expectedRatio,
+            "Ratio calculation mismatch (no yield)"
+        );
     }
 
     function test_getCollateralizationRatio_withYield() public {
@@ -733,7 +1107,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
 
         // Simulate yield (10% increase)
         uint256 yieldFactor = 1.1 ether; // 1.1 * 1e18
-        vm.mockCall(address(rateContract), abi.encodeWithSelector(rateContract.getYieldFactor.selector), abi.encode(yieldFactor));
+        vm.mockCall(
+            address(rateContract),
+            abi.encodeWithSelector(rateContract.getYieldFactor.selector),
+            abi.encode(yieldFactor)
+        );
         // Assume stETH balance also increased by 10% due to rebase
         // Let's manually adjust the balance for clarity in calculation check
         uint256 currentStEth = (initialStEth * 11) / 10; // 1.21 ether
@@ -746,14 +1124,23 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // Ratio = (1210e18 * 1e18 * 100) / (1100e18 * 1e18) = 110
         uint256 expectedRatio = 110;
 
-        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(price, 18, block.timestamp * 1000);
-        assertEq(positionEscrow.getCollateralizationRatio(priceResponse), expectedRatio, "Ratio calculation mismatch (with yield)");
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
+            .PriceResponse(price, 18, block.timestamp * 1000);
+        assertEq(
+            positionEscrow.getCollateralizationRatio(priceResponse),
+            expectedRatio,
+            "Ratio calculation mismatch (with yield)"
+        );
     }
 
     function test_getCurrentStEthBalance() public {
         uint256 amount = 0.77 ether;
         mockStETH.mint(address(positionEscrow), amount);
-        assertEq(positionEscrow.getCurrentStEthBalance(), amount, "Balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            amount,
+            "Balance mismatch"
+        );
     }
 
     // =============================================
@@ -774,7 +1161,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // The call to addCollateralEth will trigger reportCollateralAddition back to this test contract
         positionEscrow.addCollateralEth{value: ethAmount}();
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), expectedStEth, "stETH balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            expectedStEth,
+            "stETH balance mismatch"
+        );
     }
 
     function test_addCollateralEth_revert_zeroAmount() public {
@@ -786,7 +1177,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
     function test_addCollateralEth_revert_lidoSubmitFails() public {
         uint256 ethAmount = 0.5 ether;
         // Mock Lido to revert
-        vm.mockCallRevert(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), "Lido submit failed");
+        vm.mockCallRevert(
+            address(mockLido),
+            abi.encodeWithSelector(mockLido.submit.selector, address(0)),
+            "Lido submit failed"
+        );
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
         vm.deal(otherUser, ethAmount);
@@ -812,11 +1207,19 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // The call to addCollateralStETH will trigger reportCollateralAddition back to this test contract
         positionEscrow.addCollateralStETH(stETHAmount);
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), stETHAmount, "stETH balance mismatch");
-        assertEq(mockStETH.balanceOf(otherUser), 0, "Caller stETH balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            stETHAmount,
+            "stETH balance mismatch"
+        );
+        assertEq(
+            mockStETH.balanceOf(otherUser),
+            0,
+            "Caller stETH balance mismatch"
+        );
     }
 
-     function test_addCollateralStETH_revert_zeroAmount() public {
+    function test_addCollateralStETH_revert_zeroAmount() public {
         vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
         vm.prank(otherUser);
         positionEscrow.addCollateralStETH(0);
@@ -832,7 +1235,14 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         mockStETH.approve(address(positionEscrow), allowance);
         vm.stopPrank();
 
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(positionEscrow), allowance, stETHAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector,
+                address(positionEscrow),
+                allowance,
+                stETHAmount
+            )
+        );
         vm.prank(otherUser);
         positionEscrow.addCollateralStETH(stETHAmount);
     }
@@ -847,7 +1257,14 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         mockStETH.approve(address(positionEscrow), stETHAmount);
         vm.stopPrank();
 
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, otherUser, balance, stETHAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientBalance.selector,
+                otherUser,
+                balance,
+                stETHAmount
+            )
+        );
         vm.prank(otherUser);
         positionEscrow.addCollateralStETH(stETHAmount);
     }
@@ -867,7 +1284,11 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         (bool success, ) = address(positionEscrow).call{value: ethAmount}("");
         assertTrue(success, "Direct ETH transfer failed");
 
-        assertEq(positionEscrow.getCurrentStEthBalance(), expectedStEth, "stETH balance mismatch");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            expectedStEth,
+            "stETH balance mismatch"
+        );
     }
 
     function test_receive_zeroAmount() public {
@@ -879,13 +1300,21 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         assertTrue(success, "Direct 0 ETH transfer failed");
 
         // Balance should not change, no event emitted
-        assertEq(positionEscrow.getCurrentStEthBalance(), initialBalance, "stETH balance should be unchanged");
+        assertEq(
+            positionEscrow.getCurrentStEthBalance(),
+            initialBalance,
+            "stETH balance should be unchanged"
+        );
     }
 
     function test_receive_revert_lidoSubmitFails() public {
         uint256 ethAmount = 0.25 ether;
         // Mock Lido to revert
-        vm.mockCallRevert(address(mockLido), abi.encodeWithSelector(mockLido.submit.selector, address(0)), "Lido submit failed");
+        vm.mockCallRevert(
+            address(mockLido),
+            abi.encodeWithSelector(mockLido.submit.selector, address(0)),
+            "Lido submit failed"
+        );
 
         vm.expectRevert(IPositionEscrow.TransferFailed.selector);
         vm.deal(otherUser, ethAmount);
@@ -896,5 +1325,4 @@ contract PositionEscrowTest is Test, IStabilizerNFT { // <-- Inherit IStabilizer
         // If the call itself reverted, success would be false.
         // Since the revert happens *inside*, we rely on vm.expectRevert.
     }
-
 }
