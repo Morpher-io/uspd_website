@@ -94,8 +94,10 @@ contract OvercollateralizationReporterTest is Test {
         cuspdToken = cuspdImpl;
 
         // 3. Deploy OvercollateralizationReporter (Contract Under Test)
-        // Assuming it's UUPS upgradeable like others, deploy impl + proxy + init
+        // Deploy implementation first
         OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
+
+        // Prepare initialization data
         bytes memory reporterInitData = abi.encodeWithSelector(
             OvercollateralizationReporter.initialize.selector,
             admin,                 // admin
@@ -103,12 +105,10 @@ contract OvercollateralizationReporterTest is Test {
             address(rateContract), // rateContract
             address(cuspdToken)    // cuspdToken
         );
-        // Use a different proxy admin or deploy without proxy if upgradeability isn't tested here
-        // For simplicity, let's deploy without proxy for now
-        // ERC1967Proxy reporterProxy = new ERC1967Proxy(address(reporterImpl), reporterInitData);
-        // reporter = OvercollateralizationReporter(payable(address(reporterProxy)));
-        reporter = new OvercollateralizationReporter(); // Deploy directly
-        reporter.initialize(admin, updater, address(rateContract), address(cuspdToken)); // Initialize
+
+        // Deploy proxy and initialize through proxy data
+        ERC1967Proxy reporterProxy = new ERC1967Proxy(address(reporterImpl), reporterInitData);
+        reporter = OvercollateralizationReporter(payable(address(reporterProxy))); // Assign proxy address to reporter variable
 
         // Initialize StabilizerNFT (Needs Reporter address)
         stabilizerNFT.initialize(
