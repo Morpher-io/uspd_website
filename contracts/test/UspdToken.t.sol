@@ -27,8 +27,10 @@ import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol
 import "../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {StabilizerNFT} from "../src/StabilizerNFT.sol";
-import {OvercollateralizationReporter} from "../src/OvercollateralizationReporter.sol"; // <-- Add Reporter
-import {IOvercollateralizationReporter} from "../src/interfaces/IOvercollateralizationReporter.sol"; // <-- Add Reporter interface
+import {OvercollateralizationReporter} from "../src/OvercollateralizationReporter.sol";
+import {IOvercollateralizationReporter} from "../src/interfaces/IOvercollateralizationReporter.sol";
+import {StabilizerEscrow} from "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow impl
+import {PositionEscrow} from "../src/PositionEscrow.sol"; // <-- Add PositionEscrow impl
 
 
 contract USPDTokenTest is Test {
@@ -232,14 +234,16 @@ contract USPDTokenTest is Test {
         ERC1967Proxy reporterProxy = new ERC1967Proxy(address(reporterImpl), reporterInitData);
         reporter = OvercollateralizationReporter(payable(address(reporterProxy))); // Assign proxy address
 
-        // Initialize StabilizerNFT Proxy (Needs Reporter address)
+        // Initialize StabilizerNFT Proxy (Needs Reporter and Escrow Impl addresses)
         stabilizerNFTInstance.initialize(
             address(cuspdToken),       // Pass cUSPD address
             address(mockStETH),
             address(mockLido),
             address(rateContract),
-            address(reporter),        // Pass reporter address
-            "http://localhost:3000/api/metadata", //baseURI
+            address(reporter),
+            "http://localhost:3000/api/metadata", // baseURI
+            address(stabilizerEscrowImpl), // <-- Pass StabilizerEscrow impl
+            address(positionEscrowImpl), // <-- Pass PositionEscrow impl
             address(this)                      // Admin
         );
 
