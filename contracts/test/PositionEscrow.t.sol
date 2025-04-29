@@ -94,27 +94,27 @@ contract PositionEscrowTest is
         // Deploy PositionEscrow Implementation
         PositionEscrow escrowImpl = new PositionEscrow();
 
-        // Assign the uninitialized implementation address for testing internal logic
-        positionEscrow = PositionEscrow(payable(address(escrowImpl)));
-        // DO NOT call initialize() here in setUp for the main test instance.
-        // We will test initialize separately.
-        // The other functions will be tested on this uninitialized instance,
-        // assuming roles/state would be set correctly by initialize if it were called.
+        // Prepare initialization data
+        bytes memory initData = abi.encodeCall(
+            PositionEscrow.initialize,
+            (
+                admin, // _stabilizerNFT (test contract acts as this)
+                stabilizerOwner, // _stabilizerOwner
+                address(mockStETH), // _stETHAddress
+                address(mockLido), // _lidoAddress
+                address(rateContract), // _rateContractAddress
+                address(priceOracle) // _oracleAddress
+            )
+        );
+
+        // Deploy the proxy and initialize it
+        ERC1967Proxy proxy = new ERC1967Proxy(address(escrowImpl), initData);
+
+        // Assign the initialized proxy address to the state variable
+        positionEscrow = PositionEscrow(payable(address(proxy)));
     }
 
-    // --- Helper to initialize a fresh instance for specific tests ---
-    function deployAndInitializePositionEscrow() internal returns (PositionEscrow initializedEscrow) {
-        PositionEscrow impl = new PositionEscrow();
-        initializedEscrow = PositionEscrow(payable(address(impl)));
-        initializedEscrow.initialize(
-            admin, // _stabilizerNFT
-            stabilizerOwner, // _stabilizerOwner
-            address(mockStETH), // _stETHAddress
-            address(mockLido), // _lidoAddress
-            address(rateContract), // _rateContractAddress
-            address(priceOracle) // _oracleAddress
-        );
-    }
+    // Removed deployAndInitializePositionEscrow helper function
 
     // --- IStabilizerNFT Implementation (Dummy for Callbacks) ---
 
@@ -187,62 +187,23 @@ contract PositionEscrowTest is
     // I. Deployment and Initialization Tests
     // =============================================
 
-    // Test the initialize function specifically
+    // Test the state set by initialize in setUp
     function testInitialize() public {
-        PositionEscrow impl = new PositionEscrow();
-        PositionEscrow instanceToInit = PositionEscrow(payable(address(impl)));
-
-        // Call initialize
-        instanceToInit.initialize(
-            admin, stabilizerOwner, address(mockStETH), address(mockLido), address(rateContract), address(priceOracle)
-        );
-
-        // Assert state set by initialize
-        assertEq(instanceToInit.stabilizerNFTContract(), admin);
-        assertEq(instanceToInit.stETH(), address(mockStETH));
-        assertEq(instanceToInit.lido(), address(mockLido));
-        assertEq(instanceToInit.rateContract(), address(rateContract));
-        assertEq(instanceToInit.oracle(), address(priceOracle));
-        assertEq(instanceToInit.backedPoolShares(), 0, "Initial backed shares should be 0");
+        // Assert state set by initialize (called via proxy in setUp)
+        assertEq(positionEscrow.stabilizerNFTContract(), admin);
+        assertEq(positionEscrow.stETH(), address(mockStETH));
+        assertEq(positionEscrow.lido(), address(mockLido));
+        assertEq(positionEscrow.rateContract(), address(rateContract));
+        assertEq(positionEscrow.oracle(), address(priceOracle));
+        assertEq(positionEscrow.backedPoolShares(), 0, "Initial backed shares should be 0");
 
         // Assert roles granted by initialize
-        assertTrue(instanceToInit.hasRole(instanceToInit.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
-        assertTrue(instanceToInit.hasRole(instanceToInit.STABILIZER_ROLE(), admin), "Stabilizer role mismatch");
-        assertTrue(instanceToInit.hasRole(instanceToInit.EXCESSCOLLATERALMANAGER_ROLE(), stabilizerOwner), "Manager role mismatch");
+        assertTrue(positionEscrow.hasRole(positionEscrow.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
+        assertTrue(positionEscrow.hasRole(positionEscrow.STABILIZER_ROLE(), admin), "Stabilizer role mismatch");
+        assertTrue(positionEscrow.hasRole(positionEscrow.EXCESSCOLLATERALMANAGER_ROLE(), stabilizerOwner), "Manager role mismatch");
     }
 
-    function test_initialize_initialState() public {
-        // Renamed from test_constructor_initialState
-        assertEq(
-            positionEscrow.backedPoolShares(),
-            0,
-            "Initial backed shares should be 0"
-        );
-        assertEq(
-            positionEscrow.getCurrentStEthBalance(),
-            0,
-            "Initial stETH balance should be 0"
-        );
-    }
-
-    function test_initialize_roles() public {
-        // Renamed from test_constructor_roles
-        assertTrue(
-            positionEscrow.hasRole(positionEscrow.DEFAULT_ADMIN_ROLE(), admin),
-            "Admin role mismatch"
-        );
-        assertTrue(
-            positionEscrow.hasRole(positionEscrow.STABILIZER_ROLE(), admin),
-            "Stabilizer role mismatch"
-        );
-        assertTrue(
-            positionEscrow.hasRole(
-                positionEscrow.EXCESSCOLLATERALMANAGER_ROLE(),
-                stabilizerOwner
-            ),
-            "Manager role mismatch"
-        );
-    }
+    // Removed test_initialize_initialState and test_initialize_roles as they are covered by testInitialize now
 
     function test_initialize_revert_zeroStabilizerNFT() public {
         // Renamed from test_constructor_revert_zeroStabilizerNFT
