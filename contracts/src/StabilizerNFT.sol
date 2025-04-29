@@ -13,12 +13,10 @@ import "./interfaces/IPriceOracle.sol";
 import "./interfaces/IPositionEscrow.sol";
 import "./interfaces/IStabilizerEscrow.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
-import "./interfaces/IOvercollateralizationReporter.sol"; // <-- Add Reporter interface
+import "./interfaces/IOvercollateralizationReporter.sol";
 import "./StabilizerEscrow.sol";
 import "./PositionEscrow.sol";
-import "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
-
-// FACTOR_PRECISION moved inside the contract definition
+// Removed Base64 import
 
 import {console} from "forge-std/console.sol";
 
@@ -72,7 +70,8 @@ contract StabilizerNFT is
     // Mapping from NFT ID to its dedicated PositionEscrow contract address (collateralized funds)
     mapping(uint256 => address) public positionEscrows;
 
-    // MIN_GAS moved to Constants section above
+    // Base URI for token metadata
+    string public baseURI;
 
     // --- Collateral Ratio Tracking (Moved to Reporter) ---
     // uint256 public totalEthEquivalentAtLastSnapshot; // REMOVED
@@ -112,7 +111,8 @@ contract StabilizerNFT is
         address _stETH,
         address _lido,
         address _rateContract,
-        address _reporterAddress, // <-- Add reporter address parameter
+        address _reporterAddress,
+        string memory _baseURI, // <-- Add base URI parameter
         // address _createX, // Uncomment if using CREATE2 factory
         address _admin
     ) public initializer {
@@ -125,7 +125,8 @@ contract StabilizerNFT is
         stETH = _stETH;
         lido = _lido;
         rateContract = IPoolSharesConversionRate(_rateContract);
-        reporter = IOvercollateralizationReporter(_reporterAddress); // <-- Store reporter address
+        reporter = IOvercollateralizationReporter(_reporterAddress);
+        baseURI = _baseURI; // <-- Store base URI
 
         // Snapshot state is now managed by the reporter contract
     }
@@ -562,51 +563,27 @@ contract StabilizerNFT is
     }
 
 
+    /**
+     * @notice Returns the Uniform Resource Identifier (URI) for `tokenId` token.
+     * @dev Constructs the URI by appending the tokenId to the baseURI.
+     */
     function tokenURI(
         uint256 tokenId
     ) public view virtual override returns (string memory) {
-        require(ownerOf(tokenId) != address(0), "Token does not exist");
-
-        StabilizerPosition storage pos = positions[tokenId];
-
-        string memory json = Base64.encode(
-            bytes(
-                string(
-                    abi.encodePacked(
-                        '{"name": "USPD Stabilizer #',
-                        toString(tokenId),
-                        '", "description": "USPD Stabilizer Position NFT", ',
-                        '"image": "data:image/svg+xml;base64,',
-                        Base64.encode(bytes(generateSVG(tokenId))),
-                        '", "attributes": [',
-                        '{"trait_type": "Min Collateral Ratio", "value": "',
-                        toString(pos.minCollateralRatio),
-                        '%"}',
-                        "]}"
-                    )
-                )
-            )
-        );
-        return string(abi.encodePacked("data:application/json;base64,", json));
+        require(ownerOf(tokenId) != address(0), "ERC721: invalid token ID");
+        string memory currentBaseURI = baseURI;
+        return bytes(currentBaseURI).length > 0
+            ? string(abi.encodePacked(currentBaseURI, _toString(tokenId)))
+            : "";
     }
 
-    function generateSVG(
-        uint256 tokenId
-    ) internal view returns (string memory) {
-        // StabilizerPosition storage pos = positions[tokenId];
-        return
-            string(
-                abi.encodePacked(
-                    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">',
-                    "<style>.base { fill: white; font-family: serif; font-size: 14px; }</style>",
-                    '<rect width="100%" height="100%" fill="black"/>',
-                    '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">',
-                    "Stabilizer #",
-                    toString(tokenId),
-                    "</text>",
-                    "</svg>"
-                )
-            );
+    /**
+     * @notice Sets the base URI for token metadata.
+     * @param newBaseURI The new base URI string.
+     * @dev Only callable by admin.
+     */
+    function setBaseURI(string memory newBaseURI) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        baseURI = newBaseURI;
     }
 
     function setMinCollateralizationRatio(
@@ -714,8 +691,12 @@ contract StabilizerNFT is
 
     receive() external payable {}
 
-    function toString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
+    /**
+     * @dev Base function for converting unsigned integers to strings. It's purely internal.
+     *      Needed for tokenURI construction.
+     */
+    function _toString(uint256 value) internal pure returns (string memory) {
+         if (value == 0) {
             return "0";
         }
         uint256 temp = value;
