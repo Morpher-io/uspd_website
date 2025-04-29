@@ -82,35 +82,83 @@ contract StabilizerEscrowTest is Test {
     }
 
     function test_Initialize_Revert_ZeroStabilizerNFT() public { // Renamed from test_Constructor_Revert_ZeroStabilizerNFT
-        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        StabilizerEscrow impl = new StabilizerEscrow();
-        StabilizerEscrow(payable(address(impl))).initialize(
-            address(0), stabilizerOwner, address(mockStETH), address(mockLido)
+        StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero StabilizerNFT address
+        bytes memory initData = abi.encodeCall(
+            StabilizerEscrow.initialize,
+            (
+                address(0), // Invalid StabilizerNFT address
+                stabilizerOwner,
+                address(mockStETH),
+                address(mockLido)
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     function test_Initialize_Revert_ZeroOwner() public { // Renamed from test_Constructor_Revert_ZeroOwner
-        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        StabilizerEscrow impl = new StabilizerEscrow();
-        StabilizerEscrow(payable(address(impl))).initialize(
-            stabilizerNFT, address(0), address(mockStETH), address(mockLido)
+        StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero Owner address
+        bytes memory initData = abi.encodeCall(
+            StabilizerEscrow.initialize,
+            (
+                stabilizerNFT,
+                address(0), // Invalid Owner address
+                address(mockStETH),
+                address(mockLido)
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     function test_Initialize_Revert_ZeroStETH() public { // Renamed from test_Constructor_Revert_ZeroStETH
-        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        StabilizerEscrow impl = new StabilizerEscrow();
-        StabilizerEscrow(payable(address(impl))).initialize(
-            stabilizerNFT, stabilizerOwner, address(0), address(mockLido)
+        StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero stETH address
+        bytes memory initData = abi.encodeCall(
+            StabilizerEscrow.initialize,
+            (
+                stabilizerNFT,
+                stabilizerOwner,
+                address(0), // Invalid stETH address
+                address(mockLido)
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
      function test_Initialize_Revert_ZeroLido() public { // Renamed from test_Constructor_Revert_ZeroLido
-        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        StabilizerEscrow impl = new StabilizerEscrow();
-        StabilizerEscrow(payable(address(impl))).initialize(
-            stabilizerNFT, stabilizerOwner, address(mockStETH), address(0)
+        StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
+
+        // Prepare initialization data with zero Lido address
+        bytes memory initData = abi.encodeCall(
+            StabilizerEscrow.initialize,
+            (
+                stabilizerNFT,
+                stabilizerOwner,
+                address(mockStETH),
+                address(0) // Invalid Lido address
+            )
         );
+
+        // Expect the proxy deployment's initialization call to revert
+        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
+        // Deploy the proxy, attempting initialization with faulty data
+        new ERC1967Proxy(address(impl), initData);
     }
 
     // Removed test_Constructor_Revert_ZeroAmount as constructor is not payable
