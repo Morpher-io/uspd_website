@@ -7,8 +7,8 @@ import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol"; // View layer
 import "../src/cUSPDToken.sol"; // Core share token
 import "../src/interfaces/IcUSPDToken.sol";
-import "../src/OvercollateralizationReporter.sol"; // <-- Add Reporter
-import "../src/interfaces/IOvercollateralizationReporter.sol"; // <-- Add Reporter interface
+import "../src/OvercollateralizationReporter.sol";
+import "../src/interfaces/IOvercollateralizationReporter.sol";
 import {IERC721Errors, IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
@@ -32,9 +32,9 @@ contract StabilizerNFTTest is Test {
 
     // --- Contracts Under Test & Dependencies ---
     StabilizerNFT public stabilizerNFT;
-    USPDToken public uspdToken; // View layer token - Keep for now if any tests still use it indirectly
-    cUSPDToken public cuspdToken; // Core share token
-    OvercollateralizationReporter public reporter; // <-- Add Reporter instance
+    USPDToken public uspdToken;
+    cUSPDToken public cuspdToken;
+    OvercollateralizationReporter public reporter;
     address public owner;
     address public user1;
     address public user2;
@@ -131,7 +131,7 @@ contract StabilizerNFTTest is Test {
             owner                     // Admin
         );
 
-        // 6. Deploy OvercollateralizationReporter
+        // 6. Deploy OvercollateralizationReporter (Using Proxy)
         OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
         bytes memory reporterInitData = abi.encodeWithSelector(
             OvercollateralizationReporter.initialize.selector,
@@ -140,9 +140,8 @@ contract StabilizerNFTTest is Test {
             address(rateContract), // rateContract
             address(cuspdToken)    // cuspdToken
         );
-        // Deploy directly for simplicity in test setup
-        reporter = new OvercollateralizationReporter();
-        reporter.initialize(owner, address(stabilizerNFT), address(rateContract), address(cuspdToken));
+        ERC1967Proxy reporterProxy = new ERC1967Proxy(address(reporterImpl), reporterInitData);
+        reporter = OvercollateralizationReporter(payable(address(reporterProxy))); // Assign proxy address
 
         // 7. Initialize StabilizerNFT Proxy (Needs Reporter address)
         stabilizerNFT.initialize(
