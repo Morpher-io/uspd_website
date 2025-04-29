@@ -94,9 +94,19 @@ contract PositionEscrowTest is
         // Deploy PositionEscrow Implementation
         PositionEscrow escrowImpl = new PositionEscrow();
 
-        // Deploy PositionEscrow using initialize
-        positionEscrow = PositionEscrow(payable(address(escrowImpl))); // Use implementation address directly for testing
-        positionEscrow.initialize(
+        // Assign the uninitialized implementation address for testing internal logic
+        positionEscrow = PositionEscrow(payable(address(escrowImpl)));
+        // DO NOT call initialize() here in setUp for the main test instance.
+        // We will test initialize separately.
+        // The other functions will be tested on this uninitialized instance,
+        // assuming roles/state would be set correctly by initialize if it were called.
+    }
+
+    // --- Helper to initialize a fresh instance for specific tests ---
+    function deployAndInitializePositionEscrow() internal returns (PositionEscrow initializedEscrow) {
+        PositionEscrow impl = new PositionEscrow();
+        initializedEscrow = PositionEscrow(payable(address(impl)));
+        initializedEscrow.initialize(
             admin, // _stabilizerNFT
             stabilizerOwner, // _stabilizerOwner
             address(mockStETH), // _stETHAddress
