@@ -125,9 +125,9 @@ contract StabilizerNFT is
         stETH = _stETH;
         lido = _lido;
         rateContract = IPoolSharesConversionRate(_rateContract);
+        reporter = IOvercollateralizationReporter(_reporterAddress); // <-- Store reporter address
 
-        totalEthEquivalentAtLastSnapshot = 0;
-        yieldFactorAtLastSnapshot = FACTOR_PRECISION;
+        // Snapshot state is now managed by the reporter contract
     }
 
     function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
