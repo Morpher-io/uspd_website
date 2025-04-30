@@ -134,14 +134,14 @@ export function StabilizerNFTItem({
   const { data: escrowData, isLoading: isLoadingEscrowData, refetch: refetchEscrowData } = useReadContracts({
     allowFailure: true, // Allow individual calls to fail without breaking the whole hook
     contracts: [
-      // Stabilizer Escrow Balance
+      // Stabilizer Escrow Balance (using specific function)
       {
         address: stabilizerEscrowAddress!,
-        abi: ierc20Abi.abi,
-        functionName: 'balanceOf',
-        args: [stabilizerEscrowAddress!], // Balance of itself
+        abi: stabilizerEscrowAbi.abi, // Use StabilizerEscrow ABI
+        functionName: 'unallocatedStETH', // Call the specific function
+        args: [], // No arguments needed
       },
-      // Position Escrow Balance
+      // Position Escrow Balance (still uses IERC20)
       {
         address: positionEscrowAddress!,
         abi: ierc20Abi.abi,
@@ -164,20 +164,32 @@ export function StabilizerNFTItem({
       },
     ],
     query: {
-      // Only run when addresses and price data (for ratio) are available
-      enabled: !!stabilizerEscrowAddress && !!positionEscrowAddress && !!stEthAddress && !!priceData, 
+      // Only run when addresses are available. Price data is only needed for ratio.
+      enabled: !!stabilizerEscrowAddress && !!positionEscrowAddress && !!stEthAddress, 
+      // We will handle the ratio calculation potentially being undefined if priceData is missing later in the component
     }
   })
 
   // Update state with fetched escrow data
   useEffect(() => {
     if (escrowData) {
-      setUnallocatedStEthBalance(escrowData[0]?.result as bigint ?? BigInt(0));
-      setAllocatedStEthBalance(escrowData[1]?.result as bigint ?? BigInt(0));
-      setBackedPoolShares(escrowData[2]?.result as bigint ?? BigInt(0));
-      setCurrentCollateralRatio(escrowData[3]?.result ? Number(escrowData[3].result) : 0);
+      setUnallocatedStEthBalance(escrowData[0]?.status === 'success' ? escrowData[0].result as bigint : BigInt(0));
+      setAllocatedStEthBalance(escrowData[1]?.status === 'success' ? escrowData[1].result as bigint : BigInt(0));
+      setBackedPoolShares(escrowData[2]?.status === 'success' ? escrowData[2].result as bigint : BigInt(0));
+      // Only update ratio if price data was available and the call succeeded
+      if (priceData && escrowData[3]?.status === 'success') {
+        setCurrentCollateralRatio(Number(escrowData[3].result));
+      } else {
+        setCurrentCollateralRatio(0); // Reset or keep previous state if price is missing
+      }
+    } else {
+      // Reset if escrowData is null/undefined
+       setUnallocatedStEthBalance(BigInt(0));
+       setAllocatedStEthBalance(BigInt(0));
+       setBackedPoolShares(BigInt(0));
+       setCurrentCollateralRatio(0);
     }
-  }, [escrowData]);
+  }, [escrowData, priceData]); // Add priceData dependency here
 
   // Combined refetch function
   const refetchAll = () => {
