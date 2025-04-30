@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract, useAccount, useReadContracts } from 'wagmi'
+import { useWriteContract, useAccount, useReadContract } from 'wagmi' // Changed useReadContracts to useReadContract
 import { parseEther, formatEther, Address } from 'viem'
 
 // Import necessary ABIs
@@ -38,46 +38,56 @@ export function StabilizerEscrowManager({
     const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
 
-    // --- Fetch Escrow Address and Balance ---
-    const { data: escrowFetchData, isLoading: isLoadingEscrowData, refetch: refetchEscrowData } = useReadContracts({
-        allowFailure: true,
-        contracts: [
-            // Fetch StabilizerEscrow address from StabilizerNFT
-            {
-                address: stabilizerAddress,
-                abi: stabilizerAbi,
-                functionName: 'stabilizerEscrows',
-                args: [tokenId],
-            },
-            // Fetch Stabilizer Escrow Balance (conditionally enabled)
-            {
-                address: stabilizerEscrowAddress!, // Will be updated by useEffect
-                abi: stabilizerEscrowAbi.abi,
-                functionName: 'unallocatedStETH',
-                args: [],
-            },
-        ],
+    // --- Fetch Escrow Address ---
+    const { data: fetchedEscrowAddress, isLoading: isLoadingAddress, refetch: refetchAddress } = useReadContract({
+        address: stabilizerAddress,
+        abi: stabilizerAbi,
+        functionName: 'stabilizerEscrows', // Use the public mapping getter
+        args: [BigInt(tokenId)],
         query: {
-            // Fetch address always if stabilizerAddress/tokenId is available
-            // Balance fetch depends on stabilizerEscrowAddress being set
             enabled: !!stabilizerAddress && !!tokenId,
         }
     })
 
-    // Update state with fetched escrow address and trigger balance refetch
+    // Update state when address is fetched
     useEffect(() => {
-        console.log({escrowFetchData, stabilizerAddress, stabilizerAbi});
-        const fetchedAddress = escrowFetchData?.[0]?.result as Address | null;
-        if (fetchedAddress && fetchedAddress !== stabilizerEscrowAddress) {
-            setStabilizerEscrowAddress(fetchedAddress);
+        if (fetchedEscrowAddress) {
+            setStabilizerEscrowAddress(fetchedEscrowAddress as Address);
+        } else {
+            setStabilizerEscrowAddress(null); // Reset if fetch fails or returns null
         }
-        // Update balance if address is available and data exists
-        if (stabilizerEscrowAddress && escrowFetchData?.[1]?.status === 'success') {
-            setUnallocatedStEthBalance(escrowFetchData[1].result as bigint ?? BigInt(0));
-        } else if (!stabilizerEscrowAddress) {
-             setUnallocatedStEthBalance(BigInt(0)); // Reset if address becomes null
+    }, [fetchedEscrowAddress]);
+
+    // --- Fetch Escrow Balance (conditionally) ---
+    const { data: fetchedBalance, isLoading: isLoadingBalance, refetch: refetchBalance } = useReadContract({
+        address: stabilizerEscrowAddress!, // Use the state variable
+        abi: stabilizerEscrowAbi.abi,
+        functionName: 'unallocatedStETH',
+        args: [],
+        query: {
+            enabled: !!stabilizerEscrowAddress, // Only run when address is available
         }
-    }, [escrowFetchData, stabilizerEscrowAddress]); // Re-run when fetch data or address changes
+    })
+
+    // Update state when balance is fetched
+    useEffect(() => {
+        if (fetchedBalance !== undefined) { // Check for undefined specifically
+            setUnallocatedStEthBalance(fetchedBalance as bigint);
+        } else if (stabilizerEscrowAddress) {
+            // If address exists but fetch returned undefined (e.g., during loading/error of balance call)
+            // you might want to keep the old balance or reset, depending on desired behavior.
+            // Resetting ensures consistency if the balance call fails.
+            setUnallocatedStEthBalance(BigInt(0));
+        }
+    }, [fetchedBalance, stabilizerEscrowAddress]);
+
+    // Combined refetch function
+    const refetchAllEscrowData = () => {
+        refetchAddress();
+        if (stabilizerEscrowAddress) {
+            refetchBalance();
+        }
+    }
 
 
     // --- Interaction Handlers ---
@@ -106,7 +116,7 @@ export function StabilizerEscrowManager({
 
             setSuccess(`Successfully added ${addAmount} ETH to Unallocated Funds for Stabilizer #${tokenId}`)
             setAddAmount('')
-            await refetchEscrowData() // Refetch balance
+            refetchAllEscrowData() // Use combined refetch
             if (onSuccess) onSuccess() // Notify parent if needed
         } catch (err: any) {
             setError(err.message || 'Failed to add funds')
@@ -144,7 +154,7 @@ export function StabilizerEscrowManager({
 
             setSuccess(`Successfully withdrew ${withdrawAmount} stETH from Unallocated Funds for Stabilizer #${tokenId}`)
             setWithdrawAmount('')
-            await refetchEscrowData() // Refetch balance
+            refetchAllEscrowData() // Use combined refetch
             if (onSuccess) onSuccess() // Notify parent if needed
         } catch (err: any) {
             setError(err.message || 'Failed to withdraw funds')
@@ -154,8 +164,9 @@ export function StabilizerEscrowManager({
         }
     }
 
-    if (isLoadingEscrowData && !stabilizerEscrowAddress) {
-         return <div className="p-4 border rounded-lg"><p>Loading escrow data...</p></div>;
+    // Updated loading state check
+    if (isLoadingAddress) {
+         return <div className="p-4 border rounded-lg"><p>Loading escrow address...</p></div>;
     }
 
     return (
@@ -165,7 +176,8 @@ export function StabilizerEscrowManager({
                 <div>
                     <Label>stETH Balance</Label>
                     <p className="text-lg font-semibold">
-                        {isLoadingEscrowData && stabilizerEscrowAddress ? 'Fetching...' : `${formatEther(unallocatedStEthBalance)} stETH`}
+                        {/* Show loading only when address is known but balance isn't */}
+                        {stabilizerEscrowAddress && isLoadingBalance ? 'Fetching...' : `${formatEther(unallocatedStEthBalance)} stETH`}
                     </p>
                 </div>
                 <div>
