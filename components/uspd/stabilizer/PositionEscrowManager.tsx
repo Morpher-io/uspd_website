@@ -153,6 +153,49 @@ export function PositionEscrowManager({
         }
     }, [positionEscrowData]); // Remove priceData dependency here
 
+    // Calculate ratio when dependencies change
+    useEffect(() => {
+        if (priceData && allocatedStEthBalance > 0 && backedPoolShares > 0 && yieldFactor > 0) {
+            try {
+                const FACTOR_PRECISION = BigInt(1e18); // Assuming 18 decimals precision
+                const PRICE_DECIMALS = BigInt(10 ** priceData.decimals);
+
+                // Calculate liability value in USD (needs high precision)
+                // liabilityUSD = (backedPoolShares * yieldFactor / FACTOR_PRECISION)
+                // Use intermediate BigInts for precision
+                const liabilityInUSPD = (backedPoolShares * yieldFactor) / FACTOR_PRECISION; // This is the USPD amount
+
+                // Calculate collateral value in USD (needs high precision)
+                // collateralUSD = (allocatedStEthBalance * price / PRICE_DECIMALS)
+                const collateralValueUSD = (allocatedStEthBalance * BigInt(priceData.price)) / PRICE_DECIMALS;
+
+                if (liabilityInUSPD === BigInt(0)) {
+                    setCurrentCollateralRatio(Infinity); // Or some large number / indicator
+                    return;
+                }
+
+                // Calculate ratio: (collateralValueUSD / liabilityInUSPD) * 100
+                // Multiply collateral by 100 * FACTOR_PRECISION for percentage and precision during division
+                const ratioBigInt = (collateralValueUSD * BigInt(100) * FACTOR_PRECISION) / liabilityInUSPD;
+
+                // Convert the final ratio (which has FACTOR_PRECISION) to a displayable percentage
+                const ratioPercentage = Number(ratioBigInt) / Number(FACTOR_PRECISION);
+
+                setCurrentCollateralRatio(ratioPercentage);
+
+            } catch (e) {
+                console.error("Error calculating collateral ratio:", e);
+                setCurrentCollateralRatio(0); // Reset on error
+            }
+        } else if (allocatedStEthBalance > 0 && backedPoolShares === BigInt(0)) {
+             setCurrentCollateralRatio(Infinity); // Infinite ratio if collateral exists but no liability
+        }
+         else {
+            setCurrentCollateralRatio(0); // Reset if data is missing or zero
+        }
+    }, [allocatedStEthBalance, backedPoolShares, yieldFactor, priceData]); // Dependencies for calculation
+
+
     // Combined refetch function for this component
     const refetchAllPositionData = () => {
         refetchAddresses(); // Refetch escrow/steth addresses
