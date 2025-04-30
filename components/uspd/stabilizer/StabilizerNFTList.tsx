@@ -66,7 +66,14 @@ export function StabilizerNFTList({
     },
     onLogs(logs) {
       // Check if any log involves the current user
-      const relevantLog = logs.some(log => log.args.from === address || log.args.to === address);
+      // Explicitly type the log object within the callback
+      const relevantLog = logs.some(log => {
+        // Assuming Transfer event args are { from: Address, to: Address, tokenId: bigint }
+        // Use type assertion to inform TypeScript about the expected 'args' structure
+        const typedArgs = log.args as { from?: `0x${string}`, to?: `0x${string}`, tokenId?: bigint };
+        return typedArgs.from === address || typedArgs.to === address;
+      });
+
       if (relevantLog) {
         console.log('Relevant Transfer event detected, refreshing NFT list...');
         // Trigger a refetch by incrementing the counter
