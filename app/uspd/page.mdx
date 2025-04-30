@@ -1,0 +1,16 @@
+---
+title: "Mint & Burn USPD"
+---
+
+import UspdMintBurn from '@/components/uspd/token/UspdMintBurn'
+
+# Mint & Burn USPD
+
+This interface allows you to interact with the core functionality of the USPD stablecoin:
+
+*   **Minting:** Convert your ETH into USPD. The system uses the current ETH/USD price (provided by a secure oracle) and finds available stabilizer collateral to ensure your minted USPD is overcollateralized according to the protocol rules (typically 110% or higher).
+*   **Burning:** Redeem your USPD back into ETH. The system calculates the equivalent ETH value based on the current oracle price and returns the corresponding collateral from the backing positions.
+
+All operations require a signed price attestation from the oracle system to ensure accurate and secure conversions.
+
+<UspdMintBurn />
