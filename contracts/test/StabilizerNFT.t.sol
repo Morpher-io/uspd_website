@@ -286,7 +286,8 @@ contract StabilizerNFTTest is Test {
         StabilizerEscrow stabilizerEscrow = StabilizerEscrow(
             payable(deployedEscrowAddress)
         );
-        // assertEq(stabilizerEscrow.stabilizerOwner(), expectedOwner, "StabilizerEscrow owner mismatch"); // Removed owner check
+        assertEq(stabilizerEscrow.tokenId(), tokenId, "StabilizerEscrow tokenId mismatch"); // Check tokenId
+        // assertEq(stabilizerEscrow.stabilizerOwner(), expectedOwner, "StabilizerEscrow owner mismatch"); // Owner check remains removed
         assertEq(
             stabilizerEscrow.stabilizerNFTContract(),
             address(stabilizerNFT),

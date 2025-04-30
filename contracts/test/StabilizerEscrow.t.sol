@@ -40,10 +40,12 @@ contract StabilizerEscrowTest is Test {
         StabilizerEscrow escrowImpl = new StabilizerEscrow();
 
         // 3. Prepare initialization data
+        uint256 testTokenId = 1; // Define a tokenId for setup
         bytes memory initData = abi.encodeCall(
             StabilizerEscrow.initialize,
             (
                 stabilizerNFT, // _stabilizerNFT
+                testTokenId,   // _tokenId
                 // stabilizerOwner, // _owner removed
                 address(mockStETH), // _stETH
                 address(mockLido) // _lido
@@ -71,7 +73,8 @@ contract StabilizerEscrowTest is Test {
     function test_Initialize_Success() public view { // Renamed from test_Constructor_Success
         // Assert state set by initialize (called via proxy in setUp)
         assertEq(escrow.stabilizerNFTContract(), stabilizerNFT, "StabilizerNFT address mismatch");
-        // assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch"); // Removed owner check
+        assertEq(escrow.tokenId(), 1, "Token ID mismatch"); // Check tokenId set in setUp
+        // assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch"); // Owner check remains removed
         assertEq(escrow.stETH(), address(mockStETH), "stETH address mismatch");
         assertEq(escrow.lido(), address(mockLido), "Lido address mismatch");
 
@@ -83,11 +86,13 @@ contract StabilizerEscrowTest is Test {
         StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
 
         // Prepare initialization data with zero StabilizerNFT address
+        uint256 testTokenId = 99;
         bytes memory initData = abi.encodeCall(
             StabilizerEscrow.initialize,
             (
                 address(0), // Invalid StabilizerNFT address
-                stabilizerOwner,
+                testTokenId,
+                // stabilizerOwner, // Removed
                 address(mockStETH),
                 address(mockLido)
             )
@@ -105,11 +110,13 @@ contract StabilizerEscrowTest is Test {
         StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
 
         // Prepare initialization data with zero stETH address
+        uint256 testTokenId = 99;
         bytes memory initData = abi.encodeCall(
             StabilizerEscrow.initialize,
             (
                 stabilizerNFT,
-                stabilizerOwner,
+                testTokenId,
+                // stabilizerOwner, // Removed
                 address(0), // Invalid stETH address
                 address(mockLido)
             )
@@ -125,11 +132,13 @@ contract StabilizerEscrowTest is Test {
         StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
 
         // Prepare initialization data with zero Lido address
+        uint256 testTokenId = 99;
         bytes memory initData = abi.encodeCall(
             StabilizerEscrow.initialize,
             (
                 stabilizerNFT,
-                stabilizerOwner,
+                testTokenId,
+                // stabilizerOwner, // Removed
                 address(mockStETH),
                 address(0) // Invalid Lido address
             )
@@ -218,17 +227,17 @@ contract StabilizerEscrowTest is Test {
     // --- Test withdrawUnallocated() (Internal - called by StabilizerNFT) ---
 
     function test_WithdrawUnallocated_Internal_Success() public {
-        uint256 tokenId = 1; // Assume this escrow corresponds to tokenId 1
+        uint256 escrowTokenId = escrow.tokenId(); // Get the actual tokenId stored in the escrow
         uint256 withdrawAmount = 0.4 ether;
-        uint256 initialOwnerBalance = mockStETH.balanceOf(stabilizerOwner); // stabilizerOwner is the mock owner of tokenId 1
+        uint256 initialOwnerBalance = mockStETH.balanceOf(stabilizerOwner); // stabilizerOwner is the mock owner of escrowTokenId (set in setUp)
         uint256 initialEscrowBalance = mockStETH.balanceOf(address(escrow));
 
         require(withdrawAmount <= initialEscrowBalance, "Test setup error: withdrawAmount > initialEscrowBalance");
 
-        // Mock the ownerOf call from StabilizerNFT
+        // Mock the ownerOf call from StabilizerNFT using the escrow's stored tokenId
         vm.mockCall(
             stabilizerNFT, // Address being called (StabilizerNFT mock)
-            abi.encodeWithSelector(IERC721.ownerOf.selector, tokenId), // Function selector and args
+            abi.encodeWithSelector(IERC721.ownerOf.selector, escrowTokenId), // Use escrow's stored tokenId
             abi.encode(stabilizerOwner) // Return value (the owner address)
         );
 
@@ -236,7 +245,7 @@ contract StabilizerEscrowTest is Test {
         vm.prank(stabilizerNFT);
         vm.expectEmit(true, true, true, true, address(escrow)); // Expect event from Escrow
         emit IStabilizerEscrow.WithdrawalCompleted(stabilizerOwner, withdrawAmount);
-        escrow.withdrawUnallocated(tokenId, withdrawAmount);
+        escrow.withdrawUnallocated(/* tokenId removed */ withdrawAmount); // Call without tokenId
 
         // Verify balances
         assertEq(mockStETH.balanceOf(stabilizerOwner), initialOwnerBalance + withdrawAmount, "Owner stETH balance mismatch after withdrawal");
@@ -245,30 +254,30 @@ contract StabilizerEscrowTest is Test {
     }
 
     function test_WithdrawUnallocated_Internal_Revert_ZeroAmount() public {
-        uint256 tokenId = 1;
+        // uint256 tokenId = 1; // No longer needed here
         vm.prank(stabilizerNFT);
         vm.expectRevert(StabilizerEscrow.ZeroAmount.selector);
-        escrow.withdrawUnallocated(tokenId, 0);
+        escrow.withdrawUnallocated(/* tokenId removed */ 0);
     }
 
     function test_WithdrawUnallocated_Internal_Revert_InsufficientBalance() public {
-        uint256 tokenId = 1;
+        uint256 escrowTokenId = escrow.tokenId();
         uint256 currentBalance = mockStETH.balanceOf(address(escrow));
         uint256 amount = currentBalance + 1 wei;
 
         // Mock ownerOf call (needed even for revert checks if reached)
-        vm.mockCall(stabilizerNFT, abi.encodeWithSelector(IERC721.ownerOf.selector, tokenId), abi.encode(stabilizerOwner));
+        vm.mockCall(stabilizerNFT, abi.encodeWithSelector(IERC721.ownerOf.selector, escrowTokenId), abi.encode(stabilizerOwner));
 
         vm.prank(stabilizerNFT);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(escrow), currentBalance, amount));
-        escrow.withdrawUnallocated(tokenId, amount);
+        escrow.withdrawUnallocated(/* tokenId removed */ amount);
     }
 
     function test_WithdrawUnallocated_Internal_Revert_NotStabilizerNFT() public {
-        uint256 tokenId = 1;
+        // uint256 tokenId = 1; // No longer needed here
         vm.prank(user1); // Call from non-controller address
         vm.expectRevert("Caller is not StabilizerNFT");
-        escrow.withdrawUnallocated(tokenId, 0.1 ether);
+        escrow.withdrawUnallocated(/* tokenId removed */ 0.1 ether);
     }
 
     // Note: Tests for the user-facing `removeUnallocatedFunds` function should be in StabilizerNFTTest.t.sol

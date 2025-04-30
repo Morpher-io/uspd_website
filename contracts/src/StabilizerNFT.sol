@@ -156,10 +156,11 @@ contract StabilizerNFT is
         // Deploy StabilizerEscrow clone
         address stabilizerEscrowClone = Clones.clone(stabilizerEscrowImplementation);
         require(stabilizerEscrowClone != address(0), "StabilizerEscrow clone failed");
-        // Initialize the clone (owner removed from initialize)
+        // Initialize the clone (owner removed, tokenId added)
         StabilizerEscrow(payable(stabilizerEscrowClone)).initialize(
             address(this), // This StabilizerNFT contract is the controller
-            // to,         // Owner removed
+            tokenId,       // Pass the tokenId
+            // to,         // Owner remains removed
             stETH,         // stETH address
             lido           // Lido address
         );
@@ -407,8 +408,8 @@ contract StabilizerNFT is
         address escrowAddress = stabilizerEscrows[tokenId];
         require(escrowAddress != address(0), "Escrow not found");
 
-        // Call the escrow's withdraw function, passing the tokenId
-        IStabilizerEscrow(escrowAddress).withdrawUnallocated(tokenId, stETHAmount);
+        // Call the escrow's withdraw function (tokenId is no longer needed as argument)
+        IStabilizerEscrow(escrowAddress).withdrawUnallocated(/* tokenId removed */ stETHAmount);
 
         // Check if the escrow is now empty and remove from unallocated list if so
         if (IStabilizerEscrow(escrowAddress).unallocatedStETH() == 0) {

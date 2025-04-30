@@ -24,6 +24,7 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
 
     // --- State Variables ---
     address public immutable stabilizerNFTContract; // The controller/manager - Make immutable
+    uint256 public immutable tokenId;             // The ID of the NFT this escrow belongs to
     // stabilizerOwner removed - Owner is determined dynamically via StabilizerNFT
     address public immutable stETH;                 // stETH token contract - Make immutable
     address public immutable lido;                  // Lido staking pool contract - Make immutable
@@ -45,23 +46,27 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     /**
      * @notice Initializes the escrow contract state.
      * @param _stabilizerNFT The address of the controlling StabilizerNFT contract.
-     * @param _stabilizerNFT The address of the controlling StabilizerNFT contract.
+     * @param _tokenId The ID of the Stabilizer NFT this escrow is associated with.
      * @param _stETH The address of the stETH token.
      * @param _lido The address of the Lido staking pool.
-     * @dev Sets immutable addresses. Meant to be called once after clone deployment.
+     * @dev Sets immutable addresses and the token ID. Meant to be called once after clone deployment.
      */
     function initialize( // <-- Renamed from constructor
         address _stabilizerNFT,
-        // address _owner, // Removed owner parameter
+        uint256 _tokenId, // Added tokenId parameter
+        // address _owner, // Owner parameter remains removed
         address _stETH,
         address _lido
     ) external initializer { // <-- Added initializer modifier
-        // Check only non-owner addresses
+        // Check addresses
         if (_stabilizerNFT == address(0) || _stETH == address(0) || _lido == address(0)) {
             revert ZeroAddress();
         }
+        // Check tokenId (optional, but good practice if 0 is invalid)
+        // if (_tokenId == 0) revert("Invalid Token ID"); // Uncomment if tokenId 0 is disallowed
 
         stabilizerNFTContract = _stabilizerNFT;
+        tokenId = _tokenId; // Store the token ID
         // stabilizerOwner removed
         stETH = _stETH;
         lido = _lido;
@@ -119,17 +124,16 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
 
     /**
      * @notice Withdraws unallocated stETH to the current owner of the associated Stabilizer NFT.
-     * @param tokenId The ID of the Stabilizer NFT this escrow belongs to.
      * @param amount The amount of stETH to withdraw.
-     * @dev Callable only by StabilizerNFT. Fetches current owner before transferring. Checks against total balance.
+     * @dev Callable only by StabilizerNFT. Uses stored `tokenId` to fetch current owner. Checks against total balance.
      */
-    function withdrawUnallocated(uint256 tokenId, uint256 amount) external onlyStabilizerNFT {
+    function withdrawUnallocated(/* uint256 tokenId removed */ uint256 amount) external onlyStabilizerNFT {
         if (amount == 0) revert ZeroAmount();
         uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
         if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount);
 
-        // Fetch the current owner from the StabilizerNFT contract
-        address currentOwner = IERC721(stabilizerNFTContract).ownerOf(tokenId);
+        // Fetch the current owner from the StabilizerNFT contract using the stored tokenId
+        address currentOwner = IERC721(stabilizerNFTContract).ownerOf(tokenId); // Use stored tokenId
         if (currentOwner == address(0)) revert ZeroAddress(); // Should not happen if token exists
 
         // Transfer stETH to the current owner
