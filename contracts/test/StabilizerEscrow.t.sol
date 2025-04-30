@@ -44,7 +44,7 @@ contract StabilizerEscrowTest is Test {
             StabilizerEscrow.initialize,
             (
                 stabilizerNFT, // _stabilizerNFT
-                stabilizerOwner, // _owner
+                // stabilizerOwner, // _owner removed
                 address(mockStETH), // _stETH
                 address(mockLido) // _lido
             )
@@ -71,7 +71,7 @@ contract StabilizerEscrowTest is Test {
     function test_Initialize_Success() public view { // Renamed from test_Constructor_Success
         // Assert state set by initialize (called via proxy in setUp)
         assertEq(escrow.stabilizerNFTContract(), stabilizerNFT, "StabilizerNFT address mismatch");
-        assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch");
+        // assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch"); // Removed owner check
         assertEq(escrow.stETH(), address(mockStETH), "stETH address mismatch");
         assertEq(escrow.lido(), address(mockLido), "Lido address mismatch");
 
@@ -99,25 +99,7 @@ contract StabilizerEscrowTest is Test {
         new ERC1967Proxy(address(impl), initData);
     }
 
-    function test_Initialize_Revert_ZeroOwner() public { // Renamed from test_Constructor_Revert_ZeroOwner
-        StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
-
-        // Prepare initialization data with zero Owner address
-        bytes memory initData = abi.encodeCall(
-            StabilizerEscrow.initialize,
-            (
-                stabilizerNFT,
-                address(0), // Invalid Owner address
-                address(mockStETH),
-                address(mockLido)
-            )
-        );
-
-        // Expect the proxy deployment's initialization call to revert
-        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
-        // Deploy the proxy, attempting initialization with faulty data
-        new ERC1967Proxy(address(impl), initData);
-    }
+    // Removed test_Initialize_Revert_ZeroOwner as owner is no longer an init parameter
 
     function test_Initialize_Revert_ZeroStETH() public { // Renamed from test_Constructor_Revert_ZeroStETH
         StabilizerEscrow impl = new StabilizerEscrow(); // Deploy implementation
@@ -233,42 +215,63 @@ contract StabilizerEscrowTest is Test {
 
     // --- registerUnallocation tests removed ---
 
-    // --- Test withdrawUnallocated() ---
+    // --- Test withdrawUnallocated() (Internal - called by StabilizerNFT) ---
 
-    function test_WithdrawUnallocated_Success() public {
+    function test_WithdrawUnallocated_Internal_Success() public {
+        uint256 tokenId = 1; // Assume this escrow corresponds to tokenId 1
         uint256 withdrawAmount = 0.4 ether;
-        uint256 initialOwnerBalance = mockStETH.balanceOf(stabilizerOwner);
+        uint256 initialOwnerBalance = mockStETH.balanceOf(stabilizerOwner); // stabilizerOwner is the mock owner of tokenId 1
         uint256 initialEscrowBalance = mockStETH.balanceOf(address(escrow));
 
         require(withdrawAmount <= initialEscrowBalance, "Test setup error: withdrawAmount > initialEscrowBalance");
 
-        vm.prank(stabilizerNFT);
-        escrow.withdrawUnallocated(withdrawAmount);
+        // Mock the ownerOf call from StabilizerNFT
+        vm.mockCall(
+            stabilizerNFT, // Address being called (StabilizerNFT mock)
+            abi.encodeWithSelector(IERC721.ownerOf.selector, tokenId), // Function selector and args
+            abi.encode(stabilizerOwner) // Return value (the owner address)
+        );
 
+        // Prank as StabilizerNFT contract to call the internal function
+        vm.prank(stabilizerNFT);
+        vm.expectEmit(true, true, true, true, address(escrow)); // Expect event from Escrow
+        emit IStabilizerEscrow.WithdrawalCompleted(stabilizerOwner, withdrawAmount);
+        escrow.withdrawUnallocated(tokenId, withdrawAmount);
+
+        // Verify balances
         assertEq(mockStETH.balanceOf(stabilizerOwner), initialOwnerBalance + withdrawAmount, "Owner stETH balance mismatch after withdrawal");
         assertEq(mockStETH.balanceOf(address(escrow)), initialEscrowBalance - withdrawAmount, "Escrow stETH balance mismatch after withdrawal");
         assertEq(escrow.unallocatedStETH(), initialEscrowBalance - withdrawAmount, "Unallocated stETH mismatch after withdrawal");
     }
 
-    function test_WithdrawUnallocated_Revert_ZeroAmount() public {
+    function test_WithdrawUnallocated_Internal_Revert_ZeroAmount() public {
+        uint256 tokenId = 1;
         vm.prank(stabilizerNFT);
         vm.expectRevert(StabilizerEscrow.ZeroAmount.selector);
-        escrow.withdrawUnallocated(0);
+        escrow.withdrawUnallocated(tokenId, 0);
     }
 
-    function test_WithdrawUnallocated_Revert_InsufficientBalance() public {
+    function test_WithdrawUnallocated_Internal_Revert_InsufficientBalance() public {
+        uint256 tokenId = 1;
         uint256 currentBalance = mockStETH.balanceOf(address(escrow));
         uint256 amount = currentBalance + 1 wei;
+
+        // Mock ownerOf call (needed even for revert checks if reached)
+        vm.mockCall(stabilizerNFT, abi.encodeWithSelector(IERC721.ownerOf.selector, tokenId), abi.encode(stabilizerOwner));
+
         vm.prank(stabilizerNFT);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(escrow), currentBalance, amount));
-        escrow.withdrawUnallocated(amount);
+        escrow.withdrawUnallocated(tokenId, amount);
     }
 
-    function test_WithdrawUnallocated_Revert_NotStabilizerNFT() public {
-        vm.prank(user1);
+    function test_WithdrawUnallocated_Internal_Revert_NotStabilizerNFT() public {
+        uint256 tokenId = 1;
+        vm.prank(user1); // Call from non-controller address
         vm.expectRevert("Caller is not StabilizerNFT");
-        escrow.withdrawUnallocated(0.1 ether);
+        escrow.withdrawUnallocated(tokenId, 0.1 ether);
     }
+
+    // Note: Tests for the user-facing `removeUnallocatedFunds` function should be in StabilizerNFTTest.t.sol
 
     // --- Test unallocatedStETH() View ---
 

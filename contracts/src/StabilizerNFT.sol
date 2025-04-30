@@ -100,6 +100,7 @@ contract StabilizerNFT is
         uint256 oldRatio,
         uint256 newRatio
     );
+    event UnallocatedFundsRemoved(uint256 indexed tokenId, uint256 amount, address indexed recipient);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -155,10 +156,10 @@ contract StabilizerNFT is
         // Deploy StabilizerEscrow clone
         address stabilizerEscrowClone = Clones.clone(stabilizerEscrowImplementation);
         require(stabilizerEscrowClone != address(0), "StabilizerEscrow clone failed");
-        // Initialize the clone
+        // Initialize the clone (owner removed from initialize)
         StabilizerEscrow(payable(stabilizerEscrowClone)).initialize(
             address(this), // This StabilizerNFT contract is the controller
-            to,            // The NFT owner is the beneficiary
+            // to,         // Owner removed
             stETH,         // stETH address
             lido           // Lido address
         );
@@ -391,6 +392,30 @@ contract StabilizerNFT is
         _registerUnallocatedPosition(tokenId);
 
         emit UnallocatedFundsAdded(tokenId, stETH, stETHAmount);
+    }
+
+    /**
+     * @notice Allows the owner of a Stabilizer NFT to withdraw unallocated stETH from its associated escrow.
+     * @param tokenId The ID of the stabilizer NFT.
+     * @param stETHAmount The amount of stETH to withdraw.
+     * @dev Calls the withdraw function on the specific StabilizerEscrow contract.
+     */
+    function removeUnallocatedFunds(uint256 tokenId, uint256 stETHAmount) external {
+        require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        require(stETHAmount > 0, "Amount must be positive");
+
+        address escrowAddress = stabilizerEscrows[tokenId];
+        require(escrowAddress != address(0), "Escrow not found");
+
+        // Call the escrow's withdraw function, passing the tokenId
+        IStabilizerEscrow(escrowAddress).withdrawUnallocated(tokenId, stETHAmount);
+
+        // Check if the escrow is now empty and remove from unallocated list if so
+        if (IStabilizerEscrow(escrowAddress).unallocatedStETH() == 0) {
+            _removeFromUnallocatedList(tokenId);
+        }
+
+        emit UnallocatedFundsRemoved(tokenId, stETHAmount, msg.sender); // Emit event with owner as recipient
     }
 
 

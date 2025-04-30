@@ -148,11 +148,11 @@ export function StabilizerEscrowManager({
             await writeContractAsync({
                 address: stabilizerAddress, // Call StabilizerNFT contract
                 abi: stabilizerAbi,
-                functionName: 'removeUnallocatedFunds',
-                args: [BigInt(tokenId), stEthAmount, address as Address]
+                functionName: 'removeUnallocatedFunds', // Call the new function on StabilizerNFT
+                args: [BigInt(tokenId), stEthAmount] // Only tokenId and amount needed
             })
 
-            setSuccess(`Successfully withdrew ${withdrawAmount} stETH from Unallocated Funds for Stabilizer #${tokenId}`)
+            setSuccess(`Successfully withdrew ${withdrawAmount} stETH to owner from Stabilizer #${tokenId}`) // Updated message
             setWithdrawAmount('')
             refetchAllEscrowData() // Use combined refetch
             if (onSuccess) onSuccess() // Notify parent if needed

@@ -23,10 +23,10 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     error TransferFailed();
 
     // --- State Variables ---
-    address public stabilizerNFTContract; // The controller/manager
-    address public stabilizerOwner;       // The beneficiary for withdrawals
-    address public stETH;                 // stETH token contract
-    address public lido;                  // Lido staking pool contract
+    address public immutable stabilizerNFTContract; // The controller/manager - Make immutable
+    // stabilizerOwner removed - Owner is determined dynamically via StabilizerNFT
+    address public immutable stETH;                 // stETH token contract - Make immutable
+    address public immutable lido;                  // Lido staking pool contract - Make immutable
 
     // allocatedStETH state variable removed
 
@@ -45,24 +45,24 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     /**
      * @notice Initializes the escrow contract state.
      * @param _stabilizerNFT The address of the controlling StabilizerNFT contract.
-     * @param _owner The address of the Stabilizer NFT owner.
+     * @param _stabilizerNFT The address of the controlling StabilizerNFT contract.
      * @param _stETH The address of the stETH token.
      * @param _lido The address of the Lido staking pool.
      * @dev Sets immutable addresses. Meant to be called once after clone deployment.
      */
     function initialize( // <-- Renamed from constructor
         address _stabilizerNFT,
-        address _owner,
+        // address _owner, // Removed owner parameter
         address _stETH,
         address _lido
     ) external initializer { // <-- Added initializer modifier
-        if (_stabilizerNFT == address(0) || _owner == address(0) || _stETH == address(0) || _lido == address(0)) {
+        // Check only non-owner addresses
+        if (_stabilizerNFT == address(0) || _stETH == address(0) || _lido == address(0)) {
             revert ZeroAddress();
         }
-        // if (msg.value == 0) revert ZeroAmount(); // Removed check - constructor is not payable
 
         stabilizerNFTContract = _stabilizerNFT;
-        stabilizerOwner = _owner;
+        // stabilizerOwner removed
         stETH = _stETH;
         lido = _lido;
 
@@ -118,18 +118,26 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     // registerUnallocation function removed (Escrow doesn't track allocation state)
 
     /**
-     * @notice Withdraws unallocated stETH to the stabilizer owner.
+     * @notice Withdraws unallocated stETH to the current owner of the associated Stabilizer NFT.
+     * @param tokenId The ID of the Stabilizer NFT this escrow belongs to.
      * @param amount The amount of stETH to withdraw.
-     * @dev Callable only by StabilizerNFT upon request from the stabilizer owner. Checks against total balance.
+     * @dev Callable only by StabilizerNFT. Fetches current owner before transferring. Checks against total balance.
      */
-    function withdrawUnallocated(uint256 amount) external onlyStabilizerNFT {
+    function withdrawUnallocated(uint256 tokenId, uint256 amount) external onlyStabilizerNFT {
         if (amount == 0) revert ZeroAmount();
         uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
-        if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount); // Use standard ERC20 error if possible, or custom
+        if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount);
 
-        // Transfer stETH to the owner
-        bool success = IERC20(stETH).transfer(stabilizerOwner, amount);
+        // Fetch the current owner from the StabilizerNFT contract
+        address currentOwner = IERC721(stabilizerNFTContract).ownerOf(tokenId);
+        if (currentOwner == address(0)) revert ZeroAddress(); // Should not happen if token exists
+
+        // Transfer stETH to the current owner
+        bool success = IERC20(stETH).transfer(currentOwner, amount);
         if (!success) revert TransferFailed();
+
+        // Emit event (optional, could be emitted by StabilizerNFT instead)
+        emit WithdrawalCompleted(currentOwner, amount);
     }
 
     // --- View Functions ---
