@@ -455,7 +455,14 @@ contract USPDTokenTest is Test {
 
         vm.deal(minter, 1 ether);
         vm.prank(minter);
-        vm.expectRevert("Price data is too old"); // Revert from PriceOracle
+        // Expect the custom error from PriceOracle
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PriceOracle.PriceDataTooOld.selector,
+                priceQuery.dataTimestamp, // The timestamp from the query
+                block.timestamp           // The current block timestamp when the check happens
+            )
+        );
         uspdToken.mint{value: 1 ether}(recipient, priceQuery);
     }
 
