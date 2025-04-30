@@ -13,6 +13,7 @@ import { IPriceOracle } from '@/types/contracts'
 // Import necessary ABIs
 import positionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json'
 import ierc20Abi from '@/contracts/out/IERC20.sol/IERC20.json'
+import poolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json' // Add Rate Contract ABI
 
 interface PositionEscrowManagerProps {
     tokenId: number
@@ -36,9 +37,11 @@ export function PositionEscrowManager({
     // Escrow address and data
     const [positionEscrowAddress, setPositionEscrowAddress] = useState<Address | null>(null)
     const [stEthAddress, setStEthAddress] = useState<Address | null>(null)
+    const [rateContractAddress, setRateContractAddress] = useState<Address | null>(null) // Add Rate Contract Address state
     const [allocatedStEthBalance, setAllocatedStEthBalance] = useState<bigint>(BigInt(0))
     const [backedPoolShares, setBackedPoolShares] = useState<bigint>(BigInt(0))
-    const [currentCollateralRatio, setCurrentCollateralRatio] = useState<number>(0) // Ratio * 100
+    const [yieldFactor, setYieldFactor] = useState<bigint>(BigInt(1e18)) // Default to 1e18 (no yield)
+    const [currentCollateralRatio, setCurrentCollateralRatio] = useState<number>(0) // Ratio percentage (e.g., 110.5)
 
     // Price data
     const [priceData, setPriceData] = useState<any>(null)
@@ -61,6 +64,12 @@ export function PositionEscrowManager({
                 abi: stabilizerAbi,
                 functionName: 'stETH',
                 args: [],
+            },
+            { // Add fetch for Rate Contract address
+                address: stabilizerAddress,
+                abi: stabilizerAbi,
+                functionName: 'rateContract', // Assuming this getter exists on StabilizerNFT
+                args: [],
             }
         ],
         query: {
@@ -72,8 +81,10 @@ export function PositionEscrowManager({
     useEffect(() => {
         const fetchedPositionEscrowAddr = addressData?.[0]?.result as Address | null;
         const fetchedStEthAddr = addressData?.[1]?.result as Address | null;
+        const fetchedRateContractAddr = addressData?.[2]?.result as Address | null; // Get Rate Contract address
         if (fetchedPositionEscrowAddr) setPositionEscrowAddress(fetchedPositionEscrowAddr);
         if (fetchedStEthAddr) setStEthAddress(fetchedStEthAddr);
+        if (fetchedRateContractAddr) setRateContractAddress(fetchedRateContractAddr); // Set Rate Contract address
     }, [addressData]);
 
     // --- Fetch Price Data ---
@@ -115,34 +126,32 @@ export function PositionEscrowManager({
                 functionName: 'backedPoolShares',
                 args: [],
             },
-            {
-                address: positionEscrowAddress!,
-                abi: positionEscrowAbi.abi,
-                functionName: 'getCollateralizationRatio',
-                args: priceData ? [BigInt(priceData.price), priceData.decimals] : undefined,
-            },
+            // Removed getCollateralizationRatio call
+            { // Add getYieldFactor call
+                address: rateContractAddress!,
+                abi: poolSharesConversionRateAbi.abi,
+                functionName: 'getYieldFactor',
+                args: [],
+            }
         ],
         query: {
-            enabled: !!positionEscrowAddress && !!stEthAddress, // Only run when addresses are known
+            // Enable when position escrow and rate contract addresses are known
+            enabled: !!positionEscrowAddress && !!stEthAddress && !!rateContractAddress,
         }
     })
 
-    // Update state with fetched Position Escrow data
+    // Update state with fetched Position Escrow data and Yield Factor
     useEffect(() => {
         if (positionEscrowData) {
             setAllocatedStEthBalance(positionEscrowData[0]?.status === 'success' ? positionEscrowData[0].result as bigint : BigInt(0));
             setBackedPoolShares(positionEscrowData[1]?.status === 'success' ? positionEscrowData[1].result as bigint : BigInt(0));
-            if (priceData && positionEscrowData[2]?.status === 'success') {
-                setCurrentCollateralRatio(Number(positionEscrowData[2].result));
-            } else {
-                setCurrentCollateralRatio(0);
-            }
+            setYieldFactor(positionEscrowData[2]?.status === 'success' ? positionEscrowData[2].result as bigint : BigInt(1e18)); // Fetch yield factor
         } else {
             setAllocatedStEthBalance(BigInt(0));
             setBackedPoolShares(BigInt(0));
-            setCurrentCollateralRatio(0);
+            setYieldFactor(BigInt(1e18)); // Reset yield factor
         }
-    }, [positionEscrowData, priceData]);
+    }, [positionEscrowData]); // Remove priceData dependency here
 
     // Combined refetch function for this component
     const refetchAllPositionData = () => {
@@ -325,7 +334,9 @@ export function PositionEscrowManager({
                 <div>
                     <Label>Current Ratio</Label>
                     <p className="text-lg font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? 'Fetching...' : (currentCollateralRatio > 0 ? `${(currentCollateralRatio / 100).toFixed(2)}%` : 'N/A')}
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? 'Fetching...' :
+                         currentCollateralRatio === Infinity ? 'Infinity' :
+                         currentCollateralRatio > 0 ? `${currentCollateralRatio.toFixed(2)}%` : 'N/A'}
                     </p>
                 </div>
                 <div>
@@ -370,8 +381,8 @@ export function PositionEscrowManager({
                 <div className="flex gap-2 mt-1">
                     <Button
                         onClick={handleWithdrawExcess}
-                        // Disable based on current ratio vs 110 (or fetched min ratio if needed later)
-                        disabled={isWithdrawingExcess || isLoadingPrice || currentCollateralRatio <= 11000} // Assuming 110% = 11000 basis points
+                        // Disable based on calculated ratio vs 110%
+                        disabled={isWithdrawingExcess || isLoadingPrice || currentCollateralRatio <= 110}
                         className="whitespace-nowrap h-9 w-full"
                         variant="outline"
                         size="sm"
