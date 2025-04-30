@@ -303,8 +303,17 @@ contract StabilizerEscrowTest is Test {
 
         // Withdraw stETH
         uint256 withdrawAmount = 0.3 ether;
-        vm.prank(stabilizerNFT);
-        escrow.withdrawUnallocated(withdrawAmount);
+        uint256 escrowTokenId = escrow.tokenId(); // Get the escrow's token ID
+
+        // Mock the ownerOf call that withdrawUnallocated will make
+        vm.mockCall(
+            stabilizerNFT, // The mock address being called
+            abi.encodeWithSelector(IERC721.ownerOf.selector, escrowTokenId), // Function selector and args
+            abi.encode(stabilizerOwner) // Return the expected owner
+        );
+
+        vm.prank(stabilizerNFT); // Prank as the NFT contract to allow the call
+        escrow.withdrawUnallocated(withdrawAmount); // Call the function being tested
         assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Unallocated mismatch after withdrawal");
     }
 
