@@ -50,42 +50,43 @@ export function PositionEscrowManager({
     const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
 
-    // --- Fetch PositionEscrow Address and stETH Address ---
-    const { data: addressData, isLoading: isLoadingAddresses, refetch: refetchAddresses } = useReadContracts({
-        contracts: [
-            {
-                address: stabilizerAddress,
-                abi: stabilizerAbi,
-                functionName: 'positionEscrows',
-                args: [BigInt(tokenId)],
-            },
-            {
-                address: stabilizerAddress,
-                abi: stabilizerAbi,
-                functionName: 'stETH',
-                args: [],
-            },
-            { // Add fetch for Rate Contract address
-                address: stabilizerAddress,
-                abi: stabilizerAbi,
-                functionName: 'rateContract', // Assuming this getter exists on StabilizerNFT
-                args: [],
-            }
-        ],
-        query: {
-            enabled: !!stabilizerAddress && !!tokenId,
-        }
+    // --- Fetch Addresses ---
+    const { data: fetchedPositionEscrowAddress, isLoading: isLoadingPositionAddr, refetch: refetchPositionAddr } = useReadContract({
+        address: stabilizerAddress,
+        abi: stabilizerAbi,
+        functionName: 'positionEscrows',
+        args: [BigInt(tokenId)],
+        query: { enabled: !!stabilizerAddress && !!tokenId }
+    })
+
+    const { data: fetchedStEthAddress, isLoading: isLoadingStEthAddr, refetch: refetchStEthAddr } = useReadContract({
+        address: stabilizerAddress,
+        abi: stabilizerAbi,
+        functionName: 'stETH',
+        args: [],
+        query: { enabled: !!stabilizerAddress }
+    })
+
+    const { data: fetchedRateContractAddress, isLoading: isLoadingRateAddr, refetch: refetchRateAddr } = useReadContract({
+        address: stabilizerAddress,
+        abi: stabilizerAbi,
+        functionName: 'rateContract',
+        args: [],
+        query: { enabled: !!stabilizerAddress }
     })
 
     // Update state with fetched addresses
     useEffect(() => {
-        const fetchedPositionEscrowAddr = addressData?.[0]?.result as Address | null;
-        const fetchedStEthAddr = addressData?.[1]?.result as Address | null;
-        const fetchedRateContractAddr = addressData?.[2]?.result as Address | null; // Get Rate Contract address
-        if (fetchedPositionEscrowAddr) setPositionEscrowAddress(fetchedPositionEscrowAddr);
-        if (fetchedStEthAddr) setStEthAddress(fetchedStEthAddr);
-        if (fetchedRateContractAddr) setRateContractAddress(fetchedRateContractAddr); // Set Rate Contract address
-    }, [addressData]);
+        setPositionEscrowAddress(fetchedPositionEscrowAddress as Address | null);
+    }, [fetchedPositionEscrowAddress]);
+
+    useEffect(() => {
+        setStEthAddress(fetchedStEthAddress as Address | null);
+    }, [fetchedStEthAddress]);
+
+    useEffect(() => {
+        setRateContractAddress(fetchedRateContractAddress as Address | null);
+    }, [fetchedRateContractAddress]);
 
     // --- Fetch Price Data ---
     const fetchPriceData = async () => {
@@ -114,28 +115,27 @@ export function PositionEscrowManager({
     const { data: positionEscrowData, isLoading: isLoadingPositionEscrowData, refetch: refetchPositionEscrowData } = useReadContracts({
         allowFailure: true,
         contracts: [
-            {
-                address: positionEscrowAddress!,
+            { // Fetch stETH balance of PositionEscrow
+                address: stEthAddress!, // Use stEthAddress state variable for the contract to call
                 abi: ierc20Abi.abi,
                 functionName: 'balanceOf',
-                args: [positionEscrowAddress!],
+                args: [positionEscrowAddress!], // Pass positionEscrowAddress state variable as argument
             },
-            {
-                address: positionEscrowAddress!,
+            { // Fetch backed shares from PositionEscrow
+                address: positionEscrowAddress!, // Use positionEscrowAddress state variable
                 abi: positionEscrowAbi.abi,
                 functionName: 'backedPoolShares',
                 args: [],
             },
-            // Removed getCollateralizationRatio call
-            { // Add getYieldFactor call
-                address: rateContractAddress!,
+            { // Fetch yield factor from RateContract
+                address: rateContractAddress!, // Use rateContractAddress state variable
                 abi: poolSharesConversionRateAbi.abi,
                 functionName: 'getYieldFactor',
                 args: [],
             }
         ],
         query: {
-            // Enable when position escrow and rate contract addresses are known
+            // Enable only when all necessary addresses are available in state
             enabled: !!positionEscrowAddress && !!stEthAddress && !!rateContractAddress,
         }
     })
@@ -198,8 +198,10 @@ export function PositionEscrowManager({
 
     // Combined refetch function for this component
     const refetchAllPositionData = () => {
-        refetchAddresses(); // Refetch escrow/steth addresses
-        refetchPositionEscrowData();
+        refetchPositionAddr(); // Refetch position escrow address
+        refetchStEthAddr();    // Refetch stETH address
+        refetchRateAddr();    // Refetch rate contract address
+        refetchPositionEscrowData(); // Refetch balance/shares/yield
         fetchPriceData();
         // onSuccess call removed
     }
@@ -352,9 +354,11 @@ export function PositionEscrowManager({
         }
     }
 
-    const isLoading = isLoadingAddresses || isLoadingPositionEscrowData || isLoadingPrice;
+    // Update loading check to include individual address loading states
+    const isLoading = isLoadingPositionAddr || isLoadingStEthAddr || isLoadingRateAddr || isLoadingPositionEscrowData || isLoadingPrice;
 
-    if (isLoading && !positionEscrowAddress) {
+    // Show loading if addresses are loading OR if data is loading after addresses are known
+    if (isLoadingPositionAddr || isLoadingStEthAddr || isLoadingRateAddr || (isLoadingPositionEscrowData && !!positionEscrowAddress)) {
         return <div className="p-4 border rounded-lg"><p>Loading position data...</p></div>;
     }
 
