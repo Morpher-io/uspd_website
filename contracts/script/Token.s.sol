@@ -26,6 +26,8 @@ contract DeployScript is Script {
     uint256 chainId;
     string deploymentPath;
 
+    address oracleSignerAddress = 0x00051CeA64B7aA576421E2b5AC0852f1d7E14Fa5;
+
     function generateSalt(string memory identifier) internal view returns (bytes32) {
         bytes32 salt = bytes32(uint256(uint160(deployer)) << 96);
         bytes32 identifierHash = bytes32(uint256(keccak256(abi.encodePacked(identifier))));
@@ -510,7 +512,8 @@ contract DeployScript is Script {
         console2.log("Granting Oracle roles...");
         PriceOracle oracle = PriceOracle(oracleProxyAddress);
         oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
-        oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
+        // oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
+        oracle.grantRole(oracle.SIGNER_ROLE(), oracleSignerAddress); // Oracle Signer Role
 
         // Grant roles to the StabilizerNFT
         console2.log("Granting StabilizerNFT roles...");
@@ -544,7 +547,7 @@ contract DeployScript is Script {
         console2.log("Granting Oracle roles...");
         PriceOracle oracle = PriceOracle(oracleProxyAddress);
         oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
-        oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
+        oracle.grantRole(oracle.SIGNER_ROLE(), oracleSignerAddress); // Assuming deployer is initial signer
 
         // Grant roles to the cUSPDToken
         console2.log("Granting cUSPDToken (bridged) roles...");

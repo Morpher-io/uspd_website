@@ -12,12 +12,13 @@ export default function StabilizerOverview() {
 
     if (!isConnected) {
         return (
-            
+            <div className='mt-4'>
                 <Alert>
                     <AlertDescription className='text-center'>
                         Please connect your wallet to view your Stabilizer NFTs
                     </AlertDescription>
                 </Alert>
+            </div>
         )
     }
 

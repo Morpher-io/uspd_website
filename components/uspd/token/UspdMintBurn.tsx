@@ -19,7 +19,7 @@ export default function UspdMintBurn() {
 
     if (!isConnected) {
         return (
-            <div className="container flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center">
                 <Alert>
                     <AlertDescription className='text-center'>
                         Please connect your wallet to mint or burn USPD
@@ -34,8 +34,8 @@ export default function UspdMintBurn() {
     // import cuspdTokenJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
 
     return (
-        <div className="mt-4 mx-auto container flex flex-col items-center gap-10 pb-28 pt-10 sm:gap-14">
-            <Card className="w-full max-w-[400px]">
+        <div className="mt-4 w-full flex flex-col items-center gap-10 pb-28 pt-10 sm:gap-14">
+            <Card className="w-full">
                 <CardContent className="pt-6">
                     <Tabs defaultValue="mint" value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -44,7 +44,7 @@ export default function UspdMintBurn() {
                         </TabsList>
 
                         {/* Load USPDToken address (for balances) */}
-                        <ContractLoader contractKey="token">
+                        <ContractLoader contractKey="uspdToken">
                             {(uspdTokenAddress) => (
                                 <>
                                     <TabsContent value="mint">

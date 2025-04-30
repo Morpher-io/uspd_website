@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useReadContracts } from 'wagmi' // Keep for fetching min ratio
 
 // Import the sub-components
 import { StabilizerEscrowManager } from './StabilizerEscrowManager'
 import { PositionEscrowManager } from './PositionEscrowManager' // Import the new component
+import CollateralRatioSlider from "./CollateralRatioSlider"
 
 interface StabilizerNFTItemProps {
   tokenId: number
@@ -17,13 +17,24 @@ export function StabilizerNFTItem({
   stabilizerAbi
 }: StabilizerNFTItemProps) {
 
-  // Remove fetching of minCollateralRatio here
+  // // Remove fetching of minCollateralRatio here
 
-  // --- Loading State ---
-  // No loading state needed here anymore unless fetching other NFT-level data later
-  // const isLoading = false; // Or remove if not needed
+  // // --- Loading State ---
+  // // No loading state needed here anymore unless fetching other NFT-level data later
+  // // const isLoading = false; // Or remove if not needed
 
-  // if (isLoading) { // Remove loading check or adjust
+  // // if (isLoading) { // Remove loading check or adjust
+  // //   return (
+  // //     <Card className="w-full ">
+  // //       <CardHeader>
+  // //         <CardTitle>Stabilizer #{tokenId}</CardTitle>
+  // //       </CardHeader>
+  // //       <CardContent>
+  // //         <p>Loading stabilizer data...</p>
+  // //       </CardContent>
+  // //     </Card>
+  // //   )
+  // // }
   //   return (
   //     <Card className="w-full ">
   //       <CardHeader>
@@ -35,17 +46,6 @@ export function StabilizerNFTItem({
   //     </Card>
   //   )
   // }
-    return (
-      <Card className="w-full ">
-        <CardHeader>
-          <CardTitle>Stabilizer #{tokenId}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>Loading stabilizer data...</p>
-        </CardContent>
-      </Card>
-    )
-  }
 
   return (
     <Card className="w-full ">

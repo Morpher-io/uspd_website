@@ -5,9 +5,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract, useAccount, useReadContracts, useWatchContractEvent } from 'wagmi' // Import useWatchContractEvent
+import { useWriteContract, useAccount, useReadContracts, useWatchContractEvent, useReadContract } from 'wagmi' // Import useWatchContractEvent
 import { parseEther, formatEther, formatUnits, Address } from 'viem'
-import CollateralRatioSlider from './CollateralRatioSlider'
 import { IPriceOracle } from '@/types/contracts'
 
 // Import necessary ABIs

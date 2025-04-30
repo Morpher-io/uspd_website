@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol"; // <-- Import Initializable
 import "./interfaces/ILido.sol";
 import "./interfaces/IStabilizerEscrow.sol";
@@ -23,11 +24,11 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     error TransferFailed();
 
     // --- State Variables ---
-    address public immutable stabilizerNFTContract; // The controller/manager - Make immutable
-    uint256 public immutable tokenId;             // The ID of the NFT this escrow belongs to
+    address public stabilizerNFTContract; // The controller/manager - Make immutable
+    uint256 public tokenId;             // The ID of the NFT this escrow belongs to
     // stabilizerOwner removed - Owner is determined dynamically via StabilizerNFT
-    address public immutable stETH;                 // stETH token contract - Make immutable
-    address public immutable lido;                  // Lido staking pool contract - Make immutable
+    address public stETH;                 // stETH token contract - Make immutable
+    address public lido;                  // Lido staking pool contract - Make immutable
 
     // allocatedStETH state variable removed
 
@@ -127,7 +128,7 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
      * @param amount The amount of stETH to withdraw.
      * @dev Callable only by StabilizerNFT. Uses stored `tokenId` to fetch current owner. Checks against total balance.
      */
-    function withdrawUnallocated(/* uint256 tokenId removed */ uint256 amount) external onlyStabilizerNFT {
+    function withdrawUnallocated(uint256 amount) external onlyStabilizerNFT {
         if (amount == 0) revert ZeroAmount();
         uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
         if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount);
@@ -154,6 +155,11 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     function unallocatedStETH() external view override returns (uint256) {
         return IERC20(stETH).balanceOf(address(this));
     }
+
+    function stabilizerOwner() external view returns (address) {
+        return IERC721(stabilizerNFTContract).ownerOf(tokenId);
+    }
+
 
     // --- Fallback ---
     // Accept ETH transfers directly (e.g., if StabilizerNFT sends back ETH during unallocation)

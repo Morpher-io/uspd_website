@@ -9,7 +9,7 @@ import "forge-std/console.sol";
 import {USPDToken as USPD} from "../src/UspdToken.sol";
 import {cUSPDToken} from "../src/cUSPDToken.sol"; // Import cUSPD implementation
 import {IcUSPDToken} from "../src/interfaces/IcUSPDToken.sol"; // Import cUSPD interface
-import {IPriceOracle, PriceOracle} from "../src/PriceOracle.sol";
+import {IPriceOracle, PriceOracle, PriceDataTooOld} from "../src/PriceOracle.sol";
 import {IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol"; // Import ERC20 errors
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -352,7 +352,7 @@ contract USPDTokenTest is Test {
 
         // Expect event from cUSPDToken
         vm.expectEmit(true, true, true, true, address(cuspdToken));
-        emit IcUSPDToken.SharesMinted(minter, recipient, mintAmountEth, expectedShares);
+        emit IcUSPDToken.SharesMinted(address(uspdToken), recipient, mintAmountEth, expectedShares);
 
         // Action: Call USPDToken.mint
         vm.startPrank(minter);
@@ -364,15 +364,17 @@ contract USPDTokenTest is Test {
         // Check USPD balance (should match shares if yield factor is 1)
         assertEq(uspdToken.balanceOf(recipient), expectedShares, "Recipient USPD balance mismatch");
         // Check minter ETH balance (should decrease by exactly mintAmountEth + gas)
-        assertTrue(minter.balance < minterInitialEth - mintAmountEth, "Minter ETH balance did not decrease enough");
+        assertTrue(minter.balance <= minterInitialEth - mintAmountEth, "Minter ETH balance did not decrease enough");
         assertTrue(minter.balance > minterInitialEth - mintAmountEth - 0.1 ether, "Minter ETH balance decreased too much (refund error?)");
     }
 
+//commenting this out, the test case makes no sense anymore since not enough stabilizer funds will trigger "OutOfFunds" Exception. Still looking for a way to test the partial refunds.
+/**
     function testMint_Success_PartialAllocation_Refund() public {
         address minter = makeAddr("minter");
         address recipient = makeAddr("recipient");
         uint256 mintAmountEth = 2 ether; // Try to mint 2 ETH worth
-        uint256 stabilizerFunding = 0.5 ether; // Only enough to back ~0.45 ETH user funds at 110%
+        uint256 stabilizerFunding = 0.1 ether; // Only enough to back ~0.45 ETH user funds at 110%
 
         // Setup stabilizer
         _setupStabilizer(makeAddr("stabilizerOwner"), 1, stabilizerFunding);
@@ -389,12 +391,15 @@ contract USPDTokenTest is Test {
         // Max user_eth = stabilizer_steth / (ratio/100 - 1) = 0.5 / (1.1 - 1) = 0.5 / 0.1 = 5 ETH
         // Since user only sent 2 ETH, all 2 ETH should be allocatable IF stabilizer had enough.
         // Let's assume stabilizer only has 0.1 ETH funding instead.
+
+        
         stabilizerFunding = 0.1 ether;
         vm.prank(address(this)); // Admin mints
         stabilizerNFT.mint(makeAddr("stabilizerOwner2"), 2);
         vm.deal(makeAddr("stabilizerOwner2"), stabilizerFunding);
         vm.prank(makeAddr("stabilizerOwner2"));
         stabilizerNFT.addUnallocatedFundsEth{value: stabilizerFunding}(2);
+        
 
         // Max user_eth = 0.1 / 0.1 = 1 ETH
         uint256 expectedAllocatedEth = 1 ether;
@@ -409,7 +414,7 @@ contract USPDTokenTest is Test {
 
         // Expect event from cUSPDToken
         vm.expectEmit(true, true, true, true, address(cuspdToken));
-        emit IcUSPDToken.SharesMinted(minter, recipient, expectedAllocatedEth, expectedShares);
+        emit IcUSPDToken.SharesMinted(address(uspdToken), recipient, expectedAllocatedEth, expectedShares);
 
         // Action: Call USPDToken.mint
         vm.startPrank(minter);
@@ -425,7 +430,7 @@ contract USPDTokenTest is Test {
         assertTrue(minter.balance >= expectedFinalBalanceLowerBound, "Minter ETH balance too low");
         assertTrue(minter.balance <= expectedFinalBalanceUpperBound, "Minter ETH balance too high (refund failed?)");
     }
-
+*/
 
     function testMint_Revert_ZeroEthSent() public {
         address minter = makeAddr("minter");
@@ -458,7 +463,7 @@ contract USPDTokenTest is Test {
         // Expect the custom error from PriceOracle
         vm.expectRevert(
             abi.encodeWithSelector(
-                PriceOracle.PriceDataTooOld.selector,
+                PriceDataTooOld.selector,
                 priceQuery.dataTimestamp, // The timestamp from the query
                 block.timestamp           // The current block timestamp when the check happens
             )

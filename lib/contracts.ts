@@ -42,9 +42,6 @@ export async function getContractAddresses(chainId: number): Promise<Record<stri
   if (!deploymentInfo) return null;
   
   return {
-    oracle: deploymentInfo.contracts.oracle,
-    positionNFT: deploymentInfo.contracts.positionNFT,
-    stabilizer: deploymentInfo.contracts.stabilizer,
-    token: deploymentInfo.contracts.token
+    ...deploymentInfo.contracts
   };
 }

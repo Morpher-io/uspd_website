@@ -37,7 +37,7 @@ export function MintWidget({ tokenAddress, tokenAbi }: MintWidgetProps) {
         address: tokenAddress,
         abi: tokenAbi,
         functionName: 'balanceOf',
-        args: [address],
+        args: [address as `0x${string}`],
         query: { enabled: !!address }
     })
 

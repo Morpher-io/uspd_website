@@ -321,7 +321,7 @@ contract StabilizerNFTTest is Test {
             stabilizerEscrow.stabilizerOwner(), // Use stabilizerEscrow variable
             expectedOwner,
             "StabilizerEscrow owner mismatch" // Updated message - REMOVE THIS CHECK
-        ); */
+        ); 
         assertEq(
             stabilizerEscrow.stabilizerNFTContract(), // Use stabilizerEscrow variable
             address(stabilizerNFT),

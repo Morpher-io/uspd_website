@@ -13,19 +13,22 @@ import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol
 import "../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-
 import "forge-std/console.sol";
 
 error PriceDataTooOld(uint timestamp, uint currentTime);
-error PriceDeviationTooHigh(uint morpherPrice, uint chainlinkPrice, uint uniswapPrice);
+error PriceDeviationTooHigh(
+    uint morpherPrice,
+    uint chainlinkPrice,
+    uint uniswapPrice
+);
 error InvalidSignature();
 error OraclePaused();
 error InvalidDecimals(uint8 expected, uint8 actual);
 error PriceSourceUnavailable(string source);
 
-contract PriceOracle is 
+contract PriceOracle is
     IPriceOracle,
-    Initializable, 
+    Initializable,
     PausableUpgradeable,
     AccessControlUpgradeable
 {
@@ -37,24 +40,21 @@ contract PriceOracle is
     struct PriceConfig {
         uint256 maxPriceDeviation;
         uint256 priceStalenessPeriod;
-
     }
 
     // Storage variables
     address public usdcAddress;
     address public priceProvider;
-    
+
     PriceConfig public config;
-    
+
     bytes32 public constant PRICE_FEED_ETH_USD = keccak256("MORPHER:ETH_USD");
 
     // Mappings
     mapping(bytes32 => PriceResponse) public lastPrices;
 
-   
     IUniswapV2Router02 public uniswapRouter;
     AggregatorV3Interface internal dataFeed;
-
 
     //chainlink aggregator: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
     //uniswapRouter02: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
@@ -86,19 +86,15 @@ contract PriceOracle is
 
         config.maxPriceDeviation = _maxPriceDeviation;
         config.priceStalenessPeriod = _priceStalenessPeriod;
-        
+
         usdcAddress = _usdcAddress;
         uniswapRouter = IUniswapV2Router02(_uniswapRouter);
         dataFeed = AggregatorV3Interface(_chainlinkAggregator);
     }
 
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(AccessControlUpgradeable)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(AccessControlUpgradeable) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 
@@ -154,12 +150,7 @@ contract PriceOracle is
     ) public pure returns (address) {
         // Recreate the message hash that was signed
         bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                price,
-                decimals,
-                timestamp,
-                assetPair
-            )
+            abi.encodePacked(price, decimals, timestamp, assetPair)
         );
 
         // Prefix the hash with Ethereum Signed Message
@@ -167,52 +158,81 @@ contract PriceOracle is
             abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
         );
 
-      
         address signer = ECDSA.recover(prefixedHash, signature);
         require(signer != address(0), "Invalid signature");
         return signer;
     }
 
-    function attestationService(PriceAttestationQuery calldata priceQuery) public payable returns (PriceResponse memory) {
-        
+    function attestationService(
+        PriceAttestationQuery calldata priceQuery
+    ) public payable returns (PriceResponse memory) {
         //custom error message
         if (paused()) {
             revert OraclePaused();
         }
 
-        address signer = verifySignature(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp, priceQuery.assetPair, priceQuery.signature);
+        address signer = verifySignature(
+            priceQuery.price,
+            priceQuery.decimals,
+            priceQuery.dataTimestamp,
+            priceQuery.assetPair,
+            priceQuery.signature
+        );
 
         if (!hasRole(SIGNER_ROLE, signer)) {
             revert InvalidSignature();
         }
-        
+
         if (priceQuery.decimals != 18) {
             revert InvalidDecimals(18, priceQuery.decimals);
         }
 
-
         // Check timestamp staleness
-        if (priceQuery.dataTimestamp <= 1000 * (block.timestamp - config.priceStalenessPeriod)) {
+        if (
+            priceQuery.dataTimestamp <=
+            1000 * (block.timestamp - config.priceStalenessPeriod)
+        ) {
             revert PriceDataTooOld(priceQuery.dataTimestamp, block.timestamp);
         }
 
-        // Get prices from other sources
-        uint256 chainlinkPrice = uint256(getChainlinkDataFeedLatestAnswer());
-        if (chainlinkPrice == 0) {
-            revert PriceSourceUnavailable("Chainlink");
+        if (block.chainid == 1) {
+            // use the attestation service from other sources if we do allocation/deallocation and mint/burn, otherwise just take the price for granted we get from backend.
+
+            // Get prices from other sources
+            uint256 chainlinkPrice = uint256(
+                getChainlinkDataFeedLatestAnswer()
+            );
+            if (chainlinkPrice == 0) {
+                revert PriceSourceUnavailable("Chainlink");
+            }
+
+            uint256 uniswapV3Price = getUniswapV3WethUsdcPrice();
+            if (uniswapV3Price == 0) {
+                revert PriceSourceUnavailable("Uniswap V3");
+            }
+
+            // Check price deviations
+            if (
+                !_isPriceDeviationAcceptable(
+                    priceQuery.price,
+                    chainlinkPrice,
+                    uniswapV3Price
+                )
+            ) {
+                revert PriceDeviationTooHigh(
+                    priceQuery.price,
+                    chainlinkPrice,
+                    uniswapV3Price
+                );
+            }
         }
 
-        uint256 uniswapV3Price = getUniswapV3WethUsdcPrice();
-        if (uniswapV3Price == 0) {
-            revert PriceSourceUnavailable("Uniswap V3");
-        }
-      
-        // Check price deviations
-        if (!_isPriceDeviationAcceptable(priceQuery.price, chainlinkPrice, uniswapV3Price)) {
-            revert PriceDeviationTooHigh(priceQuery.price, chainlinkPrice, uniswapV3Price);
-        }
-
-        return PriceResponse(priceQuery.price, priceQuery.decimals, priceQuery.dataTimestamp);
+        return
+            PriceResponse(
+                priceQuery.price,
+                priceQuery.decimals,
+                priceQuery.dataTimestamp
+            );
     }
 
     function _isPriceDeviationAcceptable(
@@ -221,7 +241,8 @@ contract PriceOracle is
         uint256 uniswapPrice
     ) internal view returns (bool) {
         // Calculate max allowed deviation
-        uint256 maxDeviation = (morpherPrice * config.maxPriceDeviation) / 10000;
+        uint256 maxDeviation = (morpherPrice * config.maxPriceDeviation) /
+            10000;
 
         // Check deviation between Morpher and Chainlink
         if (
@@ -250,7 +271,9 @@ contract PriceOracle is
         _unpause();
     }
 
-    function setMaxDeviationPercentage(uint256 _maxDeviationPercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMaxDeviationPercentage(
+        uint256 _maxDeviationPercentage
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         config.maxPriceDeviation = _maxDeviationPercentage;
     }
 }
