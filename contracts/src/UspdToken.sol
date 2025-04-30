@@ -49,7 +49,31 @@ contract USPDToken is
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
-    // --- Core Logic (Mint/Burn Removed) ---
+    // --- Core Logic ---
+
+    /**
+     * @notice Mints USPD by providing ETH collateral.
+     * @param to The address to receive the minted USPD (via underlying cUSPD shares).
+     * @param priceQuery The signed price attestation for the current ETH price.
+     * @dev Forwards the call and ETH to the cUSPDToken contract's mintShares function.
+     *      Refunds any leftover ETH back to the original caller (msg.sender).
+     */
+    function mint(
+        address to,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external payable {
+        require(to != address(0), "USPD: Mint to zero address");
+        require(address(cuspdToken) != address(0), "USPD: cUSPD address not set");
+
+        // Forward the call and value to cUSPDToken.mintShares
+        uint256 leftoverEth = cuspdToken.mintShares{value: msg.value}(to, priceQuery);
+
+        // Refund any leftover ETH to the original caller
+        if (leftoverEth > 0) {
+            payable(msg.sender).transfer(leftoverEth);
+        }
+        // Note: SharesMinted event is emitted by cUSPDToken
+    }
 
     // --- ERC20 Overrides ---
 

@@ -23,9 +23,35 @@ interface IcUSPDToken is IERC20 {
     );
     event Payout(address indexed to, uint256 sharesBurned, uint256 stEthAmount, uint256 price);
 
-    /**
-     * @notice Returns the address of the PriceOracle contract used by cUSPD.
-     */
-    function oracle() external view returns (address);
+    // --- Functions ---
+    // Standard ERC20 functions (balanceOf, totalSupply, transfer, allowance, approve, transferFrom) are inherited via IERC20
 
+    /**
+     * @notice Mints cUSPD shares by providing ETH collateral.
+     * @param to The address to receive the minted cUSPD shares.
+     * @param priceQuery The signed price attestation for the current ETH price.
+     * @return leftoverEth The amount of ETH sent by the user that was not allocated.
+     */
+    function mintShares(
+        address to,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external payable returns (uint256 leftoverEth); // Add return value
+
+    /**
+     * @notice Burns cUSPD shares to redeem underlying collateral (stETH).
+     * @param sharesAmount The amount of cUSPD shares to burn.
+     * @param to The address to receive the redeemed stETH.
+     * @param priceQuery The signed price attestation for the current ETH price.
+     * @return unallocatedStEthReturned The amount of stETH returned to the recipient.
+     */
+    function burnShares(
+        uint256 sharesAmount,
+        address payable to,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external returns (uint256 unallocatedStEthReturned);
+
+    // --- Optional: Add getters if needed by USPDToken or others ---
+    function oracle() external view returns (IPriceOracle);
+    function stabilizer() external view returns (IStabilizerNFT);
+    function rateContract() external view returns (IPoolSharesConversionRate);
 }

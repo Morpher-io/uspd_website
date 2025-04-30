@@ -84,7 +84,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     function mintShares(
         address to,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) external payable {
+    ) external payable returns (uint256 leftoverEth) { // Add return value
         require(msg.value > 0, "cUSPD: Must send ETH to mint");
         require(to != address(0), "cUSPD: Mint to zero address");
 
@@ -126,11 +126,10 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
             emit SharesMinted(msg.sender, to, result.allocatedEth, actualPoolSharesMinted);
         }
 
-        // 7. Return leftover ETH to the original caller (minter)
-        uint256 leftover = msg.value - result.allocatedEth;
-        if (leftover > 0) {
-            payable(msg.sender).transfer(leftover);
-        }
+        // 7. Calculate leftover ETH and return it
+        leftoverEth = msg.value - result.allocatedEth;
+        // Removed direct transfer: if (leftoverEth > 0) { payable(msg.sender).transfer(leftoverEth); }
+        // The caller (USPDToken) will handle the refund.
     }
 
     /**
