@@ -124,12 +124,12 @@ export function MintWidget({ tokenAddress, tokenAbi }: MintWidgetProps) {
 
             const ethValue = parseEther(ethAmount)
 
-            // TODO: Update functionName and args for the new cUSPDToken mint function
+            // Call the mint function on the USPDToken contract
             await writeContractAsync({
-                address: tokenAddress, // Should this be cUSPDToken address?
-                abi: tokenAbi, // Should this be cUSPDToken ABI?
-                functionName: 'mintShares', // Assuming this is the function on cUSPDToken
-                args: [address, priceQuery], // Adjust args as needed
+                address: tokenAddress, // Use the USPDToken address passed in props
+                abi: tokenAbi, // Use the USPDToken ABI passed in props
+                functionName: 'mint', // Call the mint function on USPDToken
+                args: [address, priceQuery], // Pass recipient (self) and price query
                 value: ethValue
             })
 
