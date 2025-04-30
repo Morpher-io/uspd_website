@@ -1,52 +1,53 @@
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract, useAccount, useReadContracts, useBalance } from 'wagmi'
+import { useWriteContract, useAccount, useReadContracts } from 'wagmi' // Removed useBalance
 import { parseEther, formatEther, formatUnits, Address } from 'viem'
 import CollateralRatioSlider from './CollateralRatioSlider'
-import { ContractLoader } from '@/components/uspd/common/ContractLoader' // For stETH address
-import { IPriceOracle } from '@/types/contracts' // For PriceAttestationQueryStruct
-import useDebounce from '@/components/utils/debounce' // If needed for calculations
+// import { ContractLoader } from '@/components/uspd/common/ContractLoader' // No longer needed here
+import { IPriceOracle } from '@/types/contracts'
+// import useDebounce from '@/components/utils/debounce' // No longer needed here
 
 // Import necessary ABIs
-import stabilizerEscrowAbi from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json'
+// stabilizerEscrowAbi no longer needed here
 import positionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json'
 import ierc20Abi from '@/contracts/out/IERC20.sol/IERC20.json'
-// Assuming PriceOracle ABI is available or import path needs adjustment
-// import priceOracleAbi from '@/contracts/out/PriceOracle.sol/PriceOracle.json' 
+// import priceOracleAbi from '@/contracts/out/PriceOracle.sol/PriceOracle.json'
+
+// Import the new component
+import { StabilizerEscrowManager } from './StabilizerEscrowManager'
 
 interface StabilizerNFTItemProps {
   tokenId: number
   stabilizerAddress: `0x${string}`
   stabilizerAbi: any
-  onSuccess?: () => void
+  onSuccess?: () => void // This might need refinement - maybe pass separate callbacks?
 }
 
 export function StabilizerNFTItem({
   tokenId,
   stabilizerAddress,
   stabilizerAbi,
-  onSuccess
+  onSuccess // Keep for now, might pass down to sub-components or handle differently
 }: StabilizerNFTItemProps) {
-  const [addAmount, setAddAmount] = useState<string>('')
-  const [withdrawAmount, setWithdrawAmount] = useState<string>('')
+  // Removed state related to StabilizerEscrow: addAmount, withdrawAmount, isAddingFunds, isWithdrawingFunds
+  // Keep general error/success for PositionEscrow actions for now, or move them too
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [isAddingFunds, setIsAddingFunds] = useState(false) // For unallocated
-  const [isWithdrawingFunds, setIsWithdrawingFunds] = useState(false) // For unallocated
+  const [isAddingDirectCollateral, setIsAddingDirectCollateral] = useState(false)
   const [isAddingDirectCollateral, setIsAddingDirectCollateral] = useState(false)
   const [isWithdrawingExcess, setIsWithdrawingExcess] = useState(false)
   const [addDirectAmount, setAddDirectAmount] = useState<string>('')
-  const [withdrawExcessAmount, setWithdrawExcessAmount] = useState<string>('') // Or maybe just trigger max withdrawal
+  // const [withdrawExcessAmount, setWithdrawExcessAmount] = useState<string>('') // Keep commented if withdrawing max
 
-  // Escrow addresses and data
-  const [stabilizerEscrowAddress, setStabilizerEscrowAddress] = useState<Address | null>(null)
+  // Escrow addresses and data - Remove StabilizerEscrow related
+  // const [stabilizerEscrowAddress, setStabilizerEscrowAddress] = useState<Address | null>(null)
   const [positionEscrowAddress, setPositionEscrowAddress] = useState<Address | null>(null)
   const [stEthAddress, setStEthAddress] = useState<Address | null>(null)
-  const [unallocatedStEthBalance, setUnallocatedStEthBalance] = useState<bigint>(BigInt(0))
+  // const [unallocatedStEthBalance, setUnallocatedStEthBalance] = useState<bigint>(BigInt(0)) // Removed
   const [allocatedStEthBalance, setAllocatedStEthBalance] = useState<bigint>(BigInt(0))
   const [backedPoolShares, setBackedPoolShares] = useState<bigint>(BigInt(0))
   const [currentCollateralRatio, setCurrentCollateralRatio] = useState<number>(0) // Ratio * 100
@@ -58,7 +59,7 @@ export function StabilizerNFTItem({
   const { address } = useAccount()
   const { writeContractAsync } = useWriteContract()
 
-  // Fetch StabilizerNFT specific data (min ratio)
+  // Fetch StabilizerNFT specific data (min ratio, PositionEscrow address, stETH address)
   const { data: nftData, isLoading: isLoadingNftData, refetch: refetchNftData } = useReadContracts({
     contracts: [
       {
@@ -67,12 +68,7 @@ export function StabilizerNFTItem({
         functionName: 'minCollateralRatio', // Fetch min ratio
         args: [BigInt(tokenId)],
       },
-      {
-        address: stabilizerAddress,
-        abi: stabilizerAbi,
-        functionName: 'getStabilizerEscrow', // Fetch StabilizerEscrow address
-        args: [BigInt(tokenId)],
-      },
+      // Removed fetch for StabilizerEscrow address
       {
         address: stabilizerAddress,
         abi: stabilizerAbi,
@@ -92,17 +88,17 @@ export function StabilizerNFTItem({
   })
 
   // Extract NFT data
-  const minCollateralRatio = nftData?.[0]?.result ? Number(nftData[0].result) : 110; // Default or fetched
-  const fetchedStabilizerEscrowAddress = nftData?.[1]?.result as Address | null;
-  const fetchedPositionEscrowAddress = nftData?.[2]?.result as Address | null;
-  const fetchedStEthAddress = nftData?.[3]?.result as Address | null;
+  const minCollateralRatio = nftData?.[0]?.result ? Number(nftData[0].result) : 110; // Index 0
+  // StabilizerEscrow address was index 1
+  const fetchedPositionEscrowAddress = nftData?.[1]?.result as Address | null; // Now index 1
+  const fetchedStEthAddress = nftData?.[2]?.result as Address | null; // Now index 2
 
   // Update state with fetched addresses
   useEffect(() => {
-    if (fetchedStabilizerEscrowAddress) setStabilizerEscrowAddress(fetchedStabilizerEscrowAddress);
+    // Removed StabilizerEscrow address update
     if (fetchedPositionEscrowAddress) setPositionEscrowAddress(fetchedPositionEscrowAddress);
     if (fetchedStEthAddress) setStEthAddress(fetchedStEthAddress);
-  }, [fetchedStabilizerEscrowAddress, fetchedPositionEscrowAddress, fetchedStEthAddress]);
+  }, [fetchedPositionEscrowAddress, fetchedStEthAddress]); // Removed StabilizerEscrow address dependency
 
   // --- Fetch Price Data ---
   const fetchPriceData = async () => {
@@ -130,78 +126,73 @@ export function StabilizerNFTItem({
     // return () => clearInterval(interval);
   }, []) // Fetch on mount
 
-  // --- Fetch Escrow Data ---
-  const { data: escrowData, isLoading: isLoadingEscrowData, refetch: refetchEscrowData } = useReadContracts({
-    allowFailure: true, // Allow individual calls to fail without breaking the whole hook
+  // --- Fetch Position Escrow Data ---
+  const { data: positionEscrowData, isLoading: isLoadingPositionEscrowData, refetch: refetchPositionEscrowData } = useReadContracts({
+    allowFailure: true,
     contracts: [
-      // Stabilizer Escrow Balance (using specific function)
+      // Position Escrow Balance (uses IERC20)
       {
-        address: stabilizerEscrowAddress!,
-        abi: stabilizerEscrowAbi.abi, // Use StabilizerEscrow ABI
-        functionName: 'unallocatedStETH', // Call the specific function
-        args: [], // No arguments needed
-      },
-      // Position Escrow Balance (still uses IERC20)
-      {
-        address: positionEscrowAddress!,
+        address: positionEscrowAddress!, // Use state variable
         abi: ierc20Abi.abi,
         functionName: 'balanceOf',
-        args: [positionEscrowAddress!], // Balance of itself
+        abi: ierc20Abi.abi,
+        functionName: 'balanceOf',
+        args: [positionEscrowAddress!],
       },
       // Position Escrow Backed Shares
       {
-        address: positionEscrowAddress!,
+        address: positionEscrowAddress!, // Use state variable
+        abi: positionEscrowAbi.abi,
+        functionName: 'backedPoolShares',
         abi: positionEscrowAbi.abi,
         functionName: 'backedPoolShares',
         args: [],
       },
       // Position Escrow Current Ratio (requires price data)
       {
-        address: positionEscrowAddress!,
+        address: positionEscrowAddress!, // Use state variable
         abi: positionEscrowAbi.abi,
         functionName: 'getCollateralizationRatio',
         args: priceData ? [BigInt(priceData.price), priceData.decimals] : undefined, // Pass price data if available
       },
     ],
     query: {
-      // Only run when addresses are available. Price data is only needed for ratio.
-      enabled: !!stabilizerEscrowAddress && !!positionEscrowAddress && !!stEthAddress, 
-      // We will handle the ratio calculation potentially being undefined if priceData is missing later in the component
+      // Only run when position escrow address is available. Price data needed for ratio.
+      enabled: !!positionEscrowAddress && !!stEthAddress,
     }
   })
 
-  // Update state with fetched escrow data
+  // Update state with fetched Position Escrow data
   useEffect(() => {
-    if (escrowData) {
-      setUnallocatedStEthBalance(escrowData[0]?.status === 'success' ? escrowData[0].result as bigint : BigInt(0));
-      setAllocatedStEthBalance(escrowData[1]?.status === 'success' ? escrowData[1].result as bigint : BigInt(0));
-      setBackedPoolShares(escrowData[2]?.status === 'success' ? escrowData[2].result as bigint : BigInt(0));
+    if (positionEscrowData) {
+      // Indices shift because StabilizerEscrow balance fetch was removed
+      setAllocatedStEthBalance(positionEscrowData[0]?.status === 'success' ? positionEscrowData[0].result as bigint : BigInt(0)); // Index 0
+      setBackedPoolShares(positionEscrowData[1]?.status === 'success' ? positionEscrowData[1].result as bigint : BigInt(0)); // Index 1
       // Only update ratio if price data was available and the call succeeded
-      if (priceData && escrowData[3]?.status === 'success') {
-        setCurrentCollateralRatio(Number(escrowData[3].result));
+      if (priceData && positionEscrowData[2]?.status === 'success') { // Index 2
+        setCurrentCollateralRatio(Number(positionEscrowData[2].result));
       } else {
-        setCurrentCollateralRatio(0); // Reset or keep previous state if price is missing
+        setCurrentCollateralRatio(0);
       }
     } else {
-      // Reset if escrowData is null/undefined
-       setUnallocatedStEthBalance(BigInt(0));
+      // Reset if positionEscrowData is null/undefined
        setAllocatedStEthBalance(BigInt(0));
        setBackedPoolShares(BigInt(0));
        setCurrentCollateralRatio(0);
     }
-  }, [escrowData, priceData]); // Add priceData dependency here
+  }, [positionEscrowData, priceData]); // Add priceData dependency
 
-  // Combined refetch function
-  const refetchAll = () => {
-    refetchNftData();
-    refetchEscrowData();
-    fetchPriceData(); // Refetch price as well
+  // Refetch function for Position Escrow related data
+  const refetchPositionData = () => {
+    refetchNftData(); // Refetch min ratio, addresses etc.
+    refetchPositionEscrowData();
+    fetchPriceData();
   }
 
   // --- Interaction Handlers ---
 
-  // Add Unallocated Funds (via StabilizerNFT) - Verify function name and args
-  const handleAddUnallocatedFunds = async () => {
+  // Removed handleAddUnallocatedFunds
+  // Removed handleWithdrawFunds
     try {
       setError(null)
       setSuccess(null)
@@ -234,11 +225,8 @@ export function StabilizerNFTItem({
       setError(err.message || 'Failed to add funds')
       console.error(err)
     } finally {
-      setIsAddingFunds(false)
-    }
-  }
-
-  const handleWithdrawFunds = async () => {
+  // Add Collateral Directly (to PositionEscrow) - Stays here
+  const handleAddCollateralDirect = async () => {
     try {
       setError(null)
       setSuccess(null)
@@ -310,10 +298,10 @@ export function StabilizerNFTItem({
       setSuccess(`Successfully added ${addDirectAmount} ETH directly to Position Escrow for Stabilizer #${tokenId}`)
       setAddDirectAmount('')
 
-      // Refetch all relevant data
-      refetchAll()
+      // Refetch position data
+      refetchPositionData()
 
-      if (onSuccess) onSuccess()
+      if (onSuccess) onSuccess() // Notify parent
     } catch (err: any) {
       setError(err.message || 'Failed to add direct collateral')
       console.error(err)
@@ -383,10 +371,10 @@ export function StabilizerNFTItem({
       setSuccess(`Successfully initiated withdrawal of excess collateral from Position Escrow for Stabilizer #${tokenId}`)
       setWithdrawExcessAmount('') // Clear input if used
 
-      // Refetch all relevant data
-      refetchAll()
+      // Refetch position data
+      refetchPositionData()
 
-      if (onSuccess) onSuccess()
+      if (onSuccess) onSuccess() // Notify parent
     } catch (err: any) {
       setError(err.message || 'Failed to withdraw excess collateral')
       console.error(err)
@@ -397,7 +385,8 @@ export function StabilizerNFTItem({
 
 
   // --- Loading State ---
-  const isLoading = isLoadingNftData || isLoadingEscrowData || isLoadingPrice;
+  // isLoadingEscrowData removed, replaced with isLoadingPositionEscrowData
+  const isLoading = isLoadingNftData || isLoadingPositionEscrowData || isLoadingPrice;
 
   if (isLoading) {
     return (
@@ -419,70 +408,13 @@ export function StabilizerNFTItem({
       </CardHeader>
       <CardContent className="space-y-6">
 
-        {/* --- Unallocated Funds (Stabilizer Escrow) --- */}
-        <div className="space-y-4 p-4 border rounded-lg">
-          <h4 className="font-semibold text-lg">Unallocated Funds</h4>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>stETH Balance</Label>
-              <p className="text-lg font-semibold">{formatEther(unallocatedStEthBalance)} stETH</p>
-            </div>
-             <div>
-              <Label>Escrow Address</Label>
-              <p className="text-xs truncate">{stabilizerEscrowAddress ?? 'Loading...'}</p>
-            </div>
-          </div>
-
-          {/* Add/Withdraw Unallocated */}
-          <div className="pt-4 border-t">
-            <Label htmlFor={`add-unallocated-${tokenId}`}>Add Unallocated Funds (ETH)</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                id={`add-unallocated-${tokenId}`}
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.1 ETH"
-                value={addAmount}
-                onChange={(e) => setAddAmount(e.target.value)}
-                className="h-9"
-              />
-              <Button
-                onClick={handleAddUnallocatedFunds}
-                disabled={isAddingFunds || !addAmount}
-                className="whitespace-nowrap h-9"
-                size="sm"
-              >
-                {isAddingFunds ? 'Adding...' : 'Add'}
-              </Button>
-            </div>
-          </div>
-          <div className="pt-2">
-            <Label htmlFor={`withdraw-unallocated-${tokenId}`}>Withdraw Unallocated Funds (stETH)</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                id={`withdraw-unallocated-${tokenId}`}
-                type="number"
-                step="0.01"
-                min="0"
-                max={formatEther(unallocatedStEthBalance)}
-                placeholder={`Max: ${formatEther(unallocatedStEthBalance)}`}
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                className="h-9"
-              />
-              <Button
-                onClick={handleWithdrawFunds}
-                disabled={isWithdrawingFunds || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseEther(withdrawAmount) > unallocatedStEthBalance}
-                className="whitespace-nowrap h-9"
-                variant="outline"
-                size="sm"
-              >
-                {isWithdrawingFunds ? 'Withdrawing...' : 'Withdraw'}
-              </Button>
-            </div>
-          </div>
-        </div>
+        {/* --- Render Stabilizer Escrow Manager --- */}
+        <StabilizerEscrowManager
+          tokenId={tokenId}
+          stabilizerAddress={stabilizerAddress}
+          stabilizerAbi={stabilizerAbi}
+          onSuccess={refetchPositionData} // Pass refetch for position data if needed after escrow ops
+        />
 
         {/* --- Allocated Position (Position Escrow) --- */}
         <div className="space-y-4 p-4 border rounded-lg">
@@ -517,10 +449,10 @@ export function StabilizerNFTItem({
              currentRatio={minCollateralRatio} // Pass the fetched min ratio
              stabilizerAddress={stabilizerAddress}
              stabilizerAbi={stabilizerAbi}
-             onSuccess={refetchAll} // Use combined refetch
+             onSuccess={refetchPositionData} // Use position refetch
            />
 
-           {/* Add/Withdraw Direct/Excess */}
+           {/* Add/Withdraw Direct/Excess - Stays here */}
            <div className="pt-4 border-t">
              <Label htmlFor={`add-direct-${tokenId}`}>Add Direct Collateral (ETH)</Label>
              <div className="flex gap-2 mt-1">
@@ -573,14 +505,15 @@ export function StabilizerNFTItem({
         </div>
 
 
-        {/* --- General Error/Success Messages --- */}
+        {/* --- Error/Success Messages for Position Escrow Actions --- */}
+        {/* Consider moving these into a dedicated PositionEscrowManager component later */}
         {error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mt-4">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
         {success && (
-          <Alert>
+          <Alert className="mt-4">
             <AlertDescription>{success}</AlertDescription>
           </Alert>
         )}
