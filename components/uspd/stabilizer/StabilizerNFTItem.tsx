@@ -135,15 +135,11 @@ export function StabilizerNFTItem({
         address: positionEscrowAddress!, // Use state variable
         abi: ierc20Abi.abi,
         functionName: 'balanceOf',
-        abi: ierc20Abi.abi,
-        functionName: 'balanceOf',
         args: [positionEscrowAddress!],
       },
       // Position Escrow Backed Shares
       {
         address: positionEscrowAddress!, // Use state variable
-        abi: positionEscrowAbi.abi,
-        functionName: 'backedPoolShares',
         abi: positionEscrowAbi.abi,
         functionName: 'backedPoolShares',
         args: [],
