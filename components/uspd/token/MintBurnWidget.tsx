@@ -16,15 +16,13 @@ import useDebounce from '@/components/utils/debounce'
 interface MintBurnWidgetProps {
   tokenAddress: `0x${string}`
   tokenAbi: any
-  positionNFTAddress: `0x${string}`
-  positionNFTAbi: any
+  // Removed props related to positionNFT
 }
 
 export function MintBurnWidget({
   tokenAddress,
-  tokenAbi,
-  positionNFTAddress,
-  positionNFTAbi
+  tokenAbi
+  // Removed props related to positionNFT
 }: MintBurnWidgetProps) {
   const [activeTab, setActiveTab] = useState('mint')
   const [ethAmount, setEthAmount] = useState('')

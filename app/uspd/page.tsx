@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 import { MintBurnWidget } from '@/components/uspd/token/MintBurnWidget'
 import tokenJson from '../../contracts/out/UspdToken.sol/USPDToken.json'
-import positionNFTJson from '../../contracts/out/UspdCollateralizedPositionNFT.sol/UspdCollateralizedPositionNFT.json'
+// Removed import for old position NFT ABI
 
 export default function UspdPage() {
   const { isConnected } = useAccount()
@@ -32,16 +32,12 @@ export default function UspdPage() {
       
       <ContractLoader contractKey="token">
         {(tokenAddress) => (
-          <ContractLoader contractKey="positionNFT">
-            {(positionNFTAddress) => (
-              <MintBurnWidget 
-                tokenAddress={tokenAddress}
-                tokenAbi={tokenJson.abi}
-                positionNFTAddress={positionNFTAddress}
-                positionNFTAbi={positionNFTJson.abi}
-              />
-            )}
-          </ContractLoader>
+          // Removed nested ContractLoader for positionNFT
+          <MintBurnWidget 
+            tokenAddress={tokenAddress}
+            tokenAbi={tokenJson.abi}
+            // Removed props related to positionNFT
+          />
         )}
       </ContractLoader>
     </div>
