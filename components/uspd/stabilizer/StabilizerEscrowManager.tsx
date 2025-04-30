@@ -46,8 +46,8 @@ export function StabilizerEscrowManager({
             {
                 address: stabilizerAddress,
                 abi: stabilizerAbi,
-                functionName: 'getStabilizerEscrow',
-                args: [BigInt(tokenId)],
+                functionName: 'stabilizerEscrows',
+                args: [tokenId],
             },
             // Fetch Stabilizer Escrow Balance (conditionally enabled)
             {
@@ -66,6 +66,7 @@ export function StabilizerEscrowManager({
 
     // Update state with fetched escrow address and trigger balance refetch
     useEffect(() => {
+        console.log({escrowFetchData, stabilizerAddress, stabilizerAbi});
         const fetchedAddress = escrowFetchData?.[0]?.result as Address | null;
         if (fetchedAddress && fetchedAddress !== stabilizerEscrowAddress) {
             setStabilizerEscrowAddress(fetchedAddress);
