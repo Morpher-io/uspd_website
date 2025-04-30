@@ -84,7 +84,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     function mintShares(
         address to,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) external payable /* Removed onlyRole(MINTER_ROLE) */ {
+    ) external payable {
         require(msg.value > 0, "cUSPD: Must send ETH to mint");
         require(to != address(0), "cUSPD: Mint to zero address");
 
@@ -146,7 +146,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         uint256 sharesAmount,
         address payable to,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) external /* Removed onlyRole(BURNER_ROLE) */ returns (uint256 unallocatedStEthReturned) {
+    ) external returns (uint256 unallocatedStEthReturned) {
         require(sharesAmount > 0, "cUSPD: Shares amount must be positive");
         require(to != address(0), "cUSPD: Burn to zero address");
 
