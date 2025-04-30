@@ -55,6 +55,7 @@ contract USPDTokenTest is Test {
 
     // --- Contract Under Test ---
     USPD uspdToken;
+    StabilizerNFT stabilizerNFT; // Add StabilizerNFT instance
 
     bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD");
     
@@ -308,6 +309,162 @@ contract USPDTokenTest is Test {
         // Check zero address revert
         vm.expectRevert("USPD: Zero rate contract address"); // Updated error message check
         uspdToken.updateRateContract(address(0));
+    }
+
+
+    // --- Helper to mint and fund a stabilizer ---
+    function _setupStabilizer(address owner, uint256 tokenId, uint256 ethAmount) internal {
+        // Mint NFT
+        vm.prank(address(this)); // Admin mints
+        stabilizerNFT.mint(owner, tokenId);
+        // Fund Stabilizer
+        vm.deal(owner, ethAmount);
+        vm.prank(owner);
+        stabilizerNFT.addUnallocatedFundsEth{value: ethAmount}(tokenId);
+    }
+
+    // --- USPDToken.mint Tests ---
+
+    function testMint_Success_FullAllocation() public {
+        address minter = makeAddr("minter");
+        address recipient = makeAddr("recipient");
+        uint256 mintAmountEth = 1 ether;
+        uint256 stabilizerFunding = 1 ether; // Enough to cover 110% of 1 ETH
+
+        // Setup stabilizer
+        _setupStabilizer(makeAddr("stabilizerOwner"), 1, stabilizerFunding);
+
+        // Prepare price query
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        uint256 price = priceQuery.price; // 2000e18
+
+        // Expected shares: (1 ETH * 2000 price / 1e18 decimals) * 1e18 precision / 1e18 yieldFactor = 2000e18
+        uint256 expectedShares = (mintAmountEth * price) / 1e18;
+
+        // Fund minter
+        vm.deal(minter, mintAmountEth + 0.1 ether); // Add extra for gas
+        uint256 minterInitialEth = minter.balance;
+
+        // Expect event from cUSPDToken
+        vm.expectEmit(true, true, true, true, address(cuspdToken));
+        emit IcUSPDToken.SharesMinted(minter, recipient, mintAmountEth, expectedShares);
+
+        // Action: Call USPDToken.mint
+        vm.startPrank(minter);
+        uspdToken.mint{value: mintAmountEth}(recipient, priceQuery);
+        vm.stopPrank();
+
+        // Assertions
+        assertEq(cuspdToken.balanceOf(recipient), expectedShares, "Recipient cUSPD balance mismatch");
+        // Check USPD balance (should match shares if yield factor is 1)
+        assertEq(uspdToken.balanceOf(recipient), expectedShares, "Recipient USPD balance mismatch");
+        // Check minter ETH balance (should decrease by exactly mintAmountEth + gas)
+        assertTrue(minter.balance < minterInitialEth - mintAmountEth, "Minter ETH balance did not decrease enough");
+        assertTrue(minter.balance > minterInitialEth - mintAmountEth - 0.1 ether, "Minter ETH balance decreased too much (refund error?)");
+    }
+
+    function testMint_Success_PartialAllocation_Refund() public {
+        address minter = makeAddr("minter");
+        address recipient = makeAddr("recipient");
+        uint256 mintAmountEth = 2 ether; // Try to mint 2 ETH worth
+        uint256 stabilizerFunding = 0.5 ether; // Only enough to back ~0.45 ETH user funds at 110%
+
+        // Setup stabilizer
+        _setupStabilizer(makeAddr("stabilizerOwner"), 1, stabilizerFunding);
+
+        // Prepare price query
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        uint256 price = priceQuery.price; // 2000e18
+
+        // Calculate expected allocation based on stabilizer funds
+        // Stabilizer 0.5 ETH can back user_eth where 0.5 = user_eth * 110/100 - user_eth => 0.5 = user_eth * 0.1 => user_eth = 5 ETH
+        // Since stabilizer only has 0.5 ETH, it can back 5 ETH user funds.
+        // However, the StabilizerEscrow only has 0.5 stETH.
+        // Stabilizer stETH needed = user_eth * (ratio/100 - 1)
+        // Max user_eth = stabilizer_steth / (ratio/100 - 1) = 0.5 / (1.1 - 1) = 0.5 / 0.1 = 5 ETH
+        // Since user only sent 2 ETH, all 2 ETH should be allocatable IF stabilizer had enough.
+        // Let's assume stabilizer only has 0.1 ETH funding instead.
+        stabilizerFunding = 0.1 ether;
+        vm.prank(address(this)); // Admin mints
+        stabilizerNFT.mint(makeAddr("stabilizerOwner2"), 2);
+        vm.deal(makeAddr("stabilizerOwner2"), stabilizerFunding);
+        vm.prank(makeAddr("stabilizerOwner2"));
+        stabilizerNFT.addUnallocatedFundsEth{value: stabilizerFunding}(2);
+
+        // Max user_eth = 0.1 / 0.1 = 1 ETH
+        uint256 expectedAllocatedEth = 1 ether;
+        uint256 expectedRefund = mintAmountEth - expectedAllocatedEth; // 2 - 1 = 1 ETH
+
+        // Expected shares: (1 ETH * 2000 price / 1e18 decimals) * 1e18 precision / 1e18 yieldFactor = 2000e18
+        uint256 expectedShares = (expectedAllocatedEth * price) / 1e18;
+
+        // Fund minter
+        vm.deal(minter, mintAmountEth + 0.1 ether); // Add extra for gas
+        uint256 minterInitialEth = minter.balance;
+
+        // Expect event from cUSPDToken
+        vm.expectEmit(true, true, true, true, address(cuspdToken));
+        emit IcUSPDToken.SharesMinted(minter, recipient, expectedAllocatedEth, expectedShares);
+
+        // Action: Call USPDToken.mint
+        vm.startPrank(minter);
+        uspdToken.mint{value: mintAmountEth}(recipient, priceQuery);
+        vm.stopPrank();
+
+        // Assertions
+        assertEq(cuspdToken.balanceOf(recipient), expectedShares, "Recipient cUSPD balance mismatch");
+        assertEq(uspdToken.balanceOf(recipient), expectedShares, "Recipient USPD balance mismatch");
+        // Check minter ETH balance (should decrease by allocatedEth + gas)
+        uint256 expectedFinalBalanceLowerBound = minterInitialEth - expectedAllocatedEth - 0.1 ether;
+        uint256 expectedFinalBalanceUpperBound = minterInitialEth - expectedAllocatedEth;
+        assertTrue(minter.balance >= expectedFinalBalanceLowerBound, "Minter ETH balance too low");
+        assertTrue(minter.balance <= expectedFinalBalanceUpperBound, "Minter ETH balance too high (refund failed?)");
+    }
+
+
+    function testMint_Revert_ZeroEthSent() public {
+        address minter = makeAddr("minter");
+        address recipient = makeAddr("recipient");
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        vm.prank(minter);
+        vm.expectRevert("cUSPD: Must send ETH to mint"); // Revert from cUSPDToken
+        uspdToken.mint{value: 0}(recipient, priceQuery);
+    }
+
+    function testMint_Revert_MintToZeroAddress() public {
+        address minter = makeAddr("minter");
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        vm.deal(minter, 1 ether);
+        vm.prank(minter);
+        vm.expectRevert("USPD: Mint to zero address"); // Revert from USPDToken
+        uspdToken.mint{value: 1 ether}(address(0), priceQuery);
+    }
+
+    function testMint_Revert_InvalidPriceQuery() public {
+        address minter = makeAddr("minter");
+        address recipient = makeAddr("recipient");
+        // Create query with old timestamp
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp - 3600); // 1 hour old
+
+        vm.deal(minter, 1 ether);
+        vm.prank(minter);
+        vm.expectRevert("Price data is too old"); // Revert from PriceOracle
+        uspdToken.mint{value: 1 ether}(recipient, priceQuery);
+    }
+
+    function testMint_Revert_NoUnallocatedFunds() public {
+        address minter = makeAddr("minter");
+        address recipient = makeAddr("recipient");
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // No stabilizers set up
+
+        vm.deal(minter, 1 ether);
+        vm.prank(minter);
+        vm.expectRevert("No unallocated funds"); // Revert from StabilizerNFT
+        uspdToken.mint{value: 1 ether}(recipient, priceQuery);
     }
 
 }
