@@ -23,10 +23,10 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     error TransferFailed();
 
     // --- State Variables ---
-    address public immutable stabilizerNFTContract; // The controller/manager
-    address public immutable stabilizerOwner;       // The beneficiary for withdrawals
-    address public immutable stETH;                 // stETH token contract
-    address public immutable lido;                  // Lido staking pool contract
+    address public stabilizerNFTContract; // The controller/manager
+    address public stabilizerOwner;       // The beneficiary for withdrawals
+    address public stETH;                 // stETH token contract
+    address public lido;                  // Lido staking pool contract
 
     // allocatedStETH state variable removed
 

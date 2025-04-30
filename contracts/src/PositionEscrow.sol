@@ -26,11 +26,11 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     uint256 public constant MINIMUM_COLLATERAL_RATIO = 110; // 110%
 
     // --- State Variables ---
-    address public immutable override stabilizerNFTContract; // The controller/manager (also gets STABILIZER_ROLE)
-    address public immutable override stETH;                 // stETH token contract
-    address public immutable override lido;                  // Lido staking pool contract (needed?) - Maybe not needed here if staking happens before transfer
-    address public immutable override rateContract;          // PoolSharesConversionRate contract
-    address public immutable override oracle;                // PriceOracle contract
+    address public override stabilizerNFTContract; // The controller/manager (also gets STABILIZER_ROLE)
+    address public override stETH;                 // stETH token contract
+    address public override lido;                  // Lido staking pool contract (needed?) - Maybe not needed here if staking happens before transfer
+    address public override rateContract;          // PoolSharesConversionRate contract
+    address public override oracle;                // PriceOracle contract
 
     uint256 public override backedPoolShares; // Liability tracked in pool shares
 

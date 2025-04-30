@@ -75,7 +75,7 @@ export function StabilizerNFTList({
   }
 
   return (
-    <div className="flex flex-row gap-3">
+    <div className="flex flex-row gap-3 w-full">
       {tokenIds.map((tokenId) => (
         <StabilizerNFTItem
           key={tokenId}

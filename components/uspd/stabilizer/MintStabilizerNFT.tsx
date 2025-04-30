@@ -12,7 +12,7 @@ export default function MintStabilizerNFT() {
 
     if (!isConnected) {
         return (
-            <div className="container flex items-center justify-center my-8">
+            <div className="my-8">
                 <Alert>
                     <AlertDescription className="text-center">
                         Please connect your wallet to access the minting function.
@@ -23,7 +23,7 @@ export default function MintStabilizerNFT() {
     }
 
     return (
-        <div className="flex flex-col items-center my-8">
+        <div className="my-8">
             {/* ContractLoader handles finding the correct contract address based on chainId */}
             <ContractLoader contractKey="stabilizer" backLink="/stabilizer">
                 {(stabilizerAddress) => (

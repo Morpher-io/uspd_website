@@ -61,7 +61,7 @@ export function MintForm({ stabilizerAddress, stabilizerAbi }: MintFormProps) {
   }
 
   return (
-    <Card className="w-[400px]">
+    <Card className="">
       <CardHeader>
         <CardTitle>Mint New Stabilizer NFT</CardTitle>
       </CardHeader>

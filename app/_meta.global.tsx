@@ -6,7 +6,7 @@ export default {
 
     },
     docs: {
-      type: 'page',
+      // type: 'page',
       title: 'Documentation',
       
     },

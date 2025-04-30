@@ -49,17 +49,16 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
           </AlertDescription>
         </Alert>
       ) : (
-        
-            <div className='flex flex-row gap-4'>
-            <StabilizerNFTList 
-              stabilizerAddress={stabilizerAddress}
-              stabilizerAbi={stabilizerAbi}
-              balance={balance}
-            />
-            </div>
+
+
+        <StabilizerNFTList
+          stabilizerAddress={stabilizerAddress}
+          stabilizerAbi={stabilizerAbi}
+          balance={balance}
+        />
       )}
 
-      <StabilizerAdminCard 
+      <StabilizerAdminCard
         stabilizerAddress={stabilizerAddress}
         stabilizerAbi={stabilizerAbi}
       />

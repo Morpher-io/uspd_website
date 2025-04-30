@@ -12,18 +12,17 @@ export default function StabilizerOverview() {
 
     if (!isConnected) {
         return (
-            <div className="container flex items-center justify-center my-8">
+            
                 <Alert>
                     <AlertDescription className='text-center'>
                         Please connect your wallet to view your Stabilizer NFTs
                     </AlertDescription>
                 </Alert>
-            </div>
         )
     }
 
     return (
-        <div className="mt-4 mx-auto container flex flex-col items-center gap-10 pb-28 pt-10 sm:gap-14">
+        <div className="mt-4">
             <ContractLoader contractKey="stabilizer">
                 {(stabilizerAddress) => (
                     <StabilizerData

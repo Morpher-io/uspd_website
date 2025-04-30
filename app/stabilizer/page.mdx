@@ -8,6 +8,9 @@ import StabilizerOverview from '@/components/uspd/stabilizer/StabilizerOverview'
 
 This dashboard provides an overview of your Stabilizer NFTs and allows you to manage your positions within the USPD system.
 
+
+<StabilizerOverview />
+
 ## Your Positions
 
 Below you will find a card for each Stabilizer NFT you own. Each card displays:
@@ -20,8 +23,3 @@ Below you will find a card for each Stabilizer NFT you own. Each card displays:
     *   **Min Ratio (Set):** The minimum collateralization ratio you have configured for this position. The system uses this when allocating funds.
     *   You can add more collateral directly to the `PositionEscrow` (top-up) or withdraw excess collateral if the current ratio is above the minimum required (110%).
 
-## Admin Actions
-
-If your connected wallet has the `MINTER_ROLE` on the `StabilizerNFT` contract, an "Admin" card will appear, allowing you to navigate to the minting page to create new Stabilizer NFTs.
-
-<StabilizerOverview />

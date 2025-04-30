@@ -68,7 +68,7 @@ contract StabilizerEscrowTest is Test {
 
     // --- Test Initializer ---
 
-    function test_Initialize_Success() public { // Renamed from test_Constructor_Success
+    function test_Initialize_Success() public view { // Renamed from test_Constructor_Success
         // Assert state set by initialize (called via proxy in setUp)
         assertEq(escrow.stabilizerNFTContract(), stabilizerNFT, "StabilizerNFT address mismatch");
         assertEq(escrow.stabilizerOwner(), stabilizerOwner, "StabilizerOwner address mismatch");

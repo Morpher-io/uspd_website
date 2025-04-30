@@ -58,7 +58,7 @@ export function StabilizerAdminCard({ stabilizerAddress, stabilizerAbi }: Stabil
   }
 
   return (
-    <Card className="w-full max-w-[800px] mt-6">
+    <Card className="w-full mt-6">
       <CardHeader>
         <CardTitle>Stabilizer Admin</CardTitle>
       </CardHeader>

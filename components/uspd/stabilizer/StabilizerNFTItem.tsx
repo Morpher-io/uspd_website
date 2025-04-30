@@ -389,7 +389,7 @@ export function StabilizerNFTItem({
 
   if (isLoading) {
     return (
-      <Card className="w-full max-w-[400px]">
+      <Card className="w-full ">
         <CardHeader>
           <CardTitle>Stabilizer #{tokenId}</CardTitle>
         </CardHeader>
@@ -401,7 +401,7 @@ export function StabilizerNFTItem({
   }
 
   return (
-    <Card className="w-full max-w-[400px]">
+    <Card className="w-full ">
       <CardHeader>
         <CardTitle>Stabilizer #{tokenId}</CardTitle>
       </CardHeader>

@@ -108,7 +108,7 @@ contract DeployScript is Script {
             chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
             lidoAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
             stETHAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-        } else if (chainId == 11155111) { // Sepolia
+        } else if (chainId == 11155111 || chainId == 112233) { // Sepolia or sepolia via anvil forking with --chain-id 112233
             usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
             chainlinkAggregator = 0x694AA1769357215DE4FAC081bf1f309aDC325306;
@@ -164,7 +164,7 @@ contract DeployScript is Script {
         deployOracleProxy(); // Needs ProxyAdmin, initializes Oracle
 
         // --- Conditional Deployment ---
-        bool deployFullSystem = (chainId == 1 || chainId == 11155111 || chainId == 31337);
+        bool deployFullSystem = (chainId == 1 || chainId == 11155111 || chainId == 31337 || chainId == 112233);
 
         if (deployFullSystem) {
             console2.log("Deploying Full System...");

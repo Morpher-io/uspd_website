@@ -28,6 +28,7 @@ export function ContractLoader({ contractKey, children, backLink }: ContractLoad
             setContractAddress(null)
             return
           }
+          console.log(chainId, addresses);
           
           const address = addresses[contractKey as keyof typeof addresses]
           if (!address || address === '0x0000000000000000000000000000000000000000') {

@@ -28,7 +28,9 @@ export function MintData({ stabilizerAddress, stabilizerAbi }: MintDataProps) {
         args: [],
       }
     ],
-    enabled: !!stabilizerAddress
+    query: {
+      enabled: !!stabilizerAddress
+    }
   })
 
   const minterRole = data?.[0]?.result
@@ -42,19 +44,21 @@ export function MintData({ stabilizerAddress, stabilizerAbi }: MintDataProps) {
         args: [minterRole as `0x${string}`, address as `0x${string}`],
       }
     ] : [],
-    enabled: !!minterRole && !!address
+    query: {
+      enabled: !!minterRole && !!address
+    }
   })
 
   // Explicitly handle the boolean result to avoid undefined being treated as falsy
   const hasMinterRole = hasRoleData?.[0]?.result === undefined ? undefined : !!hasRoleData?.[0]?.result
 
-  // Redirect if user doesn't have minter role
-  useEffect(() => {
-    // Only redirect if we've completed loading and confirmed they don't have the role
-    if (!isLoading && !isRoleLoading && hasMinterRole === false) {
-      router.push('/stabilizer')
-    }
-  }, [hasMinterRole, isLoading, isRoleLoading, router])
+  // // Redirect if user doesn't have minter role
+  // useEffect(() => {
+  //   // Only redirect if we've completed loading and confirmed they don't have the role
+  //   if (!isLoading && !isRoleLoading && hasMinterRole === false) {
+  //     router.push('/stabilizer')
+  //   }
+  // }, [hasMinterRole, isLoading, isRoleLoading, router])
 
   if (isLoading || isRoleLoading) {
     return <p>Checking permissions...</p>
@@ -62,16 +66,13 @@ export function MintData({ stabilizerAddress, stabilizerAbi }: MintDataProps) {
 
   if (!hasMinterRole) {
     return (
-      <div className="flex flex-col items-center gap-4">
+      
         <Alert>
           <AlertDescription>
-            You don't have permission to mint Stabilizer NFTs
+            You don't have permission to mint Stabilizer NFTs.
           </AlertDescription>
         </Alert>
-        <Link href="/stabilizer">
-          <Button>Back to Stabilizer Page</Button>
-        </Link>
-      </div>
+       
     )
   }
 
