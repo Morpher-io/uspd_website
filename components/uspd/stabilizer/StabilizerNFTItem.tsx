@@ -37,8 +37,8 @@ export function StabilizerNFTItem({
   // Keep general error/success for PositionEscrow actions for now, or move them too
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [isAddingDirectCollateral, setIsAddingDirectCollateral] = useState(false)
-  const [isAddingDirectCollateral, setIsAddingDirectCollateral] = useState(false)
+  const [isAddingDirectCollateral, setIsAddingDirectCollateral] = useState(false) // Keep one
+  // Removed duplicate state variable
   const [isWithdrawingExcess, setIsWithdrawingExcess] = useState(false)
   const [addDirectAmount, setAddDirectAmount] = useState<string>('')
   // const [withdrawExcessAmount, setWithdrawExcessAmount] = useState<string>('') // Keep commented if withdrawing max
@@ -193,81 +193,9 @@ export function StabilizerNFTItem({
 
   // Removed handleAddUnallocatedFunds
   // Removed handleWithdrawFunds
-    try {
-      setError(null)
-      setSuccess(null)
-      setIsAddingFunds(true)
+  // Removed leftover try...catch blocks from old handlers
 
-      if (!addAmount || parseFloat(addAmount) <= 0) {
-        setError('Please enter a valid amount to add')
-        setIsAddingFunds(false)
-        return
-      }
-
-      const ethAmount = parseEther(addAmount)
-
-      await writeContractAsync({
-        address: stabilizerAddress,
-        abi: stabilizerAbi,
-        functionName: 'addUnallocatedFundsEth', // Assuming this is the correct function for ETH
-        args: [BigInt(tokenId)],
-        value: ethAmount
-      })
-
-      setSuccess(`Successfully added ${addAmount} ETH to Unallocated Funds for Stabilizer #${tokenId}`)
-      setAddAmount('')
-
-      // Refetch the position data
-      await refetch()
-
-      if (onSuccess) onSuccess()
-    } catch (err: any) {
-      setError(err.message || 'Failed to add funds')
-      console.error(err)
-    } finally {
-  // Add Collateral Directly (to PositionEscrow) - Stays here
-  const handleAddCollateralDirect = async () => {
-    try {
-      setError(null)
-      setSuccess(null)
-      setIsWithdrawingFunds(true)
-
-      if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
-        setError('Please enter a valid amount to withdraw')
-        setIsWithdrawingFunds(false)
-        return
-      }
-
-      const stEthAmount = parseEther(withdrawAmount) // Assuming withdrawal is in stETH units
-      if (stEthAmount > unallocatedStEthBalance) {
-        setError('Cannot withdraw more than available unallocated stETH')
-        setIsWithdrawingFunds(false)
-        return
-      }
-
-      await writeContractAsync({
-        address: stabilizerAddress,
-        abi: stabilizerAbi,
-        functionName: 'removeUnallocatedFunds', // Assuming this function handles stETH withdrawal
-        args: [BigInt(tokenId), stEthAmount, address as `0x${string}`] // Use the connected wallet address
-      })
-
-      setSuccess(`Successfully withdrew ${withdrawAmount} stETH from Unallocated Funds for Stabilizer #${tokenId}`)
-      setWithdrawAmount('')
-
-      // Refetch all relevant data
-      refetchAll()
-
-      if (onSuccess) onSuccess()
-    } catch (err: any) {
-      setError(err.message || 'Failed to withdraw funds')
-      console.error(err)
-    } finally {
-      setIsWithdrawingFunds(false)
-    }
-  }
-
-  // Add Collateral Directly (to PositionEscrow)
+  // Add Collateral Directly (to PositionEscrow) - Keep this one
   const handleAddCollateralDirect = async () => {
     try {
       setError(null)
@@ -369,7 +297,7 @@ export function StabilizerNFTItem({
 
       // Adjust success message based on whether amount was specified/calculated
       setSuccess(`Successfully initiated withdrawal of excess collateral from Position Escrow for Stabilizer #${tokenId}`)
-      setWithdrawExcessAmount('') // Clear input if used
+      // setWithdrawExcessAmount('') // Removed - state doesn't exist
 
       // Refetch position data
       refetchPositionData()
