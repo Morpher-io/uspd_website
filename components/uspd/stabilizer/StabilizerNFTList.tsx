@@ -66,12 +66,15 @@ export function StabilizerNFTList({
     },
     onLogs(logs) {
       // Check if any log involves the current user
-      // Explicitly type the log object within the callback
       const relevantLog = logs.some(log => {
-        // Assuming Transfer event args are { from: Address, to: Address, tokenId: bigint }
-        // Use type assertion to inform TypeScript about the expected 'args' structure
-        const typedArgs = log.args as { from?: `0x${string}`, to?: `0x${string}`, tokenId?: bigint };
-        return typedArgs.from === address || typedArgs.to === address;
+        // Check if log.args exists before accessing properties
+        if (log.args) {
+          // Assuming Transfer event args are { from: Address, to: Address, tokenId: bigint }
+          // Use type assertion now that we know args exists
+          const typedArgs = log.args as { from?: `0x${string}`, to?: `0x${string}`, tokenId?: bigint };
+          return typedArgs.from === address || typedArgs.to === address;
+        }
+        return false; // If log.args doesn't exist, it's not relevant
       });
 
       if (relevantLog) {
