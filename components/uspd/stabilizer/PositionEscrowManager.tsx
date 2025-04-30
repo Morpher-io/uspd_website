@@ -56,7 +56,7 @@ export function PositionEscrowManager({
             {
                 address: stabilizerAddress,
                 abi: stabilizerAbi,
-                functionName: 'getPositionEscrow',
+                functionName: 'positionEscrows',
                 args: [BigInt(tokenId)],
             },
             {
@@ -382,10 +382,7 @@ export function PositionEscrowManager({
                          currentCollateralRatio > 0 ? `${currentCollateralRatio.toFixed(2)}%` : 'N/A'}
                     </p>
                 </div>
-                <div>
-                    <Label>Min Ratio (Set)</Label>
-                    <p className="text-lg font-semibold">{minCollateralRatio}%</p>
-                </div>
+                
                 <div className="col-span-2">
                     <Label>Escrow Address</Label>
                     <p className="text-xs truncate">{positionEscrowAddress ?? 'Loading...'}</p>
