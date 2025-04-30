@@ -17,29 +17,24 @@ export function StabilizerNFTItem({
   stabilizerAbi
 }: StabilizerNFTItemProps) {
 
-  // Fetch only the minCollateralRatio from StabilizerNFT
-  const { data: nftData, isLoading: isLoadingNftData, refetch: refetchNftData } = useReadContracts({
-    contracts: [
-      {
-        address: stabilizerAddress,
-        abi: stabilizerAbi,
-        functionName: 'minCollateralRatio', // Fetch min ratio
-        args: [BigInt(tokenId)],
-      }
-    ],
-    query: {
-      enabled: !!stabilizerAddress && !!tokenId,
-    }
-  })
-
-  // Extract NFT data
-  const minCollateralRatio = nftData?.[0]?.result ? Number(nftData[0].result) : 110; // Default or fetched
+  // Remove fetching of minCollateralRatio here
 
   // --- Loading State ---
-  // Only depends on fetching the min ratio now
-  const isLoading = isLoadingNftData;
+  // No loading state needed here anymore unless fetching other NFT-level data later
+  // const isLoading = false; // Or remove if not needed
 
-  if (isLoading) {
+  // if (isLoading) { // Remove loading check or adjust
+  //   return (
+  //     <Card className="w-full ">
+  //       <CardHeader>
+  //         <CardTitle>Stabilizer #{tokenId}</CardTitle>
+  //       </CardHeader>
+  //       <CardContent>
+  //         <p>Loading stabilizer data...</p>
+  //       </CardContent>
+  //     </Card>
+  //   )
+  // }
     return (
       <Card className="w-full ">
         <CardHeader>
@@ -72,9 +67,15 @@ export function StabilizerNFTItem({
           tokenId={tokenId}
           stabilizerAddress={stabilizerAddress}
           stabilizerAbi={stabilizerAbi}
-          minCollateralRatio={minCollateralRatio} // Pass fetched min ratio
-          // onSuccess prop removed (will use event listener inside PositionEscrowManager)
+          // minCollateralRatio prop removed
         />
+
+        {/* Render CollateralRatioSlider here */}
+         <CollateralRatioSlider
+            tokenId={tokenId}
+            stabilizerAddress={stabilizerAddress}
+            stabilizerAbi={stabilizerAbi}
+         />
 
         {/* Remove direct PositionEscrow UI and error/success messages */}
 

@@ -18,16 +18,14 @@ interface PositionEscrowManagerProps {
     tokenId: number
     stabilizerAddress: Address // StabilizerNFT contract address
     stabilizerAbi: any
-    minCollateralRatio: number // Pass the fetched min ratio from parent
-    // onSuccess prop removed
+    // minCollateralRatio prop removed
 }
 
 export function PositionEscrowManager({
     tokenId,
     stabilizerAddress,
-    stabilizerAbi,
-    minCollateralRatio
-    // onSuccess prop removed
+    stabilizerAbi
+    // minCollateralRatio prop removed
 }: PositionEscrowManagerProps) {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
@@ -341,12 +339,7 @@ export function PositionEscrowManager({
             </div>
 
             {/* Set Min Ratio Slider */}
-            <CollateralRatioSlider
-                tokenId={tokenId}
-                currentRatio={minCollateralRatio}
-                stabilizerAddress={stabilizerAddress}
-                stabilizerAbi={stabilizerAbi}
-            />
+            {/* CollateralRatioSlider removed from here */}
 
             {/* Add/Withdraw Direct/Excess */}
             <div className="pt-4 border-t">
@@ -377,7 +370,8 @@ export function PositionEscrowManager({
                 <div className="flex gap-2 mt-1">
                     <Button
                         onClick={handleWithdrawExcess}
-                        disabled={isWithdrawingExcess || isLoadingPrice || currentCollateralRatio <= minCollateralRatio * 100}
+                        // Disable based on current ratio vs 110 (or fetched min ratio if needed later)
+                        disabled={isWithdrawingExcess || isLoadingPrice || currentCollateralRatio <= 11000} // Assuming 110% = 11000 basis points
                         className="whitespace-nowrap h-9 w-full"
                         variant="outline"
                         size="sm"
@@ -385,7 +379,8 @@ export function PositionEscrowManager({
                         {isWithdrawingExcess ? 'Withdrawing...' : 'Withdraw Excess'}
                     </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Requires current ratio &gt; min ratio ({minCollateralRatio}%)</p>
+                {/* Displaying the specific min ratio here might require fetching it again or passing it down */}
+                <p className="text-xs text-muted-foreground mt-1">Requires current ratio &gt; 110%</p>
             </div>
 
             {/* Error/Success Messages */}

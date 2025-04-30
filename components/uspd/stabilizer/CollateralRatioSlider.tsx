@@ -3,36 +3,51 @@ import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useWriteContract } from 'wagmi'
+import { useWriteContract, useReadContract, useWatchContractEvent } from 'wagmi' // Import hooks
 import { cn } from "@/lib/utils"
 import { getRiskLevel, getColorClass, getColorBarWidths } from "./utils"
 
 interface CollateralRatioSliderProps {
   tokenId: number
-  currentRatio: number
+  // currentRatio prop removed
   stabilizerAddress: `0x${string}`
   stabilizerAbi: any
-  // onSuccess prop removed
 }
 
 export default function CollateralRatioSlider({
   tokenId,
-  currentRatio,
+  // currentRatio prop removed
   stabilizerAddress,
   stabilizerAbi
-  // onSuccess prop removed
 }: CollateralRatioSliderProps) {
-  const [ratio, setRatio] = useState<number>(currentRatio)
+  const [ratio, setRatio] = useState<number>(110) // Default to min possible
+  const [fetchedRatio, setFetchedRatio] = useState<number | null>(null) // Store the fetched ratio
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  
+
   const { writeContractAsync } = useWriteContract()
-  
-  // Update local state when prop changes
+
+  // Fetch the position data to get the current min ratio
+  const { data: positionData, isLoading: isLoadingRatio, refetch: refetchRatio } = useReadContract({
+    address: stabilizerAddress,
+    abi: stabilizerAbi,
+    functionName: 'positions',
+    args: [BigInt(tokenId)],
+    query: {
+      enabled: !!stabilizerAddress && !!tokenId,
+    }
+  })
+
+  // Update local state when fetched data changes
   useEffect(() => {
-    setRatio(currentRatio)
-  }, [currentRatio])
+    // The struct StabilizerPosition has minCollateralRatio at index 0
+    if (positionData && Array.isArray(positionData) && positionData.length > 0) {
+      const fetched = Number(positionData[0]); // Extract minCollateralRatio
+      setFetchedRatio(fetched); // Store the fetched value
+      setRatio(fetched); // Update the slider value
+    }
+  }, [positionData])
   
   // Get color bar widths
   const colorBarWidths = getColorBarWidths()
@@ -59,7 +74,26 @@ export default function CollateralRatioSlider({
       setIsUpdating(false)
     }
   }
-  
+
+  // Listen for ratio updates
+  useWatchContractEvent({
+    address: stabilizerAddress,
+    abi: stabilizerAbi,
+    eventName: 'MinCollateralRatioUpdated',
+    args: { tokenId: BigInt(tokenId) },
+    onLogs(logs) {
+        console.log(`MinCollateralRatioUpdated event detected for token ${tokenId}, refetching ratio...`, logs);
+        refetchRatio();
+    },
+    onError(error) {
+        console.error(`Error watching MinCollateralRatioUpdated for token ${tokenId}:`, error)
+    },
+  });
+
+  if (isLoadingRatio) {
+    return <div className="pt-4 border-t border-border"><p>Loading ratio...</p></div>;
+  }
+
   return (
     <div className="space-y-4 pt-4 border-t border-border">
       <div className="flex justify-between items-center">
@@ -98,9 +132,10 @@ export default function CollateralRatioSlider({
       </div>
       
       <div className="flex justify-end">
-        <Button 
-          onClick={handleUpdate} 
-          disabled={isUpdating || ratio === currentRatio}
+        <Button
+          onClick={handleUpdate}
+          // Disable if updating, or if slider value matches the last fetched value
+          disabled={isUpdating || fetchedRatio === null || ratio === fetchedRatio}
           size="sm"
         >
           {isUpdating ? 'Updating...' : 'Update Ratio'}
