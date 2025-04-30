@@ -251,6 +251,11 @@ contract USPDTokenTest is Test {
             address(positionEscrowImpl), // <-- Pass PositionEscrow impl
             address(this)                      // Admin
         );
+        stabilizerNFT = stabilizerNFTInstance; // Assign the initialized instance
+
+        // Grant minter role to owner for stabilizer setup
+        stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), address(this));
+
 
         // --- Verify Initialization ---
         assertEq(address(uspdToken.cuspdToken()), address(cuspdToken), "cUSPD address mismatch in USPDToken");
