@@ -1,15 +1,5 @@
-import { useState, useEffect } from "react" // Remove useState, useEffect if no longer needed
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-// Remove Alert, Button, Input, Label if no longer needed directly here
-// Remove useWriteContract, useAccount if no longer needed directly here
 import { useReadContracts } from 'wagmi' // Keep for fetching min ratio
-import { Address } from 'viem' // Keep Address type
-
-// Remove unused imports:
-// import CollateralRatioSlider from './CollateralRatioSlider'
-// import { IPriceOracle } from '@/types/contracts'
-// import positionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json'
-// import ierc20Abi from '@/contracts/out/IERC20.sol/IERC20.json'
 
 // Import the sub-components
 import { StabilizerEscrowManager } from './StabilizerEscrowManager'
@@ -19,14 +9,12 @@ interface StabilizerNFTItemProps {
   tokenId: number
   stabilizerAddress: `0x${string}`
   stabilizerAbi: any
-  // onSuccess prop removed
 }
 
 export function StabilizerNFTItem({
   tokenId,
   stabilizerAddress,
   stabilizerAbi
-  // onSuccess prop removed
 }: StabilizerNFTItemProps) {
 
   // Fetch only the minCollateralRatio from StabilizerNFT
@@ -38,7 +26,6 @@ export function StabilizerNFTItem({
         functionName: 'minCollateralRatio', // Fetch min ratio
         args: [BigInt(tokenId)],
       }
-      // Removed fetches for PositionEscrow address and stETH address
     ],
     query: {
       enabled: !!stabilizerAddress && !!tokenId,
@@ -47,10 +34,6 @@ export function StabilizerNFTItem({
 
   // Extract NFT data
   const minCollateralRatio = nftData?.[0]?.result ? Number(nftData[0].result) : 110; // Default or fetched
-
-  // Remove useEffect hooks for setting addresses, price, and position data
-  // Remove interaction handlers (handleAddCollateralDirect, handleWithdrawExcess)
-  // Remove refetchPositionData function
 
   // --- Loading State ---
   // Only depends on fetching the min ratio now

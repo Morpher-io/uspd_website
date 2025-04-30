@@ -168,8 +168,7 @@ export function PositionEscrowManager({
         },
         onError(error) {
             console.error(`Error watching CollateralAdded for ${positionEscrowAddress}:`, error)
-        },
-        query: { enabled: !!positionEscrowAddress } // Only enable when address is known
+        }
     });
 
     useWatchContractEvent({
@@ -182,12 +181,11 @@ export function PositionEscrowManager({
         },
         onError(error) {
             console.error(`Error watching CollateralRemoved for ${positionEscrowAddress}:`, error)
-        },
-        query: { enabled: !!positionEscrowAddress }
+        }
     });
 
     // Listen for allocation changes on PositionEscrow
-     useWatchContractEvent({
+    useWatchContractEvent({
         address: positionEscrowAddress!, // Listen on PositionEscrow contract
         abi: positionEscrowAbi.abi,
         eventName: 'AllocationModified', // Event emitted by PositionEscrow
@@ -197,8 +195,7 @@ export function PositionEscrowManager({
         },
         onError(error) {
             console.error(`Error watching AllocationModified for ${positionEscrowAddress}:`, error)
-        },
-        query: { enabled: !!positionEscrowAddress }
+        }
     });
 
 
@@ -308,7 +305,7 @@ export function PositionEscrowManager({
     const isLoading = isLoadingAddresses || isLoadingPositionEscrowData || isLoadingPrice;
 
     if (isLoading && !positionEscrowAddress) {
-         return <div className="p-4 border rounded-lg"><p>Loading position data...</p></div>;
+        return <div className="p-4 border rounded-lg"><p>Loading position data...</p></div>;
     }
 
     return (
@@ -349,7 +346,6 @@ export function PositionEscrowManager({
                 currentRatio={minCollateralRatio}
                 stabilizerAddress={stabilizerAddress}
                 stabilizerAbi={stabilizerAbi}
-                onSuccess={onSuccess} // Notify parent to refetch min ratio if needed
             />
 
             {/* Add/Withdraw Direct/Excess */}
