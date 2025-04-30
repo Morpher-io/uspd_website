@@ -1,0 +1,16 @@
+import MintStabilizerNFT from '@/components/uspd/stabilizer/MintStabilizerNFT'
+
+# Mint Stabilizer NFT
+
+This page allows authorized administrators (accounts with the `MINTER_ROLE` on the `StabilizerNFT` contract) to mint new Stabilizer NFTs.
+
+## Process
+
+1.  **Connect Wallet:** Ensure your wallet is connected and you are on the correct network where the `StabilizerNFT` contract is deployed.
+2.  **Permissions Check:** The application will automatically verify if your connected account holds the necessary `MINTER_ROLE`. If you do not have the role, you will be redirected back to the main Stabilizer page.
+3.  **Enter Details:** Provide the Ethereum address that will own the new NFT (the Recipient Address) and a unique Token ID for the new NFT.
+4.  **Mint:** Click the "Mint NFT" button and confirm the transaction in your wallet.
+
+Upon successful minting, the specified recipient address will receive the Stabilizer NFT with the chosen Token ID. This NFT represents a new, independent stabilizer position within the USPD system. The owner can then proceed to add collateral to its associated `StabilizerEscrow`.
+
+<MintStabilizerNFT />
