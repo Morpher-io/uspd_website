@@ -118,6 +118,37 @@ export function StabilizerEscrowManager({
         },
     });
 
+    // Listen for funds being allocated *from* this escrow
+    useWatchContractEvent({
+        address: stabilizerAddress, // Listen on StabilizerNFT contract
+        abi: stabilizerAbi,
+        eventName: 'FundsAllocated',
+        args: { tokenId: BigInt(tokenId) }, // Filter by specific tokenId
+        onLogs(logs) {
+            console.log(`FundsAllocated event for token ${tokenId}:`, logs);
+            refetchAllEscrowData(); // Refetch address and balance
+        },
+        onError(error) {
+            console.error(`Error watching FundsAllocated for token ${tokenId}:`, error)
+        },
+    });
+
+    // Listen for funds being returned *to* this escrow during unallocation
+    useWatchContractEvent({
+        address: stabilizerAddress, // Listen on StabilizerNFT contract
+        abi: stabilizerAbi,
+        eventName: 'FundsUnallocated',
+        args: { tokenId: BigInt(tokenId) }, // Filter by specific tokenId
+        onLogs(logs) {
+            console.log(`FundsUnallocated event for token ${tokenId}:`, logs);
+            refetchAllEscrowData(); // Refetch address and balance
+        },
+        onError(error) {
+            console.error(`Error watching FundsUnallocated for token ${tokenId}:`, error)
+        },
+    });
+
+
     // --- Interaction Handlers ---
 
     const handleAddUnallocatedFunds = async () => {
