@@ -19,16 +19,15 @@ interface StabilizerNFTItemProps {
   tokenId: number
   stabilizerAddress: `0x${string}`
   stabilizerAbi: any
-  onSuccess?: () => void // Callback for parent list to refresh if needed
+  // onSuccess prop removed
 }
 
 export function StabilizerNFTItem({
   tokenId,
   stabilizerAddress,
-  stabilizerAbi,
-  onSuccess
+  stabilizerAbi
+  // onSuccess prop removed
 }: StabilizerNFTItemProps) {
-  // Remove all state related to PositionEscrow and PriceData
 
   // Fetch only the minCollateralRatio from StabilizerNFT
   const { data: nftData, isLoading: isLoadingNftData, refetch: refetchNftData } = useReadContracts({
@@ -82,7 +81,7 @@ export function StabilizerNFTItem({
           tokenId={tokenId}
           stabilizerAddress={stabilizerAddress}
           stabilizerAbi={stabilizerAbi}
-          onSuccess={onSuccess} // Pass parent's onSuccess down
+          // onSuccess prop removed
         />
 
         {/* --- Render Position Escrow Manager --- */}
@@ -91,7 +90,7 @@ export function StabilizerNFTItem({
           stabilizerAddress={stabilizerAddress}
           stabilizerAbi={stabilizerAbi}
           minCollateralRatio={minCollateralRatio} // Pass fetched min ratio
-          onSuccess={refetchNftData} // Refetch min ratio if PositionEscrowManager updates it (e.g., via slider)
+          // onSuccess prop removed (will use event listener inside PositionEscrowManager)
         />
 
         {/* Remove direct PositionEscrow UI and error/success messages */}

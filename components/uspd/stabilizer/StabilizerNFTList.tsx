@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useAccount, usePublicClient } from 'wagmi'
+import { useAccount, usePublicClient, useWatchContractEvent } from 'wagmi' // Import useWatchContractEvent
 import { StabilizerNFTItem } from './StabilizerNFTItem'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { readContract } from 'viem/actions'
@@ -7,17 +7,17 @@ import { readContract } from 'viem/actions'
 interface StabilizerNFTListProps {
   stabilizerAddress: `0x${string}`
   stabilizerAbi: any
-  balance: number
+  balance: number // Initial balance, might become stale
 }
 
 export function StabilizerNFTList({
   stabilizerAddress,
   stabilizerAbi,
-  balance
+  balance // Keep initial balance for loop limit, but rely on events/refresh for accuracy
 }: StabilizerNFTListProps) {
   const { address } = useAccount()
   const [tokenIds, setTokenIds] = useState<number[]>([])
-  const [refreshCounter, setRefreshCounter] = useState(0)
+  const [refreshCounter, setRefreshCounter] = useState(0) // Keep manual refresh trigger
   const publicClient = usePublicClient()
   const [isLoading, setIsLoading] = useState(true)
 
@@ -53,12 +53,33 @@ export function StabilizerNFTList({
     }
 
     fetchTokenIds()
+    // Dependencies: address, stabilizerAddress, balance (for initial fetch limit), refreshCounter, publicClient
   }, [address, stabilizerAddress, balance, refreshCounter, publicClient])
 
-  const handleSuccess = () => {
-    // Refresh the list after a successful operation
-    setRefreshCounter(prev => prev + 1)
-  }
+  // --- Event Listener for Transfers ---
+  useWatchContractEvent({
+    address: stabilizerAddress,
+    abi: stabilizerAbi,
+    eventName: 'Transfer',
+    args: { // Filter events where the current user is sender or receiver
+        // Cannot filter by OR directly here, need to check in onLogs
+    },
+    onLogs(logs) {
+      // Check if any log involves the current user
+      const relevantLog = logs.some(log => log.args.from === address || log.args.to === address);
+      if (relevantLog) {
+        console.log('Relevant Transfer event detected, refreshing NFT list...');
+        // Trigger a refetch by incrementing the counter
+        setRefreshCounter(prev => prev + 1);
+      }
+    },
+    onError(error) {
+        console.error('Error watching Transfer events:', error)
+    },
+    // Consider adding poll: true if needed, especially on local nodes
+  });
+
+  // Removed handleSuccess callback
 
   if (isLoading) {
     return <p>Loading your stabilizer NFTs...</p>
@@ -82,7 +103,7 @@ export function StabilizerNFTList({
           tokenId={tokenId}
           stabilizerAddress={stabilizerAddress}
           stabilizerAbi={stabilizerAbi}
-          onSuccess={handleSuccess}
+          // onSuccess prop removed
         />
       ))}
     </div>

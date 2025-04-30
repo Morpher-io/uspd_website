@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract, useAccount, useReadContract } from 'wagmi' // Changed useReadContracts to useReadContract
+import { useWriteContract, useAccount, useReadContract, useWatchContractEvent } from 'wagmi' // Import useWatchContractEvent
 import { parseEther, formatEther, Address } from 'viem'
 
 // Import necessary ABIs
@@ -15,14 +15,14 @@ interface StabilizerEscrowManagerProps {
     tokenId: number
     stabilizerAddress: Address // StabilizerNFT contract address
     stabilizerAbi: any
-    onSuccess?: () => void // Callback for parent to refetch other data if needed
+    // onSuccess prop removed
 }
 
 export function StabilizerEscrowManager({
     tokenId,
     stabilizerAddress,
-    stabilizerAbi,
-    onSuccess
+    stabilizerAbi
+    // onSuccess prop removed
 }: StabilizerEscrowManagerProps) {
     const [addAmount, setAddAmount] = useState<string>('')
     const [withdrawAmount, setWithdrawAmount] = useState<string>('')
@@ -89,6 +89,34 @@ export function StabilizerEscrowManager({
         }
     }
 
+    // --- Event Listeners ---
+    useWatchContractEvent({
+        address: stabilizerAddress, // Listen on StabilizerNFT contract
+        abi: stabilizerAbi,
+        eventName: 'UnallocatedFundsAdded',
+        args: { tokenId: BigInt(tokenId) }, // Filter by specific tokenId
+        onLogs(logs) {
+            console.log(`UnallocatedFundsAdded event for token ${tokenId}:`, logs);
+            refetchAllEscrowData(); // Refetch address and balance
+        },
+        onError(error) {
+            console.error(`Error watching UnallocatedFundsAdded for token ${tokenId}:`, error)
+        },
+    });
+
+    useWatchContractEvent({
+        address: stabilizerAddress, // Listen on StabilizerNFT contract
+        abi: stabilizerAbi,
+        eventName: 'UnallocatedFundsRemoved',
+        args: { tokenId: BigInt(tokenId) }, // Filter by specific tokenId
+        onLogs(logs) {
+            console.log(`UnallocatedFundsRemoved event for token ${tokenId}:`, logs);
+            refetchAllEscrowData(); // Refetch address and balance
+        },
+        onError(error) {
+            console.error(`Error watching UnallocatedFundsRemoved for token ${tokenId}:`, error)
+        },
+    });
 
     // --- Interaction Handlers ---
 
@@ -117,7 +145,7 @@ export function StabilizerEscrowManager({
             setSuccess(`Successfully added ${addAmount} ETH to Unallocated Funds for Stabilizer #${tokenId}`)
             setAddAmount('')
             refetchAllEscrowData() // Use combined refetch
-            if (onSuccess) onSuccess() // Notify parent if needed
+            // onSuccess call removed
         } catch (err: any) {
             setError(err.message || 'Failed to add funds')
             console.error(err)
@@ -155,7 +183,7 @@ export function StabilizerEscrowManager({
             setSuccess(`Successfully withdrew ${withdrawAmount} stETH to owner from Stabilizer #${tokenId}`) // Updated message
             setWithdrawAmount('')
             refetchAllEscrowData() // Use combined refetch
-            if (onSuccess) onSuccess() // Notify parent if needed
+            // onSuccess call removed
         } catch (err: any) {
             setError(err.message || 'Failed to withdraw funds')
             console.error(err)

@@ -12,15 +12,15 @@ interface CollateralRatioSliderProps {
   currentRatio: number
   stabilizerAddress: `0x${string}`
   stabilizerAbi: any
-  onSuccess?: () => void
+  // onSuccess prop removed
 }
 
 export default function CollateralRatioSlider({
   tokenId,
   currentRatio,
   stabilizerAddress,
-  stabilizerAbi,
-  onSuccess
+  stabilizerAbi
+  // onSuccess prop removed
 }: CollateralRatioSliderProps) {
   const [ratio, setRatio] = useState<number>(currentRatio)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -51,7 +51,7 @@ export default function CollateralRatioSlider({
       })
       
       setSuccess(`Successfully updated collateralization ratio to ${ratio}%`)
-      if (onSuccess) onSuccess()
+      // onSuccess call removed
     } catch (err: any) {
       setError(err.message || 'Failed to update ratio')
       console.error(err)

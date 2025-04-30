@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract, useAccount, useReadContracts } from 'wagmi'
+import { useWriteContract, useAccount, useReadContracts, useWatchContractEvent } from 'wagmi' // Import useWatchContractEvent
 import { parseEther, formatEther, formatUnits, Address } from 'viem'
 import CollateralRatioSlider from './CollateralRatioSlider'
 import { IPriceOracle } from '@/types/contracts'
@@ -19,15 +19,15 @@ interface PositionEscrowManagerProps {
     stabilizerAddress: Address // StabilizerNFT contract address
     stabilizerAbi: any
     minCollateralRatio: number // Pass the fetched min ratio from parent
-    onSuccess?: () => void // Callback for parent to refetch other data if needed
+    // onSuccess prop removed
 }
 
 export function PositionEscrowManager({
     tokenId,
     stabilizerAddress,
     stabilizerAbi,
-    minCollateralRatio,
-    onSuccess
+    minCollateralRatio
+    // onSuccess prop removed
 }: PositionEscrowManagerProps) {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
@@ -151,8 +151,75 @@ export function PositionEscrowManager({
         refetchAddresses(); // Refetch escrow/steth addresses
         refetchPositionEscrowData();
         fetchPriceData();
-        if (onSuccess) onSuccess(); // Notify parent if needed (e.g., to refetch NFT min ratio)
+        // onSuccess call removed
     }
+
+    // --- Event Listeners ---
+
+    // Listen for direct collateral changes on PositionEscrow
+    useWatchContractEvent({
+        address: positionEscrowAddress!, // Listen on PositionEscrow contract
+        abi: positionEscrowAbi.abi,
+        eventName: 'CollateralAdded', // Event emitted by PositionEscrow
+        // No args filtering needed here, event is specific to this escrow
+        onLogs(logs) {
+            console.log(`CollateralAdded event for PositionEscrow ${positionEscrowAddress}:`, logs);
+            refetchAllPositionData();
+        },
+        onError(error) {
+            console.error(`Error watching CollateralAdded for ${positionEscrowAddress}:`, error)
+        },
+        query: { enabled: !!positionEscrowAddress } // Only enable when address is known
+    });
+
+    useWatchContractEvent({
+        address: positionEscrowAddress!, // Listen on PositionEscrow contract
+        abi: positionEscrowAbi.abi,
+        eventName: 'CollateralRemoved', // Event emitted by PositionEscrow
+        onLogs(logs) {
+            console.log(`CollateralRemoved event for PositionEscrow ${positionEscrowAddress}:`, logs);
+            refetchAllPositionData();
+        },
+        onError(error) {
+            console.error(`Error watching CollateralRemoved for ${positionEscrowAddress}:`, error)
+        },
+        query: { enabled: !!positionEscrowAddress }
+    });
+
+    // Listen for allocation changes on PositionEscrow
+     useWatchContractEvent({
+        address: positionEscrowAddress!, // Listen on PositionEscrow contract
+        abi: positionEscrowAbi.abi,
+        eventName: 'AllocationModified', // Event emitted by PositionEscrow
+        onLogs(logs) {
+            console.log(`AllocationModified event for PositionEscrow ${positionEscrowAddress}:`, logs);
+            refetchAllPositionData();
+        },
+        onError(error) {
+            console.error(`Error watching AllocationModified for ${positionEscrowAddress}:`, error)
+        },
+        query: { enabled: !!positionEscrowAddress }
+    });
+
+
+    // Listen for Min Ratio changes on StabilizerNFT
+    useWatchContractEvent({
+        address: stabilizerAddress, // Listen on StabilizerNFT contract
+        abi: stabilizerAbi,
+        eventName: 'MinCollateralRatioUpdated',
+        args: { tokenId: BigInt(tokenId) }, // Filter by specific tokenId
+        onLogs(logs) {
+            console.log(`MinCollateralRatioUpdated event for token ${tokenId}:`, logs);
+            // Only need to refetch the parent's min ratio, but since we removed the callback,
+            // we refetch all data within this component for simplicity for now.
+            // A more optimized approach might involve a shared state or context.
+            refetchAllPositionData();
+        },
+        onError(error) {
+            console.error(`Error watching MinCollateralRatioUpdated for token ${tokenId}:`, error)
+        },
+    });
+
 
     // --- Interaction Handlers ---
     const handleAddCollateralDirect = async () => {
