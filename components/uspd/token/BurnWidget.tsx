@@ -26,6 +26,14 @@ export function BurnWidget({ tokenAddress, tokenAbi }: BurnWidgetProps) {
 
     const debouncedUspdAmount = useDebounce(uspdAmount, 500)
 
+    const [isLoading, setIsLoading] = useState(false)
+    const [priceData, setPriceData] = useState<any>(null)
+    const [isLoadingPrice, setIsLoadingPrice] = useState(false)
+    const [rateContractAddress, setRateContractAddress] = useState<Address | null>(null)
+    const [yieldFactor, setYieldFactor] = useState<bigint>(BigInt(1e18)) // Default 1e18
+
+    const debouncedUspdAmount = useDebounce(uspdAmount, 500)
+
     const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
 
@@ -40,6 +48,39 @@ export function BurnWidget({ tokenAddress, tokenAbi }: BurnWidgetProps) {
         args: [address],
         query: { enabled: !!address }
     })
+
+    // Fetch Rate Contract address from cUSPDToken
+    const { data: fetchedRateContractAddress, isLoading: isLoadingRateAddr } = useReadContract({
+        address: cuspdTokenAddress,
+        abi: cuspdTokenAbi,
+        functionName: 'rateContract',
+        args: [],
+        query: { enabled: !!cuspdTokenAddress }
+    })
+
+    // Update Rate Contract address state
+    useEffect(() => {
+        setRateContractAddress(fetchedRateContractAddress as Address | null);
+    }, [fetchedRateContractAddress]);
+
+    // Fetch Yield Factor from Rate Contract
+    const { data: fetchedYieldFactor, isLoading: isLoadingYieldFactor } = useReadContract({
+        address: rateContractAddress!,
+        abi: poolSharesConversionRateAbi.abi,
+        functionName: 'getYieldFactor',
+        args: [],
+        query: { enabled: !!rateContractAddress }
+    })
+
+    // Update Yield Factor state
+    useEffect(() => {
+        if (fetchedYieldFactor !== undefined) {
+            setYieldFactor(fetchedYieldFactor as bigint);
+        } else {
+            setYieldFactor(BigInt(1e18)); // Reset if fetch fails
+        }
+    }, [fetchedYieldFactor]);
+
 
     // Fetch price data from API
     const fetchPriceData = async () => {
@@ -81,6 +122,24 @@ export function BurnWidget({ tokenAddress, tokenAbi }: BurnWidgetProps) {
             setEthAmount('') // Clear if no price or input
         }
     }, [debouncedUspdAmount, priceData])
+
+    // Calculate shares to burn when USPD amount or yield factor changes
+    useEffect(() => {
+        if (debouncedUspdAmount && yieldFactor > 0) {
+            try {
+                const uspdValue = parseEther(debouncedUspdAmount); // Convert USPD input to bigint (18 decimals)
+                const FACTOR_PRECISION = BigInt(1e18);
+                // shares = uspdAmount * precision / yieldFactor
+                const calculatedShares = (uspdValue * FACTOR_PRECISION) / yieldFactor;
+                setSharesToBurn(calculatedShares);
+            } catch (e) {
+                console.error("Error parsing USPD amount for share calculation:", e);
+                setSharesToBurn(BigInt(0));
+            }
+        } else {
+            setSharesToBurn(BigInt(0));
+        }
+    }, [debouncedUspdAmount, yieldFactor]);
 
     const handleMaxUspd = () => {
         if (uspdBalance) {
@@ -162,6 +221,11 @@ export function BurnWidget({ tokenAddress, tokenAbi }: BurnWidgetProps) {
                 balance={uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0'}
                 onMax={handleMaxUspd}
             />
+             {sharesToBurn > 0 && (
+                <div className="text-xs text-muted-foreground text-right -mt-2">
+                    ≈ {formatUnits(sharesToBurn, 18)} cUSPD Shares
+                </div>
+            )}
 
             <div className="flex justify-center">
                 <div className="bg-muted rounded-full p-2">
