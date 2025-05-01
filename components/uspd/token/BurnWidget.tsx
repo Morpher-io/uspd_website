@@ -4,20 +4,31 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi'
-import { formatEther, parseEther, formatUnits } from 'viem'
+import { formatEther, parseEther, formatUnits, Address } from 'viem' // Add Address
 import { IPriceOracle } from '@/types/contracts'
 import { TokenDisplay } from './TokenDisplay'
 import { ArrowDown } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
+// Import necessary ABIs (assuming paths are correct)
+import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
+import poolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json'
 
 interface BurnWidgetProps {
-    tokenAddress: `0x${string}`
+    tokenAddress: `0x${string}` // USPDToken address (for balance display)
     tokenAbi: any
+    cuspdTokenAddress: `0x${string}` // cUSPDToken address (for burning)
+    cuspdTokenAbi: any
 }
 
-export function BurnWidget({ tokenAddress, tokenAbi }: BurnWidgetProps) {
-    const [ethAmount, setEthAmount] = useState('') // Estimated amount
-    const [uspdAmount, setUspdAmount] = useState('')
+export function BurnWidget({
+    tokenAddress,
+    tokenAbi,
+    cuspdTokenAddress,
+    cuspdTokenAbi
+}: BurnWidgetProps) {
+    const [ethAmount, setEthAmount] = useState('') // Estimated ETH return
+    const [uspdAmount, setUspdAmount] = useState('') // User input USPD amount
+    const [sharesToBurn, setSharesToBurn] = useState<bigint>(BigInt(0)) // Calculated cUSPD shares
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
@@ -183,22 +194,32 @@ export function BurnWidget({ tokenAddress, tokenAbi }: BurnWidgetProps) {
                 signature: freshPriceData.signature as `0x${string}`
             }
 
-            const uspdValue = parseEther(uspdAmount)
+            // const uspdValue = parseEther(uspdAmount) // We use sharesToBurn now
 
-            // TODO: Update functionName and args for the new cUSPDToken burn function
-            // Need to convert USPD amount to cUSPD shares before calling burnShares
-            // This requires the yieldFactor from PoolSharesConversionRate
-            // const yieldFactor = ... fetch yield factor ...
-            // const sharesToBurn = (uspdValue * FACTOR_PRECISION) / yieldFactor;
+            // TODO: Update functionName and args for the new cUSPDToken burn function - DONE
+            // Need to convert USPD amount to cUSPD shares before calling burnShares - DONE
+            // This requires the yieldFactor from PoolSharesConversionRate - DONE
+            // const yieldFactor = ... fetch yield factor ... - DONE
+            // const sharesToBurn = (uspdValue * FACTOR_PRECISION) / yieldFactor; - DONE
+
+            if (sharesToBurn <= BigInt(0)) {
+                setError('Calculated shares to burn is zero')
+                setIsLoading(false)
+                return
+            }
+
+            // TODO: Check cUSPD share balance if possible/needed for more accurate check
+            // const { data: cuspdShareBalance } = useReadContract(...)
+            // if (cuspdShareBalance && sharesToBurn > cuspdShareBalance) { ... }
 
             await writeContractAsync({
-                address: tokenAddress, // Should this be cUSPDToken address?
-                abi: tokenAbi, // Should this be cUSPDToken ABI?
-                functionName: 'burnShares', // Assuming this is the function on cUSPDToken
-                args: [/* sharesToBurn */ uspdValue, address, priceQuery] // Pass sharesToBurn, recipient, priceQuery
+                address: cuspdTokenAddress, // Target cUSPDToken contract
+                abi: cuspdTokenAbi, // Use cUSPDToken ABI
+                functionName: 'burnShares', // Call burnShares
+                args: [sharesToBurn, address, priceQuery] // Pass calculated shares, recipient, priceQuery
             })
 
-            setSuccess(`Successfully initiated burn of ${uspdAmount} USPD for approximately ${ethAmount} ETH`)
+            setSuccess(`Successfully initiated burn of ${uspdAmount} USPD (approx. ${formatUnits(sharesToBurn, 18)} shares) for estimated ${ethAmount} ETH`)
             setEthAmount('')
             setUspdAmount('')
             refetchUspdBalance()
