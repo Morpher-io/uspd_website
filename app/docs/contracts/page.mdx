@@ -2,29 +2,49 @@
 
 This document outlines the deployment strategy for the USPD protocol contracts, primarily managed by the Foundry script located at `contracts/script/Token.s.sol`.
 
-## Deterministic Token Addresses (CREATE2)
+## Current Strategy: Deterministic Addresses & Controlled Deployment
 
-A key goal for USPD is to have consistent token addresses across all supported EVM chains. This simplifies user experience and integration, as users only need to remember one address for `USPDToken` and `cUSPDToken` regardless of the network.
+The current deployment utilizes the **CREATE2** opcode via the [CreateX](https://github.com/pcaversaccio/createx) minimal proxy factory (`0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed`) for several key contracts, including the core tokens (`cUSPDToken.sol`, `UspdToken.sol`) and core logic proxies (`PriceOracle`, `StabilizerNFT`, `OvercollateralizationReporter`).
 
-To achieve this, the core token contracts (`cUSPDToken.sol` and `UspdToken.sol`) are deployed using the **CREATE2** opcode via the [CreateX](https://github.com/pcaversaccio/createx) minimal proxy factory (`0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed`).
+### CREATE2 Mechanism
 
-### Why CREATE2?
+CREATE2 allows the address of a contract to be determined *before* deployment based on:
+1.  The deployer's address (in this case, the CreateX factory).
+2.  A chosen `salt`.
+3.  The hash of the contract's initialization code (`init_code`), which includes creation bytecode and constructor arguments.
 
-CREATE2 allows for counterfactual contract deployment, meaning the address of a contract can be determined *before* it's deployed, based on the deployer's address, a salt (derived from the deployer address and an identifier in our script), and the contract's creation bytecode hash.
+### Permissioned Salts (Current Implementation)
 
-We specifically chose CREATE2 over alternatives like CREATE3 for its **open deployment scheme**. While CREATE3 can also provide deterministic addresses, CREATE2 allows *anyone* to deploy the exact same bytecode with the same salt (derived from *their* address) and achieve the same resulting contract address on a new chain, provided the CreateX factory exists there. This aligns with our goal of facilitating permissionless expansion to new chains.
+Currently, the deployment script (`Token.s.sol`) generates salts that incorporate the **deployer's address** (the address running the script). This results in a **permissioned deployment scheme**:
+*   **Control:** Only the original deployer (the core team) running the script can guarantee deploying the contracts at the canonical, predetermined addresses on new chains.
+*   **Consistency:** This ensures the official team controls the timing and bytecode integrity of the initial deployment on each supported network.
+*   **Address Variation:** While deterministic for a *given* deployer and configuration, if constructor arguments need to differ between chains (e.g., providing the `StabilizerNFT` address on L1 but `address(0)` on L2), this *will* result in different `init_code` hashes and therefore **different deployed addresses** for the tokens on L1 versus L2s under the current script logic.
 
-**Note:** While the addresses are deterministic, integrating USPD with cross-chain bridges still requires specific configuration and potentially governance actions by the bridge providers.
+This approach prioritizes controlled rollout and security over allowing permissionless deployment by third parties at the canonical address.
 
-## Upgradeable Core Contracts (Proxies)
+## Future Roadmap: Unified Addresses & Open Deployment
 
-Several core logic contracts are designed to be upgradeable to allow for bug fixes and future enhancements. These contracts utilize the **Transparent Upgradeable Proxy (TUP)** pattern:
+A long-term goal is to enable **unified addresses** for the core user-facing contracts (`PoolSharesConversionRate`, `cUSPDToken`, `USPDToken`) across all chains, while allowing **open, permissionless deployment** by the community on new networks.
+
+This potential future strategy involves:
+
+1.  **Deployer-Independent Salts:** Using salts derived only from public identifiers (e.g., `keccak256("USPD_TOKEN_V1")`) for the Rate and Token contracts.
+2.  **Minimal Constructors:** Removing chain-specific arguments (like `_stabilizer`, `_rateContract`, `_stETH`, `_lido`) from the constructors of these three contracts. The constructor would only take arguments guaranteed to be identical everywhere (e.g., `name`, `symbol`, and a hardcoded `_admin` address pointing to the core team multisig or future DAO).
+3.  **Post-Deployment Configuration:** Introducing protected `initialize` / `setConfiguration` functions on these contracts, callable only once by the hardcoded `DEFAULT_ADMIN_ROLE`. After anyone deploys the contract using the public salt, the core team would call these functions to set chain-specific parameters (`isMainchain` flag, `oracle`, `stabilizer`, `stETH`, `lido` addresses).
+4.  **Conditional Logic:** Contracts would use an `isMainchain` flag (set during initialization) or check for non-zero addresses (`stabilizer != address(0)`) to determine their behavior based on the chain type.
+5.  **Bridged Rate Contract:** The `PoolSharesConversionRate` contract on non-mainchain deployments would require a mechanism (e.g., cross-chain messaging integration like LayerZero/Axelar, keeper updates) to fetch or receive the yield factor from the mainnet instance. This remains a significant design consideration.
+
+**Trade-offs:** This future approach achieves unified addresses and open deployment but introduces complexity (two-step deployment on mainnet, reliance on cross-chain data for L2 yield factor) and makes key configuration parameters non-immutable. The current, simpler permissioned approach is prioritized for initial launch stability and control.
+
+## Upgradeable Core Logic Contracts (Proxies)
+
+Several core logic contracts, particularly those managing the stabilization mechanism and oracle interactions, are designed to be upgradeable for bug fixes and future enhancements. These utilize the **Transparent Upgradeable Proxy (TUP)** pattern:
 
 *   `PriceOracle.sol`
 *   `StabilizerNFT.sol`
 *   `OvercollateralizationReporter.sol`
 
-The deployment script (`Token.s.sol`) deploys both the implementation logic contract and a `TransparentUpgradeableProxy` contract that points to it. User interactions occur with the proxy address, which delegates calls to the current implementation.
+The deployment script (`Token.s.sol`) deploys both the implementation logic contract and a `TransparentUpgradeableProxy` contract pointing to it. User interactions occur with the proxy address, which delegates calls to the current implementation. These proxies are currently deployed using the permissioned (deployer-dependent) CREATE2 salt method.
 
 ## Proxy Administration & Future Governance
 
@@ -36,15 +56,15 @@ However, the long-term vision is to decentralize control. The plan is to transit
 
 The contracts utilize OpenZeppelin's `AccessControl` pattern for managing permissions. Key roles include:
 
-*   `DEFAULT_ADMIN_ROLE`: Has broad permissions, including granting/revoking other roles and managing contract upgrades (via `ProxyAdmin`).
+*   `DEFAULT_ADMIN_ROLE`: Has broad permissions, including granting/revoking other roles and managing contract upgrades (via `ProxyAdmin`). This role is assigned to the deployer address during the current deployment process. In the future roadmap involving post-deployment configuration, this role might be hardcoded in token/rate constructors to ensure core team control over initialization.
 *   `UPDATER_ROLE` (`cUSPDToken`, `OvercollateralizationReporter`): Allows updating critical contract dependencies like the Oracle or Stabilizer addresses.
 *   `MINTER_ROLE` (`StabilizerNFT`): Allows minting new Stabilizer NFTs.
 *   `SIGNER_ROLE` (`PriceOracle`): Authorizes addresses to submit signed price attestations.
 *   *Other specific roles may exist within individual contracts.*
 
-Initially, the `DEFAULT_ADMIN_ROLE` is typically assigned to the deployer address or the core team multisig. As part of the move towards decentralization and increased security post-launch, the plan is to either:
+Initially, the `DEFAULT_ADMIN_ROLE` is controlled by the core team. As part of the move towards decentralization and increased security post-launch, the plan remains to eventually either:
 
-1.  **Renounce** the `DEFAULT_ADMIN_ROLE` by transferring it to `address(0)`.
+1.  **Renounce** the `DEFAULT_ADMIN_ROLE` on mature contracts by transferring it to `address(0)`.
 2.  **Transfer** the `DEFAULT_ADMIN_ROLE` to the future on-chain governance contract.
 
 This action will be taken once the team is confident that no further administrative interventions are expected for the core contract logic.
@@ -54,4 +74,4 @@ This action will be taken once the team is confident that no further administrat
 Transparency and security are paramount.
 *   The source code for both the smart contracts and the frontend interface is **open-source** and available in our public repositories (links to be added).
 *   We strive to **verify the source code** of all deployed contracts on block explorers (like Etherscan) for each supported chain.
-*   The use of **deterministic addresses** via CREATE2 further enhances transparency, allowing users to easily verify they are interacting with the correct USPD token contracts across different networks.
+*   The use of **deterministic addresses** via CREATE2 enhances transparency. While addresses may differ between L1 and L2s under the current deployment, the future roadmap aims for unified addresses, further simplifying verification for users across networks.
