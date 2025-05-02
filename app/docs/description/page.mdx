@@ -111,55 +111,60 @@ The USPD system comprises several interconnected smart contracts:
 *   **`MockLido`, `MockStETH`:** Used for testing environments to simulate Lido staking and stETH rebasing.
 
 ```mermaid
-graph TD
-    subgraph User & Tokens
-        U[User] -- Sends ETH --> Mint(USPDToken.mint)
-        Mint -- Forwards Call --> cUSPD(cUSPDToken.mintShares)
-        cUSPD -- Mints Shares --> U
-        U -- Holds --> USPD(USPD View Balance)
+graph LR %% Changed layout direction to Left-Right
 
-        U -- Sends USPD --> Burn(USPDToken Transfer/Approval)
-        Burn -- Converts to Shares --> cUSPD_Burn(cUSPDToken.burnShares)
-        cUSPD_Burn -- Returns stETH --> U
+    subgraph User Flow
+        direction TB %% Keep user flow top-down within this subgraph
+        U[User] -- 1. Send ETH --> Mint(USPDToken.mint)
+        Mint -- 2. Forward --> cUSPD_Mint(cUSPDToken.mintShares)
+        cUSPD_Mint -- 6. Mint Shares --> U
+        U -- Holds --> USPD_View(USPD View Balance)
+        U -- 7. Send USPD --> Burn(USPDToken Transfer/Approval)
+        Burn -- 8. Convert --> cUSPD_Burn(cUSPDToken.burnShares)
+        cUSPD_Burn -- 11. Return stETH --> U
     end
 
-    subgraph System Core
-        cUSPD -- Reads Price --> Oracle(PriceOracle)
-        cUSPD -- allocate/unallocate --> SNFT(StabilizerNFT)
+    subgraph Core Logic
+        direction TB
+        cUSPD_Mint -- 3. Allocate --> SNFT(StabilizerNFT)
+        cUSPD_Mint -- Reads Price --> Oracle(PriceOracle)
+        cUSPD_Mint -- Reads Yield --> RateC(PoolSharesConversionRate)
 
-        USPD -- Reads Yield Factor --> RateC(PoolSharesConversionRate)
-        cUSPD -- Reads Yield Factor --> RateC
+        cUSPD_Burn -- 9. Unallocate --> SNFT
+        cUSPD_Burn -- Reads Price --> Oracle
+        cUSPD_Burn -- Reads Yield --> RateC
+
+        USPD_View -- Reads Yield --> RateC
     end
 
-    subgraph Stabilizer Infrastructure
-        Owner[Stabilizer Owner] -- Owns --> SNFT
+    subgraph Stabilizer [Stabilizer Infrastructure]
+        direction TB
+        Owner(Stabilizer Owner) -- Owns --> SNFT
         SNFT -- Manages --> SE(StabilizerEscrow<br/>Unallocated stETH)
         SNFT -- Manages --> PE(PositionEscrow<br/>Allocated stETH)
-
-        Owner -- Adds/Removes Funds --> SNFT
-        SNFT -- Moves Funds --> SE
-        SNFT -- Moves Funds --> PE
+        Owner -- Add/Withdraw Unallocated --> SNFT
+        SNFT -- 4. Move stETH --> PE
+        SNFT -- 10. Return stETH --> SE
+        PE -- 5. Backs Shares --> cUSPD_Mint
     end
 
-    subgraph External Dependencies
-        Lido(Lido Staking)
-        Oracle
-        RateC
+    subgraph External
+       direction TB
+       Lido(Lido Staking)
+       Oracle
+       RateC
     end
 
-    %% Key Interactions
+    %% Link external dependencies where used
     Mint -- Sends ETH --> Lido
     SE -- Sends ETH --> Lido
     PE -- Sends ETH --> Lido
-    Lido -- Returns stETH --> SE & PE
-
-    SNFT -- Moves stETH --> PE
-    SNFT -- Moves stETH --> SE
-
-    PE -- Backs --> cUSPD
+    Lido -- Returns stETH --> SE
+    Lido -- Returns stETH --> PE
 
     style PE fill:#ccf,stroke:#333,stroke-width:2px
     style SE fill:#fcc,stroke:#333,stroke-width:2px
+
 ```
 
 **Deployment Strategy:**
