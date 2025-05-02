@@ -110,6 +110,58 @@ The USPD system comprises several interconnected smart contracts:
 
 *   **`MockLido`, `MockStETH`:** Used for testing environments to simulate Lido staking and stETH rebasing.
 
+```mermaid
+graph TD
+    subgraph User & Tokens
+        U[User] -- Sends ETH --> Mint(USPDToken.mint)
+        Mint -- Forwards Call --> cUSPD(cUSPDToken.mintShares)
+        cUSPD -- Mints Shares --> U
+        U -- Holds --> USPD(USPD View Balance)
+
+        U -- Sends USPD --> Burn(USPDToken Transfer/Approval)
+        Burn -- Converts to Shares --> cUSPD_Burn(cUSPDToken.burnShares)
+        cUSPD_Burn -- Returns stETH --> U
+    end
+
+    subgraph System Core
+        cUSPD -- Reads Price --> Oracle(PriceOracle)
+        cUSPD -- allocate/unallocate --> SNFT(StabilizerNFT)
+
+        USPD -- Reads Yield Factor --> RateC(PoolSharesConversionRate)
+        cUSPD -- Reads Yield Factor --> RateC
+    end
+
+    subgraph Stabilizer Infrastructure
+        Owner[Stabilizer Owner] -- Owns --> SNFT
+        SNFT -- Manages --> SE(StabilizerEscrow<br/>Unallocated stETH)
+        SNFT -- Manages --> PE(PositionEscrow<br/>Allocated stETH)
+
+        Owner -- Adds/Removes Funds --> SNFT
+        SNFT -- Moves Funds --> SE
+        SNFT -- Moves Funds --> PE
+    end
+
+    subgraph External Dependencies
+        Lido(Lido Staking)
+        Oracle
+        RateC
+    end
+
+    %% Key Interactions
+    Mint -- Sends ETH --> Lido
+    SE -- Sends ETH --> Lido
+    PE -- Sends ETH --> Lido
+    Lido -- Returns stETH --> SE & PE
+
+    SNFT -- Moves stETH --> PE
+    SNFT -- Moves stETH --> SE
+
+    PE -- Backs --> cUSPD
+
+    style PE fill:#ccf,stroke:#333,stroke-width:2px
+    style SE fill:#fcc,stroke:#333,stroke-width:2px
+```
+
 **Deployment Strategy:**
 *   Core tokens (`cUSPDToken`, `USPDToken`) and potentially `ProxyAdmin` and `PriceOracle` are deployed using CREATE2 via the `CreateX` factory for deterministic addresses across different EVM chains.
 *   Other contracts (`StabilizerNFT`, `PoolSharesConversionRate`, `OvercollateralizationReporter` implementations and proxies, Escrow implementations) are deployed using standard methods or CREATE2 as defined in the deployment script (`Token.s.sol`).
