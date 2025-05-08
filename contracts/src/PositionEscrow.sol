@@ -195,33 +195,22 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     }
 
     /**
-     * @notice Removes stETH collateral during unallocation.
-     * @param totalToRemove The total amount of stETH (user + stabilizer share, including yield) to remove.
-     * @param userShare The portion of totalToRemove belonging to the user.
-     * @param recipient The address (StabilizerNFT) to send the stETH to.
+     * @notice Removes stETH collateral.
+     * @param amountToRemove The total amount of stETH to remove.
+     * @param recipient The address to send the stETH to (typically StabilizerNFT).
      * @dev Callable only by STABILIZER_ROLE (StabilizerNFT).
      */
-    function removeCollateral(uint256 totalToRemove, uint256 userShare, address payable recipient) external override onlyRole(STABILIZER_ROLE) {
-        if (totalToRemove == 0) revert ZeroAmount();
+    function removeCollateral(uint256 amountToRemove, address recipient) external override onlyRole(STABILIZER_ROLE) {
+        if (amountToRemove == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
-        if (userShare > totalToRemove) revert ArithmeticError(); // User share cannot exceed total
 
         uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
-        if (totalToRemove > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, totalToRemove);
+        if (amountToRemove > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amountToRemove);
 
-        uint256 stabilizerShare = totalToRemove - userShare;
+        bool success = IERC20(stETH).transfer(recipient, amountToRemove);
+        if (!success) revert TransferFailed();
 
-        // Transfer user share
-        bool successUser = IERC20(stETH).transfer(recipient, userShare);
-        if (!successUser) revert TransferFailed();
-
-        // Transfer stabilizer share (if any)
-        if (stabilizerShare > 0) {
-            bool successStabilizer = IERC20(stETH).transfer(recipient, stabilizerShare);
-            if (!successStabilizer) revert TransferFailed();
-        }
-
-        emit CollateralRemoved(recipient, userShare, stabilizerShare);
+        emit CollateralRemoved(recipient, amountToRemove); // Emit simplified event
     }
 
     /**

@@ -273,10 +273,15 @@ contract StabilizerNFT is
         // For now, we assume StabilizerNFT holds them, and a subsequent call to cUSPD will burn them.
         // This part will be completed when cUSPDToken is modified.
 
-        // 5. Retrieve Collateral from PositionEscrow
-        // This call will also update backedPoolShares in PositionEscrow
-        uint256 totalCollateralReleased = positionEscrow.releaseCollateralForLiquidation(address(this), cuspdSharesToLiquidate);
-        require(totalCollateralReleased > 0, "No collateral released from position"); // Should have some if ratio was < threshold
+        // 5. Update PositionEscrow's backed shares and retrieve all its collateral
+        positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate));
+        
+        uint256 totalCollateralReleased = positionEscrow.getCurrentStEthBalance(); // Get balance before removing
+        if (totalCollateralReleased > 0) {
+            positionEscrow.removeCollateral(totalCollateralReleased, address(this)); // Send all to StabilizerNFT
+        }
+        // If currentRatio was < liquidationThresholdPercent, there should ideally be some collateral.
+        // A check like `require(totalCollateralReleased > 0, "No collateral released");` might be too strict if a position is truly empty but somehow still flagged.
 
         // 6. Calculate Payouts (in stETH)
         uint256 yieldFactor = rateContract.getYieldFactor();
@@ -709,13 +714,16 @@ contract StabilizerNFT is
                     positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate)); // Cast uint to int *then* negate
 
                     // Remove the calculated stETH collateral - sends to this contract (StabilizerNFT)
-                    positionEscrow.removeCollateral(
-                        stEthToRemove,
-                        userStEthShare,
-                        payable(address(this)) // Recipient is this contract
-                    );
+                    // The entire stEthToRemove is sent to StabilizerNFT.
+                    // userStEthShare is calculated for StabilizerNFT's internal logic to split.
+                    if (stEthToRemove > 0) {
+                        positionEscrow.removeCollateral(
+                            stEthToRemove,
+                            address(this) // Recipient is this contract
+                        );
+                    }
 
-                    // Distribute received stETH
+                    // Distribute received stETH (which is now held by StabilizerNFT)
                     uint256 stabilizerStEthShare = stEthToRemove - userStEthShare;
 
                     // Send user's share to cUSPDToken

@@ -20,8 +20,9 @@ interface IPositionEscrow is IERC20Errors, IAccessControl {
     // --- Events ---
     event CollateralAdded(uint256 totalStEthAmount); // Simplified event
     event AllocationModified(int256 sharesDelta, uint256 newTotalShares); // Use int for delta
-    event CollateralRemoved(address indexed recipient, uint256 userAmount, uint256 stabilizerAmount);
+    event CollateralRemoved(address indexed recipient, uint256 amount); // Simplified event
     event ExcessCollateralRemoved(address indexed recipient, uint256 amount);
+    // CollateralReleasedForLiquidation event removed
 
     // --- State Variable Getters ---
     function stabilizerNFTContract() external view returns (address);
@@ -37,12 +38,13 @@ interface IPositionEscrow is IERC20Errors, IAccessControl {
     function addCollateralEth() external payable; // Add ETH collateral directly
     function addCollateralStETH(uint256 stETHAmount) external; // Add stETH collateral directly
     function modifyAllocation(int256 sharesDelta) external; // Use int for delta
-    function removeCollateral(uint256 totalToRemove, uint256 userShare, address payable recipient) external;
+    function removeCollateral(uint256 amountToRemove, address recipient) external; // Simplified signature
     function removeExcessCollateral(
         address payable recipient,
         uint256 amountToRemove, // Amount the caller wants to remove
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external;
+    // releaseCollateralForLiquidation function removed
 
     // --- View Functions ---
     function getCollateralizationRatio(IPriceOracle.PriceResponse memory priceResponse) external view returns (uint256 ratio);
