@@ -31,12 +31,7 @@ export function BurnWidget({
     const [sharesToBurn, setSharesToBurn] = useState<bigint>(BigInt(0)) // Calculated cUSPD shares
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
-    const [isLoading, setIsLoading] = useState(false)
-    const [priceData, setPriceData] = useState<any>(null)
-    const [isLoadingPrice, setIsLoadingPrice] = useState(false)
-
-    const debouncedUspdAmount = useDebounce(uspdAmount, 500)
-
+    
     const [isLoading, setIsLoading] = useState(false)
     const [priceData, setPriceData] = useState<any>(null)
     const [isLoadingPrice, setIsLoadingPrice] = useState(false)
@@ -56,7 +51,7 @@ export function BurnWidget({
         address: tokenAddress,
         abi: tokenAbi,
         functionName: 'balanceOf',
-        args: [address],
+        args: [address as `0x${string}`],
         query: { enabled: !!address }
     })
 

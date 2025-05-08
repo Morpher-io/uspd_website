@@ -8,6 +8,9 @@ export default {
   stabilizers: {
       title: "Stabilizers"
   },
+  contracts: {
+      title: "USPD Contracts"
+  },
   bridge: {
       title: "USPD Cross-Chain (Bridge)"
   },
