@@ -14,6 +14,8 @@ import "./interfaces/IPositionEscrow.sol";
 import "./interfaces/IStabilizerEscrow.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
 import "./interfaces/IOvercollateralizationReporter.sol";
+import "./interfaces/IInsuranceEscrow.sol"; // <-- Add InsuranceEscrow interface
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"; // <-- Add IERC20 for stETH
 import "./StabilizerEscrow.sol"; // Keep for type casting if needed, but not for `new`
 import "./PositionEscrow.sol"; // Keep for type casting if needed, but not for `new`
 import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol"; // <-- Import Clones library
@@ -57,6 +59,14 @@ contract StabilizerNFT is
     IcUSPDToken public cuspdToken;
     // Reporter contract for snapshot tracking
     IOvercollateralizationReporter public reporter; // <-- Add Reporter state variable
+    // Price Oracle
+    IPriceOracle public oracle;
+    // Insurance Escrow for liquidations
+    IInsuranceEscrow public insuranceEscrow;
+
+    // Liquidation parameters
+    uint256 public liquidationLiquidatorPayoutPercent; // e.g., 105 means liquidator gets 105% of par value
+    uint256 public liquidationThresholdPercent;      // e.g., 110 means positions below 110% CR are liquidatable
 
     // Addresses needed for Escrow deployment/interaction
     address public stETH;
@@ -101,6 +111,17 @@ contract StabilizerNFT is
         uint256 newRatio
     );
     event UnallocatedFundsRemoved(uint256 indexed tokenId, uint256 amount, address indexed recipient);
+    event PositionLiquidated(
+        uint256 indexed tokenId,
+        address indexed liquidator,
+        uint256 cuspdSharesLiquidated,
+        uint256 stEthPaidToLiquidator,
+        uint256 priceUsed
+    );
+    event InsuranceEscrowUpdated(address indexed newInsuranceEscrow);
+    event LiquidationParametersUpdated(uint256 newPayoutPercent, uint256 newThresholdPercent);
+    event OracleUpdated(address indexed newOracle);
+
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -113,10 +134,11 @@ contract StabilizerNFT is
         address _lido,
         address _rateContract,
         address _reporterAddress,
+        address _oracleAddress, // <-- Add Oracle address
+        address _insuranceEscrowAddress, // <-- Add InsuranceEscrow address
         string memory _baseURI,
         address _stabilizerEscrowImpl, // <-- Add StabilizerEscrow implementation address
         address _positionEscrowImpl, // <-- Add PositionEscrow implementation address
-        // address _createX, // Uncomment if using CREATE2 factory
         address _admin
     ) public initializer {
         __ERC721_init("USPD Stabilizer", "USPDS");
@@ -129,12 +151,45 @@ contract StabilizerNFT is
         lido = _lido;
         rateContract = IPoolSharesConversionRate(_rateContract);
         reporter = IOvercollateralizationReporter(_reporterAddress);
+        oracle = IPriceOracle(_oracleAddress); // <-- Initialize Oracle
+        if (_insuranceEscrowAddress != address(0)) {
+            insuranceEscrow = IInsuranceEscrow(_insuranceEscrowAddress);
+        }
         baseURI = _baseURI;
         stabilizerEscrowImplementation = _stabilizerEscrowImpl; // <-- Store implementation address
         positionEscrowImplementation = _positionEscrowImpl; // <-- Store implementation address
 
+        // Default liquidation parameters (can be changed by admin)
+        liquidationLiquidatorPayoutPercent = 105; // 105%
+        liquidationThresholdPercent = 110;      // 110%
+
         // Snapshot state is now managed by the reporter contract
     }
+
+    // --- Admin Functions ---
+    function setInsuranceEscrow(address _insuranceEscrowAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_insuranceEscrowAddress != address(0), "Zero address for InsuranceEscrow");
+        insuranceEscrow = IInsuranceEscrow(_insuranceEscrowAddress);
+        emit InsuranceEscrowUpdated(_insuranceEscrowAddress);
+    }
+
+    function setLiquidationParameters(uint256 _payoutPercent, uint256 _thresholdPercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_payoutPercent >= 100, "Payout percent must be >= 100"); // e.g. 100-120
+        require(_thresholdPercent > 100 && _thresholdPercent < 200, "Threshold percent must be > 100 and < 200"); // e.g. 101-150
+        require(_payoutPercent <= _thresholdPercent, "Payout percent cannot exceed threshold percent");
+
+        liquidationLiquidatorPayoutPercent = _payoutPercent;
+        liquidationThresholdPercent = _thresholdPercent;
+        emit LiquidationParametersUpdated(_payoutPercent, _thresholdPercent);
+    }
+
+    function setOracle(address _oracleAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_oracleAddress != address(0), "Zero address for Oracle");
+        oracle = IPriceOracle(_oracleAddress);
+        emit OracleUpdated(_oracleAddress);
+    }
+    // --- End Admin Functions ---
+
 
     function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
         positions[tokenId] = StabilizerPosition({
@@ -183,6 +238,117 @@ contract StabilizerNFT is
         // Grant the new PositionEscrow clone the role needed to call back
         _grantRole(POSITION_ESCROW_ROLE, positionEscrowClone);
     }
+
+
+    // --- Liquidation Function ---
+    function liquidatePosition(
+        uint256 tokenId,
+        uint256 cuspdSharesToLiquidate,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external { // Removed override as it's not in IStabilizerNFT yet
+        // 1. Initial Validations
+        require(address(insuranceEscrow) != address(0), "InsuranceEscrow not set");
+        require(cuspdSharesToLiquidate > 0, "No cUSPD shares to liquidate");
+        require(ownerOf(tokenId) != address(0), "Token does not exist"); // Ensure NFT exists
+
+        address positionEscrowAddress = positionEscrows[tokenId];
+        require(positionEscrowAddress != address(0), "PositionEscrow not found for token");
+
+        IPriceOracle.PriceResponse memory priceResponse = oracle.attestationService(priceQuery);
+        require(priceResponse.price > 0, "Invalid oracle price");
+
+        // 2. Fetch Position Data
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddress);
+        uint256 backedSharesInEscrow = positionEscrow.backedPoolShares();
+        require(cuspdSharesToLiquidate <= backedSharesInEscrow, "Not enough shares in position");
+
+        // 3. Check Liquidation Condition
+        uint256 currentRatio = positionEscrow.getCollateralizationRatio(priceResponse);
+        require(currentRatio < liquidationThresholdPercent, "Position not below liquidation threshold");
+
+        // 4. Handle cUSPD Shares
+        // Liquidator must have approved this contract (StabilizerNFT) to spend their cUSPD
+        IERC20(address(cuspdToken)).transferFrom(msg.sender, address(this), cuspdSharesToLiquidate);
+        // TODO: Next step will be to add cuspdToken.burnFromSelf(cuspdSharesToLiquidate)
+        // For now, we assume StabilizerNFT holds them, and a subsequent call to cUSPD will burn them.
+        // This part will be completed when cUSPDToken is modified.
+
+        // 5. Retrieve Collateral from PositionEscrow
+        // This call will also update backedPoolShares in PositionEscrow
+        uint256 totalCollateralReleased = positionEscrow.releaseCollateralForLiquidation(address(this), cuspdSharesToLiquidate);
+        require(totalCollateralReleased > 0, "No collateral released from position"); // Should have some if ratio was < threshold
+
+        // 6. Calculate Payouts (in stETH)
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        require(yieldFactor > 0, "Invalid yield factor");
+
+        // USD value of the cUSPD shares being liquidated (par value)
+        uint256 uspdValueToLiquidateUSD = (cuspdSharesToLiquidate * yieldFactor) / FACTOR_PRECISION;
+        // stETH equivalent of the par value
+        uint256 stEthParValue = (uspdValueToLiquidateUSD * (10**uint256(priceResponse.decimals))) / priceResponse.price;
+        // Target stETH payout to liquidator (e.g., 105% of par value)
+        uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
+
+        uint256 stEthPaidToLiquidator = 0;
+
+        // 7. Distribute Collateral to Liquidator
+        if (totalCollateralReleased >= targetPayoutToLiquidator) {
+            IERC20(stETH).transfer(msg.sender, targetPayoutToLiquidator);
+            stEthPaidToLiquidator = targetPayoutToLiquidator;
+
+            // Send remainder from position's collateral to InsuranceEscrow
+            uint256 remainderToInsurance = totalCollateralReleased - targetPayoutToLiquidator;
+            if (remainderToInsurance > 0) {
+                // StabilizerNFT (owner of InsuranceEscrow) calls depositStEth.
+                // InsuranceEscrow.depositStEth pulls from its owner (StabilizerNFT).
+                // StabilizerNFT must approve InsuranceEscrow first if stETH is held by StabilizerNFT.
+                // Since stETH is transferred to StabilizerNFT by PositionEscrow, it holds the funds.
+                IERC20(stETH).approve(address(insuranceEscrow), remainderToInsurance);
+                insuranceEscrow.depositStEth(remainderToInsurance);
+            }
+        } else {
+            // PositionEscrow collateral is not enough to cover the 105% target
+            IERC20(stETH).transfer(msg.sender, totalCollateralReleased); // Give all of it to liquidator
+            stEthPaidToLiquidator = totalCollateralReleased;
+
+            uint256 shortfall = targetPayoutToLiquidator - totalCollateralReleased;
+            if (shortfall > 0) {
+                uint256 stEthInInsurance = insuranceEscrow.getStEthBalance();
+                uint256 stEthFromInsurance = shortfall > stEthInInsurance ? stEthInInsurance : shortfall;
+
+                if (stEthFromInsurance > 0) {
+                    // InsuranceEscrow.withdrawStEth is called by StabilizerNFT (owner)
+                    // and transfers stETH from InsuranceEscrow to msg.sender (liquidator)
+                    insuranceEscrow.withdrawStEth(msg.sender, stEthFromInsurance);
+                    stEthPaidToLiquidator += stEthFromInsurance;
+                }
+            }
+        }
+
+        // 8. Snapshot Update: Collateral removed from the active system
+        reporter.updateSnapshot(-int256(totalCollateralReleased));
+
+        // 9. Update StabilizerNFT State (lists)
+        // Check if the PositionEscrow is now empty of backed shares
+        if (positionEscrow.backedPoolShares() == 0) {
+            _removeFromAllocatedList(tokenId);
+            // If the associated StabilizerEscrow has funds, move NFT to unallocated list
+            if (stabilizerEscrows[tokenId] != address(0) && IStabilizerEscrow(stabilizerEscrows[tokenId]).unallocatedStETH() > 0) {
+                _registerUnallocatedPosition(tokenId);
+            }
+        }
+        
+        // 10. Emit Event
+        emit PositionLiquidated(
+            tokenId,
+            msg.sender,
+            cuspdSharesToLiquidate,
+            stEthPaidToLiquidator,
+            priceResponse.price
+        );
+    }
+    // --- End Liquidation Function ---
+
 
     /**
      * @dev Registers a position in the unallocated list if it's not already there.
