@@ -60,10 +60,9 @@ contract StabilizerNFT is
     IcUSPDToken public cuspdToken;
     // Reporter contract for snapshot tracking
     IOvercollateralizationReporter public reporter; // <-- Add Reporter state variable
-    // Price Oracle
-    IPriceOracle public oracle;
     // Insurance Escrow for liquidations
     IInsuranceEscrow public insuranceEscrow;
+    // Price Oracle will be accessed via cuspdToken.oracle()
 
     // Liquidation parameters
     uint256 public liquidationLiquidatorPayoutPercent; // e.g., 105 means liquidator gets 105% of par value
@@ -121,7 +120,7 @@ contract StabilizerNFT is
     );
     event InsuranceEscrowUpdated(address indexed newInsuranceEscrow);
     event LiquidationParametersUpdated(uint256 newPayoutPercent, uint256 newThresholdPercent);
-    event OracleUpdated(address indexed newOracle);
+    // OracleUpdated event removed
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -135,7 +134,7 @@ contract StabilizerNFT is
         address _lido,
         address _rateContract,
         address _reporterAddress,
-        address _oracleAddress, // <-- Add Oracle address
+        // address _oracleAddress, // <-- Oracle address parameter removed
         // address _insuranceEscrowAddress, // <-- Removed InsuranceEscrow address parameter
         string memory _baseURI,
         address _stabilizerEscrowImpl, // <-- Add StabilizerEscrow implementation address
@@ -152,7 +151,7 @@ contract StabilizerNFT is
         lido = _lido;
         rateContract = IPoolSharesConversionRate(_rateContract);
         reporter = IOvercollateralizationReporter(_reporterAddress);
-        oracle = IPriceOracle(_oracleAddress); // <-- Initialize Oracle
+        // oracle = IPriceOracle(_oracleAddress); // <-- Oracle initialization removed
         
         // Deploy and set the InsuranceEscrow
         // The StabilizerNFT contract itself will be the owner of the InsuranceEscrow
@@ -189,11 +188,11 @@ contract StabilizerNFT is
         emit LiquidationParametersUpdated(_payoutPercent, _thresholdPercent);
     }
 
-    function setOracle(address _oracleAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_oracleAddress != address(0), "Zero address for Oracle");
-        oracle = IPriceOracle(_oracleAddress);
-        emit OracleUpdated(_oracleAddress);
-    }
+    // function setOracle(address _oracleAddress) external onlyRole(DEFAULT_ADMIN_ROLE) { // Function removed
+    //     require(_oracleAddress != address(0), "Zero address for Oracle");
+    //     oracle = IPriceOracle(_oracleAddress);
+    //     emit OracleUpdated(_oracleAddress);
+    // }
     // --- End Admin Functions ---
 
 
@@ -260,7 +259,9 @@ contract StabilizerNFT is
         address positionEscrowAddress = positionEscrows[tokenId];
         require(positionEscrowAddress != address(0), "PositionEscrow not found for token");
 
-        IPriceOracle.PriceResponse memory priceResponse = oracle.attestationService(priceQuery);
+        IPriceOracle currentOracle = IPriceOracle(cuspdToken.oracle());
+        require(address(currentOracle) != address(0), "Oracle not set in cUSPDToken");
+        IPriceOracle.PriceResponse memory priceResponse = currentOracle.attestationService(priceQuery);
         require(priceResponse.price > 0, "Invalid oracle price");
 
         // 2. Fetch Position Data
