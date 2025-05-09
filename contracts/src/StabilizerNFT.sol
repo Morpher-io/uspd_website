@@ -14,10 +14,11 @@ import "./interfaces/IPositionEscrow.sol";
 import "./interfaces/IStabilizerEscrow.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
 import "./interfaces/IOvercollateralizationReporter.sol";
-import "./interfaces/IInsuranceEscrow.sol"; // <-- Add InsuranceEscrow interface
+import "./interfaces/IInsuranceEscrow.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"; // <-- Add IERC20 for stETH
-import "./StabilizerEscrow.sol"; // Keep for type casting if needed, but not for `new`
-import "./PositionEscrow.sol"; // Keep for type casting if needed, but not for `new`
+import "./StabilizerEscrow.sol";
+import "./PositionEscrow.sol";
+import "./InsuranceEscrow.sol"; 
 import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol"; // <-- Import Clones library
 
 import {console} from "forge-std/console.sol";
