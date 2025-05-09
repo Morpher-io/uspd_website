@@ -135,7 +135,7 @@ contract StabilizerNFT is
         address _rateContract,
         address _reporterAddress,
         address _oracleAddress, // <-- Add Oracle address
-        address _insuranceEscrowAddress, // <-- Add InsuranceEscrow address
+        // address _insuranceEscrowAddress, // <-- Removed InsuranceEscrow address parameter
         string memory _baseURI,
         address _stabilizerEscrowImpl, // <-- Add StabilizerEscrow implementation address
         address _positionEscrowImpl, // <-- Add PositionEscrow implementation address
@@ -152,9 +152,14 @@ contract StabilizerNFT is
         rateContract = IPoolSharesConversionRate(_rateContract);
         reporter = IOvercollateralizationReporter(_reporterAddress);
         oracle = IPriceOracle(_oracleAddress); // <-- Initialize Oracle
-        if (_insuranceEscrowAddress != address(0)) {
-            insuranceEscrow = IInsuranceEscrow(_insuranceEscrowAddress);
-        }
+        
+        // Deploy and set the InsuranceEscrow
+        // The StabilizerNFT contract itself will be the owner of the InsuranceEscrow
+        InsuranceEscrow newInsuranceEscrow = new InsuranceEscrow(stETH, address(this));
+        require(address(newInsuranceEscrow) != address(0), "InsuranceEscrow deployment failed");
+        insuranceEscrow = IInsuranceEscrow(address(newInsuranceEscrow));
+        emit InsuranceEscrowUpdated(address(newInsuranceEscrow)); // Emit event for initial deployment
+
         baseURI = _baseURI;
         stabilizerEscrowImplementation = _stabilizerEscrowImpl; // <-- Store implementation address
         positionEscrowImplementation = _positionEscrowImpl; // <-- Store implementation address
