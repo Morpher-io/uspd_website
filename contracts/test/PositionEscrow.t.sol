@@ -397,7 +397,7 @@ contract PositionEscrowTest is
             )
         );
         vm.prank(otherUser);
-        positionEscrow.removeCollateral(1 ether, 0.5 ether, payable(recipient));
+        positionEscrow.removeCollateral(1 ether, payable(recipient));
     }
 
     function test_removeExcessCollateral_revert_notManagerRole() public {
@@ -639,14 +639,12 @@ contract PositionEscrowTest is
         vm.expectEmit(true, true, false, true, address(positionEscrow)); // recipient is indexed
         emit IPositionEscrow.CollateralRemoved(
             recipient,
-            userShare,
             stabilizerShare
         );
 
         vm.prank(admin);
         positionEscrow.removeCollateral(
             totalToRemove,
-            userShare,
             payable(recipient)
         );
 
@@ -665,7 +663,7 @@ contract PositionEscrowTest is
     function test_removeCollateral_revert_zeroAmount() public {
         vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
         vm.prank(admin);
-        positionEscrow.removeCollateral(0, 0, payable(recipient));
+        positionEscrow.removeCollateral(0, payable(recipient));
     }
 
     function test_removeCollateral_revert_zeroRecipient() public {
@@ -673,17 +671,11 @@ contract PositionEscrowTest is
         vm.prank(admin);
         positionEscrow.removeCollateral(
             1 ether,
-            0.5 ether,
             payable(address(0))
         );
     }
 
-    function test_removeCollateral_revert_userShareTooLarge() public {
-        vm.expectRevert(IPositionEscrow.ArithmeticError.selector);
-        vm.prank(admin);
-        positionEscrow.removeCollateral(1 ether, 1.1 ether, payable(recipient)); // userShare > totalToRemove
-    }
-
+   
     function test_removeCollateral_revert_insufficientBalance() public {
         uint256 initialBalance = 0.5 ether;
         uint256 totalToRemove = 1 ether;
@@ -703,7 +695,6 @@ contract PositionEscrowTest is
         vm.prank(admin);
         positionEscrow.removeCollateral(
             totalToRemove,
-            userShare,
             payable(recipient)
         );
     }
@@ -731,7 +722,6 @@ contract PositionEscrowTest is
         vm.prank(admin);
         positionEscrow.removeCollateral(
             totalToRemove,
-            userShare,
             payable(recipient)
         );
     }
