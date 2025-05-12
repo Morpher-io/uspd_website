@@ -266,24 +266,13 @@ contract StabilizerNFT is
         // Inlined backedSharesInEscrow:
         require(cuspdSharesToLiquidate <= positionEscrow.backedPoolShares(), "Not enough shares in position");
 
-        // 3. Check Liquidation Condition
-        // Calculate dynamic threshold based on tokenId
-        uint256 calculatedThreshold;
-        if (tokenId == 0) { // Defensive check, should be caught by ownerOf earlier
-            revert("Invalid token ID for threshold calculation");
-        }
-        uint256 decrement = (tokenId - 1) * 50; // 0.5% = 50 when scaled by 10000
-        uint256 baseThreshold = 12500; // 125.00%
-        uint256 minThreshold = 11000; // 110.00%
-
-        if (decrement >= (baseThreshold - minThreshold)) { // Check if decrement goes below min
-            calculatedThreshold = minThreshold;
-        } else {
-            calculatedThreshold = baseThreshold - decrement;
-        }
-
-        // Inlined currentRatio:
-        require(positionEscrow.getCollateralizationRatio(priceResponse) < calculatedThreshold, "Position not below liquidation threshold");
+        // 3. Check Liquidation Condition (Dynamic threshold calculation inlined)
+        require(
+            positionEscrow.getCollateralizationRatio(priceResponse) <
+                ((tokenId - 1) * 50 >= (12500 - 11000) ? 11000 : 12500 - (tokenId - 1) * 50),
+            "Position not below liquidation threshold"
+        );
+        // Note: tokenId == 0 check is implicitly handled by ownerOf check earlier.
 
         // 4. Handle cUSPD Shares
         // Liquidator must have approved this contract (StabilizerNFT) to spend their cUSPD
@@ -304,13 +293,11 @@ contract StabilizerNFT is
 
         // 6. Calculate Payouts (in stETH)
         // Inlined yieldFactor variable, direct call to rateContract.getYieldFactor()
-        require(rateContract.getYieldFactor() > 0, "Invalid yield factor");
+        uint256 currentYieldFactor = rateContract.getYieldFactor(); // Keep yield factor for readability
+        require(currentYieldFactor > 0, "Invalid yield factor");
 
-        // USD value of the cUSPD shares being liquidated (par value) is inlined into stEthParValue calculation.
-        // stETH equivalent of the par value (inlined uspdValueToLiquidateUSD and yieldFactor):
-        uint256 stEthParValue = (((cuspdSharesToLiquidate * rateContract.getYieldFactor()) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price;
-        // Target stETH payout to liquidator (e.g., 105% of par value)
-        uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
+        // Target stETH payout to liquidator (e.g., 105% of par value) - stEthParValue calculation inlined
+        uint256 targetPayoutToLiquidator = (((((cuspdSharesToLiquidate * currentYieldFactor) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price) * liquidationLiquidatorPayoutPercent) / 100;
 
         uint256 stEthPaidToLiquidator = 0;
 
@@ -334,10 +321,11 @@ contract StabilizerNFT is
             IERC20(stETH).transfer(msg.sender, totalCollateralReleased); // Give all of it to liquidator
             stEthPaidToLiquidator = totalCollateralReleased;
 
-            uint256 shortfall = targetPayoutToLiquidator - totalCollateralReleased;
+            // Calculate shortfall and determine stETH from insurance in one step
+            uint256 shortfall = targetPayoutToLiquidator - totalCollateralReleased; // Keep shortfall for clarity if needed elsewhere, or inline further if possible
             if (shortfall > 0) {
-                // Inlined stEthInInsurance:
-                uint256 stEthFromInsurance = shortfall > insuranceEscrow.getStEthBalance() ? insuranceEscrow.getStEthBalance() : shortfall;
+                uint256 insuranceBalance = insuranceEscrow.getStEthBalance();
+                uint256 stEthFromInsurance = shortfall > insuranceBalance ? insuranceBalance : shortfall;
 
                 if (stEthFromInsurance > 0) {
                     // InsuranceEscrow.withdrawStEth is called by StabilizerNFT (owner)
