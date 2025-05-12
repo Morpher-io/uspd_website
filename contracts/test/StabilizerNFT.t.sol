@@ -1104,7 +1104,7 @@ contract StabilizerNFTTest is Test {
         uint256 initialStabilizerEth = 1 ether;
         uint256 userEthForAllocation = 1 ether;
         uint256 price = 2000 ether; // 1 ETH = 2000 USD
-        uint256 liquidatorId = address(user2); // Use user2 as liquidator
+        address liquidatorId = address(user2); // Use user2 as liquidator
 
         // --- Setup Position ---
         // 1. Mint NFT and fund StabilizerEscrow
