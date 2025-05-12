@@ -196,7 +196,7 @@ contract StabilizerNFT is
     function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
         positions[tokenId] = StabilizerPosition({
             // totalEth: 0, // Removed
-            minCollateralRatio: 110, // Default 110%
+            minCollateralRatio: 11000, // Default 110.00%
             prevUnallocated: 0,
             nextUnallocated: 0,
             prevAllocated: 0,
@@ -434,7 +434,11 @@ contract StabilizerNFT is
             }
 
             // Calculate how much stabilizer stETH is ideally needed for the remaining user ETH
-            uint256 stabilizerStEthNeeded = (remainingEth * pos.minCollateralRatio) / 100 - remainingEth;
+            // stabilizer_needed = user_eth * (ratio / 10000) - user_eth
+            // stabilizer_needed = user_eth * (ratio / 10000 - 1)
+            // stabilizer_needed = user_eth * (ratio - 10000) / 10000
+            uint256 stabilizerStEthNeeded = (remainingEth * (pos.minCollateralRatio - 10000)) / 10000;
+
 
             // Determine how much stabilizer stETH can actually be allocated (min of needed and available)
             uint256 toAllocate = stabilizerStEthNeeded > escrowBalance
@@ -445,8 +449,9 @@ contract StabilizerNFT is
             uint256 userEthShare = remainingEth;
             if (toAllocate < stabilizerStEthNeeded) {
                 // Calculate maximum user ETH that can be backed by the available stabilizer stETH ('toAllocate')
-                // userEthShare = stabilizerStEthAllocated * 100 / (ratio - 100)
-                userEthShare = (toAllocate * 100) / (pos.minCollateralRatio - 100);
+                // user_eth = stabilizer_steth / (ratio / 10000 - 1)
+                // user_eth = stabilizer_steth * 10000 / (ratio - 10000)
+                userEthShare = (toAllocate * 10000) / (pos.minCollateralRatio - 10000);
                 // Ensure we don't try to allocate more user ETH than remaining
                 if (userEthShare > remainingEth) {
                     userEthShare = remainingEth;
@@ -803,8 +808,8 @@ contract StabilizerNFT is
         uint256 newRatio
     ) external {
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
-        require(newRatio >= 110, "Ratio must be at least 110%");
-        require(newRatio <= 1000, "Ratio cannot exceed 1000%");
+        require(newRatio >= 11000, "Ratio must be at least 110.00%"); // Updated check
+        require(newRatio <= 100000, "Ratio cannot exceed 1000.00%"); // Updated check
 
         StabilizerPosition storage pos = positions[tokenId];
         uint256 oldRatio = pos.minCollateralRatio;

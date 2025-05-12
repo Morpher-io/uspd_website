@@ -658,7 +658,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(1);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(1, 200);
+        stabilizerNFT.setMinCollateralizationRatio(1, 20000); // Updated ratio
 
         // Setup second stabilizer with 110% ratio and 4 ETH
         stabilizerNFT.mint(user2, 2);
@@ -666,7 +666,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2);
         stabilizerNFT.addUnallocatedFundsEth{value: 4 ether}(2);
         vm.prank(user2);
-        stabilizerNFT.setMinCollateralizationRatio(2, 110);
+        stabilizerNFT.setMinCollateralizationRatio(2, 11000); // Updated ratio
 
         // Check escrow balances directly before allocation
         address escrow1Addr = stabilizerNFT.stabilizerEscrows(1);
@@ -715,18 +715,18 @@ contract StabilizerNFTTest is Test {
 
         // Try to set ratio as non-owner
         vm.expectRevert("Not token owner");
-        stabilizerNFT.setMinCollateralizationRatio(1, 150);
+        stabilizerNFT.setMinCollateralizationRatio(1, 15000); // Updated value
 
         // Try to set invalid ratios as owner
         vm.startPrank(user1);
-        vm.expectRevert("Ratio must be at least 110%");
-        stabilizerNFT.setMinCollateralizationRatio(1, 109);
+        vm.expectRevert("Ratio must be at least 110.00%"); // Updated message and value
+        stabilizerNFT.setMinCollateralizationRatio(1, 10999); // Updated value
 
-        vm.expectRevert("Ratio cannot exceed 1000%");
-        stabilizerNFT.setMinCollateralizationRatio(1, 1001);
+        vm.expectRevert("Ratio cannot exceed 1000.00%"); // Updated message and value
+        stabilizerNFT.setMinCollateralizationRatio(1, 100001); // Updated value
 
         // Set valid ratio
-        stabilizerNFT.setMinCollateralizationRatio(1, 150);
+        stabilizerNFT.setMinCollateralizationRatio(1, 15000); // Updated value
         vm.stopPrank();
 
         // Verify ratio was updated
@@ -734,7 +734,7 @@ contract StabilizerNFTTest is Test {
         (uint256 minCollateralRatio, , , , ) = stabilizerNFT.positions(1);
         assertEq(
             minCollateralRatio,
-            150,
+            15000, // Updated expected value
             "Min collateral ratio should be updated"
         );
     }
@@ -785,11 +785,11 @@ contract StabilizerNFTTest is Test {
         );
 
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(1, 200);
+        stabilizerNFT.setMinCollateralizationRatio(1, 20000); // Updated ratio
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(3, 200);
+        stabilizerNFT.setMinCollateralizationRatio(3, 20000); // Updated ratio
         vm.prank(user2);
-        stabilizerNFT.setMinCollateralizationRatio(2, 200);
+        stabilizerNFT.setMinCollateralizationRatio(2, 20000); // Updated ratio
 
         vm.prank(user2);
         stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(2);
@@ -904,7 +904,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 5 ether}(1);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(1, 200);
+        stabilizerNFT.setMinCollateralizationRatio(1, 20000); // Updated ratio
 
         // First allocate - user provides 1 ETH, stabilizer provides 1 ETH for 200% ratio
         uint256 userEthForAllocation = 1 ether;
@@ -935,7 +935,7 @@ contract StabilizerNFTTest is Test {
             block.timestamp * 1000
         );
         uint256 initialRatio = positionEscrow.getCollateralizationRatio(priceResponse);
-        assertEq(initialRatio, 200, "Initial ratio should be 200%");
+        assertEq(initialRatio, 20000, "Initial ratio should be 200.00%"); // Updated expected ratio
 
         // Unallocate half the liability (1000 cUSPD Shares)
         uint256 poolSharesToUnallocate = 1000 ether;
@@ -968,7 +968,7 @@ contract StabilizerNFTTest is Test {
 
         // Verify collateralization ratio remains the same
         uint256 finalRatio = positionEscrow.getCollateralizationRatio(priceResponse);
-        assertEq(finalRatio, 200, "Ratio should remain at 200%");
+        assertEq(finalRatio, 20000, "Ratio should remain at 200.00%"); // Updated expected ratio
 
         // Verify stabilizer received its share back into StabilizerEscrow
         address stabilizerEscrowAddr = stabilizerNFT.stabilizerEscrows(tokenId);
