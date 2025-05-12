@@ -266,12 +266,12 @@ contract StabilizerNFT is
 
         // 2. Fetch Position Data
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddress);
-        uint256 backedSharesInEscrow = positionEscrow.backedPoolShares();
-        require(cuspdSharesToLiquidate <= backedSharesInEscrow, "Not enough shares in position");
+        // Inlined backedSharesInEscrow:
+        require(cuspdSharesToLiquidate <= positionEscrow.backedPoolShares(), "Not enough shares in position");
 
         // 3. Check Liquidation Condition
-        uint256 currentRatio = positionEscrow.getCollateralizationRatio(priceResponse);
-        require(currentRatio < liquidationThresholdPercent, "Position not below liquidation threshold");
+        // Inlined currentRatio:
+        require(positionEscrow.getCollateralizationRatio(priceResponse) < liquidationThresholdPercent, "Position not below liquidation threshold");
 
         // 4. Handle cUSPD Shares
         // Liquidator must have approved this contract (StabilizerNFT) to spend their cUSPD
@@ -291,13 +291,12 @@ contract StabilizerNFT is
         // A check like `require(totalCollateralReleased > 0, "No collateral released");` might be too strict if a position is truly empty but somehow still flagged.
 
         // 6. Calculate Payouts (in stETH)
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        require(yieldFactor > 0, "Invalid yield factor");
+        // Inlined yieldFactor variable, direct call to rateContract.getYieldFactor()
+        require(rateContract.getYieldFactor() > 0, "Invalid yield factor");
 
-        // USD value of the cUSPD shares being liquidated (par value)
-        uint256 uspdValueToLiquidateUSD = (cuspdSharesToLiquidate * yieldFactor) / FACTOR_PRECISION;
-        // stETH equivalent of the par value
-        uint256 stEthParValue = (uspdValueToLiquidateUSD * (10**uint256(priceResponse.decimals))) / priceResponse.price;
+        // USD value of the cUSPD shares being liquidated (par value) is inlined into stEthParValue calculation.
+        // stETH equivalent of the par value (inlined uspdValueToLiquidateUSD and yieldFactor):
+        uint256 stEthParValue = (((cuspdSharesToLiquidate * rateContract.getYieldFactor()) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price;
         // Target stETH payout to liquidator (e.g., 105% of par value)
         uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
 
@@ -309,14 +308,14 @@ contract StabilizerNFT is
             stEthPaidToLiquidator = targetPayoutToLiquidator;
 
             // Send remainder from position's collateral to InsuranceEscrow
-            uint256 remainderToInsurance = totalCollateralReleased - targetPayoutToLiquidator;
-            if (remainderToInsurance > 0) {
+            // Inlined remainderToInsurance:
+            if (totalCollateralReleased > targetPayoutToLiquidator) { // Ensures remainder > 0
                 // StabilizerNFT (owner of InsuranceEscrow) calls depositStEth.
                 // InsuranceEscrow.depositStEth pulls from its owner (StabilizerNFT).
                 // StabilizerNFT must approve InsuranceEscrow first if stETH is held by StabilizerNFT.
                 // Since stETH is transferred to StabilizerNFT by PositionEscrow, it holds the funds.
-                IERC20(stETH).approve(address(insuranceEscrow), remainderToInsurance);
-                insuranceEscrow.depositStEth(remainderToInsurance);
+                IERC20(stETH).approve(address(insuranceEscrow), totalCollateralReleased - targetPayoutToLiquidator);
+                insuranceEscrow.depositStEth(totalCollateralReleased - targetPayoutToLiquidator);
             }
         } else {
             // PositionEscrow collateral is not enough to cover the 105% target
@@ -325,8 +324,8 @@ contract StabilizerNFT is
 
             uint256 shortfall = targetPayoutToLiquidator - totalCollateralReleased;
             if (shortfall > 0) {
-                uint256 stEthInInsurance = insuranceEscrow.getStEthBalance();
-                uint256 stEthFromInsurance = shortfall > stEthInInsurance ? stEthInInsurance : shortfall;
+                // Inlined stEthInInsurance:
+                uint256 stEthFromInsurance = shortfall > insuranceEscrow.getStEthBalance() ? insuranceEscrow.getStEthBalance() : shortfall;
 
                 if (stEthFromInsurance > 0) {
                     // InsuranceEscrow.withdrawStEth is called by StabilizerNFT (owner)
