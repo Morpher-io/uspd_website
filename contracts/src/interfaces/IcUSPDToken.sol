@@ -53,6 +53,18 @@ interface IcUSPDToken is IERC20 {
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external returns (uint256 unallocatedStEthReturned);
 
+    /**
+     * @notice Creates `amount` tokens and assigns them to `account`.
+     * @dev Requires MINTER_ROLE.
+     */
+    function mint(address account, uint256 amount) external;
+
+    /**
+     * @notice Destroys `amount` tokens from the caller.
+     * @dev Requires BURNER_ROLE.
+     */
+    function burn(uint256 amount) external;
+
     // --- Optional: Add getters if needed by USPDToken or others ---
     function oracle() external view returns (IPriceOracle);
     function stabilizer() external view returns (IStabilizerNFT);
