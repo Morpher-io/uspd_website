@@ -15,6 +15,8 @@ import "../src/PoolSharesConversionRate.sol";
 import "../src/PriceOracle.sol";
 import "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow impl
 import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow impl
+import "../src/InsuranceEscrow.sol"; // <-- Add InsuranceEscrow
+import "../src/interfaces/IInsuranceEscrow.sol"; // <-- Add IInsuranceEscrow
 import "./mocks/MockStETH.sol";
 import "./mocks/MockLido.sol";
 
@@ -45,6 +47,7 @@ contract OvercollateralizationReporterTest is Test {
 
     // --- Contract Under Test ---
     OvercollateralizationReporter internal reporter;
+    IInsuranceEscrow public insuranceEscrow; // Add InsuranceEscrow instance for tests
 
     // --- Test Actors & Config ---
     address internal admin;
@@ -117,12 +120,20 @@ contract OvercollateralizationReporterTest is Test {
         reporter = OvercollateralizationReporter(payable(address(reporterProxy))); // Assign proxy address to reporter variable
 
         // Initialize StabilizerNFT (Needs Reporter address)
+        // Deploy InsuranceEscrow (owned by StabilizerNFT proxy)
+        InsuranceEscrow deployedInsuranceEscrow = new InsuranceEscrow(address(mockStETH), address(stabilizerNFT));
+        insuranceEscrow = IInsuranceEscrow(address(deployedInsuranceEscrow));
+
+        vm.expectEmit(true, true, true, true, address(stabilizerNFT)); // Expect InsuranceEscrowUpdated event
+        emit StabilizerNFT.InsuranceEscrowUpdated(address(insuranceEscrow));
+
         stabilizerNFT.initialize(
             address(cuspdToken),
             address(mockStETH),
             address(mockLido),
             address(rateContract),
             address(reporter),
+            address(insuranceEscrow), // <-- Pass deployed InsuranceEscrow address
             "http://test.uri/",
             address(stabilizerEscrowImpl), // <-- Pass StabilizerEscrow impl
             address(positionEscrowImpl), // <-- Pass PositionEscrow impl

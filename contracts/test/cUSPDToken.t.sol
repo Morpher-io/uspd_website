@@ -34,6 +34,8 @@ import "../src/OvercollateralizationReporter.sol"; // <-- Add Reporter
 import "../src/interfaces/IOvercollateralizationReporter.sol";
 import "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow impl
 import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow impl
+import "../src/InsuranceEscrow.sol"; // <-- Add InsuranceEscrow
+import "../src/interfaces/IInsuranceEscrow.sol"; // <-- Add IInsuranceEscrow
 
 
 // Helper contract to expose internal _mint for testing
@@ -59,6 +61,7 @@ contract cUSPDTokenTest is Test {
     StabilizerNFT internal stabilizerNFT;
     USPDToken internal uspdTokenView; // The view-layer token
     OvercollateralizationReporter public reporter; // <-- Add Reporter instance
+    IInsuranceEscrow public insuranceEscrow; // Add InsuranceEscrow instance for tests
 
 
     // --- Contract Under Test ---
@@ -161,12 +164,20 @@ contract cUSPDTokenTest is Test {
         reporter = OvercollateralizationReporter(payable(address(reporterProxy))); // Assign proxy address
 
         // 6. Initialize StabilizerNFT (Needs Reporter address)
+        // Deploy InsuranceEscrow (owned by StabilizerNFT proxy)
+        InsuranceEscrow deployedInsuranceEscrow = new InsuranceEscrow(address(mockStETH), address(stabilizerNFT));
+        insuranceEscrow = IInsuranceEscrow(address(deployedInsuranceEscrow));
+
+        vm.expectEmit(true, true, true, true, address(stabilizerNFT)); // Expect InsuranceEscrowUpdated event
+        emit StabilizerNFT.InsuranceEscrowUpdated(address(insuranceEscrow));
+
         stabilizerNFT.initialize(
             address(cuspdToken),      // Pass cUSPD address
             address(mockStETH),
             address(mockLido),
             address(rateContract),
             address(reporter),
+            address(insuranceEscrow), // <-- Pass deployed InsuranceEscrow address
             "http://test.uri/",
             address(stabilizerEscrowImpl), // <-- Pass StabilizerEscrow impl
             address(positionEscrowImpl), // <-- Pass PositionEscrow impl
@@ -175,7 +186,7 @@ contract cUSPDTokenTest is Test {
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), admin);
 
 
-        // 6. Setup Oracle Mocks (Chainlink, Uniswap)
+        // 7. Setup Oracle Mocks (Chainlink, Uniswap)
         int mockPriceAnswer = 2000 * 1e8;
         uint256 mockTimestamp = block.timestamp;
         bytes memory mockChainlinkReturn = abi.encode(uint80(1), mockPriceAnswer, mockTimestamp, mockTimestamp, uint80(1));

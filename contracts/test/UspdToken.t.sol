@@ -31,6 +31,8 @@ import {OvercollateralizationReporter} from "../src/OvercollateralizationReporte
 import {IOvercollateralizationReporter} from "../src/interfaces/IOvercollateralizationReporter.sol";
 import {StabilizerEscrow} from "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow impl
 import {PositionEscrow} from "../src/PositionEscrow.sol"; // <-- Add PositionEscrow impl
+import {InsuranceEscrow} from "../src/InsuranceEscrow.sol"; // <-- Add InsuranceEscrow
+import {IInsuranceEscrow} from "../src/interfaces/IInsuranceEscrow.sol"; // <-- Add IInsuranceEscrow
 
 
 contract USPDTokenTest is Test {
@@ -56,6 +58,7 @@ contract USPDTokenTest is Test {
     // --- Contract Under Test ---
     USPD uspdToken;
     StabilizerNFT stabilizerNFT; // Add StabilizerNFT instance
+    IInsuranceEscrow public insuranceEscrow; // Add InsuranceEscrow instance for tests
 
     bytes32 public constant ETH_USD_PAIR = keccak256("MORPHER:ETH_USD");
     
@@ -240,12 +243,20 @@ contract USPDTokenTest is Test {
         reporter = OvercollateralizationReporter(payable(address(reporterProxy))); // Assign proxy address
 
         // Initialize StabilizerNFT Proxy (Needs Reporter and Escrow Impl addresses)
+        // Deploy InsuranceEscrow (owned by StabilizerNFT proxy)
+        InsuranceEscrow deployedInsuranceEscrow = new InsuranceEscrow(address(mockStETH), address(stabilizerNFTInstance));
+        insuranceEscrow = IInsuranceEscrow(address(deployedInsuranceEscrow));
+
+        vm.expectEmit(true, true, true, true, address(stabilizerNFTInstance)); // Expect InsuranceEscrowUpdated event
+        emit StabilizerNFT.InsuranceEscrowUpdated(address(insuranceEscrow));
+
         stabilizerNFTInstance.initialize(
             address(cuspdToken),       // Pass cUSPD address
             address(mockStETH),
             address(mockLido),
             address(rateContract),
             address(reporter),
+            address(insuranceEscrow), // <-- Pass deployed InsuranceEscrow address
             "http://localhost:3000/api/metadata", // baseURI
             address(stabilizerEscrowImpl), // <-- Pass StabilizerEscrow impl
             address(positionEscrowImpl), // <-- Pass PositionEscrow impl
