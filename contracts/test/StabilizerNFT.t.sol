@@ -1185,7 +1185,7 @@ contract StabilizerNFTTest is Test {
         uint256 tokenId = 1;
         uint256 initialStabilizerEth = 1 ether;
         uint256 userEthForAllocation = 1 ether;
-        uint256 price = 2000 ether; // 1 ETH = 2000 USD
+        // uint256 price = 2000 ether; // Inlined below
 
         // --- Setup Position ---
         stabilizerNFT.mint(user1, tokenId);
@@ -1195,7 +1195,8 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1);
         stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000); // 110%
 
-        IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(price, block.timestamp);
+        // Inlined price in priceQueryAlloc creation
+        IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.deal(owner, userEthForAllocation);
         vm.prank(owner);
         cuspdToken.mintShares{value: userEthForAllocation}(user1, priceQueryAlloc);
@@ -1209,7 +1210,7 @@ contract StabilizerNFTTest is Test {
         // Target Ratio: 108% (below 110% min for NFT 1, which has 125% threshold)
         // Liability = 2000 USD
         // Target Collateral for 108% = 2000 USD * 108 / 100 = 2160 USD
-        // Target stETH for 108% = 2160 USD / 2000 price = 1.08 ether
+        // Target stETH for 108% = 2160 USD / (2000 ether price) = 1.08 ether
         uint256 collateralToSet = 1.08 ether;
         // uint256 collateralToRemove = initialCollateral - collateralToSet; // Inlined below
         vm.prank(address(positionEscrow));
@@ -1226,7 +1227,7 @@ contract StabilizerNFTTest is Test {
 
         // --- Calculate Expected Payout & Remainder ---
         // Par value = 1000 shares * 1 yield / 1e18 = 1000 USD
-        // stETH Par Value = 1000 USD / 2000 price = 0.5 ether
+        // stETH Par Value = 1000 USD / (2000 ether price) = 0.5 ether
         // Target Payout (105%) = 0.5 ether * 105 / 100 = 0.525 ether
         uint256 expectedPayout = 0.525 ether; // Keep for readability in require
         // Total collateral released = collateralToSet = 1.08 ether
@@ -1239,8 +1240,8 @@ contract StabilizerNFTTest is Test {
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        // Inlined expectedPayout in emit
-        emit StabilizerNFT.PositionLiquidated(tokenId, user2, sharesToLiquidate, 0.525 ether, price);
+        // Inlined expectedPayout and price in emit
+        emit StabilizerNFT.PositionLiquidated(tokenId, user2, sharesToLiquidate, 0.525 ether, 2000 ether);
         // Expect deposit event from InsuranceEscrow
         vm.expectEmit(true, true, false, true, address(insuranceEscrow)); // StabilizerNFT is 'by'
         // Inlined expectedRemainderToInsurance in emit
@@ -1248,8 +1249,8 @@ contract StabilizerNFTTest is Test {
 
 
         vm.prank(user2);
-        // Inlined priceQueryLiq
-        stabilizerNFT.liquidatePosition(tokenId, sharesToLiquidate, createSignedPriceAttestation(price, block.timestamp));
+        // Inlined priceQueryLiq and price
+        stabilizerNFT.liquidatePosition(tokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         // --- Assertions ---
         // Inlined expectedPayout in assertion
