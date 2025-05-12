@@ -281,17 +281,12 @@ contract StabilizerNFT is
         // Note: Ensure BURNER_ROLE is granted during deployment/setup.
         cuspdToken.burn(cuspdSharesToLiquidate);
 
-        // 5. Update PositionEscrow's backed shares and retrieve all its collateral
+        // 5. Update PositionEscrow's backed shares
         positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate));
-        
-        uint256 totalCollateralReleased = positionEscrow.getCurrentStEthBalance(); // Get balance before removing
-        if (totalCollateralReleased > 0) {
-            positionEscrow.removeCollateral(totalCollateralReleased, address(this)); // Send all to StabilizerNFT
-        }
-        // If currentRatio was < liquidationThresholdPercent, there should ideally be some collateral.
-        // A check like `require(totalCollateralReleased > 0, "No collateral released");` might be too strict if a position is truly empty but somehow still flagged.
 
-        // 6. Calculate Payouts (in stETH)
+        // 6. Calculate Payouts (in stETH) and Get Current Collateral
+        uint256 totalCollateralInEscrow = positionEscrow.getCurrentStEthBalance(); // Get balance BEFORE removing anything
+
         // Inlined yieldFactor variable, direct call to rateContract.getYieldFactor()
         uint256 currentYieldFactor = rateContract.getYieldFactor(); // Keep yield factor for readability
         require(currentYieldFactor > 0, "Invalid yield factor");
@@ -300,29 +295,41 @@ contract StabilizerNFT is
         uint256 targetPayoutToLiquidator = (((((cuspdSharesToLiquidate * currentYieldFactor) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price) * liquidationLiquidatorPayoutPercent) / 100;
 
         uint256 stEthPaidToLiquidator = 0;
+        uint256 stEthRemovedFromPosition = 0; // Track how much is removed from PositionEscrow
 
-        // 7. Distribute Collateral to Liquidator
-        if (totalCollateralReleased >= targetPayoutToLiquidator) {
-            IERC20(stETH).transfer(msg.sender, targetPayoutToLiquidator);
+        // 7. Distribute Collateral
+        if (totalCollateralInEscrow >= targetPayoutToLiquidator) {
+            // Sufficient collateral in PositionEscrow for the liquidator's target payout
+
+            // Remove payout amount from PositionEscrow and send to liquidator
+            positionEscrow.removeCollateral(targetPayoutToLiquidator, msg.sender);
             stEthPaidToLiquidator = targetPayoutToLiquidator;
+            stEthRemovedFromPosition = targetPayoutToLiquidator;
 
-            // Send remainder from position's collateral to InsuranceEscrow
-            // Inlined remainderToInsurance:
-            if (totalCollateralReleased > targetPayoutToLiquidator) { // Ensures remainder > 0
-                // StabilizerNFT (owner of InsuranceEscrow) calls depositStEth.
-                // InsuranceEscrow.depositStEth pulls from its owner (StabilizerNFT).
-                // StabilizerNFT must approve InsuranceEscrow first if stETH is held by StabilizerNFT.
-                // Since stETH is transferred to StabilizerNFT by PositionEscrow, it holds the funds.
-                IERC20(stETH).approve(address(insuranceEscrow), totalCollateralReleased - targetPayoutToLiquidator);
-                insuranceEscrow.depositStEth(totalCollateralReleased - targetPayoutToLiquidator);
+            // Calculate remainder and send to InsuranceEscrow if any
+            uint256 remainderToInsurance = totalCollateralInEscrow - targetPayoutToLiquidator;
+            if (remainderToInsurance > 0) {
+                // Remove remainder from PositionEscrow and send to InsuranceEscrow
+                // InsuranceEscrow.depositStEth requires StabilizerNFT (owner) to call it,
+                // and the stETH must be held by StabilizerNFT.
+                // So, remove to StabilizerNFT first, then approve and deposit.
+                positionEscrow.removeCollateral(remainderToInsurance, address(this)); // Send to StabilizerNFT
+                IERC20(stETH).approve(address(insuranceEscrow), remainderToInsurance);
+                insuranceEscrow.depositStEth(remainderToInsurance);
+                stEthRemovedFromPosition += remainderToInsurance;
             }
         } else {
-            // PositionEscrow collateral is not enough to cover the 105% target
-            IERC20(stETH).transfer(msg.sender, totalCollateralReleased); // Give all of it to liquidator
-            stEthPaidToLiquidator = totalCollateralReleased;
+            // Insufficient collateral in PositionEscrow for the target payout
 
-            // Calculate shortfall and determine stETH from insurance in one step
-            uint256 shortfall = targetPayoutToLiquidator - totalCollateralReleased; // Keep shortfall for clarity if needed elsewhere, or inline further if possible
+            // Remove all available collateral from PositionEscrow and send to liquidator
+            if (totalCollateralInEscrow > 0) {
+                positionEscrow.removeCollateral(totalCollateralInEscrow, msg.sender);
+                stEthPaidToLiquidator = totalCollateralInEscrow;
+                stEthRemovedFromPosition = totalCollateralInEscrow;
+            }
+
+            // Calculate shortfall and try to cover from InsuranceEscrow
+            uint256 shortfall = targetPayoutToLiquidator - totalCollateralInEscrow; // Use totalCollateralInEscrow here
             if (shortfall > 0) {
                 uint256 insuranceBalance = insuranceEscrow.getStEthBalance();
                 uint256 stEthFromInsurance = shortfall > insuranceBalance ? insuranceBalance : shortfall;
@@ -336,8 +343,10 @@ contract StabilizerNFT is
             }
         }
 
-        // 8. Snapshot Update: Collateral removed from the active system
-        reporter.updateSnapshot(-int256(totalCollateralReleased));
+        // 8. Snapshot Update: Report the actual amount removed from the PositionEscrow
+        if (stEthRemovedFromPosition > 0) {
+             reporter.updateSnapshot(-int256(stEthRemovedFromPosition));
+        }
 
         // 9. Update StabilizerNFT State (lists)
         // Check if the PositionEscrow is now empty of backed shares
