@@ -65,7 +65,7 @@ contract StabilizerNFT is
 
     // Liquidation parameters
     uint256 public liquidationLiquidatorPayoutPercent; // e.g., 105 means liquidator gets 105% of par value
-    uint256 public liquidationThresholdPercent;      // e.g., 110 means positions below 110% CR are liquidatable
+    // uint256 public liquidationThresholdPercent; // REMOVED - Now calculated per token ID
 
     // Addresses needed for Escrow deployment/interaction
     address public stETH;
@@ -118,7 +118,7 @@ contract StabilizerNFT is
         uint256 priceUsed
     );
     event InsuranceEscrowUpdated(address indexed newInsuranceEscrow);
-    event LiquidationParametersUpdated(uint256 newPayoutPercent, uint256 newThresholdPercent);
+    event LiquidationParametersUpdated(uint256 newPayoutPercent /* Removed newThresholdPercent */);
     // OracleUpdated event removed
 
 
@@ -163,7 +163,7 @@ contract StabilizerNFT is
 
         // Default liquidation parameters (can be changed by admin)
         liquidationLiquidatorPayoutPercent = 105; // 105%
-        liquidationThresholdPercent = 110;      // 110%
+        // liquidationThresholdPercent = 110; // REMOVED
 
         // Snapshot state is now managed by the reporter contract
     }
@@ -175,14 +175,14 @@ contract StabilizerNFT is
         emit InsuranceEscrowUpdated(_insuranceEscrowAddress);
     }
 
-    function setLiquidationParameters(uint256 _payoutPercent, uint256 _thresholdPercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setLiquidationParameters(uint256 _payoutPercent /* Removed _thresholdPercent */) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_payoutPercent >= 100, "Payout percent must be >= 100"); // e.g. 100-120
-        require(_thresholdPercent > 100 && _thresholdPercent < 200, "Threshold percent must be > 100 and < 200"); // e.g. 101-150
-        require(_payoutPercent <= _thresholdPercent, "Payout percent cannot exceed threshold percent");
+        // require(_thresholdPercent > 100 && _thresholdPercent < 200, "Threshold percent must be > 100 and < 200"); // REMOVED
+        // require(_payoutPercent <= _thresholdPercent, "Payout percent cannot exceed threshold percent"); // REMOVED
 
         liquidationLiquidatorPayoutPercent = _payoutPercent;
-        liquidationThresholdPercent = _thresholdPercent;
-        emit LiquidationParametersUpdated(_payoutPercent, _thresholdPercent);
+        // liquidationThresholdPercent = _thresholdPercent; // REMOVED
+        emit LiquidationParametersUpdated(_payoutPercent /* Removed _thresholdPercent */);
     }
 
     // function setOracle(address _oracleAddress) external onlyRole(DEFAULT_ADMIN_ROLE) { // Function removed
