@@ -373,7 +373,7 @@ contract cUSPDTokenTest is Test {
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(tokenId, 110);
+        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000);
 
         uint256 ethToSend = 1 ether;
         uint256 price = 2000 ether;

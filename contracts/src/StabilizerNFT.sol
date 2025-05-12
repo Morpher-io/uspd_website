@@ -895,10 +895,10 @@ contract StabilizerNFT is
         // Get the current ratio directly from the PositionEscrow
         uint256 currentRatio = positionEscrow.getCollateralizationRatio(priceResponse);
 
-        require(currentRatio >= 100, "Cannot unallocate from undercollateralized position");
+        require(currentRatio >= 10000, "Cannot unallocate from undercollateralized position");
 
         // Calculate total stETH to remove
-        stEthToRemove = (userStEthShare * currentRatio) / 100;
+        stEthToRemove = (userStEthShare * currentRatio) / 10000;
 
         if (userStEthShare > stEthToRemove) {
             userStEthShare = stEthToRemove;

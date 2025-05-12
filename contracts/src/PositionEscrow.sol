@@ -258,7 +258,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             // Calculate collateral value *after* removal
             uint256 collateralValueUSD_after = (remainingStEth * priceResponse.price) / (10**uint256(priceResponse.decimals));
             // Calculate ratio *after* removal
-            uint256 newRatio = (collateralValueUSD_after * 100) / liabilityValueUSD;
+            uint256 newRatio = (collateralValueUSD_after * 10000) / liabilityValueUSD;
 
             // Check if the ratio after removal meets the minimum requirement (using constant)
             if (newRatio < MINIMUM_COLLATERAL_RATIO) revert BelowMinimumRatio();
