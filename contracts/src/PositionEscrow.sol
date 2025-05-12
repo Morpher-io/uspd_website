@@ -23,7 +23,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
 
     // --- Constants ---
-    uint256 public constant MINIMUM_COLLATERAL_RATIO = 110; // 110%
+    uint256 public constant MINIMUM_COLLATERAL_RATIO = 11000; // 110.00%
 
     // --- State Variables ---
     address public override stabilizerNFTContract; // The controller/manager (also gets STABILIZER_ROLE)
@@ -306,9 +306,9 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
              return type(uint256).max;
         }
 
-        // Calculate ratio = (Collateral Value / Liability Value) * 100
+        // Calculate ratio = (Collateral Value / Liability Value) * 10000
         // Both values are already in wei (18 decimals), no extra scaling needed.
-        ratio = (collateralValueUSD * 100) / liabilityValueUSD;
+        ratio = (collateralValueUSD * 10000) / liabilityValueUSD;
 
         return ratio;
     }

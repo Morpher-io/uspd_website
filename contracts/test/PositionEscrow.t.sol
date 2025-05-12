@@ -1116,8 +1116,8 @@ contract PositionEscrowTest is
 
         // Collateral Value = 1.1e18 * 1000e18 / 1e18 = 1100e18
         // Liability Value = 1000e18 * 1e18 / 1e18 = 1000e18
-        // Ratio = (1100e18 * 1e18 * 100) / (1000e18 * 1e18) = 110
-        uint256 expectedRatio = 110;
+        // Ratio = (1100e18 * 1e18 * 10000) / (1000e18 * 1e18) = 11000
+        uint256 expectedRatio = 11000;
 
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
             .PriceResponse(price, 18, block.timestamp * 1000);
@@ -1153,8 +1153,8 @@ contract PositionEscrowTest is
 
         // Collateral Value = 1.21e18 * 1000e18 / 1e18 = 1210e18
         // Liability Value = 1000e18 * 1.1e18 / 1e18 = 1100e18
-        // Ratio = (1210e18 * 1e18 * 100) / (1100e18 * 1e18) = 110
-        uint256 expectedRatio = 110;
+        // Ratio = (1210e18 * 1e18 * 10000) / (1100e18 * 1e18) = 11000
+        uint256 expectedRatio = 11000;
 
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
             .PriceResponse(price, 18, block.timestamp * 1000);
