@@ -37,6 +37,7 @@ contract StabilizerNFTTest is Test {
     USPDToken public uspdToken;
     cUSPDToken public cuspdToken;
     OvercollateralizationReporter public reporter;
+    IInsuranceEscrow public insuranceEscrow; // Add InsuranceEscrow instance for tests
     address public owner;
     address public user1;
     address public user2;
@@ -147,20 +148,29 @@ contract StabilizerNFTTest is Test {
         ERC1967Proxy reporterProxy = new ERC1967Proxy(address(reporterImpl), reporterInitData);
         reporter = OvercollateralizationReporter(payable(address(reporterProxy))); // Assign proxy address
 
-        // 7. Initialize StabilizerNFT Proxy (Needs Reporter address)
+        // 7. Deploy InsuranceEscrow (owned by StabilizerNFT proxy)
+        InsuranceEscrow deployedInsuranceEscrow = new InsuranceEscrow(address(mockStETH), address(stabilizerNFT));
+        insuranceEscrow = IInsuranceEscrow(address(deployedInsuranceEscrow));
+
+
+        // 8. Initialize StabilizerNFT Proxy (Needs Reporter address and InsuranceEscrow address)
+        vm.expectEmit(true, true, true, true, address(stabilizerNFT)); // Expect InsuranceEscrowUpdated event
+        emit StabilizerNFT.InsuranceEscrowUpdated(address(insuranceEscrow));
+
         stabilizerNFT.initialize(
             address(cuspdToken),       // Pass cUSPD address
             address(mockStETH),
             address(mockLido),
             address(rateContract),
             address(reporter),
+            address(insuranceEscrow),  // Pass deployed InsuranceEscrow address
             "http://test.uri/",
             address(stabilizerEscrowImpl), // <-- Pass StabilizerEscrow impl
             address(positionEscrowImpl), // <-- Pass PositionEscrow impl
             owner                     // Admin
         );
 
-        // 8. Setup roles
+        // 9. Setup roles
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
 
         vm.warp(1745837835); //warp for the price attestation service to a meaningful timestamp

@@ -14,6 +14,7 @@ import "../src/cUSPDToken.sol";
 import "../src/PoolSharesConversionRate.sol";
 import "../src/OvercollateralizationReporter.sol";
 import "../src/interfaces/IOvercollateralizationReporter.sol";
+import "../src/InsuranceEscrow.sol"; // <-- Add InsuranceEscrow
 import "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow implementation
 import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow implementation
 import "../src/interfaces/ILido.sol";
@@ -43,6 +44,7 @@ contract DeployScript is Script {
     bytes32 USPD_TOKEN_SALT;
     bytes32 RATE_CONTRACT_SALT;
     bytes32 REPORTER_SALT; // <-- Add Reporter salt
+    bytes32 INSURANCE_ESCROW_SALT; // <-- Add InsuranceEscrow salt
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
@@ -61,6 +63,7 @@ contract DeployScript is Script {
     address rateContractAddress;
     address reporterImplAddress;
     address reporterAddress;
+    address insuranceEscrowAddress; // <-- Add InsuranceEscrow address
     address stabilizerEscrowImplAddress; // <-- Add StabilizerEscrow implementation address
     address positionEscrowImplAddress; // <-- Add PositionEscrow implementation address
 
@@ -98,6 +101,7 @@ contract DeployScript is Script {
         USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
         RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1");
         REPORTER_SALT = generateSalt("USPD_REPORTER_v1"); // <-- Initialize Reporter salt
+        INSURANCE_ESCROW_SALT = generateSalt("USPD_INSURANCE_ESCROW_v1"); // <-- Initialize InsuranceEscrow salt
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
@@ -175,14 +179,16 @@ contract DeployScript is Script {
             deployPositionEscrowImplementation(); // <-- Deploy PositionEscrow Impl
             deployPoolSharesConversionRate();
             deployReporterImplementation();
-            deployStabilizerNFTProxy_NoInit();
+            deployStabilizerNFTProxy_NoInit(); // Deploy StabilizerNFT proxy first to get its address
+            deployInsuranceEscrow(); // Deploy InsuranceEscrow, owned by StabilizerNFT proxy
             deployCUSPDToken();
             deployUspdToken();
             deployReporterProxy();
-            initializeStabilizerNFTProxy(); // <-- Pass escrow impl addresses
+            initializeStabilizerNFTProxy(); // Now initialize StabilizerNFT proxy, passing InsuranceEscrow address
             setupRolesAndPermissions();
         } else {
             console2.log("Deploying Bridged Token Only...");
+            insuranceEscrowAddress = address(0); // Set to zero for bridged
             stabilizerImplAddress = address(0);
             stabilizerProxyAddress = address(0);
             rateContractAddress = address(0);
@@ -246,10 +252,25 @@ contract DeployScript is Script {
         console2.log("Deploying PositionEscrow implementation...");
         PositionEscrow impl = new PositionEscrow(); // Constructor takes no args now
         positionEscrowImplAddress = address(impl);
-        console2.log(
             "PositionEscrow implementation deployed at:",
             positionEscrowImplAddress
         );
+    }
+
+    function deployInsuranceEscrow() internal {
+        console2.log("Deploying InsuranceEscrow...");
+        require(stETHAddress != address(0), "stETH address not set for InsuranceEscrow");
+        require(stabilizerProxyAddress != address(0), "StabilizerNFT proxy not deployed (owner for InsuranceEscrow)");
+
+        // Get the bytecode of InsuranceEscrow with constructor arguments
+        bytes memory bytecode = abi.encodePacked(
+            type(InsuranceEscrow).creationCode,
+            abi.encode(stETHAddress, stabilizerProxyAddress) // stETH, owner (StabilizerNFT proxy)
+        );
+
+        // Deploy using CREATE2 for deterministic address using CreateX
+        insuranceEscrowAddress = createX.deployCreate2{value: 0}(INSURANCE_ESCROW_SALT, bytecode);
+        console2.log("InsuranceEscrow deployed at:", insuranceEscrowAddress);
     }
 
     function deployOracleProxy() internal {
@@ -442,11 +463,12 @@ contract DeployScript is Script {
         require(lidoAddress != address(0), "Lido address not set");
         require(rateContractAddress != address(0), "Rate contract not deployed yet");
         require(reporterAddress != address(0), "Reporter not deployed yet");
+        require(insuranceEscrowAddress != address(0), "InsuranceEscrow not deployed yet"); // <-- Check InsuranceEscrow
         require(stabilizerEscrowImplAddress != address(0), "StabilizerEscrow impl not deployed"); // <-- Check impl
         require(positionEscrowImplAddress != address(0), "PositionEscrow impl not deployed"); // <-- Check impl
 
         // Prepare initialization data
-        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _reporterAddress, string memory _baseURI, address _stabilizerEscrowImpl, address _positionEscrowImpl, address _admin)
+        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _reporterAddress, address _insuranceEscrowAddress, string memory _baseURI, address _stabilizerEscrowImpl, address _positionEscrowImpl, address _admin)
         bytes memory initData = abi.encodeCall(
             StabilizerNFT.initialize,
             (
@@ -455,6 +477,7 @@ contract DeployScript is Script {
                 lidoAddress,
                 rateContractAddress,
                 reporterAddress,
+                insuranceEscrowAddress, // <-- Pass InsuranceEscrow address
                 baseURI,
                 stabilizerEscrowImplAddress, // <-- Pass StabilizerEscrow impl
                 positionEscrowImplAddress, // <-- Pass PositionEscrow impl
@@ -577,6 +600,7 @@ contract DeployScript is Script {
                 '"rateContract": "0x0000000000000000000000000000000000000000",'
                 '"reporterImpl": "0x0000000000000000000000000000000000000000",'
                 '"reporter": "0x0000000000000000000000000000000000000000",'
+                '"insuranceEscrow": "0x0000000000000000000000000000000000000000",' // <-- Add InsuranceEscrow
                 '"stabilizerEscrowImpl": "0x0000000000000000000000000000000000000000",' // <-- Add StabilizerEscrow impl
                 '"positionEscrowImpl": "0x0000000000000000000000000000000000000000"' // <-- Add PositionEscrow impl
             '},'
@@ -619,6 +643,7 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
         vm.writeJson(vm.toString(reporterImplAddress), deploymentPath, ".contracts.reporterImpl");
         vm.writeJson(vm.toString(reporterAddress), deploymentPath, ".contracts.reporter");
+        vm.writeJson(vm.toString(insuranceEscrowAddress), deploymentPath, ".contracts.insuranceEscrow"); // <-- Save InsuranceEscrow
         vm.writeJson(vm.toString(stabilizerEscrowImplAddress), deploymentPath, ".contracts.stabilizerEscrowImpl"); // <-- Save StabilizerEscrow impl
         vm.writeJson(vm.toString(positionEscrowImplAddress), deploymentPath, ".contracts.positionEscrowImpl"); // <-- Save PositionEscrow impl
 
