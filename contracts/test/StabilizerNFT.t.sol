@@ -22,6 +22,7 @@ import "./mocks/MockLido.sol";
 import "../src/PriceOracle.sol"; // Using actual for attestations if needed later
 import "../src/PoolSharesConversionRate.sol";
 import "../src/StabilizerEscrow.sol"; // Import Escrow
+import "../src/InsuranceEscrow.sol"; // Import Escrow
 import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 import "../src/interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
 

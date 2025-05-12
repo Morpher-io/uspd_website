@@ -18,7 +18,6 @@ import "./interfaces/IInsuranceEscrow.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"; // <-- Add IERC20 for stETH
 import "./StabilizerEscrow.sol";
 import "./PositionEscrow.sol";
-import "./InsuranceEscrow.sol"; 
 import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol"; // <-- Import Clones library
 
 import {console} from "forge-std/console.sol";

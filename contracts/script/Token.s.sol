@@ -252,7 +252,7 @@ contract DeployScript is Script {
         console2.log("Deploying PositionEscrow implementation...");
         PositionEscrow impl = new PositionEscrow(); // Constructor takes no args now
         positionEscrowImplAddress = address(impl);
-            "PositionEscrow implementation deployed at:",
+        console.log("PositionEscrow implementation deployed at: %s",
             positionEscrowImplAddress
         );
     }

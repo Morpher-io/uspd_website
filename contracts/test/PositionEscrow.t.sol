@@ -639,7 +639,7 @@ contract PositionEscrowTest is
         vm.expectEmit(true, true, false, true, address(positionEscrow)); // recipient is indexed
         emit IPositionEscrow.CollateralRemoved(
             recipient,
-            stabilizerShare
+            totalToRemove
         );
 
         vm.prank(admin);
@@ -702,7 +702,6 @@ contract PositionEscrowTest is
     function test_removeCollateral_revert_transferFails() public {
         uint256 initialBalance = 2 ether;
         uint256 totalToRemove = 1 ether;
-        uint256 userShare = 0.4 ether;
 
         // Fund escrow
         mockStETH.mint(address(positionEscrow), initialBalance);
@@ -713,7 +712,7 @@ contract PositionEscrowTest is
             abi.encodeWithSelector(
                 mockStETH.transfer.selector,
                 recipient,
-                userShare
+                totalToRemove
             ),
             abi.encode(false)
         );
