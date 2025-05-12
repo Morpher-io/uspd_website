@@ -277,9 +277,9 @@ contract StabilizerNFT is
         // 4. Handle cUSPD Shares
         // Liquidator must have approved this contract (StabilizerNFT) to spend their cUSPD
         IERC20(address(cuspdToken)).transferFrom(msg.sender, address(this), cuspdSharesToLiquidate);
-        // TODO: Next step will be to add cuspdToken.burnFromSelf(cuspdSharesToLiquidate)
-        // For now, we assume StabilizerNFT holds them, and a subsequent call to cUSPD will burn them.
-        // This part will be completed when cUSPDToken is modified.
+        // Burn the transferred shares - Requires StabilizerNFT to have BURNER_ROLE on cUSPDToken
+        // Note: Ensure BURNER_ROLE is granted during deployment/setup.
+        cuspdToken.burn(cuspdSharesToLiquidate);
 
         // 5. Update PositionEscrow's backed shares and retrieve all its collateral
         positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate));

@@ -22,7 +22,8 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     uint256 public constant FACTOR_PRECISION = 1e18;
 
     // --- Roles ---
-    // BURNER_ROLE removed
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
 
     // --- Events ---
@@ -67,7 +68,8 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         rateContract = IPoolSharesConversionRate(_rateContract);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        // _grantRole(BURNER_ROLE, _burner); // Removed BURNER_ROLE grant
+        _grantRole(MINTER_ROLE, _admin); // Grant MINTER_ROLE to admin
+        _grantRole(BURNER_ROLE, _admin); // Grant BURNER_ROLE to admin
         _grantRole(UPDATER_ROLE, _admin);
     }
 
@@ -210,6 +212,27 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         require(newRateContract != address(0), "cUSPD: Zero rate contract address");
         emit RateContractUpdated(address(rateContract), newRateContract);
         rateContract = IPoolSharesConversionRate(newRateContract);
+    }
+
+    // --- Standard Mint/Burn with Role Control ---
+
+    /**
+     * @notice Creates `amount` tokens and assigns them to `account`, increasing
+     * the total supply.
+     * @dev Emits a {Transfer} event with `from` set to the zero address.
+     * Requires that the caller has the `MINTER_ROLE`.
+     */
+    function mint(address account, uint256 amount) external onlyRole(MINTER_ROLE) {
+        _mint(account, amount);
+    }
+
+    /**
+     * @notice Destroys `amount` tokens from the caller.
+     * @dev See {ERC20-_burn}.
+     * Requires that the caller has the `BURNER_ROLE`.
+     */
+    function burn(uint256 amount) external onlyRole(BURNER_ROLE) {
+        _burn(msg.sender, amount);
     }
 
     // --- ERC20 Standard Functions ---
