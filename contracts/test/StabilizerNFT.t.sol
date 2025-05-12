@@ -1103,8 +1103,8 @@ contract StabilizerNFTTest is Test {
         uint256 tokenId = 1;
         uint256 initialStabilizerEth = 1 ether;
         uint256 userEthForAllocation = 1 ether;
-        uint256 price = 2000 ether; // 1 ETH = 2000 USD
-        address liquidatorId = address(user2); // Use user2 as liquidator
+        // uint256 price = 2000 ether; // 1 ETH = 2000 USD
+        // address liquidatorId = address(user2); // Use user2 as liquidator
 
         // --- Setup Position ---
         // 1. Mint NFT and fund StabilizerEscrow
@@ -1116,7 +1116,7 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000); // 110%
 
         // 2. Allocate funds by minting cUSPD shares (to user1 for simplicity)
-        IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(price, block.timestamp);
+        IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.deal(owner, userEthForAllocation); // Fund minter
         vm.prank(owner);
         cuspdToken.mintShares{value: userEthForAllocation}(user1, priceQueryAlloc);
@@ -1146,9 +1146,9 @@ contract StabilizerNFTTest is Test {
         uint256 sharesToLiquidate = 1000 ether; // Liquidate half
         // Mint cUSPD to liquidator (user2) - use standard mint for simplicity
         vm.prank(owner); // Admin has MINTER_ROLE on cUSPD
-        cuspdToken.mint(liquidatorId, sharesToLiquidate);
+        cuspdToken.mint(user2, sharesToLiquidate);
         // Liquidator approves StabilizerNFT
-        vm.startPrank(liquidatorId);
+        vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate);
         vm.stopPrank();
 
@@ -1160,21 +1160,21 @@ contract StabilizerNFTTest is Test {
         require(collateralToSet >= expectedPayout, "Test setup error: Not enough collateral for full payout");
 
         // --- Action: Liquidate ---
-        IPriceOracle.PriceAttestationQuery memory priceQueryLiq = createSignedPriceAttestation(price, block.timestamp);
-        uint256 liquidatorStEthBefore = mockStETH.balanceOf(liquidatorId);
+        IPriceOracle.PriceAttestationQuery memory priceQueryLiq = createSignedPriceAttestation(2000 ether, block.timestamp);
+        uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(tokenId, liquidatorId, sharesToLiquidate, expectedPayout, price);
+        emit StabilizerNFT.PositionLiquidated(tokenId, user2, sharesToLiquidate, expectedPayout, 2000 ether);
 
-        vm.prank(liquidatorId);
+        vm.prank(user2);
         stabilizerNFT.liquidatePosition(tokenId, sharesToLiquidate, priceQueryLiq);
 
         // --- Assertions ---
-        assertEq(mockStETH.balanceOf(liquidatorId), liquidatorStEthBefore + expectedPayout, "Liquidator stETH payout mismatch");
+        assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedPayout, "Liquidator stETH payout mismatch");
         assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSet - expectedPayout, "PositionEscrow balance mismatch");
         assertEq(positionEscrow.backedPoolShares(), initialShares - sharesToLiquidate, "PositionEscrow shares mismatch");
-        assertEq(cuspdToken.balanceOf(liquidatorId), 0, "Liquidator should have 0 cUSPD left");
+        assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator should have 0 cUSPD left");
         assertEq(cuspdToken.balanceOf(address(stabilizerNFT)), 0, "StabilizerNFT should have burned cUSPD");
         assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore, "Insurance balance should be unchanged");
         // Check reporter call (difficult to assert exact value without tracking reporter state)
@@ -1235,7 +1235,7 @@ contract StabilizerNFTTest is Test {
         require(collateralToSet > expectedPayout, "Test setup error: Not enough collateral for remainder");
 
         // --- Action: Liquidate ---
-        IPriceOracle.PriceAttestationQuery memory priceQueryLiq = createSignedPriceAttestation(price, block.timestamp);
+        IPriceOracle.PriceAttestationQuery memory priceQueryLiq = createSignedPriceAttestation(2000 ether, block.timestamp);
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
