@@ -267,8 +267,23 @@ contract StabilizerNFT is
         require(cuspdSharesToLiquidate <= positionEscrow.backedPoolShares(), "Not enough shares in position");
 
         // 3. Check Liquidation Condition
+        // Calculate dynamic threshold based on tokenId
+        uint256 calculatedThreshold;
+        if (tokenId == 0) { // Defensive check, should be caught by ownerOf earlier
+            revert("Invalid token ID for threshold calculation");
+        }
+        uint256 decrement = (tokenId - 1) * 50; // 0.5% = 50 when scaled by 10000
+        uint256 baseThreshold = 12500; // 125.00%
+        uint256 minThreshold = 11000; // 110.00%
+
+        if (decrement >= (baseThreshold - minThreshold)) { // Check if decrement goes below min
+            calculatedThreshold = minThreshold;
+        } else {
+            calculatedThreshold = baseThreshold - decrement;
+        }
+
         // Inlined currentRatio:
-        require(positionEscrow.getCollateralizationRatio(priceResponse) < liquidationThresholdPercent, "Position not below liquidation threshold");
+        require(positionEscrow.getCollateralizationRatio(priceResponse) < calculatedThreshold, "Position not below liquidation threshold");
 
         // 4. Handle cUSPD Shares
         // Liquidator must have approved this contract (StabilizerNFT) to spend their cUSPD
