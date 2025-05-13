@@ -268,33 +268,32 @@ contract StabilizerNFT is
             require(ownerOf(liquidatorTokenId) == msg.sender, "Caller does not own liquidator token");
         }
 
-        address positionEscrowAddress = positionEscrows[positionTokenId];
-        require(positionEscrowAddress != address(0), "PositionEscrow not found for token");
+        // Inlined positionEscrowAddress
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrows[positionTokenId]);
+        require(address(positionEscrow) != address(0), "PositionEscrow not found for token");
 
-        IPriceOracle currentOracle = IPriceOracle(cuspdToken.oracle());
-        require(address(currentOracle) != address(0), "Oracle not set in cUSPDToken");
-        IPriceOracle.PriceResponse memory priceResponse = currentOracle.attestationService(priceQuery);
+        // Inlined currentOracle
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle(cuspdToken.oracle()).attestationService(priceQuery);
+        require(address(cuspdToken.oracle()) != address(0), "Oracle not set in cUSPDToken"); // Check cuspdToken.oracle() directly
         require(priceResponse.price > 0, "Invalid oracle price");
 
         // 2. Fetch Position Data & Validate Shares Amount
-        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddress);
-        uint256 currentBackedShares = positionEscrow.backedPoolShares();
-        require(cuspdSharesToLiquidate <= currentBackedShares, "Not enough shares in position"); // Use input shares amount
+        // Inlined currentBackedShares
+        require(cuspdSharesToLiquidate <= positionEscrow.backedPoolShares(), "Not enough shares in position"); // Use input shares amount
         // uint256 sharesToLiquidate = cuspdSharesToLiquidate; // Use the input parameter directly
 
         // 3. Calculate Liquidation Threshold based on liquidatorTokenId
         uint256 calculatedThreshold;
-        uint256 minThreshold = 11000; // 110.00%
         if (liquidatorTokenId == 0) {
-            calculatedThreshold = minThreshold; // Default threshold
+            calculatedThreshold = 11000; // Default threshold (minThreshold inlined)
         } else {
-            uint256 baseThreshold = 12500; // 125.00%
+            // Inlined baseThreshold and minThreshold
             uint256 decrement = (liquidatorTokenId - 1) * 50; // 0.5% = 50 when scaled by 10000
 
-            if (decrement >= (baseThreshold - minThreshold)) { // Check if decrement goes below min
-                calculatedThreshold = minThreshold;
+            if (decrement >= (12500 - 11000)) { // Check if decrement goes below min
+                calculatedThreshold = 11000; // minThreshold inlined
             } else {
-                calculatedThreshold = baseThreshold - decrement;
+                calculatedThreshold = 12500 - decrement; // baseThreshold inlined
             }
         }
 
@@ -317,13 +316,11 @@ contract StabilizerNFT is
         uint256 currentYieldFactor = rateContract.getYieldFactor();
         require(currentYieldFactor > 0, "Invalid yield factor");
 
-        // Calculate stETH par value for the shares being liquidated
-        uint256 uspdValueToLiquidate = (cuspdSharesToLiquidate * currentYieldFactor) / FACTOR_PRECISION;
-        uint256 stEthParValue = (uspdValueToLiquidate * (10**uint256(priceResponse.decimals))) / priceResponse.price;
+        // Calculate stETH par value for the shares being liquidated (uspdValueToLiquidate inlined)
+        uint256 stEthParValue = (((cuspdSharesToLiquidate * currentYieldFactor) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price;
 
-        // Calculate the actual stETH backing these specific shares based on current ratio
-        uint256 currentRatio = positionEscrow.getCollateralizationRatio(priceResponse); // Re-fetch ratio (could have changed slightly)
-        uint256 actualBackingStEth = (stEthParValue * currentRatio) / 10000;
+        // Calculate the actual stETH backing these specific shares based on current ratio (currentRatio inlined)
+        uint256 actualBackingStEth = (stEthParValue * positionEscrow.getCollateralizationRatio(priceResponse)) / 10000;
 
         // Target stETH payout to liquidator (e.g., 105% of par value)
         uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
@@ -359,11 +356,11 @@ contract StabilizerNFT is
                 stEthRemovedFromPosition = actualBackingStEth;
             }
 
-            // Calculate shortfall and try to cover from InsuranceEscrow
-            uint256 shortfall = targetPayoutToLiquidator - actualBackingStEth; // Use actualBackingStEth here
-            if (shortfall > 0) {
-                uint256 insuranceBalance = insuranceEscrow.getStEthBalance();
-                uint256 stEthFromInsurance = shortfall > insuranceBalance ? insuranceBalance : shortfall;
+            // Calculate shortfall and try to cover from InsuranceEscrow (shortfall and insuranceBalance inlined where possible)
+            if (targetPayoutToLiquidator > actualBackingStEth) { // Check if shortfall exists
+                uint256 shortfallAmount = targetPayoutToLiquidator - actualBackingStEth;
+                uint256 currentInsuranceBalance = insuranceEscrow.getStEthBalance();
+                uint256 stEthFromInsurance = shortfallAmount > currentInsuranceBalance ? currentInsuranceBalance : shortfallAmount;
 
                 if (stEthFromInsurance > 0) {
                     // InsuranceEscrow.withdrawStEth is called by StabilizerNFT (owner)
