@@ -368,8 +368,6 @@ contract StabilizerNFT is
             }
         }
 
-            }
-        }
 
         // 9. Snapshot Update: Report the actual amount removed from the PositionEscrow
         if (stEthRemovedFromPosition > 0) {
