@@ -309,18 +309,21 @@ contract StabilizerNFT is
         // Burn the transferred shares - Requires StabilizerNFT to have BURNER_ROLE on cUSPDToken
         cuspdToken.burn(cuspdSharesToLiquidate);
 
-        // 6. Update PositionEscrow's backed shares
+        // 7. Calculate Payouts (in stETH) and Actual Backing Collateral
+        //    IMPORTANT: Calculate currentRatio for actualBackingStEth *before* modifying allocation.
+        uint256 currentRatioForPayoutCalc = positionEscrow.getCollateralizationRatio(priceResponse);
+
+        // 6. Update PositionEscrow's backed shares (Done AFTER getting the ratio for payout calc)
         positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate)); // Use input shares amount
 
-        // 7. Calculate Payouts (in stETH) and Actual Backing Collateral
         uint256 currentYieldFactor = rateContract.getYieldFactor();
         require(currentYieldFactor > 0, "Invalid yield factor");
 
         // Calculate stETH par value for the shares being liquidated (uspdValueToLiquidate inlined)
         uint256 stEthParValue = (((cuspdSharesToLiquidate * currentYieldFactor) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price;
 
-        // Calculate the actual stETH backing these specific shares based on current ratio (currentRatio inlined)
-        uint256 actualBackingStEth = (stEthParValue * positionEscrow.getCollateralizationRatio(priceResponse)) / 10000;
+        // Calculate the actual stETH backing these specific shares based on the ratio *before* this liquidation slice's share modification
+        uint256 actualBackingStEth = (stEthParValue * currentRatioForPayoutCalc) / 10000;
 
         // Target stETH payout to liquidator (e.g., 105% of par value)
         uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
