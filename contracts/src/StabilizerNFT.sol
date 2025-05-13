@@ -255,10 +255,12 @@ contract StabilizerNFT is
     function liquidatePosition(
         uint256 liquidatorTokenId, // ID determining the threshold (0 for default)
         uint256 positionTokenId, // ID of the position being liquidated
+        uint256 cuspdSharesToLiquidate, // Amount of shares to liquidate
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external {
         // 1. Initial Validations
         require(address(insuranceEscrow) != address(0), "InsuranceEscrow not set");
+        require(cuspdSharesToLiquidate > 0, "No cUSPD shares to liquidate"); // Add check for shares amount
         require(ownerOf(positionTokenId) != address(0), "Position token does not exist"); // Check target position exists
 
         // Validate liquidatorTokenId ownership if provided
@@ -274,10 +276,11 @@ contract StabilizerNFT is
         IPriceOracle.PriceResponse memory priceResponse = currentOracle.attestationService(priceQuery);
         require(priceResponse.price > 0, "Invalid oracle price");
 
-        // 2. Fetch Position Data & Determine Shares to Liquidate (Full Position)
+        // 2. Fetch Position Data & Validate Shares Amount
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddress);
-        uint256 sharesToLiquidate = positionEscrow.backedPoolShares(); // Liquidate the entire position
-        require(sharesToLiquidate > 0, "Position has no shares to liquidate");
+        uint256 currentBackedShares = positionEscrow.backedPoolShares();
+        require(cuspdSharesToLiquidate <= currentBackedShares, "Not enough shares in position"); // Use input shares amount
+        // uint256 sharesToLiquidate = cuspdSharesToLiquidate; // Use the input parameter directly
 
         // 3. Calculate Liquidation Threshold based on liquidatorTokenId
         uint256 calculatedThreshold;
@@ -301,30 +304,36 @@ contract StabilizerNFT is
             "Position not below liquidation threshold"
         );
 
-        // 5. Handle cUSPD Shares (Full amount required)
-        // Liquidator must have approved this contract (StabilizerNFT) to spend the full sharesToLiquidate
-        IERC20(address(cuspdToken)).transferFrom(msg.sender, address(this), sharesToLiquidate);
+        // 5. Handle cUSPD Shares
+        // Liquidator must have approved this contract (StabilizerNFT) to spend cuspdSharesToLiquidate
+        IERC20(address(cuspdToken)).transferFrom(msg.sender, address(this), cuspdSharesToLiquidate);
         // Burn the transferred shares - Requires StabilizerNFT to have BURNER_ROLE on cUSPDToken
-        cuspdToken.burn(sharesToLiquidate);
+        cuspdToken.burn(cuspdSharesToLiquidate);
 
-        // 6. Update PositionEscrow's backed shares (to zero)
-        positionEscrow.modifyAllocation(-int256(sharesToLiquidate)); // Remove all shares
+        // 6. Update PositionEscrow's backed shares
+        positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate)); // Use input shares amount
 
-        // 7. Calculate Payouts (in stETH) and Get Current Collateral
-        uint256 totalCollateralInEscrow = positionEscrow.getCurrentStEthBalance(); // Get balance BEFORE removing anything
-
+        // 7. Calculate Payouts (in stETH) and Actual Backing Collateral
         uint256 currentYieldFactor = rateContract.getYieldFactor();
         require(currentYieldFactor > 0, "Invalid yield factor");
 
-        // Target stETH payout to liquidator (e.g., 105% of par value) - Based on full sharesToLiquidate
-        uint256 targetPayoutToLiquidator = (((((sharesToLiquidate * currentYieldFactor) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price) * liquidationLiquidatorPayoutPercent) / 100;
+        // Calculate stETH par value for the shares being liquidated
+        uint256 uspdValueToLiquidate = (cuspdSharesToLiquidate * currentYieldFactor) / FACTOR_PRECISION;
+        uint256 stEthParValue = (uspdValueToLiquidate * (10**uint256(priceResponse.decimals))) / priceResponse.price;
+
+        // Calculate the actual stETH backing these specific shares based on current ratio
+        uint256 currentRatio = positionEscrow.getCollateralizationRatio(priceResponse); // Re-fetch ratio (could have changed slightly)
+        uint256 actualBackingStEth = (stEthParValue * currentRatio) / 10000;
+
+        // Target stETH payout to liquidator (e.g., 105% of par value)
+        uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
 
         uint256 stEthPaidToLiquidator = 0;
         uint256 stEthRemovedFromPosition = 0; // Track how much is removed from PositionEscrow
 
-        // 8. Distribute Collateral
-        if (totalCollateralInEscrow >= targetPayoutToLiquidator) {
-            // Sufficient collateral in PositionEscrow for the liquidator's target payout
+        // 8. Distribute Collateral (Based on actualBackingStEth)
+        if (actualBackingStEth >= targetPayoutToLiquidator) {
+            // Sufficient backing collateral for the target payout
 
             // Remove payout amount from PositionEscrow and send to liquidator
             positionEscrow.removeCollateral(targetPayoutToLiquidator, msg.sender);
@@ -332,29 +341,26 @@ contract StabilizerNFT is
             stEthRemovedFromPosition = targetPayoutToLiquidator;
 
             // Calculate remainder and send to InsuranceEscrow if any
-            uint256 remainderToInsurance = totalCollateralInEscrow - targetPayoutToLiquidator;
+            uint256 remainderToInsurance = actualBackingStEth - targetPayoutToLiquidator;
             if (remainderToInsurance > 0) {
                 // Remove remainder from PositionEscrow and send to InsuranceEscrow
-                // InsuranceEscrow.depositStEth requires StabilizerNFT (owner) to call it,
-                // and the stETH must be held by StabilizerNFT.
-                // So, remove to StabilizerNFT first, then approve and deposit.
                 positionEscrow.removeCollateral(remainderToInsurance, address(this)); // Send to StabilizerNFT
                 IERC20(stETH).approve(address(insuranceEscrow), remainderToInsurance);
                 insuranceEscrow.depositStEth(remainderToInsurance);
                 stEthRemovedFromPosition += remainderToInsurance;
             }
         } else {
-            // Insufficient collateral in PositionEscrow for the target payout
+            // Insufficient backing collateral for the target payout
 
-            // Remove all available collateral from PositionEscrow and send to liquidator
-            if (totalCollateralInEscrow > 0) {
-                positionEscrow.removeCollateral(totalCollateralInEscrow, msg.sender);
-                stEthPaidToLiquidator = totalCollateralInEscrow;
-                stEthRemovedFromPosition = totalCollateralInEscrow;
+            // Remove all available backing collateral from PositionEscrow and send to liquidator
+            if (actualBackingStEth > 0) {
+                positionEscrow.removeCollateral(actualBackingStEth, msg.sender);
+                stEthPaidToLiquidator = actualBackingStEth;
+                stEthRemovedFromPosition = actualBackingStEth;
             }
 
             // Calculate shortfall and try to cover from InsuranceEscrow
-            uint256 shortfall = targetPayoutToLiquidator - totalCollateralInEscrow; // Use totalCollateralInEscrow here
+            uint256 shortfall = targetPayoutToLiquidator - actualBackingStEth; // Use actualBackingStEth here
             if (shortfall > 0) {
                 uint256 insuranceBalance = insuranceEscrow.getStEthBalance();
                 uint256 stEthFromInsurance = shortfall > insuranceBalance ? insuranceBalance : shortfall;
@@ -375,11 +381,13 @@ contract StabilizerNFT is
         }
 
         // 10. Update StabilizerNFT State (lists)
-        // Since we liquidate the full position, it's always removed from allocated list
-        _removeFromAllocatedList(positionTokenId);
-        // If the associated StabilizerEscrow has funds, move NFT to unallocated list
-        if (stabilizerEscrows[positionTokenId] != address(0) && IStabilizerEscrow(stabilizerEscrows[positionTokenId]).unallocatedStETH() > 0) {
-            _registerUnallocatedPosition(positionTokenId);
+        // Check if the PositionEscrow is now empty of backed shares AFTER partial liquidation
+        if (positionEscrow.backedPoolShares() == 0) {
+            _removeFromAllocatedList(positionTokenId);
+            // If the associated StabilizerEscrow has funds, move NFT to unallocated list
+            if (stabilizerEscrows[positionTokenId] != address(0) && IStabilizerEscrow(stabilizerEscrows[positionTokenId]).unallocatedStETH() > 0) {
+                _registerUnallocatedPosition(positionTokenId);
+            }
         }
 
         // 11. Emit Event
@@ -387,7 +395,7 @@ contract StabilizerNFT is
             positionTokenId,        // The ID of the position liquidated
             msg.sender,             // The liquidator address
             liquidatorTokenId,      // The ID used to determine the threshold (0 if none)
-            sharesToLiquidate,      // The total shares liquidated (full position)
+            cuspdSharesToLiquidate, // The shares liquidated in this call
             stEthPaidToLiquidator,  // Total stETH paid to liquidator
             priceResponse.price,    // Price used for calculations
             calculatedThreshold     // The threshold used for this liquidation
