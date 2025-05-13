@@ -173,6 +173,7 @@ contract StabilizerNFTTest is Test {
 
         // 9. Setup roles
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
+        cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), address(stabilizerNFT));
 
         vm.warp(1745837835); //warp for the price attestation service to a meaningful timestamp
     }
