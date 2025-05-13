@@ -1166,10 +1166,12 @@ contract StabilizerNFTTest is Test {
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance(); // Keep for assertion clarity
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(tokenId, user2, sharesToLiquidate, 0.525 ether, 2000 ether); // Inlined expectedPayout
+        // Added liquidatorTokenId (0) and thresholdUsed (11000, assuming liquidatorTokenId 0 uses minThreshold)
+        emit StabilizerNFT.PositionLiquidated(tokenId, user2, 0, sharesToLiquidate, 0.525 ether, 2000 ether, 11000);
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(tokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp)); // Inlined priceQueryLiq
+        // Added liquidatorTokenId (0)
+        stabilizerNFT.liquidatePosition(0, tokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         // --- Assertions ---
         assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + 0.525 ether, "Liquidator stETH payout mismatch"); // Inlined expectedPayout
@@ -1242,7 +1244,8 @@ contract StabilizerNFTTest is Test {
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
         // Inlined expectedPayout and price in emit
-        emit StabilizerNFT.PositionLiquidated(tokenId, user2, sharesToLiquidate, 0.525 ether, 2000 ether);
+        // Added liquidatorTokenId (0) and thresholdUsed (11000)
+        emit StabilizerNFT.PositionLiquidated(tokenId, user2, 0, sharesToLiquidate, 0.525 ether, 2000 ether, 11000);
         // Expect deposit event from InsuranceEscrow
         vm.expectEmit(true, true, false, true, address(insuranceEscrow)); // StabilizerNFT is 'by'
         // Inlined expectedRemainderToInsurance in emit
@@ -1251,7 +1254,8 @@ contract StabilizerNFTTest is Test {
 
         vm.prank(user2);
         // Inlined priceQueryLiq and price
-        stabilizerNFT.liquidatePosition(tokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp));
+        // Added liquidatorTokenId (0)
+        stabilizerNFT.liquidatePosition(0, tokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         // --- Assertions ---
         // Inlined expectedPayout in assertion
