@@ -1242,10 +1242,14 @@ contract StabilizerNFTTest is Test {
         // Inlined expectedPayout and price in emit
         // Added liquidatorTokenId (0) and thresholdUsed (11000)
         emit StabilizerNFT.PositionLiquidated(tokenId, user2, 0, 1000 ether, 0.525 ether, 2000 ether, 11000); // Inlined sharesToLiquidate
+        
+        // Correctly calculate expected remainder for the event
+        uint256 actualBackingForLiquidatedPortion = (1000 ether * collateralToSet) / initialShares;
+        uint256 expectedRemainderToInsurance = actualBackingForLiquidatedPortion - 0.525 ether;
+
         // Expect deposit event from InsuranceEscrow
         vm.expectEmit(true, true, false, true, address(insuranceEscrow)); // StabilizerNFT is 'by'
-        // Inlined expectedRemainderToInsurance in emit
-        emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), (1000 ether / 2000 ether) * 1.08 ether - 0.525 ether);
+        emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), expectedRemainderToInsurance);
 
 
         vm.prank(user2);
@@ -1254,13 +1258,15 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.liquidatePosition(0, tokenId, 1000 ether, createSignedPriceAttestation(2000 ether, block.timestamp)); // Inlined sharesToLiquidate
 
         // --- Assertions ---
+        // actualBackingForLiquidatedPortion was calculated above for the event
+        // expectedRemainderToInsurance was calculated above for the event
+
         // Inlined expectedPayout in assertion
         assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + 0.525 ether, "Liquidator stETH payout mismatch");
-        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSet - ((1000 ether / 2000 ether) * 1.08 ether), "PositionEscrow balance should be lowered by 108% on the stETh value based on the shares we liquidate"); // All collateral removed
+        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSet - actualBackingForLiquidatedPortion, "PositionEscrow balance mismatch after partial liquidation");
         assertEq(positionEscrow.backedPoolShares(), initialShares - 1000 ether, "PositionEscrow shares mismatch"); // Inlined sharesToLiquidate
         assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator should have 0 cUSPD left");
         assertEq(cuspdToken.balanceOf(address(stabilizerNFT)), 0, "StabilizerNFT should have burned cUSPD");
-        // Inlined expectedRemainderToInsurance in assertion
-        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + (((1000 ether / 2000 ether) * 1.08 ether) - 0.525 ether), "Insurance balance mismatch");
+        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, "Insurance balance mismatch");
     }
 } // Add closing brace for the contract here
