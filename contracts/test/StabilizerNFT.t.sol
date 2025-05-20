@@ -1248,9 +1248,12 @@ contract StabilizerNFTTest is Test {
         uint256 expectedRemainderToInsurance = actualBackingForLiquidatedPortion - 0.525 ether;
 
         // Expect deposit event from InsuranceEscrow
-        // Corrected: checkTopic1 (for 'by') is true, checkTopic2 (for non-existent 2nd indexed arg) is false, checkData (for 'amount') is true
-        vm.expectEmit(true, false, false, true, address(insuranceEscrow));
-        emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), expectedRemainderToInsurance);
+        // Using vm.matchTopic for more precise checking
+        vm.expectEmit(address(insuranceEscrow)); // Set emitter
+        vm.matchTopic(1, bytes32(uint256(uint160(address(stabilizerNFT))))); // Match 'by' topic (stabilizerNFT proxy address)
+        // The emit statement now only provides non-indexed arguments for data matching.
+        // 'by' (address(0)) is a placeholder as it's matched by vm.matchTopic.
+        emit IInsuranceEscrow.FundsDeposited(address(0), expectedRemainderToInsurance);
 
 
         vm.prank(user2);
