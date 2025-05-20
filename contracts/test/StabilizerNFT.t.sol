@@ -1245,7 +1245,7 @@ contract StabilizerNFTTest is Test {
         // Expect deposit event from InsuranceEscrow
         vm.expectEmit(true, true, false, true, address(insuranceEscrow)); // StabilizerNFT is 'by'
         // Inlined expectedRemainderToInsurance in emit
-        emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), collateralToSet - 0.525 ether);
+        emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), (1000 ether / 2000 ether) * 1.08 ether - 0.525 ether);
 
 
         vm.prank(user2);
@@ -1256,11 +1256,11 @@ contract StabilizerNFTTest is Test {
         // --- Assertions ---
         // Inlined expectedPayout in assertion
         assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + 0.525 ether, "Liquidator stETH payout mismatch");
-        assertEq(positionEscrow.getCurrentStEthBalance(), 0, "PositionEscrow balance should be 0"); // All collateral removed
+        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSet - ((1000 ether / 2000 ether) * 1.08 ether), "PositionEscrow balance should be lowered by 108% on the stETh value based on the shares we liquidate"); // All collateral removed
         assertEq(positionEscrow.backedPoolShares(), initialShares - 1000 ether, "PositionEscrow shares mismatch"); // Inlined sharesToLiquidate
         assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator should have 0 cUSPD left");
         assertEq(cuspdToken.balanceOf(address(stabilizerNFT)), 0, "StabilizerNFT should have burned cUSPD");
         // Inlined expectedRemainderToInsurance in assertion
-        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + (collateralToSet - 0.525 ether), "Insurance balance mismatch");
+        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + (((1000 ether / 2000 ether) * 1.08 ether) - 0.525 ether), "Insurance balance mismatch");
     }
 } // Add closing brace for the contract here
