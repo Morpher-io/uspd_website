@@ -288,12 +288,14 @@ contract StabilizerNFT is
             calculatedThreshold = 11000; // Default threshold (minThreshold inlined)
         } else {
             // Inlined baseThreshold and minThreshold
-            uint256 decrement = (liquidatorTokenId - 1) * 50; // 0.5% = 50 when scaled by 10000
+            // uint256 decrement = (liquidatorTokenId - 1) * 50; // 0.5% = 50 when scaled by 10000 //inlined
 
-            if (decrement >= (12500 - 11000)) { // Check if decrement goes below min
+            // owners of an NFT with ID 1 can liquidate at 125% overcollateralization ratio
+            // owners of ID 2 can liquidate at 124.5%, ID3 = 124%, ...
+            if (((liquidatorTokenId - 1) * 50) >= (12500 - 11000)) { // Check if decrement goes below min
                 calculatedThreshold = 11000; // minThreshold inlined
             } else {
-                calculatedThreshold = 12500 - decrement; // baseThreshold inlined
+                calculatedThreshold = 12500 - ((liquidatorTokenId - 1) * 50); // baseThreshold inlined
             }
         }
 
@@ -316,18 +318,16 @@ contract StabilizerNFT is
         // 6. Update PositionEscrow's backed shares (Done AFTER getting the ratio for payout calc)
         positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate)); // Use input shares amount
 
-        uint256 currentYieldFactor = rateContract.getYieldFactor();
-        require(currentYieldFactor > 0, "Invalid yield factor");
+        // uint256 currentYieldFactor = rateContract.getYieldFactor(); //inlined
+        require(rateContract.getYieldFactor() > 0, "Invalid yield factor");
 
         // Calculate stETH par value for the shares being liquidated (uspdValueToLiquidate inlined)
-        uint256 stEthParValue = (((cuspdSharesToLiquidate * currentYieldFactor) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price;
+        uint256 stEthParValue = (((cuspdSharesToLiquidate * rateContract.getYieldFactor()) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price;
 
         // Calculate the actual stETH backing these specific shares based on the ratio *before* this liquidation slice's share modification
         uint256 actualBackingStEth = (stEthParValue * currentRatioForPayoutCalc) / 10000;
-
         // Target stETH payout to liquidator (e.g., 105% of par value)
         uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
-
         uint256 stEthPaidToLiquidator = 0;
         uint256 stEthRemovedFromPosition = 0; // Track how much is removed from PositionEscrow
 

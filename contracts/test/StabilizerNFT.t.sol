@@ -869,11 +869,7 @@ contract StabilizerNFTTest is Test {
             "ID 3 should now be highest unallocated"
         );
 
-        IPriceOracle.PriceResponse memory response = IPriceOracle.PriceResponse(
-            2000 ether,
-            18,
-            block.timestamp * 1000
-        );
+       
         // Unallocate funds and verify IDs update
         // User2 burns 2000 cUSPD shares (assuming price=2000, yield=1)
         uint256 sharesToBurn = 2000 ether;
@@ -1238,7 +1234,7 @@ contract StabilizerNFTTest is Test {
         require(collateralToSet > expectedPayout, "Test setup error: Not enough collateral for remainder");
 
         // --- Action: Liquidate ---
-        IPriceOracle.PriceAttestationQuery memory priceQueryLiq = createSignedPriceAttestation(2000 ether, block.timestamp);
+        // IPriceOracle.PriceAttestationQuery memory priceQueryLiq = createSignedPriceAttestation(2000 ether, block.timestamp); //inlined stack too deep
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 

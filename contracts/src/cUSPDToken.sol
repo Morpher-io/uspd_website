@@ -215,6 +215,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     }
 
     // --- Standard Mint/Burn with Role Control ---
+    // --- This is used for bridging ---
 
     /**
      * @notice Creates `amount` tokens and assigns them to `account`, increasing
