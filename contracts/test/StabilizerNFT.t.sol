@@ -1248,7 +1248,8 @@ contract StabilizerNFTTest is Test {
         uint256 expectedRemainderToInsurance = actualBackingForLiquidatedPortion - 0.525 ether;
 
         // Expect deposit event from InsuranceEscrow
-        vm.expectEmit(true, true, false, true, address(insuranceEscrow)); // StabilizerNFT is 'by'
+        // Corrected: checkTopic1 (for 'by') is true, checkTopic2 (for non-existent 2nd indexed arg) is false, checkData (for 'amount') is true
+        vm.expectEmit(true, false, false, true, address(insuranceEscrow));
         emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), expectedRemainderToInsurance);
 
 
