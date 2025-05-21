@@ -1269,39 +1269,39 @@ contract StabilizerNFTTest is Test {
     }
 
     function testLiquidation_Success_InsufficientCollateral_InsuranceCoversFullShortfall() public {
-        uint256 tokenId = 1; // Position to be liquidated
-        uint256 userEthForAllocation = 1 ether; // User's ETH for initial allocation
-        uint256 price = 2000 ether; // 1 ETH = 2000 USD
-        uint256 insuranceFundAmount = 0.5 ether; // Amount to pre-fund insurance
+        // Inlined: uint256 tokenId = 1;
+        // Inlined: uint256 userEthForAllocation = 1 ether;
+        // Inlined: uint256 price = 2000 ether;
+        // Inlined: uint256 insuranceFundAmount = 0.5 ether;
 
         // --- Setup Position ---
-        stabilizerNFT.mint(user1, tokenId);
+        stabilizerNFT.mint(user1, 1); // tokenId = 1
         vm.deal(user1, 1 ether); // Fund StabilizerEscrow for NFT owner
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(1); // tokenId = 1
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000); // 110%
+        stabilizerNFT.setMinCollateralizationRatio(1, 11000); // tokenId = 1, 110%
 
-        vm.deal(owner, userEthForAllocation); // Fund minter (owner)
+        vm.deal(owner, 1 ether); // userEthForAllocation = 1 ether
         vm.prank(owner);
-        cuspdToken.mintShares{value: userEthForAllocation}(user1, createSignedPriceAttestation(price, block.timestamp)); // Mint shares to user1
+        cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp)); // userEthForAllocation = 1 ether, price = 2000 ether
 
-        IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId));
+        IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(1)); // tokenId = 1
         uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 1 ETH user + 0.1 ETH stab = 1.1 ETH
         uint256 initialSharesInPosition = positionEscrow.backedPoolShares(); // Should be 2000 shares (1 ETH * 2000 price)
 
         // --- Fund InsuranceEscrow ---
         // Owner (this contract) mints stETH, approves insuranceEscrow, and deposits
-        mockStETH.mint(owner, insuranceFundAmount);
-        mockStETH.approve(address(insuranceEscrow), insuranceFundAmount);
-        insuranceEscrow.depositStEth(insuranceFundAmount);
-        assertEq(insuranceEscrow.getStEthBalance(), insuranceFundAmount, "InsuranceEscrow initial funding failed");
+        mockStETH.mint(owner, 0.5 ether); // insuranceFundAmount = 0.5 ether
+        mockStETH.approve(address(insuranceEscrow), 0.5 ether); // insuranceFundAmount = 0.5 ether
+        insuranceEscrow.depositStEth(0.5 ether); // insuranceFundAmount = 0.5 ether
+        assertEq(insuranceEscrow.getStEthBalance(), 0.5 ether, "InsuranceEscrow initial funding failed"); // insuranceFundAmount = 0.5 ether
 
         // --- Artificially Lower Collateral in PositionEscrow ---
         // Target Payout for liquidator (105% of par value for all shares)
         // Par value of shares = 1 ETH (2000 shares / 2000 price)
         // Target Payout = 1 ETH * 105% = 1.05 ETH
-        uint256 targetPayoutToLiquidator = (((initialSharesInPosition * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / price) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100; // e.g. 1.05 ETH
+        uint256 targetPayoutToLiquidator = (((initialSharesInPosition * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / 2000 ether) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100; // price = 2000 ether, e.g. 1.05 ETH
 
         // Set collateral in PositionEscrow to be LESS than targetPayoutToLiquidator, but enough to be liquidatable
         // e.g., set it to 0.8 ETH. Ratio will be 0.8 / 1 (par) = 80%, which is < 110%
@@ -1325,7 +1325,7 @@ contract StabilizerNFTTest is Test {
         // actualBackingStEth will be collateralToSetInPosition (0.8 ETH)
         // expectedStEthFromPosition is collateralToSetInPosition and will be used directly.
         uint256 expectedShortfall = targetPayoutToLiquidator - collateralToSetInPosition; // 1.05 - 0.8 = 0.25 ETH
-        require(insuranceFundAmount >= expectedShortfall, "Test setup: Insurance not funded enough for shortfall");
+        require(0.5 ether >= expectedShortfall, "Test setup: Insurance not funded enough for shortfall"); // insuranceFundAmount = 0.5 ether
         // expectedStEthFromInsurance is expectedShortfall and will be used directly.
         // expectedTotalPayoutToLiquidator is targetPayoutToLiquidator in this scenario and will be used directly.
 
@@ -1336,7 +1336,7 @@ contract StabilizerNFTTest is Test {
 
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(tokenId, user2, 0, sharesToLiquidate, targetPayoutToLiquidator, price, 11000); // Default threshold
+        emit StabilizerNFT.PositionLiquidated(1, user2, 0, sharesToLiquidate, targetPayoutToLiquidator, 2000 ether, 11000); // tokenId = 1, price = 2000 ether, Default threshold
 
         // Expect FundsWithdrawn event from InsuranceEscrow
         vm.expectEmit(true, true, true, true, address(insuranceEscrow));
@@ -1344,7 +1344,7 @@ contract StabilizerNFTTest is Test {
 
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(0, tokenId, sharesToLiquidate, createSignedPriceAttestation(price, block.timestamp));
+        stabilizerNFT.liquidatePosition(0, 1, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp)); // tokenId = 1, price = 2000 ether
 
         // --- Assertions ---
         assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + targetPayoutToLiquidator, "Liquidator total stETH payout mismatch");
