@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";
 
 // Import only the contract, not the events
 import {USPDToken as USPD} from "../src/UspdToken.sol";
@@ -43,6 +44,8 @@ contract USPDTokenTest is Test {
     event RateContractUpdated(address indexed oldRateContract, address indexed newRateContract);
     event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
 
+    // For stdStore
+    using stdStorage for StdStorage;
 
     uint256 internal signerPrivateKey;
     address internal signer;
@@ -295,6 +298,98 @@ contract USPDTokenTest is Test {
         assertGt(uspdBuyer.balance, initialBalance - 0.1 ether, "Buyer ETH balance decreased too much (gas?)");
     }
 
+    // --- balanceOf Tests ---
+
+    function testBalanceOf_ZeroIfRateContractIsZero() public {
+        address user = makeAddr("user");
+        // Temporarily set rateContract to address(0) using stdStore
+        stdstore
+            .target(address(uspdToken))
+            .sig(uspdToken.rateContract.selector)
+            .checked_write(address(0));
+        
+        assertEq(address(uspdToken.rateContract()), address(0), "RateContract should be zero for this test");
+        assertEq(uspdToken.balanceOf(user), 0, "balanceOf should be 0 if rateContract is zero");
+    }
+
+    function testBalanceOf_ZeroIfCuspdTokenIsZero() public {
+        address user = makeAddr("user");
+        // Temporarily set cuspdToken to address(0) using stdStore
+        stdstore
+            .target(address(uspdToken))
+            .sig(uspdToken.cuspdToken.selector)
+            .checked_write(address(0));
+
+        assertEq(address(uspdToken.cuspdToken()), address(0), "cUSPDToken should be zero for this test");
+        assertEq(uspdToken.balanceOf(user), 0, "balanceOf should be 0 if cuspdToken is zero");
+    }
+
+    function testBalanceOf_ZeroIfYieldFactorIsZero() public {
+        address user = makeAddr("user");
+        // Make rateContract.getYieldFactor() return 0
+        // This is done by setting the stETH balance of the rateContract to 0.
+        uint256 rateContractStEthBalanceSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.balanceOf.selector)
+            .with_key(address(rateContract))
+            .find();
+        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        
+        assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test");
+        assertEq(uspdToken.balanceOf(user), 0, "balanceOf should be 0 if yield factor is zero");
+    }
+
+    // --- totalSupply Tests ---
+
+    function testTotalSupply_Success() public {
+        // Mint some tokens first
+        address minter = makeAddr("minter");
+        address recipient = makeAddr("recipient");
+        uint256 mintAmountEth = 1 ether;
+        _setupStabilizer(makeAddr("stabilizerOwner"), 1 ether);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(minter, mintAmountEth + 0.1 ether);
+        vm.prank(minter);
+        uspdToken.mint{value: mintAmountEth}(recipient, priceQuery);
+
+        uint256 expectedCuspTotalSupply = cuspdToken.totalSupply();
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 expectedUspdTotalSupply = (expectedCuspTotalSupply * yieldFactor) / uspdToken.FACTOR_PRECISION();
+        
+        assertEq(uspdToken.totalSupply(), expectedUspdTotalSupply, "Total supply mismatch");
+    }
+
+    function testTotalSupply_ZeroIfRateContractIsZero() public {
+        stdstore
+            .target(address(uspdToken))
+            .sig(uspdToken.rateContract.selector)
+            .checked_write(address(0));
+        
+        assertEq(address(uspdToken.rateContract()), address(0), "RateContract should be zero for this test");
+        assertEq(uspdToken.totalSupply(), 0, "totalSupply should be 0 if rateContract is zero");
+    }
+
+    function testTotalSupply_ZeroIfCuspdTokenIsZero() public {
+        stdstore
+            .target(address(uspdToken))
+            .sig(uspdToken.cuspdToken.selector)
+            .checked_write(address(0));
+
+        assertEq(address(uspdToken.cuspdToken()), address(0), "cUSPDToken should be zero for this test");
+        assertEq(uspdToken.totalSupply(), 0, "totalSupply should be 0 if cuspdToken is zero");
+    }
+
+    function testTotalSupply_ZeroIfYieldFactorIsZero() public {
+        uint256 rateContractStEthBalanceSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.balanceOf.selector)
+            .with_key(address(rateContract))
+            .find();
+        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        
+        assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test");
+        assertEq(uspdToken.totalSupply(), 0, "totalSupply should be 0 if yield factor is zero");
+    }
 
     // --- Yield Factor Tests ---
 
