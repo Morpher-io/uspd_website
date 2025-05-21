@@ -1392,10 +1392,10 @@ contract StabilizerNFTTest is Test {
 
         // --- Fund InsuranceEscrow ---
         // Owner (this contract) mints stETH, approves insuranceEscrow, and deposits
-        mockStETH.mint(owner, 0.1 ether); // insuranceFunding = 0.1 ether
-        mockStETH.approve(address(insuranceEscrow), 0.1 ether); // insuranceFunding = 0.1 ether
-        vm.prank(address(stabilizerNFT)); // InsuranceEscrow is owned by StabilizerNFT
-        insuranceEscrow.depositStEth(0.1 ether); // insuranceFunding = 0.1 ether
+        mockStETH.mint(address(insuranceEscrow), 0.1 ether); // insuranceFunding = 0.1 ether
+        // mockStETH.approve(address(insuranceEscrow), 0.1 ether); // insuranceFunding = 0.1 ether
+        // vm.prank(address(stabilizerNFT)); // InsuranceEscrow is owned by StabilizerNFT
+        // insuranceEscrow.depositStEth(0.1 ether); // insuranceFunding = 0.1 ether
         assertEq(insuranceEscrow.getStEthBalance(), 0.1 ether, "InsuranceEscrow initial funding failed"); // insuranceFunding = 0.1 ether
 
         // --- Artificially Lower Collateral in PositionEscrow ---
