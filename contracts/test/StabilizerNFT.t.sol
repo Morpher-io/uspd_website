@@ -1323,11 +1323,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Calculate Expected Payouts ---
         // actualBackingStEth will be collateralToSetInPosition (0.8 ETH)
-        uint256 expectedStEthFromPosition = collateralToSetInPosition;
-        uint256 expectedShortfall = targetPayoutToLiquidator - expectedStEthFromPosition; // 1.05 - 0.8 = 0.25 ETH
+        // expectedStEthFromPosition is collateralToSetInPosition and will be used directly.
+        uint256 expectedShortfall = targetPayoutToLiquidator - collateralToSetInPosition; // 1.05 - 0.8 = 0.25 ETH
         require(insuranceFundAmount >= expectedShortfall, "Test setup: Insurance not funded enough for shortfall");
-        uint256 expectedStEthFromInsurance = expectedShortfall;
-        uint256 expectedTotalPayoutToLiquidator = expectedStEthFromPosition + expectedStEthFromInsurance; // Should be targetPayoutToLiquidator
+        // expectedStEthFromInsurance is expectedShortfall and will be used directly.
+        // expectedTotalPayoutToLiquidator is targetPayoutToLiquidator in this scenario and will be used directly.
 
         // --- Action: Liquidate ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
@@ -1336,24 +1336,24 @@ contract StabilizerNFTTest is Test {
 
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(tokenId, user2, 0, sharesToLiquidate, expectedTotalPayoutToLiquidator, price, 11000); // Default threshold
+        emit StabilizerNFT.PositionLiquidated(tokenId, user2, 0, sharesToLiquidate, targetPayoutToLiquidator, price, 11000); // Default threshold
 
         // Expect FundsWithdrawn event from InsuranceEscrow
         vm.expectEmit(true, true, true, true, address(insuranceEscrow));
-        emit IInsuranceEscrow.FundsWithdrawn(address(stabilizerNFT), user2, expectedStEthFromInsurance);
+        emit IInsuranceEscrow.FundsWithdrawn(address(stabilizerNFT), user2, expectedShortfall);
 
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, tokenId, sharesToLiquidate, createSignedPriceAttestation(price, block.timestamp));
 
         // --- Assertions ---
-        assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedTotalPayoutToLiquidator, "Liquidator total stETH payout mismatch");
-        // PositionEscrow should have its collateral (expectedStEthFromPosition) removed.
+        assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + targetPayoutToLiquidator, "Liquidator total stETH payout mismatch");
+        // PositionEscrow should have its collateral (collateralToSetInPosition) removed.
         // If sharesToLiquidate == initialSharesInPosition, its balance should be 0.
-        assertEq(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - expectedStEthFromPosition, "PositionEscrow balance mismatch");
+        assertEq(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - collateralToSetInPosition, "PositionEscrow balance mismatch");
         assertEq(positionEscrow.backedPoolShares(), initialSharesInPosition - sharesToLiquidate, "PositionEscrow shares mismatch");
         assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator should have 0 cUSPD left");
-        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore - expectedStEthFromInsurance, "InsuranceEscrow balance mismatch after covering shortfall");
+        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore - expectedShortfall, "InsuranceEscrow balance mismatch after covering shortfall");
 
         // Check if position is removed from allocated list if fully liquidated
         if (sharesToLiquidate == initialSharesInPosition) {
