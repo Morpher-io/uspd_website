@@ -1906,11 +1906,14 @@ contract StabilizerNFTTest is Test {
         uint256 tokenId3 = stabilizerNFT.mint(user1); // Ratio 110%
 
         vm.deal(user1, 2 ether);
-        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId1);
+        vm.prank(user1); 
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId1);
         vm.deal(user2, 2 ether);
-        vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId2);
+        vm.prank(user2); 
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId2);
         vm.deal(user1, 2 ether); // Additional deal for user1 for tokenId3
-        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId3);
+        vm.prank(user1); 
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId3);
 
         // User wants to allocate 1.5 ETH worth of cUSPD.
         // Each 1 ETH from user requires 0.1 ETH from stabilizer at 110%.
