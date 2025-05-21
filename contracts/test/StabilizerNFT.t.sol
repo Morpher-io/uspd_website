@@ -1901,9 +1901,14 @@ contract StabilizerNFTTest is Test {
 
     function testAllocateStabilizerFunds_PartialAllocation_UserEthLimited() public {
         // Setup: 3 Stabilizers, all funded. User sends ETH for 1.5 of them.
-        uint256 tokenId1 = stabilizerNFT.mint(user1); // Ratio 110%
-        uint256 tokenId2 = stabilizerNFT.mint(user2); // Ratio 110%
-        uint256 tokenId3 = stabilizerNFT.mint(user1); // Ratio 110%
+        uint256 tokenId1 = stabilizerNFT.mint(user1);
+        uint256 tokenId2 = stabilizerNFT.mint(user2);
+        uint256 tokenId3 = stabilizerNFT.mint(user1);
+
+        // Set ratios to 200% for this test to force 1:1 stabilizer contribution
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(tokenId1, 20000);
+        vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(tokenId2, 20000);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(tokenId3, 20000);
 
         vm.deal(user1, 2 ether);
         vm.prank(user1); 
@@ -1916,9 +1921,9 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId3);
 
         // User wants to allocate 1.5 ETH worth of cUSPD.
-        // Each 1 ETH from user requires 0.1 ETH from stabilizer at 110%.
-        // Stabilizer 1 has 1 ETH, can back 10 ETH from user.
-        // Stabilizer 2 has 1 ETH, can back 10 ETH from user.
+        // With 200% ratio, each 1 ETH from user requires 1 ETH from stabilizer.
+        // Stabilizer 1 has 1 ETH, can back 1 ETH from user.
+        // Stabilizer 2 has 1 ETH, can back 1 ETH from user.
         uint256 userEthForAllocation = 1.5 ether;
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
@@ -1929,18 +1934,18 @@ contract StabilizerNFTTest is Test {
         cuspdToken.mintShares{value: userEthForAllocation}(address(this), priceQuery); // Mint to test contract
 
         // Assertions
-        // TokenId1 should be fully utilized for 1 ETH of user funds (needs 0.1 ETH stabilizer)
+        // TokenId1 should be fully utilized for 1 ETH of user funds (needs 1 ETH stabilizer at 200%)
         IPositionEscrow posEscrow1 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId1));
         assertEq(posEscrow1.backedPoolShares(), 2000 ether, "PosEscrow1 shares mismatch"); // 1 ETH user * 2000 price
-        assertEq(posEscrow1.getCurrentStEthBalance(), 1.1 ether, "PosEscrow1 stETH mismatch");
-        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId1)).unallocatedStETH(), 1 ether - 0.1 ether, "StabilizerEscrow1 funds mismatch");
+        assertEq(posEscrow1.getCurrentStEthBalance(), 2 ether, "PosEscrow1 stETH mismatch"); // 1 ETH user + 1 ETH stabilizer
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId1)).unallocatedStETH(), 0 ether, "StabilizerEscrow1 funds mismatch"); // 1 - 1 = 0
 
 
-        // TokenId2 should be utilized for the remaining 0.5 ETH of user funds (needs 0.05 ETH stabilizer)
+        // TokenId2 should be utilized for the remaining 0.5 ETH of user funds (needs 0.5 ETH stabilizer at 200%)
         IPositionEscrow posEscrow2 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId2));
         assertEq(posEscrow2.backedPoolShares(), 1000 ether, "PosEscrow2 shares mismatch"); // 0.5 ETH user * 2000 price
-        assertEq(posEscrow2.getCurrentStEthBalance(), 0.55 ether, "PosEscrow2 stETH mismatch");
-        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId2)).unallocatedStETH(), 1 ether - 0.05 ether, "StabilizerEscrow2 funds mismatch");
+        assertEq(posEscrow2.getCurrentStEthBalance(), 1 ether, "PosEscrow2 stETH mismatch"); // 0.5 ETH user + 0.5 ETH stabilizer
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId2)).unallocatedStETH(), 1 ether - 0.5 ether, "StabilizerEscrow2 funds mismatch"); // 1 - 0.5 = 0.5
 
         // TokenId3 should be untouched
         IPositionEscrow posEscrow3 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId3));
@@ -1951,8 +1956,8 @@ contract StabilizerNFTTest is Test {
         uint256 expectedTotalShares = (1.5 ether * 2000 ether) / 1 ether; // (userEth * price) / yieldFactor (1e18)
         assertEq(cuspdToken.balanceOf(address(this)), expectedTotalShares, "Recipient total shares mismatch");
 
-        // Reporter: userEth (1.5) + stabilizerEth1 (0.1) + stabilizerEth2 (0.05) = 1.65 ETH
-        uint256 expectedEthAddedToReporter = 1.5 ether + 0.1 ether + 0.05 ether;
+        // Reporter: userEth (1.5) + stabilizerEth1 (1.0) + stabilizerEth2 (0.5) = 3.0 ETH
+        uint256 expectedEthAddedToReporter = 1.5 ether + 1 ether + 0.5 ether;
         assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterEthBefore + expectedEthAddedToReporter, "Reporter snapshot incorrect");
     }
 
