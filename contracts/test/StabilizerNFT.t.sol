@@ -1333,7 +1333,6 @@ contract StabilizerNFTTest is Test {
         uint256 expectedTotalPayoutToLiquidator = expectedStEthFromPosition + expectedStEthFromInsurance; // Should be targetPayoutToLiquidator
 
         // --- Action: Liquidate ---
-        IPriceOracle.PriceAttestationQuery memory priceQueryLiq = createSignedPriceAttestation(price, block.timestamp);
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
         uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
@@ -1348,7 +1347,7 @@ contract StabilizerNFTTest is Test {
 
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(0, tokenId, sharesToLiquidate, priceQueryLiq);
+        stabilizerNFT.liquidatePosition(0, tokenId, sharesToLiquidate, createSignedPriceAttestation(price, block.timestamp));
 
         // --- Assertions ---
         assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedTotalPayoutToLiquidator, "Liquidator total stETH payout mismatch");
