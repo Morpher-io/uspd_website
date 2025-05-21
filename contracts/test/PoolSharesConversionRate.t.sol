@@ -143,23 +143,9 @@ contract PoolSharesConversionRateTest is Test {
 
     // --- getYieldFactor specific tests ---
 
-    function testGetYieldFactor_WhenInitialBalanceIsZero() public {
-        // Deploy normally first
-        PoolSharesConversionRate localRateContract = new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(
-            address(mockStETH),
-            address(mockLido)
-        );
-        // Use stdStore to force initialStEthBalance to 0, which is normally prevented by constructor
-        stdstore
-            .target(address(localRateContract))
-            .sig(localRateContract.initialStEthBalance.selector)
-            .checked_write(uint256(0));
+    // The following test is removed because initialStEthBalance is immutable and
+    // the constructor ensures it's never zero. Therefore, the
+    // `if (initialBalance == 0)` branch in `getYieldFactor` is unreachable by design.
+    // function testGetYieldFactor_WhenInitialBalanceIsZero() public { ... }
 
-        assertEq(localRateContract.initialStEthBalance(), 0, "Forced initialStEthBalance should be 0");
-        assertEq(
-            localRateContract.getYieldFactor(),
-            FACTOR_PRECISION,
-            "Yield factor should be FACTOR_PRECISION if initialStEthBalance is 0"
-        );
-    }
 }
