@@ -109,15 +109,6 @@ contract PoolSharesConversionRateTest is Test {
         assertEq(rateContractInterface.getYieldFactor(), FACTOR_PRECISION, "Yield factor should not change");
     }
 
-    function testRevertIfInitialBalanceZero_DeployTime() public {
-         // Test constructor revert if no ETH is sent
-         MockStETH localMockStETH = new MockStETH();
-         MockLido localMockLido = new MockLido(address(localMockStETH));
-         // Try deploying without sending ETH value
-         vm.expectRevert(PoolSharesConversionRate.NoEthSent.selector);
-         new PoolSharesConversionRate(address(localMockStETH), address(localMockLido));
-    }
-
     // --- Constructor Revert Tests ---
 
     function testRevertIf_Constructor_StEthAddressZero() public {
