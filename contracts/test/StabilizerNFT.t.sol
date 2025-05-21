@@ -1871,7 +1871,7 @@ contract StabilizerNFTTest is Test {
 
         // --- Attempt 2: Liquidate with liquidatorTokenId = 1 (Privileged 125% threshold) ---
         // Position at 120% SHOULD be liquidatable by 125% threshold.
-        uint256 expectedThresholdUsed = 12500;
+        uint256 expectedThresholdUsed = 12450; // Corrected: liquidatorTokenId will be 2, so 12500 - (2-1)*50
         uint256 targetPayoutToLiquidator = (stEthParValue * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
         // uint256 expectedStEthPaid = targetPayoutToLiquidator; // Inlined
         uint256 expectedRemainderToInsurance = collateralToSetInPosition - targetPayoutToLiquidator;
