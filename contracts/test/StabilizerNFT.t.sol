@@ -2182,4 +2182,94 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.setBaseURI(newURI);
     }
 
+
+    // =============================================
+    // XIII. Callback Handler Tests (reportCollateralAddition/Removal)
+    // =============================================
+
+    function testReportCollateralAddition_Success() public {
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        // Role is granted automatically on mint
+
+        uint256 stEthAmountToAdd = 1 ether;
+        uint256 reporterSnapshotBefore = reporter.totalEthEquivalentAtLastSnapshot();
+
+        vm.prank(positionEscrowAddr); // Simulate call from PositionEscrow
+        stabilizerNFT.reportCollateralAddition(stEthAmountToAdd);
+
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterSnapshotBefore + stEthAmountToAdd, "Reporter snapshot mismatch after addition");
+    }
+
+    function testReportCollateralRemoval_Success() public {
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        // Role is granted automatically on mint
+
+        // First, add some collateral to have something to remove for the snapshot
+        vm.prank(positionEscrowAddr);
+        stabilizerNFT.reportCollateralAddition(2 ether); // Add 2 ETH equivalent
+
+        uint256 stEthAmountToRemove = 0.5 ether;
+        uint256 reporterSnapshotBefore = reporter.totalEthEquivalentAtLastSnapshot(); // Snapshot is now 2 ether
+
+        vm.prank(positionEscrowAddr); // Simulate call from PositionEscrow
+        stabilizerNFT.reportCollateralRemoval(stEthAmountToRemove);
+
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterSnapshotBefore - stEthAmountToRemove, "Reporter snapshot mismatch after removal");
+    }
+
+    function testReportCollateral_Revert_NoRole() public {
+        uint256 stEthAmount = 1 ether;
+        address nonRoleHolder = makeAddr("nonRoleHolder");
+
+        vm.prank(nonRoleHolder);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonRoleHolder, stabilizerNFT.POSITION_ESCROW_ROLE()));
+        stabilizerNFT.reportCollateralAddition(stEthAmount);
+
+        vm.prank(nonRoleHolder);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonRoleHolder, stabilizerNFT.POSITION_ESCROW_ROLE()));
+        stabilizerNFT.reportCollateralRemoval(stEthAmount);
+    }
+
+    function testReportCollateral_ZeroAmount_NoAction() public {
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+
+        uint256 reporterSnapshotBefore = reporter.totalEthEquivalentAtLastSnapshot();
+
+        vm.prank(positionEscrowAddr);
+        stabilizerNFT.reportCollateralAddition(0); // Zero amount
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterSnapshotBefore, "Reporter snapshot changed on zero addition");
+
+        vm.prank(positionEscrowAddr);
+        stabilizerNFT.reportCollateralRemoval(0); // Zero amount
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterSnapshotBefore, "Reporter snapshot changed on zero removal");
+    }
+
+    function testReportCollateral_Revert_ZeroYieldFactor() public {
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        uint256 stEthAmount = 1 ether;
+
+        // Mock rateContract.getYieldFactor() to return 0
+        vm.mockCall(
+            address(rateContract),
+            abi.encodeWithSelector(IPoolSharesConversionRate.getYieldFactor.selector),
+            abi.encode(uint256(0))
+        );
+
+        vm.prank(positionEscrowAddr);
+        vm.expectRevert("Yield factor zero during report add");
+        stabilizerNFT.reportCollateralAddition(stEthAmount);
+
+        // Reset mock for the next call if needed, or assume it persists for removal test too
+        vm.prank(positionEscrowAddr);
+        vm.expectRevert("Yield factor zero during report remove");
+        stabilizerNFT.reportCollateralRemoval(stEthAmount);
+
+        // Clear the mock call for subsequent tests if necessary
+        vm.clearMockedCalls();
+    }
+
 } // Add closing brace for the contract here
