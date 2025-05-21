@@ -1966,13 +1966,23 @@ contract StabilizerNFTTest is Test {
         uint256 tokenId2 = stabilizerNFT.mint(user2); // Empty StabilizerEscrow
         uint256 tokenId3 = stabilizerNFT.mint(user1); // Funded
 
+        // Set ratios to 200% for funded stabilizers for this test
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(tokenId1, 20000);
+        // tokenId2 ratio doesn't matter as its escrow is empty
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(tokenId3, 20000);
+
+
         vm.deal(user1, 2 ether);
         vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId1);
         // tokenId2's StabilizerEscrow remains empty (no addUnallocatedFundsEth call)
         vm.deal(user1, 2 ether); // Deal again for tokenId3
         vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId3);
 
-        uint256 userEthForAllocation = 1.5 ether; // Enough for tokenId1 (1 ETH) and part of tokenId3 (0.5 ETH)
+        uint256 userEthForAllocation = 1.5 ether; // User wants to allocate 1.5 ETH
+        // With 200% ratio:
+        // TokenId1 (1 ETH stab fund) backs 1 ETH user funds.
+        // TokenId2 is skipped.
+        // TokenId3 (1 ETH stab fund) backs remaining 0.5 ETH user funds.
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         uint256 reporterEthBefore = reporter.totalEthEquivalentAtLastSnapshot();
 
@@ -1981,10 +1991,12 @@ contract StabilizerNFTTest is Test {
         cuspdToken.mintShares{value: userEthForAllocation}(address(this), priceQuery);
 
         // Assertions
-        // TokenId1 fully utilized (1 ETH user, 0.1 ETH stabilizer)
+        // TokenId1 fully utilized (1 ETH user, 1 ETH stabilizer at 200%)
         IPositionEscrow posEscrow1 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId1));
-        assertEq(posEscrow1.backedPoolShares(), 2000 ether, "PosEscrow1 shares");
-        assertEq(posEscrow1.getCurrentStEthBalance(), 1.1 ether, "PosEscrow1 stETH");
+        assertEq(posEscrow1.backedPoolShares(), 2000 ether, "PosEscrow1 shares"); // 1 ETH user * 2000 price
+        assertEq(posEscrow1.getCurrentStEthBalance(), 2 ether, "PosEscrow1 stETH"); // 1 ETH user + 1 ETH stabilizer
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId1)).unallocatedStETH(), 0, "StabilizerEscrow1 funds mismatch");
+
 
         // TokenId2 should be skipped (its StabilizerEscrow is empty)
         IPositionEscrow posEscrow2 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId2));
@@ -1992,12 +2004,14 @@ contract StabilizerNFTTest is Test {
         assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId2)).unallocatedStETH(), 0, "StabilizerEscrow2 should be empty");
 
 
-        // TokenId3 utilized for remaining 0.5 ETH user (needs 0.05 ETH stabilizer)
+        // TokenId3 utilized for remaining 0.5 ETH user (needs 0.5 ETH stabilizer at 200%)
         IPositionEscrow posEscrow3 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId3));
-        assertEq(posEscrow3.backedPoolShares(), 1000 ether, "PosEscrow3 shares");
-        assertEq(posEscrow3.getCurrentStEthBalance(), 0.55 ether, "PosEscrow3 stETH");
+        assertEq(posEscrow3.backedPoolShares(), 1000 ether, "PosEscrow3 shares"); // 0.5 ETH user * 2000 price
+        assertEq(posEscrow3.getCurrentStEthBalance(), 1 ether, "PosEscrow3 stETH"); // 0.5 ETH user + 0.5 ETH stabilizer
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId3)).unallocatedStETH(), 1 ether - 0.5 ether, "StabilizerEscrow3 funds mismatch");
 
-        uint256 expectedEthAddedToReporter = 1.5 ether + 0.1 ether + 0.05 ether;
+
+        uint256 expectedEthAddedToReporter = 1.5 ether + 1 ether + 0.5 ether; // user + stab1 + stab3
         assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterEthBefore + expectedEthAddedToReporter, "Reporter snapshot incorrect (empty escrow test)");
     }
 
