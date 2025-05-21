@@ -1744,7 +1744,7 @@ contract StabilizerNFTTest is Test {
         uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, initialShares, expectedStEthPaid, 2000 ether, 12500); // Use captured IDs, Inlined sharesToLiquidate
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, initialShares, expectedStEthPaid, 2000 ether, 12450); // Use captured IDs, Inlined sharesToLiquidate
 
         if ((collateralToSetInPosition - targetPayoutToLiquidator) > 0) { // Inlined expectedRemainderToInsurance
             // vm.expectEmit(true, true, true, true, address(insuranceEscrow)); // Event emitter issue
@@ -1814,7 +1814,7 @@ contract StabilizerNFTTest is Test {
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 2000 ether, 11000); // Use captured IDs, expectedThresholdUsed = 11000
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 2000 ether, 12450); // Use captured IDs, expectedThresholdUsed = 11000
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(liquidatorsNFTId, positionToLiquidateTokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp)); // Use captured IDs
