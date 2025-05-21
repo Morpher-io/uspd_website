@@ -634,6 +634,7 @@ contract OvercollateralizationReporterTest is Test {
     // --- updateRateContract ---
     function test_UpdateRateContract_Success_Admin() public {
         address oldRateContractAddr = address(reporter.rateContract());
+        vm.deal(address(this), 0.001 ether);
         // Deploy a new mock/instance for the rate contract
         PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
         address newRateContractAddr = address(newRateContract);
@@ -654,6 +655,7 @@ contract OvercollateralizationReporterTest is Test {
     }
 
     function test_UpdateRateContract_Revert_NotAdmin() public {
+        vm.deal(address(this), 0.001 ether);
         PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
         address newRateContractAddr = address(newRateContract);
 
