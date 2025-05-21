@@ -405,8 +405,8 @@ contract OvercollateralizationReporterTest is Test {
         // initialStEthBalance in rateContract is from 0.001 ether deposit.
         // We need currentStEthBalance in rateContract to be initialStEthBalance / 1e18 = (0.001 ether) / 1e18 = 1 wei.
         // Find the storage slot for _balances[address(rateContract)] in mockStETH
-        bytes32 balanceSlot = stdstore.target(address(mockStETH)).sig("_balances(address)").with_key(address(rateContract)).find();
-        vm.store(address(mockStETH), balanceSlot, bytes32(uint256(1))); // Set balance to 1 wei
+        uint256 balanceSlot = stdstore.target(address(mockStETH)).sig("_balances(address)").with_key(address(rateContract)).find();
+        vm.store(address(mockStETH), bytes32(balanceSlot), bytes32(uint256(1))); // Set balance to 1 wei
 
         assertEq(mockStETH.balanceOf(address(rateContract)), 1, "MockStETH balance of rateContract should be 1 wei");
         assertEq(rateContract.getYieldFactor(), 1, "Yield factor should be 1");
@@ -429,7 +429,7 @@ contract OvercollateralizationReporterTest is Test {
         // This state is normally unreachable as yieldFactorAtLastSnapshot is initialized > 0
         // and updated with currentYieldFactor which is also required to be > 0.
         // We use stdStore to force this state.
-        stdstore.target(address(reporter)).sig(reporter.yieldFactorAtLastSnapshot.selector).checked_write(0);
+        stdstore.target(address(reporter)).sig(reporter.yieldFactorAtLastSnapshot.selector).checked_write(uint256(0));
         stdstore.target(address(reporter)).sig(reporter.totalEthEquivalentAtLastSnapshot.selector).checked_write(10 ether); // Ensure some collateral
 
         assertEq(reporter.yieldFactorAtLastSnapshot(), 0, "Yield factor at last snapshot should be 0");
