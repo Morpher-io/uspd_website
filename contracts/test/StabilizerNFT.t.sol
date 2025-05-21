@@ -2126,8 +2126,8 @@ contract StabilizerNFTTest is Test {
 
     function testSetInsuranceEscrow_Revert_NotAdmin() public {
         address newInsuranceEscrowAddr = makeAddr("newInsuranceEscrow");
-        vm.prank(user1); // Not admin
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, stabilizerNFT.DEFAULT_ADMIN_ROLE()));
+        vm.prank(user1); // Not admin
         stabilizerNFT.setInsuranceEscrow(newInsuranceEscrowAddr);
     }
 
@@ -2151,8 +2151,8 @@ contract StabilizerNFTTest is Test {
 
     function testSetLiquidationParameters_Revert_NotAdmin() public {
         uint256 newPayoutPercent = 108;
-        vm.prank(user1); // Not admin
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, stabilizerNFT.DEFAULT_ADMIN_ROLE()));
+        vm.prank(user1); // Not admin
         stabilizerNFT.setLiquidationParameters(newPayoutPercent);
     }
 
@@ -2177,8 +2177,8 @@ contract StabilizerNFTTest is Test {
 
     function testSetBaseURI_Revert_NotAdmin() public {
         string memory newURI = "ipfs://newcid/";
-        vm.prank(user1); // Not admin
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, stabilizerNFT.DEFAULT_ADMIN_ROLE()));
+        vm.prank(user1); // Not admin
         stabilizerNFT.setBaseURI(newURI);
     }
 
