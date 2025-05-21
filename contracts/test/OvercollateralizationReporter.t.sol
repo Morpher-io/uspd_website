@@ -378,12 +378,20 @@ contract OvercollateralizationReporterTest is Test {
     }
 
     function test_GetSystemCollateralizationRatio_Revert_ZeroCurrentYieldFactor() public {
-        // Make rateContract.getYieldFactor() return 0
-        // This is done by rebasing mockStETH total supply to 0, which makes stETH balance in rateContract 0.
-        vm.prank(admin); // MockStETH owner is admin (address(this))
-        mockStETH.rebase(0); // This makes current stETH balance in rateContract zero.
-        // PoolSharesConversionRate.getYieldFactor will return (0 * FACTOR_PRECISION) / initialBalance = 0
+        // Make rateContract.getYieldFactor() return 0.
+        // The rateContract's initialStEthBalance is non-zero from its constructor (0.001 ether).
+        // We set its current stETH balance to 0 using stdStore.
+        // So, getYieldFactor = (currentBalance * FACTOR_PRECISION) / initialBalance
+        //                    = (0 * FACTOR_PRECISION) / initialStEthBalance = 0.
 
+        uint256 rateContractStEthBalanceSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.balanceOf.selector) // or "_balances(address)"
+            .with_key(address(rateContract))
+            .find();
+        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+
+        assertEq(mockStETH.balanceOf(address(rateContract)), 0, "RateContract stETH balance should be 0");
         assertEq(rateContract.getYieldFactor(), 0, "Pre-condition: Yield factor should be 0");
 
         cuspdToken.mint(user1, 100 * 1e18); // Have some cUSPD supply
