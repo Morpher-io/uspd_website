@@ -1762,6 +1762,10 @@ contract StabilizerNFTTest is Test {
         assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + (collateralToSetInPosition - targetPayoutToLiquidator), "InsuranceEscrow balance mismatch"); // Inlined expectedRemainderToInsurance
     }
 
+    // testLiquidation_WithLiquidatorNFT_ID1_Uses125PercentThreshold has an issue with expectedThresholdUsed, it should be 12450 not 12500
+    // because liquidatorsNFTId is 2 (second minted NFT), so 12500 - (2-1)*50 = 12450.
+    // This was corrected in a previous commit.
+
     function testLiquidation_WithLiquidatorNFT_HighID_UsesMinThreshold() public {
         // --- Test Constants (Inlined) ---
         // uint256 positionToLiquidateTokenId = 1;
@@ -1890,4 +1894,194 @@ contract StabilizerNFTTest is Test {
         assertEq(positionEscrow.getCurrentStEthBalance(), 0, "PositionEscrow balance should be 0 (privileged)");
         assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, "InsuranceEscrow balance mismatch (privileged)");
     }
+
+    // =============================================
+    // XI. allocateStabilizerFunds Tests (via cUSPDToken.mintShares)
+    // =============================================
+
+    function testAllocateStabilizerFunds_PartialAllocation_UserEthLimited() public {
+        // Setup: 3 Stabilizers, all funded. User sends ETH for 1.5 of them.
+        uint256 tokenId1 = stabilizerNFT.mint(user1); // Ratio 110%
+        uint256 tokenId2 = stabilizerNFT.mint(user2); // Ratio 110%
+        uint256 tokenId3 = stabilizerNFT.mint(user1); // Ratio 110%
+
+        vm.deal(user1, 2 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId1);
+        vm.deal(user2, 2 ether);
+        vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId2);
+        vm.deal(user1, 2 ether); // Additional deal for user1 for tokenId3
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId3);
+
+        // User wants to allocate 1.5 ETH worth of cUSPD.
+        // Each 1 ETH from user requires 0.1 ETH from stabilizer at 110%.
+        // Stabilizer 1 has 1 ETH, can back 10 ETH from user.
+        // Stabilizer 2 has 1 ETH, can back 10 ETH from user.
+        uint256 userEthForAllocation = 1.5 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+
+        uint256 reporterEthBefore = reporter.totalEthEquivalentAtLastSnapshot();
+
+        vm.deal(owner, userEthForAllocation); // Fund the cUSPD minter (owner)
+        vm.prank(owner);
+        cuspdToken.mintShares{value: userEthForAllocation}(address(this), priceQuery); // Mint to test contract
+
+        // Assertions
+        // TokenId1 should be fully utilized for 1 ETH of user funds (needs 0.1 ETH stabilizer)
+        IPositionEscrow posEscrow1 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId1));
+        assertEq(posEscrow1.backedPoolShares(), 2000 ether, "PosEscrow1 shares mismatch"); // 1 ETH user * 2000 price
+        assertEq(posEscrow1.getCurrentStEthBalance(), 1.1 ether, "PosEscrow1 stETH mismatch");
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId1)).unallocatedStETH(), 1 ether - 0.1 ether, "StabilizerEscrow1 funds mismatch");
+
+
+        // TokenId2 should be utilized for the remaining 0.5 ETH of user funds (needs 0.05 ETH stabilizer)
+        IPositionEscrow posEscrow2 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId2));
+        assertEq(posEscrow2.backedPoolShares(), 1000 ether, "PosEscrow2 shares mismatch"); // 0.5 ETH user * 2000 price
+        assertEq(posEscrow2.getCurrentStEthBalance(), 0.55 ether, "PosEscrow2 stETH mismatch");
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId2)).unallocatedStETH(), 1 ether - 0.05 ether, "StabilizerEscrow2 funds mismatch");
+
+        // TokenId3 should be untouched
+        IPositionEscrow posEscrow3 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId3));
+        assertEq(posEscrow3.backedPoolShares(), 0, "PosEscrow3 should have no shares");
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId3)).unallocatedStETH(), 1 ether, "StabilizerEscrow3 funds should be full");
+
+        // Check total shares minted for the recipient (this test contract)
+        uint256 expectedTotalShares = (1.5 ether * 2000 ether) / 1 ether; // (userEth * price) / yieldFactor (1e18)
+        assertEq(cuspdToken.balanceOf(address(this)), expectedTotalShares, "Recipient total shares mismatch");
+
+        // Reporter: userEth (1.5) + stabilizerEth1 (0.1) + stabilizerEth2 (0.05) = 1.65 ETH
+        uint256 expectedEthAddedToReporter = 1.5 ether + 0.1 ether + 0.05 ether;
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterEthBefore + expectedEthAddedToReporter, "Reporter snapshot incorrect");
+    }
+
+    function testAllocateStabilizerFunds_SomeEscrowsEmpty() public {
+        uint256 tokenId1 = stabilizerNFT.mint(user1); // Funded
+        uint256 tokenId2 = stabilizerNFT.mint(user2); // Empty StabilizerEscrow
+        uint256 tokenId3 = stabilizerNFT.mint(user1); // Funded
+
+        vm.deal(user1, 2 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId1);
+        // tokenId2's StabilizerEscrow remains empty (no addUnallocatedFundsEth call)
+        vm.deal(user1, 2 ether); // Deal again for tokenId3
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId3);
+
+        uint256 userEthForAllocation = 1.5 ether; // Enough for tokenId1 (1 ETH) and part of tokenId3 (0.5 ETH)
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        uint256 reporterEthBefore = reporter.totalEthEquivalentAtLastSnapshot();
+
+        vm.deal(owner, userEthForAllocation);
+        vm.prank(owner);
+        cuspdToken.mintShares{value: userEthForAllocation}(address(this), priceQuery);
+
+        // Assertions
+        // TokenId1 fully utilized (1 ETH user, 0.1 ETH stabilizer)
+        IPositionEscrow posEscrow1 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId1));
+        assertEq(posEscrow1.backedPoolShares(), 2000 ether, "PosEscrow1 shares");
+        assertEq(posEscrow1.getCurrentStEthBalance(), 1.1 ether, "PosEscrow1 stETH");
+
+        // TokenId2 should be skipped (its StabilizerEscrow is empty)
+        IPositionEscrow posEscrow2 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId2));
+        assertEq(posEscrow2.backedPoolShares(), 0, "PosEscrow2 shares (should be 0)");
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId2)).unallocatedStETH(), 0, "StabilizerEscrow2 should be empty");
+
+
+        // TokenId3 utilized for remaining 0.5 ETH user (needs 0.05 ETH stabilizer)
+        IPositionEscrow posEscrow3 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId3));
+        assertEq(posEscrow3.backedPoolShares(), 1000 ether, "PosEscrow3 shares");
+        assertEq(posEscrow3.getCurrentStEthBalance(), 0.55 ether, "PosEscrow3 stETH");
+
+        uint256 expectedEthAddedToReporter = 1.5 ether + 0.1 ether + 0.05 ether;
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterEthBefore + expectedEthAddedToReporter, "Reporter snapshot incorrect (empty escrow test)");
+    }
+
+    function testAllocateStabilizerFunds_UserEthExceedsAllStabilizerCapacity() public {
+        // Setup: 2 Stabilizers, each with 0.1 ETH in their StabilizerEscrow (can back 1 ETH user funds each at 110%)
+        uint256 tokenId1 = stabilizerNFT.mint(user1);
+        uint256 tokenId2 = stabilizerNFT.mint(user2);
+
+        vm.deal(user1, 0.1 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId1);
+        vm.deal(user2, 0.1 ether);
+        vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId2);
+
+        uint256 userEthForAllocation = 5 ether; // User sends much more ETH than stabilizers can back
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        uint256 reporterEthBefore = reporter.totalEthEquivalentAtLastSnapshot();
+
+        vm.deal(owner, userEthForAllocation);
+        vm.prank(owner);
+        cuspdToken.mintShares{value: userEthForAllocation}(address(this), priceQuery);
+
+        // Assertions
+        // Stabilizer1 (0.1 ETH) backs 1 ETH from user.
+        IPositionEscrow posEscrow1 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId1));
+        assertEq(posEscrow1.backedPoolShares(), 2000 ether, "PosEscrow1 shares (capacity test)"); // 1 ETH user * 2000 price
+        assertEq(posEscrow1.getCurrentStEthBalance(), 1.1 ether, "PosEscrow1 stETH (capacity test)"); // 1 ETH user + 0.1 ETH stab
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId1)).unallocatedStETH(), 0, "StabilizerEscrow1 empty (capacity test)");
+
+        // Stabilizer2 (0.1 ETH) backs 1 ETH from user.
+        IPositionEscrow posEscrow2 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId2));
+        assertEq(posEscrow2.backedPoolShares(), 2000 ether, "PosEscrow2 shares (capacity test)"); // 1 ETH user * 2000 price
+        assertEq(posEscrow2.getCurrentStEthBalance(), 1.1 ether, "PosEscrow2 stETH (capacity test)"); // 1 ETH user + 0.1 ETH stab
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId2)).unallocatedStETH(), 0, "StabilizerEscrow2 empty (capacity test)");
+
+        // Total user ETH allocated = 1 ETH (for tokenId1) + 1 ETH (for tokenId2) = 2 ETH
+        uint256 totalUserEthAllocated = 2 ether;
+        uint256 expectedTotalShares = (totalUserEthAllocated * 2000 ether) / 1 ether;
+        assertEq(cuspdToken.balanceOf(address(this)), expectedTotalShares, "Recipient total shares (capacity test)");
+
+        // Reporter: userEth (2) + stabilizerEth1 (0.1) + stabilizerEth2 (0.1) = 2.2 ETH
+        uint256 expectedEthAddedToReporter = totalUserEthAllocated + 0.1 ether + 0.1 ether;
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), reporterEthBefore + expectedEthAddedToReporter, "Reporter snapshot incorrect (capacity test)");
+        // Note: The excess user ETH (5 - 2 = 3 ETH) is currently not explicitly refunded by StabilizerNFT.
+        // cUSPDToken.mintShares would receive less result.allocatedEth than msg.value.
+    }
+
+    function testAllocateStabilizerFunds_Revert_NoFundsCanBeAllocated() public {
+        // Setup: Stabilizers exist but their escrows are empty
+        uint256 tokenId1 = stabilizerNFT.mint(user1);
+        // No funds added to stabilizerEscrows[tokenId1]
+
+        uint256 userEthForAllocation = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+
+        vm.deal(owner, userEthForAllocation);
+        vm.prank(owner);
+        vm.expectRevert("No funds allocated"); // From StabilizerNFT.allocateStabilizerFunds
+        cuspdToken.mintShares{value: userEthForAllocation}(address(this), priceQuery);
+    }
+
+    function testAllocateStabilizerFunds_ReporterInteraction_SuccessfulAllocation() public {
+        uint256 tokenId1 = stabilizerNFT.mint(user1);
+        vm.deal(user1, 1 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId1); // Stabilizer has 1 ETH
+
+        uint256 userEthForAllocation = 0.5 ether; // User sends 0.5 ETH
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+
+        uint256 reporterSnapshotBefore = reporter.totalEthEquivalentAtLastSnapshot();
+        uint256 reporterYieldFactorBefore = reporter.yieldFactorAtLastSnapshot();
+
+
+        vm.deal(owner, userEthForAllocation);
+        vm.prank(owner);
+        cuspdToken.mintShares{value: userEthForAllocation}(address(this), priceQuery);
+
+        // Expected ETH added to system:
+        // User ETH: 0.5 ether
+        // Stabilizer ETH needed for 110% ratio: 0.5 ether * (11000 - 10000)/10000 = 0.5 * 0.1 = 0.05 ether
+        uint256 expectedUserEthAllocated = 0.5 ether;
+        uint256 expectedStabilizerEthAllocated = 0.05 ether;
+        uint256 expectedTotalEthEquivalentAdded = expectedUserEthAllocated + expectedStabilizerEthAllocated;
+
+        uint256 reporterSnapshotAfter = reporter.totalEthEquivalentAtLastSnapshot();
+        uint256 reporterYieldFactorAfter = reporter.yieldFactorAtLastSnapshot();
+
+
+        assertEq(reporterSnapshotAfter, reporterSnapshotBefore + expectedTotalEthEquivalentAdded, "Reporter totalEthEquivalent mismatch");
+        // Yield factor should also be updated by the reporter if it changed,
+        // but for this specific test, rateContract.getYieldFactor() is likely constant.
+        // A more detailed reporter test would mock rateContract.getYieldFactor() to change.
+        assertEq(reporterYieldFactorAfter, rateContract.getYieldFactor(), "Reporter yieldFactor mismatch");
+    }
+
 } // Add closing brace for the contract here
