@@ -1873,20 +1873,20 @@ contract StabilizerNFTTest is Test {
         // Position at 120% SHOULD be liquidatable by 125% threshold.
         uint256 expectedThresholdUsed = 12500;
         uint256 targetPayoutToLiquidator = (stEthParValue * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
-        uint256 expectedStEthPaid = targetPayoutToLiquidator;
+        // uint256 expectedStEthPaid = targetPayoutToLiquidator; // Inlined
         uint256 expectedRemainderToInsurance = collateralToSetInPosition - targetPayoutToLiquidator;
 
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, privilegedLiquidatorNFTId, sharesToLiquidate, expectedStEthPaid, 2000 ether, expectedThresholdUsed); // Use captured IDs
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, privilegedLiquidatorNFTId, sharesToLiquidate, targetPayoutToLiquidator, 2000 ether, expectedThresholdUsed); // Use captured IDs, inlined expectedStEthPaid
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(privilegedLiquidatorNFTId, positionToLiquidateTokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp)); // Use captured IDs
 
         // --- Assertions for Successful Liquidation ---
-        assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedStEthPaid, "Liquidator stETH payout mismatch (privileged)");
+        assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + targetPayoutToLiquidator, "Liquidator stETH payout mismatch (privileged)"); // Inlined expectedStEthPaid
         assertEq(positionEscrow.getCurrentStEthBalance(), 0, "PositionEscrow balance should be 0 (privileged)");
         assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, "InsuranceEscrow balance mismatch (privileged)");
     }
