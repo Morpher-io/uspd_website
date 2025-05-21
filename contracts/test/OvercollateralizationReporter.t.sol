@@ -338,6 +338,21 @@ contract OvercollateralizationReporterTest is Test {
         reporter.updateSnapshot(1 ether);
     }
 
+    function testUpdateSnapshot_Revert_ZeroCurrentYieldFactor() public {
+        // Make rateContract.getYieldFactor() return 0
+        uint256 rateContractStEthBalanceSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.balanceOf.selector)
+            .with_key(address(rateContract))
+            .find();
+        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        assertEq(rateContract.getYieldFactor(), 0, "Pre-condition: Yield factor should be 0");
+
+        vm.prank(updater);
+        vm.expectRevert("Reporter: Current yield factor is zero");
+        reporter.updateSnapshot(1 ether); // Delta value doesn't matter for this specific revert
+    }
+
     // =============================================
     // III. getSystemCollateralizationRatio Tests
     // =============================================
