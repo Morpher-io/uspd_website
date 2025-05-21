@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {stdStore} from "forge-std/StdStorage.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol"; // Corrected import
 import "../src/interfaces/IPoolSharesConversionRate.sol";
 import "./mocks/MockStETH.sol";
 import "./mocks/MockLido.sol";
@@ -13,6 +13,9 @@ contract PoolSharesConversionRateTest is Test {
     // --- Constants ---
     uint256 internal constant FACTOR_PRECISION = 1e18;
     uint256 internal constant INITIAL_ETH_DEPOSIT = 0.001 ether; // ETH to send to constructor
+
+    //https://book.getfoundry.sh/reference/forge-std/std-storage
+    using stdStorage for StdStorage; // Added using directive
 
     // --- Mock Contracts ---
     MockStETH internal mockStETH;
