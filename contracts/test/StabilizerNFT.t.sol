@@ -1724,11 +1724,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup Liquidator (user2) ---
         uint256 liquidatorsNFTId = stabilizerNFT.mint(user2); // Mint for user2 (expected: 2 or next available, will be used as ID 1 effectively by logic)
-        uint256 sharesToLiquidate = initialShares; // Liquidate all shares
+        // uint256 sharesToLiquidate = initialShares; // Inlined: Liquidate all shares
         vm.prank(owner);
-        cuspdToken.mint(user2, sharesToLiquidate);
+        cuspdToken.mint(user2, initialShares); // Inlined sharesToLiquidate
         vm.startPrank(user2);
-        cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate);
+        cuspdToken.approve(address(stabilizerNFT), initialShares); // Inlined sharesToLiquidate
         vm.stopPrank();
 
         // --- Calculate Expected Payout (Full payout from collateral) ---
@@ -1744,7 +1744,7 @@ contract StabilizerNFTTest is Test {
         uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 2000 ether, 12500); // Use captured IDs
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, initialShares, expectedStEthPaid, 2000 ether, 12500); // Use captured IDs, Inlined sharesToLiquidate
 
         if ((collateralToSetInPosition - targetPayoutToLiquidator) > 0) { // Inlined expectedRemainderToInsurance
             // vm.expectEmit(true, true, true, true, address(insuranceEscrow)); // Event emitter issue
@@ -1752,7 +1752,7 @@ contract StabilizerNFTTest is Test {
         }
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(liquidatorsNFTId, positionToLiquidateTokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp)); // Use captured IDs
+        stabilizerNFT.liquidatePosition(liquidatorsNFTId, positionToLiquidateTokenId, initialShares, createSignedPriceAttestation(2000 ether, block.timestamp)); // Use captured IDs, Inlined sharesToLiquidate
 
         // --- Assertions ---
         assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedStEthPaid, "Liquidator stETH payout mismatch");
