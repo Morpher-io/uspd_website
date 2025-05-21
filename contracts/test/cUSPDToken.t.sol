@@ -268,9 +268,8 @@ contract cUSPDTokenTest is Test {
 
     function testMintShares_Success() public {
         // Setup: Mint StabilizerNFT and add funds
-        uint256 tokenId = 1;
-        vm.prank(admin);
-        stabilizerNFT.mint(user1, tokenId);
+        // vm.prank(admin); // MINTER_ROLE no longer needed for StabilizerNFT.mint()
+        uint256 tokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId
         vm.deal(user1, 2 ether);
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
@@ -366,9 +365,8 @@ contract cUSPDTokenTest is Test {
 
     function testBurnShares_Success() public {
         // Setup: Mint StabilizerNFT, add funds, mint shares
-        uint256 tokenId = 1;
-        vm.prank(admin);
-        stabilizerNFT.mint(user1, tokenId);
+        // vm.prank(admin); // MINTER_ROLE no longer needed for StabilizerNFT.mint()
+        uint256 tokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId
         vm.deal(user1, 2 ether);
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
@@ -433,8 +431,8 @@ contract cUSPDTokenTest is Test {
 
     function testBurnShares_Revert_InvalidPrice() public {
         // Setup: Mint shares first
-        uint256 tokenId = 1;
-        vm.prank(admin); stabilizerNFT.mint(user1, tokenId);
+        // vm.prank(admin); // MINTER_ROLE no longer needed for StabilizerNFT.mint()
+        uint256 tokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId
         vm.deal(user1, 2 ether); vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.deal(user1, 1 ether); vm.prank(user1); cuspdToken.mintShares{value: 1 ether}(user1, mintQuery); // Mint to user1
@@ -456,9 +454,8 @@ contract cUSPDTokenTest is Test {
 
     function testBurnShares_Revert_InsufficientBalance() public {
         // Setup: Mint shares first
-        uint256 tokenId = 1;
-        vm.prank(admin);
-        stabilizerNFT.mint(user1, tokenId);
+        // vm.prank(admin); // MINTER_ROLE no longer needed for StabilizerNFT.mint()
+        uint256 tokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId
         vm.deal(user1, 2 ether);
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
@@ -494,8 +491,8 @@ contract cUSPDTokenTest is Test {
 
     function testBurnShares_Revert_TransferFailed() public {
         // Setup: Mint shares first
-        uint256 tokenId = 1;
-        vm.prank(admin); stabilizerNFT.mint(user1, tokenId);
+        // vm.prank(admin); // MINTER_ROLE no longer needed for StabilizerNFT.mint()
+        uint256 tokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId
         vm.deal(user1, 2 ether); vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.deal(user1, 1 ether); vm.prank(user1); cuspdToken.mintShares{value: 1 ether}(user1, mintQuery); // Mint to user1
