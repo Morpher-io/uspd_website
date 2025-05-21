@@ -1741,6 +1741,8 @@ contract StabilizerNFTTest is Test {
         uint256 stEthParValue = (initialShares * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / (2000 ether);
         uint256 collateralToSetInPosition = (stEthParValue * 12000) / 10000; // collateralRatioToSet = 12000
 
+console.log(initialCollateral);
+console.log(collateralToSetInPosition);
         require(collateralToSetInPosition < initialCollateral, "Test setup: collateralToSetInPosition too high");
         vm.prank(address(positionEscrow));
         mockStETH.transfer(address(0xdead), initialCollateral - collateralToSetInPosition);
