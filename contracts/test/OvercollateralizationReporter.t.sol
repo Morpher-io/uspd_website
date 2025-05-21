@@ -631,4 +631,70 @@ contract OvercollateralizationReporterTest is Test {
 
     // TODO: Add tests for updateRateContract, updateCUSPDToken
 
+    // --- updateRateContract ---
+    function test_UpdateRateContract_Success_Admin() public {
+        address oldRateContractAddr = address(reporter.rateContract());
+        // Deploy a new mock/instance for the rate contract
+        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
+        address newRateContractAddr = address(newRateContract);
+
+        vm.expectEmit(true, true, true, false, address(reporter)); // old, new, contract
+        emit IOvercollateralizationReporter.RateContractUpdated(oldRateContractAddr, newRateContractAddr);
+
+        vm.prank(admin);
+        reporter.updateRateContract(newRateContractAddr);
+
+        assertEq(address(reporter.rateContract()), newRateContractAddr, "RateContract address not updated");
+    }
+
+    function test_UpdateRateContract_Revert_ZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert("Reporter: Zero RateContract address");
+        reporter.updateRateContract(address(0));
+    }
+
+    function test_UpdateRateContract_Revert_NotAdmin() public {
+        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
+        address newRateContractAddr = address(newRateContract);
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, reporter.DEFAULT_ADMIN_ROLE()));
+        vm.prank(user1);
+        reporter.updateRateContract(newRateContractAddr);
+    }
+
+    // --- updateCUSPDToken ---
+    function test_UpdateCUSPDToken_Success_Admin() public {
+        address oldCUSPDTokenAddr = address(reporter.cuspdToken());
+        // Deploy a new mock/instance for the cUSPD token
+        // For simplicity, creating a new cUSPDToken instance. Ensure constructor args are valid.
+        cUSPDToken newCUSPDToken = new cUSPDToken(
+            "New Core USPD Share", "NcUSPD", address(priceOracle), address(stabilizerNFT), address(rateContract), admin
+        );
+        address newCUSPDTokenAddr = address(newCUSPDToken);
+
+        vm.expectEmit(true, true, true, false, address(reporter)); // old, new, contract
+        emit IOvercollateralizationReporter.CUSPDTokenUpdated(oldCUSPDTokenAddr, newCUSPDTokenAddr);
+
+        vm.prank(admin);
+        reporter.updateCUSPDToken(newCUSPDTokenAddr);
+
+        assertEq(address(reporter.cuspdToken()), newCUSPDTokenAddr, "cUSPDToken address not updated");
+    }
+
+    function test_UpdateCUSPDToken_Revert_ZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert("Reporter: Zero cUSPDToken address");
+        reporter.updateCUSPDToken(address(0));
+    }
+
+    function test_UpdateCUSPDToken_Revert_NotAdmin() public {
+        cUSPDToken newCUSPDToken = new cUSPDToken(
+            "New Core USPD Share", "NcUSPD", address(priceOracle), address(stabilizerNFT), address(rateContract), admin
+        );
+        address newCUSPDTokenAddr = address(newCUSPDToken);
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, reporter.DEFAULT_ADMIN_ROLE()));
+        vm.prank(user1);
+        reporter.updateCUSPDToken(newCUSPDTokenAddr);
+    }
 }
