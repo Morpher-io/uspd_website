@@ -1725,7 +1725,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(1); // positionToLiquidateTokenId = 1
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(1, 11000); // positionToLiquidateTokenId = 1, Default min for position
+        stabilizerNFT.setMinCollateralizationRatio(1, 13000); // Set initial ratio higher (e.g., 130%)
 
         vm.deal(owner, 1 ether); // User ETH for allocation
         vm.prank(owner);
@@ -1867,7 +1867,7 @@ console.log(collateralToSetInPosition);
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(1); // positionToLiquidateTokenId = 1
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(1, 11000); // positionToLiquidateTokenId = 1
+        stabilizerNFT.setMinCollateralizationRatio(1, 13000); // Set initial ratio higher (e.g., 130%)
 
         vm.deal(owner, 1 ether);
         vm.prank(owner);
