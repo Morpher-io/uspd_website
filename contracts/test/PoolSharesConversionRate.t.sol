@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import {stdStore} from "forge-std/StdStorage.sol";
 import "../src/interfaces/IPoolSharesConversionRate.sol";
 import "./mocks/MockStETH.sol";
 import "./mocks/MockLido.sol";
@@ -117,8 +118,54 @@ contract PoolSharesConversionRateTest is Test {
          new PoolSharesConversionRate(address(localMockStETH), address(localMockLido));
     }
 
-     function testRevertIfInitialBalanceZero_GetFactor() public {
-         assertTrue(true, "Skipping test as constructor prevents zero initial balance state");
+    // --- Constructor Revert Tests ---
+
+    function testRevertIf_Constructor_StEthAddressZero() public {
+        vm.expectRevert(PoolSharesConversionRate.StEthAddressZero.selector);
+        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(0), address(mockLido));
     }
 
+    function testRevertIf_Constructor_LidoAddressZero() public {
+        vm.expectRevert(PoolSharesConversionRate.LidoAddressZero.selector);
+        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(mockStETH), address(0));
+    }
+
+    function testRevertIf_Constructor_NoEthSent() public {
+        // This test was named testRevertIfInitialBalanceZero_DeployTime, renaming for clarity
+        MockStETH localMockStETH = new MockStETH();
+        MockLido localMockLido = new MockLido(address(localMockStETH));
+        vm.expectRevert(PoolSharesConversionRate.NoEthSent.selector);
+        new PoolSharesConversionRate(address(localMockStETH), address(localMockLido)); // No {value: ...}
+    }
+
+    function testRevertIf_Constructor_InitialBalanceZero_AfterLidoSubmit() public {
+        MockStETH localStETH = new MockStETH();
+        MockLido localLido = new MockLido(address(localStETH));
+        localLido.setShouldMintOnSubmit(false); // Configure MockLido to not mint stETH
+
+        vm.expectRevert(PoolSharesConversionRate.InitialBalanceZero.selector);
+        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(localStETH), address(localLido));
+    }
+
+    // --- getYieldFactor specific tests ---
+
+    function testGetYieldFactor_WhenInitialBalanceIsZero() public {
+        // Deploy normally first
+        PoolSharesConversionRate localRateContract = new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(
+            address(mockStETH),
+            address(mockLido)
+        );
+        // Use stdStore to force initialStEthBalance to 0, which is normally prevented by constructor
+        stdstore
+            .target(address(localRateContract))
+            .sig(localRateContract.initialStEthBalance.selector)
+            .checked_write(uint256(0));
+
+        assertEq(localRateContract.initialStEthBalance(), 0, "Forced initialStEthBalance should be 0");
+        assertEq(
+            localRateContract.getYieldFactor(),
+            FACTOR_PRECISION,
+            "Yield factor should be FACTOR_PRECISION if initialStEthBalance is 0"
+        );
+    }
 }
