@@ -117,8 +117,9 @@ contract USPDToken is
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
         require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield"); // Prevent transferring 0 shares unless amount is 0
 
-        // Call transfer on the underlying cUSPD token
-        return cuspdToken.transfer(to, sharesToTransfer);
+        // Call executeTransfer on the underlying cUSPD token, forwarding msg.sender as 'from'
+        cuspdToken.executeTransfer(msg.sender, to, sharesToTransfer);
+        return true; // Assuming executeTransfer does not return bool or reverts on failure
     }
 
     /**
@@ -152,8 +153,9 @@ contract USPDToken is
         // Calculate share amount to approve: shares = uspdAmount * precision / yieldFactor
         uint256 sharesToApprove = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
 
-        // Call approve on the underlying cUSPD token
-        return cuspdToken.approve(spender, sharesToApprove);
+        // Call executeApprove on the underlying cUSPD token, forwarding msg.sender as 'owner'
+        cuspdToken.executeApprove(msg.sender, spender, sharesToApprove);
+        return true; // Assuming executeApprove does not return bool or reverts on failure
     }
 
     /**
@@ -173,8 +175,10 @@ contract USPDToken is
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
         require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield");
 
-        // Call transferFrom on the underlying cUSPD token
-        return cuspdToken.transferFrom(from, to, sharesToTransfer);
+        // Call executeTransferFrom on the underlying cUSPD token
+        // msg.sender here is the 'spender' in the context of cUSPDToken's allowance check
+        cuspdToken.executeTransferFrom(msg.sender, from, to, sharesToTransfer);
+        return true; // Assuming executeTransferFrom does not return bool or reverts on failure
     }
 
     // --- Admin Functions ---
