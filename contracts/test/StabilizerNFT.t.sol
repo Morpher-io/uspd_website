@@ -1735,7 +1735,7 @@ contract StabilizerNFTTest is Test {
         uint256 targetPayoutToLiquidator = (stEthParValue * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
         require(collateralToSetInPosition >= targetPayoutToLiquidator, "Test setup: Not enough collateral for full payout");
         uint256 expectedStEthPaid = targetPayoutToLiquidator;
-        uint256 expectedRemainderToInsurance = collateralToSetInPosition - targetPayoutToLiquidator;
+        // uint256 expectedRemainderToInsurance = collateralToSetInPosition - targetPayoutToLiquidator; // Inlined
 
 
         // --- Action: Liquidate ---
@@ -1746,9 +1746,9 @@ contract StabilizerNFTTest is Test {
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
         emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 2000 ether, 12500); // Use captured IDs
 
-        if (expectedRemainderToInsurance > 0) {
+        if ((collateralToSetInPosition - targetPayoutToLiquidator) > 0) { // Inlined expectedRemainderToInsurance
             // vm.expectEmit(true, true, true, true, address(insuranceEscrow)); // Event emitter issue
-            // emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), expectedRemainderToInsurance);
+            // emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), collateralToSetInPosition - targetPayoutToLiquidator); // Inlined expectedRemainderToInsurance
         }
 
         vm.prank(user2);
@@ -1759,7 +1759,7 @@ contract StabilizerNFTTest is Test {
         assertEq(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - collateralToSetInPosition, "PositionEscrow balance should be 0 after full payout and remainder");
         assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow shares mismatch");
         assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator cUSPD balance mismatch");
-        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, "InsuranceEscrow balance mismatch");
+        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + (collateralToSetInPosition - targetPayoutToLiquidator), "InsuranceEscrow balance mismatch"); // Inlined expectedRemainderToInsurance
     }
 
     function testLiquidation_WithLiquidatorNFT_HighID_UsesMinThreshold() public {
