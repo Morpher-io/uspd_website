@@ -551,13 +551,84 @@ contract OvercollateralizationReporterTest is Test {
 
 
     // =============================================
-    // IV. resetCollateralSnapshot Tests (Placeholder)
+    // IV. resetCollateralSnapshot Tests
     // =============================================
-    // TODO: Add tests for resetCollateralSnapshot (success, role check)
+
+    function test_ResetCollateralSnapshot_Success_Admin() public {
+        // Setup: Have some initial snapshot values different from what we'll reset to.
+        vm.prank(updater);
+        reporter.updateSnapshot(50 ether); // Set some initial snapshot
+
+        uint256 newEthEquivalent = 123 ether;
+        uint256 expectedYieldFactor = rateContract.getYieldFactor(); // This will be the current yield factor
+
+        vm.expectEmit(true, false, false, true, address(reporter));
+        emit IOvercollateralizationReporter.SnapshotReset(newEthEquivalent, expectedYieldFactor);
+
+        vm.prank(admin);
+        reporter.resetCollateralSnapshot(newEthEquivalent);
+
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), newEthEquivalent, "Reset ETH snapshot mismatch");
+        assertEq(reporter.yieldFactorAtLastSnapshot(), expectedYieldFactor, "Reset yield snapshot mismatch");
+    }
+
+    function test_ResetCollateralSnapshot_Revert_ZeroCurrentYieldFactor() public {
+        // Make rateContract.getYieldFactor() return 0
+        uint256 rateContractStEthBalanceSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.balanceOf.selector)
+            .with_key(address(rateContract))
+            .find();
+        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        assertEq(rateContract.getYieldFactor(), 0, "Pre-condition: Yield factor should be 0");
+
+        vm.prank(admin);
+        vm.expectRevert("Reporter: Cannot reset with zero yield factor");
+        reporter.resetCollateralSnapshot(100 ether);
+    }
+
+    function test_ResetCollateralSnapshot_Revert_NotAdmin() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, reporter.DEFAULT_ADMIN_ROLE()));
+        vm.prank(user1);
+        reporter.resetCollateralSnapshot(100 ether);
+    }
 
     // =============================================
-    // V. Admin Dependency Update Tests (Placeholder)
+    // V. Admin Dependency Update Tests
     // =============================================
-    // TODO: Add tests for updateStabilizerNFTContract, updateRateContract, updateCUSPDToken
+
+    // --- updateStabilizerNFTContract ---
+    function test_UpdateStabilizerNFTContract_Success_Admin() public {
+        address oldStabilizerNFT = reporter.stabilizerNFTContract();
+        address newStabilizerNFT = makeAddr("newStabilizerNFT");
+
+        assertTrue(reporter.hasRole(reporter.UPDATER_ROLE(), oldStabilizerNFT), "Old StabilizerNFT should have UPDATER_ROLE initially");
+        assertFalse(reporter.hasRole(reporter.UPDATER_ROLE(), newStabilizerNFT), "New StabilizerNFT should not have UPDATER_ROLE initially");
+
+        vm.expectEmit(true, true, true, false, address(reporter)); // old, new, contract
+        emit IOvercollateralizationReporter.StabilizerNFTContractUpdated(oldStabilizerNFT, newStabilizerNFT);
+
+        vm.prank(admin);
+        reporter.updateStabilizerNFTContract(newStabilizerNFT);
+
+        assertEq(reporter.stabilizerNFTContract(), newStabilizerNFT, "StabilizerNFT contract address not updated");
+        assertFalse(reporter.hasRole(reporter.UPDATER_ROLE(), oldStabilizerNFT), "Old StabilizerNFT should lose UPDATER_ROLE");
+        assertTrue(reporter.hasRole(reporter.UPDATER_ROLE(), newStabilizerNFT), "New StabilizerNFT should gain UPDATER_ROLE");
+    }
+
+    function test_UpdateStabilizerNFTContract_Revert_ZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert("Reporter: Zero StabilizerNFT address");
+        reporter.updateStabilizerNFTContract(address(0));
+    }
+
+    function test_UpdateStabilizerNFTContract_Revert_NotAdmin() public {
+        address newStabilizerNFT = makeAddr("newStabilizerNFT");
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, reporter.DEFAULT_ADMIN_ROLE()));
+        vm.prank(user1);
+        reporter.updateStabilizerNFTContract(newStabilizerNFT);
+    }
+
+    // TODO: Add tests for updateRateContract, updateCUSPDToken
 
 }
