@@ -2106,4 +2106,80 @@ contract StabilizerNFTTest is Test {
         assertEq(reporterYieldFactorAfter, rateContract.getYieldFactor(), "Reporter yieldFactor mismatch");
     }
 
+
+    // =============================================
+    // XII. Admin Function Tests
+    // =============================================
+
+    // --- setInsuranceEscrow ---
+    function testSetInsuranceEscrow_Success() public {
+        address newInsuranceEscrowAddr = makeAddr("newInsuranceEscrow");
+        IInsuranceEscrow newInsuranceEscrow = IInsuranceEscrow(newInsuranceEscrowAddr); // Cast for type matching
+
+        vm.prank(owner); // Owner is admin
+        vm.expectEmit(true, true, false, true, address(stabilizerNFT)); // Event from StabilizerNFT
+        emit StabilizerNFT.InsuranceEscrowUpdated(newInsuranceEscrowAddr);
+        stabilizerNFT.setInsuranceEscrow(newInsuranceEscrowAddr);
+
+        assertEq(address(stabilizerNFT.insuranceEscrow()), newInsuranceEscrowAddr, "InsuranceEscrow address not updated");
+    }
+
+    function testSetInsuranceEscrow_Revert_NotAdmin() public {
+        address newInsuranceEscrowAddr = makeAddr("newInsuranceEscrow");
+        vm.prank(user1); // Not admin
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, stabilizerNFT.DEFAULT_ADMIN_ROLE()));
+        stabilizerNFT.setInsuranceEscrow(newInsuranceEscrowAddr);
+    }
+
+    function testSetInsuranceEscrow_Revert_ZeroAddress() public {
+        vm.prank(owner); // Owner is admin
+        vm.expectRevert("Zero address for InsuranceEscrow");
+        stabilizerNFT.setInsuranceEscrow(address(0));
+    }
+
+    // --- setLiquidationParameters ---
+    function testSetLiquidationParameters_Success() public {
+        uint256 newPayoutPercent = 108;
+
+        vm.prank(owner); // Owner is admin
+        vm.expectEmit(true, false, false, true, address(stabilizerNFT)); // Event from StabilizerNFT
+        emit StabilizerNFT.LiquidationParametersUpdated(newPayoutPercent);
+        stabilizerNFT.setLiquidationParameters(newPayoutPercent);
+
+        assertEq(stabilizerNFT.liquidationLiquidatorPayoutPercent(), newPayoutPercent, "Liquidation payout percent not updated");
+    }
+
+    function testSetLiquidationParameters_Revert_NotAdmin() public {
+        uint256 newPayoutPercent = 108;
+        vm.prank(user1); // Not admin
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, stabilizerNFT.DEFAULT_ADMIN_ROLE()));
+        stabilizerNFT.setLiquidationParameters(newPayoutPercent);
+    }
+
+    function testSetLiquidationParameters_Revert_PayoutTooLow() public {
+        uint256 newPayoutPercent = 99; // Less than 100
+        vm.prank(owner); // Owner is admin
+        vm.expectRevert("Payout percent must be >= 100");
+        stabilizerNFT.setLiquidationParameters(newPayoutPercent);
+    }
+
+    // --- setBaseURI ---
+    function testSetBaseURI_Success() public {
+        string memory newURI = "ipfs://newcid/";
+        vm.prank(owner); // Owner is admin
+        stabilizerNFT.setBaseURI(newURI);
+        assertEq(stabilizerNFT.baseURI(), newURI, "BaseURI not updated");
+
+        // Verify with tokenURI
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        assertEq(stabilizerNFT.tokenURI(tokenId), string(abi.encodePacked(newURI, "1")), "tokenURI mismatch after setBaseURI"); // Assuming tokenId 1
+    }
+
+    function testSetBaseURI_Revert_NotAdmin() public {
+        string memory newURI = "ipfs://newcid/";
+        vm.prank(user1); // Not admin
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, stabilizerNFT.DEFAULT_ADMIN_ROLE()));
+        stabilizerNFT.setBaseURI(newURI);
+    }
+
 } // Add closing brace for the contract here
