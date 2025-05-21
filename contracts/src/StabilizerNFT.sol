@@ -82,6 +82,9 @@ contract StabilizerNFT is
     // Base URI for token metadata
     string public baseURI;
 
+    // Next token ID to be minted
+    uint256 private _nextTokenId;
+
     // --- Collateral Ratio Tracking (Moved to Reporter) ---
     // uint256 public totalEthEquivalentAtLastSnapshot; // REMOVED
     // uint256 public yieldFactorAtLastSnapshot; // REMOVED
@@ -168,6 +171,7 @@ contract StabilizerNFT is
         // liquidationThresholdPercent = 110; // REMOVED
 
         // Snapshot state is now managed by the reporter contract
+        _nextTokenId = 1; // Initialize next token ID
     }
 
     // --- Admin Functions ---
@@ -195,7 +199,10 @@ contract StabilizerNFT is
     // --- End Admin Functions ---
 
 
-    function mint(address to, uint256 tokenId) external onlyRole(MINTER_ROLE) {
+    function mint(address to) external returns (uint256) {
+        uint256 tokenId = _nextTokenId++;
+        require(tokenId != 0, "Token ID cannot be zero"); // Should not happen with _nextTokenId starting at 1
+
         positions[tokenId] = StabilizerPosition({
             // totalEth: 0, // Removed
             minCollateralRatio: 11000, // Default 110.00%
@@ -241,6 +248,8 @@ contract StabilizerNFT is
 
         // Grant the new PositionEscrow clone the role needed to call back
         _grantRole(POSITION_ESCROW_ROLE, positionEscrowClone);
+
+        return tokenId;
     }
 
 
