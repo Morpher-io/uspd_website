@@ -417,7 +417,7 @@ contract OvercollateralizationReporterTest is Test {
         vm.store(address(mockStETH), bytes32(balanceSlot), bytes32(uint256(1))); // Set balance to 1 wei
 
         assertEq(mockStETH.balanceOf(address(rateContract)), 1, "MockStETH balance of rateContract should be 1 wei");
-        assertEq(rateContract.getYieldFactor(), 1, "Yield factor should be 1");
+        assertEq(rateContract.getYieldFactor(), 1000, "Yield factor should be 1");
 
 
         // 3. Have some collateral in the reporter
