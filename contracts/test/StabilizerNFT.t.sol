@@ -1282,10 +1282,9 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1);
         stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000); // 110%
 
-        IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(price, block.timestamp);
         vm.deal(owner, userEthForAllocation); // Fund minter (owner)
         vm.prank(owner);
-        cuspdToken.mintShares{value: userEthForAllocation}(user1, priceQueryAlloc); // Mint shares to user1
+        cuspdToken.mintShares{value: userEthForAllocation}(user1, createSignedPriceAttestation(price, block.timestamp)); // Mint shares to user1
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId));
         uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 1 ETH user + 0.1 ETH stab = 1.1 ETH
@@ -1302,8 +1301,7 @@ contract StabilizerNFTTest is Test {
         // Target Payout for liquidator (105% of par value for all shares)
         // Par value of shares = 1 ETH (2000 shares / 2000 price)
         // Target Payout = 1 ETH * 105% = 1.05 ETH
-        uint256 stEthParValueTotal = (initialSharesInPosition * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / price;
-        uint256 targetPayoutToLiquidator = (stEthParValueTotal * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100; // e.g. 1.05 ETH
+        uint256 targetPayoutToLiquidator = (((initialSharesInPosition * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / price) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100; // e.g. 1.05 ETH
 
         // Set collateral in PositionEscrow to be LESS than targetPayoutToLiquidator, but enough to be liquidatable
         // e.g., set it to 0.8 ETH. Ratio will be 0.8 / 1 (par) = 80%, which is < 110%
@@ -1311,9 +1309,8 @@ contract StabilizerNFTTest is Test {
         require(collateralToSetInPosition < targetPayoutToLiquidator, "Test setup: collateralToSetInPosition must be < targetPayoutToLiquidator");
         require(collateralToSetInPosition < initialCollateralInPosition, "Test setup: collateralToSetInPosition must be < initialCollateralInPosition");
 
-        uint256 collateralToRemoveFromPosition = initialCollateralInPosition - collateralToSetInPosition;
         vm.prank(address(positionEscrow)); // Bypass access control for direct transfer
-        mockStETH.transfer(address(0xdead), collateralToRemoveFromPosition);
+        mockStETH.transfer(address(0xdead), initialCollateralInPosition - collateralToSetInPosition);
         assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSetInPosition, "Collateral in PositionEscrow not set correctly");
 
         // --- Setup Liquidator (user2) ---
