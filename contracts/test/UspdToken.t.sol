@@ -329,14 +329,15 @@ contract USPDTokenTest is Test {
 
 
     // --- Helper to mint and fund a stabilizer ---
-    function _setupStabilizer(address owner, uint256 tokenId, uint256 ethAmount) internal {
+    function _setupStabilizer(address owner, uint256 ethAmount) internal returns (uint256) {
         // Mint NFT
-        vm.prank(address(this)); // Admin mints
-        stabilizerNFT.mint(owner, tokenId);
+        // vm.prank(address(this)); // Admin mints - no longer needed for mint
+        uint256 tokenId = stabilizerNFT.mint(owner); // Capture returned tokenId
         // Fund Stabilizer
         vm.deal(owner, ethAmount);
         vm.prank(owner);
         stabilizerNFT.addUnallocatedFundsEth{value: ethAmount}(tokenId);
+        return tokenId;
     }
 
     // --- USPDToken.mint Tests ---
@@ -348,7 +349,7 @@ contract USPDTokenTest is Test {
         uint256 stabilizerFunding = 1 ether; // Enough to cover 110% of 1 ETH
 
         // Setup stabilizer
-        _setupStabilizer(makeAddr("stabilizerOwner"), 1, stabilizerFunding);
+        /* uint256 stabilizerTokenId = */ _setupStabilizer(makeAddr("stabilizerOwner"), stabilizerFunding); // Capture tokenId if needed later, not in this test
 
         // Prepare price query
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
@@ -405,11 +406,11 @@ contract USPDTokenTest is Test {
 
         
         stabilizerFunding = 0.1 ether;
-        vm.prank(address(this)); // Admin mints
-        stabilizerNFT.mint(makeAddr("stabilizerOwner2"), 2);
+        // vm.prank(address(this)); // Admin mints - no longer needed for mint
+        uint256 stabilizerTokenId2 = stabilizerNFT.mint(makeAddr("stabilizerOwner2")); // Capture tokenId
         vm.deal(makeAddr("stabilizerOwner2"), stabilizerFunding);
         vm.prank(makeAddr("stabilizerOwner2"));
-        stabilizerNFT.addUnallocatedFundsEth{value: stabilizerFunding}(2);
+        stabilizerNFT.addUnallocatedFundsEth{value: stabilizerFunding}(stabilizerTokenId2); // Use captured tokenId
         
 
         // Max user_eth = 0.1 / 0.1 = 1 ETH
