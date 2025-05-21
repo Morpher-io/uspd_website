@@ -34,6 +34,7 @@ import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";              
 
 
 contract OvercollateralizationReporterTest is Test {
@@ -60,6 +61,10 @@ contract OvercollateralizationReporterTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant UNISWAP_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address public constant CHAINLINK_ETH_USD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+
+    //https://book.getfoundry.sh/reference/forge-std/std-storage
+    using stdStorage for StdStorage;
+
 
     function setUp() public {
         // 1. Setup Addresses & Signer
@@ -400,7 +405,7 @@ contract OvercollateralizationReporterTest is Test {
         // initialStEthBalance in rateContract is from 0.001 ether deposit.
         // We need currentStEthBalance in rateContract to be initialStEthBalance / 1e18 = (0.001 ether) / 1e18 = 1 wei.
         // Find the storage slot for _balances[address(rateContract)] in mockStETH
-        bytes32 balanceSlot = stdStore.target(address(mockStETH)).sig("_balances(address)").with_args(address(rateContract)).slot;
+        bytes32 balanceSlot = stdstore.target(address(mockStETH)).sig("_balances(address)").with_args(address(rateContract)).slot;
         vm.store(address(mockStETH), balanceSlot, bytes32(uint256(1))); // Set balance to 1 wei
 
         assertEq(mockStETH.balanceOf(address(rateContract)), 1, "MockStETH balance of rateContract should be 1 wei");
@@ -424,8 +429,8 @@ contract OvercollateralizationReporterTest is Test {
         // This state is normally unreachable as yieldFactorAtLastSnapshot is initialized > 0
         // and updated with currentYieldFactor which is also required to be > 0.
         // We use stdStore to force this state.
-        stdStore.target(address(reporter)).sig(reporter.yieldFactorAtLastSnapshot.selector).checked_write(0);
-        stdStore.target(address(reporter)).sig(reporter.totalEthEquivalentAtLastSnapshot.selector).checked_write(10 ether); // Ensure some collateral
+        stdstore.target(address(reporter)).sig(reporter.yieldFactorAtLastSnapshot.selector).checked_write(0);
+        stdstore.target(address(reporter)).sig(reporter.totalEthEquivalentAtLastSnapshot.selector).checked_write(10 ether); // Ensure some collateral
 
         assertEq(reporter.yieldFactorAtLastSnapshot(), 0, "Yield factor at last snapshot should be 0");
         assertEq(reporter.totalEthEquivalentAtLastSnapshot(), 10 ether, "Total ETH at last snapshot should be 10 ether");
