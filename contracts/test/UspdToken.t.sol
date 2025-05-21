@@ -393,10 +393,226 @@ contract USPDTokenTest is Test {
 
     // --- Yield Factor Tests ---
 
-    function testTransferWithYieldFactorChange() public {
-        assertTrue(true, "Test needs adaptation for passthrough logic");
+    // Helper function to make rateContract.getYieldFactor() return 0
+    function _setYieldFactorZero() private {
+        uint256 rateContractStEthBalanceSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.balanceOf.selector)
+            .with_key(address(rateContract))
+            .find();
+        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test setup");
     }
 
+    // Helper function to create a very high yield factor
+    // such that a small uspdAmount results in 0 sharesToTransfer
+    function _setHighYieldFactor() private {
+        // initialStEthBalance in rateContract is 0.001 ether (1e15 wei)
+        // To make yieldFactor very large, we need currentBalance to be very large.
+        // yieldFactor = (currentBalance * FACTOR_PRECISION) / initialBalance
+        // If we want shares = (uspdAmount * FACTOR_PRECISION) / yieldFactor to be < 1 for uspdAmount = 1 wei
+        // then yieldFactor > uspdAmount * FACTOR_PRECISION
+        // yieldFactor > 1 * 1e18
+        // (currentBalance * 1e18) / 1e15 > 1e18
+        // currentBalance * 1e3 > 1e18
+        // currentBalance > 1e15
+        // Let's set currentBalance to something like 1e18 * 1e18 to ensure yieldFactor is huge.
+        uint256 rateContractStEthBalanceSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.balanceOf.selector)
+            .with_key(address(rateContract))
+            .find();
+        // Set a very large balance for rateContract in mockStETH
+        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(1e18 * 1e18))); // Extremely large balance
+
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        assertTrue(yieldFactor > uspdToken.FACTOR_PRECISION() * 100, "Yield factor should be very high"); // Check it's significantly high
+    }
+
+
+    // --- Transfer Tests ---
+    function testTransfer_Success() public {
+        address sender = makeAddr("sender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        // Mint initial tokens to sender
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(sender, mintAmountEth + 0.1 ether);
+        vm.prank(sender);
+        uspdToken.mint{value: mintAmountEth}(sender, priceQuery);
+
+        uint256 initialSenderBalance = uspdToken.balanceOf(sender);
+        uint256 initialReceiverBalance = uspdToken.balanceOf(receiver);
+        uint256 transferAmount = initialSenderBalance / 2;
+
+        vm.prank(sender);
+        assertTrue(uspdToken.transfer(receiver, transferAmount), "Transfer should succeed");
+
+        assertEq(uspdToken.balanceOf(sender), initialSenderBalance - transferAmount, "Sender balance mismatch");
+        assertEq(uspdToken.balanceOf(receiver), initialReceiverBalance + transferAmount, "Receiver balance mismatch");
+    }
+
+    function testTransfer_Revert_ZeroYieldFactor() public {
+        address sender = makeAddr("sender");
+        address receiver = makeAddr("receiver");
+        _setYieldFactorZero();
+
+        vm.prank(sender);
+        vm.expectRevert("USPD: Invalid yield factor");
+        uspdToken.transfer(receiver, 100 * 1e18);
+    }
+
+    function testTransfer_Revert_AmountTooSmallForHighYield() public {
+        address sender = makeAddr("sender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(sender, mintAmountEth + 0.1 ether);
+        vm.prank(sender);
+        uspdToken.mint{value: mintAmountEth}(sender, priceQuery); // Mint some tokens
+
+        _setHighYieldFactor(); // Set a very high yield factor
+
+        vm.prank(sender);
+        vm.expectRevert("USPD: Transfer amount too small for current yield");
+        uspdToken.transfer(receiver, 1); // 1 wei of USPD, should result in 0 shares
+    }
+
+    function testTransfer_Success_ZeroAmount() public {
+        address sender = makeAddr("sender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(sender, mintAmountEth + 0.1 ether);
+        vm.prank(sender);
+        uspdToken.mint{value: mintAmountEth}(sender, priceQuery); // Mint some tokens
+
+        uint256 initialSenderBalance = uspdToken.balanceOf(sender);
+
+        vm.prank(sender);
+        assertTrue(uspdToken.transfer(receiver, 0), "Transfer of 0 amount should succeed");
+        assertEq(uspdToken.balanceOf(sender), initialSenderBalance, "Sender balance should not change for 0 amount transfer");
+    }
+
+    // --- Allowance & Approve Tests ---
+    function testApproveAndAllowance_Success() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        uint256 approveAmount = 100 * 1e18;
+
+        vm.prank(owner);
+        assertTrue(uspdToken.approve(spender, approveAmount), "Approve should succeed");
+        assertEq(uspdToken.allowance(owner, spender), approveAmount, "Allowance mismatch");
+    }
+
+    function testAllowance_ZeroIfYieldFactorIsZero() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        // Approve some amount first (shares will be approved on cUSPD)
+        vm.prank(owner);
+        uspdToken.approve(spender, 100 * 1e18);
+
+        _setYieldFactorZero();
+        assertEq(uspdToken.allowance(owner, spender), 0, "Allowance should be 0 if yield factor is zero");
+    }
+
+    function testApprove_Revert_ZeroYieldFactor() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        _setYieldFactorZero();
+
+        vm.prank(owner);
+        vm.expectRevert("USPD: Invalid yield factor");
+        uspdToken.approve(spender, 100 * 1e18);
+    }
+
+    // --- TransferFrom Tests ---
+    function testTransferFrom_Success() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(owner, mintAmountEth + 0.1 ether);
+        vm.prank(owner);
+        uspdToken.mint{value: mintAmountEth}(owner, priceQuery); // Mint tokens to owner
+
+        uint256 transferAmount = uspdToken.balanceOf(owner) / 2;
+        vm.prank(owner);
+        uspdToken.approve(spender, transferAmount);
+
+        uint256 ownerInitialBalance = uspdToken.balanceOf(owner);
+        uint256 receiverInitialBalance = uspdToken.balanceOf(receiver);
+
+        vm.prank(spender);
+        assertTrue(uspdToken.transferFrom(owner, receiver, transferAmount), "TransferFrom should succeed");
+
+        assertEq(uspdToken.balanceOf(owner), ownerInitialBalance - transferAmount, "Owner balance mismatch after transferFrom");
+        assertEq(uspdToken.balanceOf(receiver), receiverInitialBalance + transferAmount, "Receiver balance mismatch after transferFrom");
+        assertEq(uspdToken.allowance(owner, spender), 0, "Spender allowance should be 0 after full transferFrom");
+    }
+
+    function testTransferFrom_Revert_ZeroYieldFactor() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        address receiver = makeAddr("receiver");
+        _setYieldFactorZero();
+
+        vm.prank(spender);
+        vm.expectRevert("USPD: Invalid yield factor");
+        uspdToken.transferFrom(owner, receiver, 100 * 1e18);
+    }
+
+    function testTransferFrom_Revert_AmountTooSmallForHighYield() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(owner, mintAmountEth + 0.1 ether);
+        vm.prank(owner);
+        uspdToken.mint{value: mintAmountEth}(owner, priceQuery); // Mint some tokens
+
+        vm.prank(owner);
+        uspdToken.approve(spender, 10 * 1e18); // Approve some amount
+
+        _setHighYieldFactor(); // Set a very high yield factor
+
+        vm.prank(spender);
+        vm.expectRevert("USPD: Transfer amount too small for current yield");
+        uspdToken.transferFrom(owner, receiver, 1); // 1 wei of USPD
+    }
+
+    function testTransferFrom_Success_ZeroAmount() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(owner, mintAmountEth + 0.1 ether);
+        vm.prank(owner);
+        uspdToken.mint{value: mintAmountEth}(owner, priceQuery); // Mint some tokens
+
+        uint256 ownerInitialBalance = uspdToken.balanceOf(owner);
+        vm.prank(owner);
+        uspdToken.approve(spender, 10 * 1e18); // Approve some amount
+
+        vm.prank(spender);
+        assertTrue(uspdToken.transferFrom(owner, receiver, 0), "TransferFrom of 0 amount should succeed");
+        assertEq(uspdToken.balanceOf(owner), ownerInitialBalance, "Owner balance should not change for 0 amount transferFrom");
+    }
 
     // --- Admin Function Tests ---
 
