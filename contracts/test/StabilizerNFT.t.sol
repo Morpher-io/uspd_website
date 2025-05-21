@@ -2046,7 +2046,7 @@ contract StabilizerNFTTest is Test {
 
     function testAllocateStabilizerFunds_Revert_NoFundsCanBeAllocated() public {
         // Setup: Stabilizers exist but their escrows are empty
-        uint256 tokenId1 = stabilizerNFT.mint(user1);
+        stabilizerNFT.mint(user1);
         // No funds added to stabilizerEscrows[tokenId1]
 
         uint256 userEthForAllocation = 1 ether;
@@ -2054,7 +2054,7 @@ contract StabilizerNFTTest is Test {
 
         vm.deal(owner, userEthForAllocation);
         vm.prank(owner);
-        vm.expectRevert("No funds allocated"); // From StabilizerNFT.allocateStabilizerFunds
+        vm.expectRevert("No unallocated funds"); // From StabilizerNFT.allocateStabilizerFunds
         cuspdToken.mintShares{value: userEthForAllocation}(address(this), priceQuery);
     }
 
