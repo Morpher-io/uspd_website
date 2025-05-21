@@ -9,6 +9,7 @@ import "./MockStETH.sol";
  */
 contract MockLido {
     MockStETH public immutable stETH;
+    bool public shouldMintOnSubmit = true; // Added flag
 
     event Submitted(address indexed sender, uint256 amount, address referral);
 
@@ -26,8 +27,13 @@ contract MockLido {
         uint256 amount = msg.value;
         require(amount > 0, "MockLido: Amount must be greater than zero");
 
-        // Mint MockStETH 1:1 for the received ETH
-        stETH.mint(msg.sender, amount);
+        if (shouldMintOnSubmit) {
+            // Mint MockStETH 1:1 for the received ETH
+            stETH.mint(msg.sender, amount);
+        }
+        // If shouldMintOnSubmit is false, we simulate Lido accepting ETH 
+        // but not giving stETH back to the caller for this specific transaction,
+        // which is useful for testing scenarios like InitialBalanceZero in PoolSharesConversionRate.
 
         emit Submitted(msg.sender, amount, _referral);
         return amount;
@@ -35,4 +41,12 @@ contract MockLido {
 
     // Allow receiving ETH just in case
     receive() external payable {}
+
+    /**
+     * @dev Allows tests to control whether stETH is minted on submit.
+     * @param _shouldMint True to mint stETH, false otherwise.
+     */
+    function setShouldMintOnSubmit(bool _shouldMint) external {
+        shouldMintOnSubmit = _shouldMint;
+    }
 }
