@@ -34,6 +34,7 @@ import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
+import {stdStore} from "forge-std/StdStorage.sol";
 
 
 contract OvercollateralizationReporterTest is Test {
@@ -139,6 +140,9 @@ contract OvercollateralizationReporterTest is Test {
             address(positionEscrowImpl), // <-- Pass PositionEscrow impl
             admin
         );
+
+        // Grant MINTER_ROLE to test contract for cUSPDToken for easier share minting
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), address(this));
 
         // 4. Setup Oracle Mocks (Chainlink, Uniswap) - Copied from other tests
         int mockPriceAnswer = 2000 * 1e8;
@@ -331,9 +335,208 @@ contract OvercollateralizationReporterTest is Test {
     }
 
     // =============================================
-    // III. getSystemCollateralizationRatio Tests (Placeholder)
+    // III. getSystemCollateralizationRatio Tests
     // =============================================
-    // TODO: Add tests similar to StabilizerNFTTest ratio tests, calling reporter.getSystemCollateralizationRatio
+
+    function test_GetSystemCollateralizationRatio_Success_Typical() public {
+        // Setup: initial snapshot, some cUSPD supply, valid price
+        uint256 initialEthSnapshot = 100 ether; // 100 ETH
+        vm.prank(updater);
+        reporter.updateSnapshot(int256(initialEthSnapshot));
+
+        uint256 cuspdTotalSupply = 50000 * 1e18; // 50,000 cUSPD shares
+        cuspdToken.mint(user1, cuspdTotalSupply); // Assumes MINTER_ROLE granted to address(this)
+
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18); // ETH price = $2000
+
+        // Calculation:
+        // Collateral Value (USD) = initialEthSnapshot * ETH_Price = 100 * 2000 = 200,000 USD
+        // Liability Value (USD) = cuspdTotalSupply (since yield factor is 1e18) = 50,000 USD
+        // Ratio = (200,000 / 50,000) * 100 = 400
+        uint256 expectedRatio = 400;
+
+        uint256 ratio = reporter.getSystemCollateralizationRatio(price);
+        assertEq(ratio, expectedRatio, "Ratio mismatch for typical success case");
+    }
+
+    function test_GetSystemCollateralizationRatio_ZeroTotalShares() public {
+        // Ensure cUSPD total supply is 0 (default state)
+        assertEq(cuspdToken.totalSupply(), 0, "Pre-condition: cUSPD total supply should be 0");
+
+        uint256 initialEthSnapshot = 100 ether;
+        vm.prank(updater);
+        reporter.updateSnapshot(int256(initialEthSnapshot));
+
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
+
+        uint256 ratio = reporter.getSystemCollateralizationRatio(price);
+        assertEq(ratio, type(uint256).max, "Ratio should be max if total shares are zero");
+    }
+
+    function test_GetSystemCollateralizationRatio_Revert_ZeroCurrentYieldFactor() public {
+        // Make rateContract.getYieldFactor() return 0
+        // This is done by rebasing mockStETH total supply to 0, which makes stETH balance in rateContract 0.
+        vm.prank(admin); // MockStETH owner is admin (address(this))
+        mockStETH.rebase(0); // This makes current stETH balance in rateContract zero.
+        // PoolSharesConversionRate.getYieldFactor will return (0 * FACTOR_PRECISION) / initialBalance = 0
+
+        assertEq(rateContract.getYieldFactor(), 0, "Pre-condition: Yield factor should be 0");
+
+        cuspdToken.mint(user1, 100 * 1e18); // Have some cUSPD supply
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
+
+        vm.expectRevert("Reporter: Current yield factor is zero");
+        reporter.getSystemCollateralizationRatio(price);
+    }
+
+    function test_GetSystemCollateralizationRatio_ZeroLiabilityValueUSD_DueToTruncation() public {
+        // Scenario: totalShares * currentYieldFactor < FACTOR_PRECISION
+        // totalShares = 1, currentYieldFactor = 1. Then (1*1)/1e18 = 0.
+
+        // 1. Set cUSPD total supply to 1
+        cuspdToken.mint(user1, 1); // Mint 1 share of cUSPD
+        assertEq(cuspdToken.totalSupply(), 1, "cUSPD total supply should be 1");
+
+        // 2. Make rateContract.getYieldFactor() return 1
+        // initialStEthBalance in rateContract is from 0.001 ether deposit.
+        // We need currentStEthBalance in rateContract to be initialStEthBalance / 1e18 = (0.001 ether) / 1e18 = 1 wei.
+        // Find the storage slot for _balances[address(rateContract)] in mockStETH
+        bytes32 balanceSlot = stdStore.target(address(mockStETH)).sig("_balances(address)").with_args(address(rateContract)).slot;
+        vm.store(address(mockStETH), balanceSlot, bytes32(uint256(1))); // Set balance to 1 wei
+
+        assertEq(mockStETH.balanceOf(address(rateContract)), 1, "MockStETH balance of rateContract should be 1 wei");
+        assertEq(rateContract.getYieldFactor(), 1, "Yield factor should be 1");
+
+
+        // 3. Have some collateral in the reporter
+        uint256 initialEthSnapshot = 10 ether;
+        vm.prank(updater);
+        reporter.updateSnapshot(int256(initialEthSnapshot));
+
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
+
+        // Liability = (1 * 1) / 1e18 = 0
+        uint256 ratio = reporter.getSystemCollateralizationRatio(price);
+        assertEq(ratio, type(uint256).max, "Ratio should be max if liabilityValueUSD is zero due to truncation");
+    }
+
+
+    function test_GetSystemCollateralizationRatio_ZeroYieldFactorAtLastSnapshot() public {
+        // This state is normally unreachable as yieldFactorAtLastSnapshot is initialized > 0
+        // and updated with currentYieldFactor which is also required to be > 0.
+        // We use stdStore to force this state.
+        stdStore.target(address(reporter)).sig(reporter.yieldFactorAtLastSnapshot.selector).checked_write(0);
+        stdStore.target(address(reporter)).sig(reporter.totalEthEquivalentAtLastSnapshot.selector).checked_write(10 ether); // Ensure some collateral
+
+        assertEq(reporter.yieldFactorAtLastSnapshot(), 0, "Yield factor at last snapshot should be 0");
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), 10 ether, "Total ETH at last snapshot should be 10 ether");
+
+
+        cuspdToken.mint(user1, 100 * 1e18); // Have some cUSPD supply
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
+
+        // If yieldSnapshot is 0, ratio should be 0 (line 133)
+        uint256 ratio = reporter.getSystemCollateralizationRatio(price);
+        assertEq(ratio, 0, "Ratio should be 0 if yieldFactorAtLastSnapshot is zero");
+    }
+
+    function test_GetSystemCollateralizationRatio_ZeroEstimatedCurrentCollateralStEth() public {
+        // This happens if totalEthEquivalentAtLastSnapshot is 0.
+        // Reporter is initialized with totalEthEquivalentAtLastSnapshot = 0.
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), 0, "Pre-condition: Total ETH snapshot should be 0");
+
+        cuspdToken.mint(user1, 100 * 1e18); // Have some cUSPD supply
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
+
+        // If estimatedCurrentCollateralStEth is 0, ratio should be 0 (line 137)
+        uint256 ratio = reporter.getSystemCollateralizationRatio(price);
+        assertEq(ratio, 0, "Ratio should be 0 if estimated current collateral is zero");
+    }
+
+    function test_GetSystemCollateralizationRatio_Revert_InvalidPriceDecimals() public {
+        uint256 initialEthSnapshot = 10 ether;
+        vm.prank(updater);
+        reporter.updateSnapshot(int256(initialEthSnapshot));
+        cuspdToken.mint(user1, 100 * 1e18);
+
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e8); // Price with 8 decimals
+        price.decimals = 8; // Force different decimals
+
+        vm.expectRevert("Reporter: Price must have 18 decimals");
+        reporter.getSystemCollateralizationRatio(price);
+    }
+
+    function test_GetSystemCollateralizationRatio_Revert_ZeroOraclePrice() public {
+        uint256 initialEthSnapshot = 10 ether;
+        vm.prank(updater);
+        reporter.updateSnapshot(int256(initialEthSnapshot));
+        cuspdToken.mint(user1, 100 * 1e18);
+
+        IPriceOracle.PriceResponse memory price = createPriceResponse(0); // Zero price
+
+        vm.expectRevert("Reporter: Oracle price cannot be zero");
+        reporter.getSystemCollateralizationRatio(price);
+    }
+
+    function test_GetSystemCollateralizationRatio_VaryingOutcomes_LessThan100() public {
+        // Collateral: 10 ETH, Price: $2000 -> $20,000
+        // Liability: 250 cUSPD shares -> $250 (assuming 1:1 with USD for simplicity here, yield factor 1e18)
+        // Ratio = (20000 / 250) * 100 = 8000. Need to adjust.
+        // Target ratio: 80. Collateral Value = $20,000. Liability Value = $20,000 / 0.80 = $25,000.
+        // So, 25,000 cUSPD shares.
+
+        uint256 initialEthSnapshot = 10 ether; // $20,000 collateral
+        vm.prank(updater);
+        reporter.updateSnapshot(int256(initialEthSnapshot));
+
+        uint256 cuspdTotalSupply = 25000 * 1e18; // $25,000 liability
+        cuspdToken.mint(user1, cuspdTotalSupply);
+
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
+        uint256 expectedRatio = 80; // (20000 / 25000) * 100
+
+        uint256 ratio = reporter.getSystemCollateralizationRatio(price);
+        assertEq(ratio, expectedRatio, "Ratio mismatch for <100% case");
+    }
+
+    function test_GetSystemCollateralizationRatio_VaryingOutcomes_EqualTo100() public {
+        // Collateral: 10 ETH, Price: $2000 -> $20,000
+        // Liability: 20,000 cUSPD shares -> $20,000
+        // Ratio = 100
+
+        uint256 initialEthSnapshot = 10 ether; // $20,000 collateral
+        vm.prank(updater);
+        reporter.updateSnapshot(int256(initialEthSnapshot));
+
+        uint256 cuspdTotalSupply = 20000 * 1e18; // $20,000 liability
+        cuspdToken.mint(user1, cuspdTotalSupply);
+
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
+        uint256 expectedRatio = 100;
+
+        uint256 ratio = reporter.getSystemCollateralizationRatio(price);
+        assertEq(ratio, expectedRatio, "Ratio mismatch for 100% case");
+    }
+
+    function test_GetSystemCollateralizationRatio_VaryingOutcomes_GreaterThan100() public {
+        // Collateral: 10 ETH, Price: $2000 -> $20,000
+        // Liability: 10,000 cUSPD shares -> $10,000
+        // Ratio = 200
+
+        uint256 initialEthSnapshot = 10 ether; // $20,000 collateral
+        vm.prank(updater);
+        reporter.updateSnapshot(int256(initialEthSnapshot));
+
+        uint256 cuspdTotalSupply = 10000 * 1e18; // $10,000 liability
+        cuspdToken.mint(user1, cuspdTotalSupply);
+
+        IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
+        uint256 expectedRatio = 200;
+
+        uint256 ratio = reporter.getSystemCollateralizationRatio(price);
+        assertEq(ratio, expectedRatio, "Ratio mismatch for >100% case");
+    }
+
 
     // =============================================
     // IV. resetCollateralSnapshot Tests (Placeholder)
