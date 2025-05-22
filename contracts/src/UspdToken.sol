@@ -22,6 +22,8 @@ contract USPDToken is
     IPoolSharesConversionRate public rateContract; // Tracks yield factor
     uint256 public constant FACTOR_PRECISION = 1e18; // Assuming rate contract uses 1e18
 
+    mapping(address => mapping(address => uint256)) private _allowances;
+
     // --- Roles ---
     // Only DEFAULT_ADMIN_ROLE is needed for managing this view contract's dependencies
 
@@ -131,12 +133,8 @@ contract USPDToken is
      * @return The USPD allowance amount.
      */
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        if (yieldFactor == 0) return 0; // Avoid division by zero
-        // Get share allowance from cUSPD
-        uint256 shareAllowance = cuspdToken.allowance(owner, spender);
-        // Convert share allowance to USPD allowance: uspdAllowance = shareAllowance * yieldFactor / precision
-        return (shareAllowance * yieldFactor) / FACTOR_PRECISION;
+        // Returns the allowance set in USPD terms directly from this contract's state.
+        return _allowances[owner][spender];
     }
 
     /**
@@ -148,14 +146,11 @@ contract USPDToken is
      * @return A boolean indicating success.
      */
     function approve(address spender, uint256 uspdAmount) public virtual override returns (bool) {
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        require(yieldFactor > 0, "USPD: Invalid yield factor");
-        // Calculate share amount to approve: shares = uspdAmount * precision / yieldFactor
-        uint256 sharesToApprove = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
-
-        // Call executeApprove on the underlying cUSPD token, forwarding msg.sender as 'owner'
-        cuspdToken.executeApprove(msg.sender, spender, sharesToApprove);
-        return true; // Assuming executeApprove does not return bool or reverts on failure
+        // Approval is for USPD amounts and managed by this contract.
+        // No interaction with cUSPDToken.approve or yield factor conversion needed here.
+        _allowances[msg.sender][spender] = uspdAmount;
+        emit Approval(msg.sender, spender, uspdAmount);
+        return true;
     }
 
     /**
@@ -175,10 +170,16 @@ contract USPDToken is
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
         require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield");
 
-        // Call executeTransferFrom on the underlying cUSPD token
-        // msg.sender here is the 'spender' in the context of cUSPDToken's allowance check
-        cuspdToken.executeTransferFrom(msg.sender, from, to, sharesToTransfer);
-        return true; // Assuming executeTransferFrom does not return bool or reverts on failure
+        uint256 currentAllowance = _allowances[from][msg.sender];
+        require(currentAllowance >= uspdAmount, "USPD: insufficient allowance");
+        
+        // Update allowance in USPD terms
+        _allowances[from][msg.sender] = currentAllowance - uspdAmount;
+        emit Approval(from, msg.sender, _allowances[from][msg.sender]);
+
+        // USPDToken orchestrates the transfer of 'from's cUSPD shares.
+        cuspdToken.executeTransfer(from, to, sharesToTransfer);
+        return true;
     }
 
     // --- Admin Functions ---
