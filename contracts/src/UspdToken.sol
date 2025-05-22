@@ -22,8 +22,6 @@ contract USPDToken is
     IPoolSharesConversionRate public rateContract; // Tracks yield factor
     uint256 public constant FACTOR_PRECISION = 1e18; // Assuming rate contract uses 1e18
 
-    mapping(address => mapping(address => uint256)) private _allowances;
-
     // --- Roles ---
     // Only DEFAULT_ADMIN_ROLE is needed for managing this view contract's dependencies
 
@@ -132,10 +130,12 @@ contract USPDToken is
      * @param spender The address allowed to spend the funds.
      * @return The USPD allowance amount.
      */
-    function allowance(address owner, address spender) public view virtual override returns (uint256) {
-        // Returns the allowance set in USPD terms directly from this contract's state.
-        return _allowances[owner][spender];
-    }
+    // function allowance(address owner, address spender) public view virtual override returns (uint256) {
+    //     // Returns the allowance set in USPD terms directly from this contract's state.
+    //     // This is now handled by the inherited ERC20.allowance()
+    //     return _allowances[owner][spender];
+    // }
+    // The inherited ERC20.allowance() will be used.
 
     /**
      * @notice Sets `uspdAmount` as the allowance of `spender` over the caller's USPD tokens.
@@ -145,13 +145,15 @@ contract USPDToken is
      * @param uspdAmount The amount of USPD tokens to approve.
      * @return A boolean indicating success.
      */
-    function approve(address spender, uint256 uspdAmount) public virtual override returns (bool) {
-        // Approval is for USPD amounts and managed by this contract.
-        // No interaction with cUSPDToken.approve or yield factor conversion needed here.
-        _allowances[msg.sender][spender] = uspdAmount;
-        emit Approval(msg.sender, spender, uspdAmount);
-        return true;
-    }
+    // function approve(address spender, uint256 uspdAmount) public virtual override returns (bool) {
+    //     // Approval is for USPD amounts and managed by this contract.
+    //     // No interaction with cUSPDToken.approve or yield factor conversion needed here.
+    //     // This is now handled by the inherited ERC20.approve()
+    //     _allowances[msg.sender][spender] = uspdAmount;
+    //     emit Approval(msg.sender, spender, uspdAmount);
+    //     return true;
+    // }
+    // The inherited ERC20.approve() will be used.
 
     /**
      * @notice Transfers `uspdAmount` USPD tokens from `from` to `to` using the
@@ -170,12 +172,9 @@ contract USPDToken is
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
         require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield");
 
-        uint256 currentAllowance = _allowances[from][msg.sender];
-        require(currentAllowance >= uspdAmount, "USPD: insufficient allowance");
-        
-        // Update allowance in USPD terms
-        _allowances[from][msg.sender] = currentAllowance - uspdAmount;
-        emit Approval(from, msg.sender, _allowances[from][msg.sender]);
+        // Use the inherited _spendAllowance from ERC20.sol to check and update the allowance.
+        // _spendAllowance will revert if allowance is insufficient and emit an Approval event.
+        _spendAllowance(from, msg.sender, uspdAmount);
 
         // USPDToken orchestrates the transfer of 'from's cUSPD shares.
         cuspdToken.executeTransfer(from, to, sharesToTransfer);
