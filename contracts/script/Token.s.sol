@@ -547,6 +547,7 @@ contract DeployScript is Script {
         console2.log("Granting cUSPDToken roles...");
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
         // Deployer already has ADMIN, UPDATER roles from constructor
+        coreToken.grantRole(coreToken.USPD_CALLER_ROLE(), uspdTokenAddress);
 
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view) roles...");
@@ -576,6 +577,7 @@ contract DeployScript is Script {
         console2.log("Granting cUSPDToken (bridged) roles...");
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
         // Deployer already has ADMIN, UPDATER roles from constructor
+        coreToken.grantRole(coreToken.USPD_CALLER_ROLE(), uspdTokenAddress);
 
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view, bridged) roles...");

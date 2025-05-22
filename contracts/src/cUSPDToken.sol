@@ -25,6 +25,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE");
+    bytes32 public constant USPD_CALLER_ROLE = keccak256("USPD_CALLER_ROLE");
 
     // --- Events ---
     // Standard ERC20 Transfer event will track cUSPD share transfers.
@@ -246,8 +247,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * @param to The address to transfer shares to.
      * @param amount The amount of shares to transfer.
      */
-    function executeTransfer(address from, address to, uint256 amount) external {
-        // Consider adding role-based access control if only USPDToken should call this
+    function executeTransfer(address from, address to, uint256 amount) external onlyRole(USPD_CALLER_ROLE) {
         _transfer(from, to, amount);
     }
 
@@ -257,8 +257,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * @param spender The address being approved.
      * @param amount The amount of shares to approve.
      */
-    function executeApprove(address owner, address spender, uint256 amount) external {
-        // Consider adding role-based access control if only USPDToken should call this
+    function executeApprove(address owner, address spender, uint256 amount) external onlyRole(USPD_CALLER_ROLE) {
         _approve(owner, spender, amount);
     }
 
@@ -269,8 +268,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * @param to The address receiving the shares.
      * @param amount The amount of shares to transfer.
      */
-    function executeTransferFrom(address spender, address from, address to, uint256 amount) external {
-        // Consider adding role-based access control if only USPDToken should call this
+    function executeTransferFrom(address spender, address from, address to, uint256 amount) external onlyRole(USPD_CALLER_ROLE) {
         _spendAllowance(from, spender, amount);
         _transfer(from, to, amount);
     }
