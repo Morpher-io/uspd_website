@@ -399,12 +399,11 @@ contract USPDTokenTest is Test {
 
     // Helper function to make rateContract.getYieldFactor() return 0
     function _setYieldFactorZero() private {
-        uint256 rateContractStEthBalanceSlot = stdstore
-            .target(address(mockStETH))
-            .sig(mockStETH.balanceOf.selector)
-            .with_key(address(rateContract))
-            .find();
-        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        // Get the storage slot for the _balances mapping entry for rateContract in MockStETH (which is an ERC20)
+        // ERC20._balances is at slot 0.
+        bytes32 keyHash = keccak256(abi.encode(address(rateContract), uint256(0))); // key, mapping_slot_itself
+        
+        vm.store(address(mockStETH), keyHash, bytes32(uint256(0)));
         assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test setup");
     }
 
@@ -421,13 +420,12 @@ contract USPDTokenTest is Test {
         // currentBalance * 1e3 > 1e18
         // currentBalance > 1e15
         // Let's set currentBalance to something like 1e18 * 1e18 to ensure yieldFactor is huge.
-        uint256 rateContractStEthBalanceSlot = stdstore
-            .target(address(mockStETH))
-            .sig(mockStETH.balanceOf.selector)
-            .with_key(address(rateContract))
-            .find();
+        // Get the storage slot for the _balances mapping entry for rateContract in MockStETH (which is an ERC20)
+        // ERC20._balances is at slot 0.
+        bytes32 keyHash = keccak256(abi.encode(address(rateContract), uint256(0))); // key, mapping_slot_itself
+
         // Set a very large balance for rateContract in mockStETH
-        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(1e18 * 1e18))); // Extremely large balance
+        vm.store(address(mockStETH), keyHash, bytes32(uint256(1e18 * 1e18))); // Extremely large balance
 
         uint256 yieldFactor = rateContract.getYieldFactor();
         assertTrue(yieldFactor > uspdToken.FACTOR_PRECISION() * 100, "Yield factor should be very high"); // Check it's significantly high
