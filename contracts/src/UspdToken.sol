@@ -26,8 +26,7 @@ contract USPDToken is
 
     // --- Roles ---
     // DEFAULT_ADMIN_ROLE for managing dependencies.
-    bytes32 public constant TOKEN_ADAPTER_ROLE = keccak256("TOKEN_ADAPTER_ROLE");
-    bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
+    bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE"); // For Token Adapters / Bridge Relayers
 
     // --- Events ---
     // Standard ERC20 Transfer and Approval events are emitted by the underlying cUSPD token.
@@ -55,7 +54,7 @@ contract USPDToken is
     error InvalidYieldFactor();
     error AmountTooSmall();
     error BridgeEscrowNotSet();
-    error CallerNotTokenAdapter();
+    // error CallerNotTokenAdapter(); // Replaced by RELAYER_ROLE check
 
     // --- Constructor ---
     constructor(

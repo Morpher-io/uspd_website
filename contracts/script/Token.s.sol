@@ -574,17 +574,11 @@ contract DeployScript is Script {
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view) roles...");
         USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
-        // Example: Grant TOKEN_ADAPTER_ROLE to a placeholder address or a known adapter
-        // address exampleTokenAdapter = 0xYourTokenAdapterAddressHere;
-        // if (exampleTokenAdapter != address(0)) {
-        //     viewToken.grantRole(viewToken.TOKEN_ADAPTER_ROLE(), exampleTokenAdapter);
-        //     console2.log("TOKEN_ADAPTER_ROLE granted to:", exampleTokenAdapter);
-        // }
-        // Example: Grant RELAYER_ROLE to a placeholder address or a known relayer
-        // address exampleRelayer = 0xYourRelayerAddressHere;
-        // if (exampleRelayer != address(0)) {
-        //     viewToken.grantRole(viewToken.RELAYER_ROLE(), exampleRelayer);
-        //     console2.log("RELAYER_ROLE granted to:", exampleRelayer);
+        // Example: Grant RELAYER_ROLE to a placeholder address for a Token Adapter or Bridge Relayer
+        // address exampleRelayerOrAdapter = 0xYourRelayerOrAdapterAddressHere;
+        // if (exampleRelayerOrAdapter != address(0)) {
+        //     viewToken.grantRole(viewToken.RELAYER_ROLE(), exampleRelayerOrAdapter);
+        //     console2.log("RELAYER_ROLE granted to:", exampleRelayerOrAdapter);
         // }
 
         // Grant USPDToken the CALLER_ROLE on BridgeEscrow
@@ -630,17 +624,11 @@ contract DeployScript is Script {
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view, bridged) roles...");
         USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
-        // Example: Grant TOKEN_ADAPTER_ROLE for bridged scenarios if applicable
-        // address exampleBridgedTokenAdapter = 0xYourBridgedTokenAdapterAddressHere;
-        // if (exampleBridgedTokenAdapter != address(0)) {
-        //     viewToken.grantRole(viewToken.TOKEN_ADAPTER_ROLE(), exampleBridgedTokenAdapter);
-        //     console2.log("TOKEN_ADAPTER_ROLE (bridged) granted to:", exampleBridgedTokenAdapter);
-        // }
         // Example: Grant RELAYER_ROLE for bridged scenarios if applicable
-        // address exampleBridgedRelayer = 0xYourBridgedRelayerAddressHere;
-        // if (exampleBridgedRelayer != address(0)) {
-        //     viewToken.grantRole(viewToken.RELAYER_ROLE(), exampleBridgedRelayer);
-        //     console2.log("RELAYER_ROLE (bridged) granted to:", exampleBridgedRelayer);
+        // address exampleBridgedRelayerOrAdapter = 0xYourBridgedRelayerOrAdapterAddressHere;
+        // if (exampleBridgedRelayerOrAdapter != address(0)) {
+        //     viewToken.grantRole(viewToken.RELAYER_ROLE(), exampleBridgedRelayerOrAdapter);
+        //     console2.log("RELAYER_ROLE (bridged) granted to:", exampleBridgedRelayerOrAdapter);
         // }
 
         // Grant USPDToken the CALLER_ROLE on BridgeEscrow for L2
