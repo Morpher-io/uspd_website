@@ -104,13 +104,10 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         // This function's primary role is to update accounting and emit the event.
         // The `user` parameter is the original end-user initiating the bridge via a Token Adapter.
 
-        // Optional check: Verify that the shares were indeed received.
+        // Removed check: Verify that the shares were indeed received.
         // This relies on knowing the balance *before* the external transfer, which is tricky without more state.
         // Given that `msg.sender` is the trusted `uspdTokenAddress`, this check might be omitted
         // to save gas, assuming `uspdTokenAddress` behaves correctly.
-        // Example:
-        // uint256 expectedBalance = previousTotalBridgedOutShares + cUSPDShareAmount; // (if previousTotalBridgedOutShares was tracked before this call)
-        // require(cUSPDToken.balanceOf(address(this)) >= expectedBalance, "BridgeEscrow: Shares not received");
 
         emit SharesLockedForBridging(user, targetChainId, cUSPDShareAmount, uspdAmountIntended, l1YieldFactor);
     }
