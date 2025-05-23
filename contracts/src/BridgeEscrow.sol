@@ -98,42 +98,19 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         totalBridgedOutShares += cUSPDShareAmount;
         bridgedOutSharesPerChain[targetChainId] += cUSPDShareAmount;
 
-        // Pull shares from the user (USPDToken should have arranged approval or uses executeTransferFrom)
-        // This contract (BridgeEscrow) must be approved by the 'user' to spend their cUSPD,
-        // OR USPDToken must transfer the shares to this contract first,
-        // OR USPDToken calls cUSPDToken.executeTransferFrom(user, address(this), cUSPDShareAmount)
-        // Assuming USPDToken ensures shares are transferred here from the user.
-        // The most robust way is for USPDToken to call cUSPDToken.executeTransferFrom(user, address(this), cUSPDShareAmount)
-        // For this to work, the user must approve USPDToken on cUSPDToken.
-        // If USPDToken calls this function, it implies USPDToken has already secured the shares from the user
-        // and is now transferring them from itself (USPDToken) to this escrow.
-        // Let's assume USPDToken calls cUSPDToken.transferFrom(user, address(this), cUSPDShareAmount)
-        // where 'user' has approved USPDToken to spend their cUSPD.
-        // The `page.mdx` implies `cUSPDToken.transferFrom(userAddress, address(this), cUSPDShareAmountToLock)`
-        // is called by this contract, meaning `userAddress` must approve `BridgeEscrow`.
-        // However, `escrowShares` is called by `uspdTokenAddress`.
-        // A cleaner model: USPDToken.lockForBridging gets shares from user, then USPDToken calls
-        // cUSPDToken.transfer(address(BridgeEscrow), shares) if USPDToken holds them,
-        // or orchestrates user -> BridgeEscrow transfer.
-        // For simplicity here, assuming USPDToken has ensured the shares are spendable by itself from the user,
-        // and now USPDToken is transferring *its temporary holding* or *user's approved shares* to BridgeEscrow.
-        // The `page.mdx` states: `L1_BridgeEscrow->>L1_cUSPDToken: transferFrom(userAddress, address(this), cUSPDShareAmountToLock)`
-        // This means `userAddress` must have approved `L1_BridgeEscrow` to spend `cUSPDShareAmountToLock` of their `cUSPDToken`.
-        // This approval must be done *before* `L1_USPDToken` calls `escrowShares` on `L1_BridgeEscrow`.
-        // `USPDToken` would calculate shares, then `user` approves `BridgeEscrow`, then `USPDToken` calls `escrowShares`.
-        // This is a bit complex for the user.
-        // Alternative: User approves USPDToken. USPDToken pulls shares from user to itself. Then USPDToken transfers to BridgeEscrow.
-        // Let's stick to the diagram: `user` approves `BridgeEscrow`. `USPDToken` calls `escrowShares`.
-        // `BridgeEscrow` then calls `cUSPDToken.transferFrom(user, address(this), cUSPDShareAmount)`.
-        // --- MODIFIED FLOW ---
-        // The cUSPD shares are now expected to be transferred to this contract (BridgeEscrow)
-        // by the USPDToken contract (via cUSPDToken.executeTransfer) *before* this escrowShares function is called.
-        // This function's role is now to record the event and update accounting.
-        // The `user` parameter is the original end-user for whom the shares are being locked.
+        // The cUSPD shares are expected to have been transferred to this contract (BridgeEscrow)
+        // by the USPDToken contract (via cUSPDToken.executeTransfer from the Token Adapter to this BridgeEscrow)
+        // *before* this escrowShares function is called.
+        // This function's primary role is to update accounting and emit the event.
+        // The `user` parameter is the original end-user initiating the bridge via a Token Adapter.
 
-        // Verify shares are here (optional, as USPDToken is trusted caller)
-        // uint256 currentBalance = cUSPDToken.balanceOf(address(this));
-        // require(currentBalance >= previousBalance + cUSPDShareAmount, "Shares not received");
+        // Optional check: Verify that the shares were indeed received.
+        // This relies on knowing the balance *before* the external transfer, which is tricky without more state.
+        // Given that `msg.sender` is the trusted `uspdTokenAddress`, this check might be omitted
+        // to save gas, assuming `uspdTokenAddress` behaves correctly.
+        // Example:
+        // uint256 expectedBalance = previousTotalBridgedOutShares + cUSPDShareAmount; // (if previousTotalBridgedOutShares was tracked before this call)
+        // require(cUSPDToken.balanceOf(address(this)) >= expectedBalance, "BridgeEscrow: Shares not received");
 
         emit SharesLockedForBridging(user, targetChainId, cUSPDShareAmount, uspdAmountIntended, l1YieldFactor);
     }
