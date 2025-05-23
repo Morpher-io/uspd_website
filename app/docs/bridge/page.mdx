@@ -266,13 +266,12 @@ This plan outlines the smart contract development and modifications required.
         *   Calculates `cUSPDShareAmount` using L1 `rateContract.getYieldFactor()`.
         *   Calls `cUSPDToken.executeTransfer(msg.sender, bridgeEscrowAddress, cUSPDShareAmount)` to move shares from Token Adapter to `BridgeEscrow`. (Requires `USPDToken` to have `USPD_CALLER_ROLE` on `cUSPDToken`).
         *   Calls `BridgeEscrow(bridgeEscrowAddress).escrowShares(cUSPDShareAmount, targetChainId, uspdAmountToBridge, l1YieldFactor, msg.sender)`.
-        *   Emits `LockForBridgingInitiated` (or rely on `BridgeEscrow` event).
-    *   `unlockFromBridging(address recipient, uint256 uspdAmountIntended, uint256 sourceL2YieldFactor, uint256 sourceL2ChainId)`:
-        *   Called by an authorized relayer/bridge contract.
+        *   Emits `LockForBridgingInitiated`.
+    *   `unlockFromBridging(address recipient, uint256 uspdAmountIntended, uint256 sourceChainYieldFactor, uint256 sourceChainId)`:
+        *   Called by an authorized relayer/bridge contract (having `CALLER_ROLE` on `BridgeEscrow`).
         *   `require(bridgeEscrowAddress != address(0), "Escrow not set");`
-        *   `require(authorizedRelayers[msg.sender], "Caller not authorized relayer");` (Relayer auth is on `USPDToken` or `BridgeEscrow` - assumed on `BridgeEscrow.CALLER_ROLE` for this call path).
-        *   Calculates `cUSPDShareAmountToUnlock = (uspdAmountIntended * FACTOR_PRECISION) / sourceL2YieldFactor`.
-        *   Calls `BridgeEscrow(bridgeEscrowAddress).releaseShares(recipient, cUSPDShareAmountToUnlock, sourceL2ChainId, uspdAmountIntended, sourceL2YieldFactor)`.
+        *   Calculates `cUSPDShareAmountToUnlock = (uspdAmountIntended * FACTOR_PRECISION) / sourceChainYieldFactor`.
+        *   Calls `BridgeEscrow(bridgeEscrowAddress).releaseShares(recipient, cUSPDShareAmountToUnlock, sourceChainId, uspdAmountIntended, sourceChainYieldFactor)`.
         *   Emits `UnlockFromBridgingInitiated` (or rely on `BridgeEscrow` event).
     *   **Admin Functions:**
         *   `setBridgeEscrowAddress(address _bridgeEscrowAddress)` (onlyRole `DEFAULT_ADMIN_ROLE`)
@@ -293,7 +292,7 @@ This plan outlines the smart contract development and modifications required.
         *   `_mint(recipient, cUSPDShareAmountToMint)`.
         *   Emits `SharesMintedFromBridge`.
     *   **Admin Functions:**
-        *   `setAuthorizedBridgeMinter(address minter, bool isAuthorized)` (onlyRole `DEFAULT_ADMIN_ROLE`)
+        *   `setAuthorizedBridgeMinter(address minter, bool isAuthorized)` (onlyRole `DEFAULT_ADMIN_ROLE`) // This role is for BridgeEscrow on L2
 
 ### 4. `USPDToken.sol` Modifications (L2)
 
