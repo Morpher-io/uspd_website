@@ -182,7 +182,7 @@ contract BridgeEscrowTest is Test {
 
         // On L2, BridgeEscrow receives shares from USPDToken (which got them from TokenAdapter)
         // and then BridgeEscrow burns them.
-        cUSPD.adminMint(address(bridgeEscrow), sharesToBridge); // Ensure BridgeEscrow has shares to burn
+        cUSPD.mint(address(bridgeEscrow), sharesToBridge); // Ensure BridgeEscrow has shares to burn
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), sharesToBridge, "Pre-burn balance incorrect");
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
