@@ -2,25 +2,25 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../../src/BridgeEscrow.sol";
-import "../../src/UspdToken.sol";
-import "../../src/cUSPDToken.sol";
-import "../../src/PoolSharesConversionRate.sol";
-import "../../src/PriceOracle.sol";
-import "../../src/StabilizerNFT.sol";
-import "../../src/StabilizerEscrow.sol";
-import "../../src/PositionEscrow.sol";
-import "../../src/InsuranceEscrow.sol";
-import "../../src/interfaces/IBridgeEscrow.sol"; // For events
-import "../../src/interfaces/IPriceOracle.sol";
-import "../../src/interfaces/IcUSPDToken.sol";
-import "../mocks/MockStETH.sol";
-import "../mocks/MockLido.sol";
-import "../../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "../../../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
-import "../../../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "../../../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
-import "../../../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import "../src/BridgeEscrow.sol";
+import "../src/UspdToken.sol";
+import "../src/cUSPDToken.sol";
+import "../src/PoolSharesConversionRate.sol";
+import "../src/PriceOracle.sol";
+import "../src/StabilizerNFT.sol";
+import "../src/StabilizerEscrow.sol";
+import "../src/PositionEscrow.sol";
+import "../src/InsuranceEscrow.sol";
+import "../src/interfaces/IBridgeEscrow.sol"; // For events
+import "../src/interfaces/IPriceOracle.sol";
+import "../src/interfaces/IcUSPDToken.sol";
+import "./mocks/MockStETH.sol";
+import "./mocks/MockLido.sol";
+import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
+import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
+import "../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 
 contract BridgeEscrowTest is Test {
@@ -166,7 +166,7 @@ contract BridgeEscrowTest is Test {
         // For this unit test, we only check accounting and event.
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit SharesLockedForBridging(tokenAdapter, targetChainId, sharesToLock, uspdAmount, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetChainId, sharesToLock, uspdAmount, FACTOR_PRECISION);
 
         _asUspdToken(uspdTokenAddress).escrowShares(sharesToLock, targetChainId, uspdAmount, FACTOR_PRECISION, tokenAdapter);
 
@@ -186,7 +186,7 @@ contract BridgeEscrowTest is Test {
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), sharesToBridge, "Pre-burn balance incorrect");
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit SharesLockedForBridging(tokenAdapter, targetChainIdL1, sharesToBridge, uspdAmount, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetChainIdL1, sharesToBridge, uspdAmount, FACTOR_PRECISION);
 
         // Expect cUSPD.burn to be called
         // Real cUSPDToken's burn burns from msg.sender (BridgeEscrow)
@@ -233,7 +233,7 @@ contract BridgeEscrowTest is Test {
         uint256 uspdAmountToRelease = sharesToRelease;
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit SharesUnlockedFromBridge(user1, sourceChainId, sharesToRelease, uspdAmountToRelease, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesUnlockedFromBridge(user1, sourceChainId, sharesToRelease, uspdAmountToRelease, FACTOR_PRECISION);
 
         uint256 user1BalanceBefore = cUSPD.balanceOf(user1);
         _asUspdToken(uspdTokenAddress).releaseShares(user1, sharesToRelease, sourceChainId, uspdAmountToRelease, FACTOR_PRECISION);
@@ -260,7 +260,7 @@ contract BridgeEscrowTest is Test {
         uint256 uspdAmountToRelease = sharesToReleaseOnL2;
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit SharesUnlockedFromBridge(user1, sourceChainIdL1, sharesToReleaseOnL2, uspdAmountToRelease, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesUnlockedFromBridge(user1, sourceChainIdL1, sharesToReleaseOnL2, uspdAmountToRelease, FACTOR_PRECISION);
 
         // Expect cUSPD.mint to be called
         vm.expectCall(
@@ -345,7 +345,7 @@ contract BridgeEscrowTest is Test {
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0, "Escrow pre-balance");
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit SharesLockedForBridging(tokenAdapter, targetL2Chain, expectedShares, uspdToLock, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetL2Chain, expectedShares, uspdToLock, FACTOR_PRECISION);
 
         vm.prank(tokenAdapter);
         uspdToken.lockForBridging(uspdToLock, targetL2Chain);
@@ -371,7 +371,7 @@ contract BridgeEscrowTest is Test {
         uint256 sharesToUnlock = uspdToUnlock;
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit SharesUnlockedFromBridge(user1, sourceL2Chain, sharesToUnlock, uspdToUnlock, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesUnlockedFromBridge(user1, sourceL2Chain, sharesToUnlock, uspdToUnlock, FACTOR_PRECISION);
 
         uint256 user1_cUSPD_Before = cUSPD.balanceOf(user1);
         uint256 escrow_cUSPD_Before = cUSPD.balanceOf(address(bridgeEscrow));
@@ -399,7 +399,7 @@ contract BridgeEscrowTest is Test {
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0);
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit SharesLockedForBridging(tokenAdapter, targetL1Chain, expectedShares, uspdToLock, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetL1Chain, expectedShares, uspdToLock, FACTOR_PRECISION);
 
         // Expect burn call from BridgeEscrow on shares it now holds
         vm.expectCall(
@@ -438,7 +438,7 @@ contract BridgeEscrowTest is Test {
         assertEq(cUSPD.balanceOf(user1), 1_000_000 * FACTOR_PRECISION, "User1 pre-balance");
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit SharesUnlockedFromBridge(user1, sourceL1Chain, sharesToMintOnL2, uspdIntendedFromL1, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesUnlockedFromBridge(user1, sourceL1Chain, sharesToMintOnL2, uspdIntendedFromL1, FACTOR_PRECISION);
 
         // Expect mint call to user1 for sharesToMintOnL2
          vm.expectCall(
