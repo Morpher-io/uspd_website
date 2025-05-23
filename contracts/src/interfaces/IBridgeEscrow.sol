@@ -2,6 +2,23 @@
 pragma solidity ^0.8.20;
 
 interface IBridgeEscrow {
+    // --- Events ---
+    event SharesLockedForBridging(
+        address indexed tokenAdapter,
+        uint256 indexed targetChainId,
+        uint256 cUSPDShareAmount,
+        uint256 uspdAmountIntended,
+        uint256 l1YieldFactor
+    );
+
+    event SharesUnlockedFromBridge(
+        address indexed recipient,
+        uint256 indexed sourceChainId,
+        uint256 cUSPDShareAmount,
+        uint256 uspdAmountIntended,
+        uint256 l2YieldFactor
+    );
+
     /**
      * @notice Called by USPDToken to record the escrow of cUSPD shares for bridging.
      * @param cUSPDShareAmount The amount of cUSPD shares locked.
