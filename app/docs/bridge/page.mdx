@@ -252,7 +252,7 @@ This plan outlines the smart contract development and modifications required.
         *   Updates `totalBridgedOutShares` and `bridgedOutSharesPerChain[sourceChainId]`.
         *   Emits `SharesUnlockedFromBridge`.
     *   **Admin Functions (all `onlyOwner`):**
-        *   `setUspdTokenAddress(address _uspdTokenAddress)`
+        // *   `setUspdTokenAddress(address _uspdTokenAddress)` // Removed as uspdTokenAddress is immutable
         // *   `setChainLimit(uint256 chainId, uint256 limit)` // Removed
         *   `transferOwnership(address newOwner)`
         *   `withdrawERC20(...)`

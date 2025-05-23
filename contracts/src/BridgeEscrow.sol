@@ -18,7 +18,7 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
     uint256 public constant MAINNET_CHAIN_ID = 1;
 
     IcUSPDToken public immutable cUSPDToken; 
-    address public uspdTokenAddress; // Address of the USPDToken contract that can call escrowShares and releaseShares
+    address public immutable uspdTokenAddress; // Address of the USPDToken contract, now immutable
 
     uint256 public totalBridgedOutShares; // On L1: total shares locked. On L2: net shares minted via bridge.
     mapping(uint256 => uint256) public bridgedOutSharesPerChain; // chainId => sharesAmount
@@ -45,7 +45,7 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
         uint256 l2YieldFactor      // For off-chain informational purposes
     );
 
-    event UspdTokenAddressUpdated(address indexed oldAddress, address indexed newAddress);
+    // event UspdTokenAddressUpdated(address indexed oldAddress, address indexed newAddress); // Removed
     // CallerRoleGranted and CallerRoleRevoked events removed
     // event ChainLimitUpdated(uint256 indexed chainId, uint256 oldLimit, uint256 newLimit); // Removed
 
@@ -186,13 +186,13 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
      * @notice Updates the USPDToken contract address.
      * @param _newUspdTokenAddress The address of the new USPDToken contract.
      */
-    function setUspdTokenAddress(address _newUspdTokenAddress) external onlyOwner { // Changed to onlyOwner
-        if (_newUspdTokenAddress == address(0)) {
-            revert ZeroAddress();
-        }
-        emit UspdTokenAddressUpdated(uspdTokenAddress, _newUspdTokenAddress);
-        uspdTokenAddress = _newUspdTokenAddress;
-    }
+    // function setUspdTokenAddress(address _newUspdTokenAddress) external onlyOwner { // Removed
+    //     if (_newUspdTokenAddress == address(0)) { // Removed
+    //         revert ZeroAddress(); // Removed
+    //     } // Removed
+    //     emit UspdTokenAddressUpdated(uspdTokenAddress, _newUspdTokenAddress); // Removed
+    //     uspdTokenAddress = _newUspdTokenAddress; // Removed
+    // } // Removed
 
     /**
      * @notice Sets or updates the maximum shares allowed to be bridged to a specific chain.
