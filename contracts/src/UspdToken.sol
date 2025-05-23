@@ -122,37 +122,8 @@ contract USPDToken is
         return true; // Assuming executeTransfer does not return bool or reverts on failure
     }
 
-    /**
-     * @notice Returns the remaining number of USPD tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}.
-     * @dev Calculates the USPD allowance based on the cUSPD share allowance and the current yield factor.
-     * @param owner The address owning the funds.
-     * @param spender The address allowed to spend the funds.
-     * @return The USPD allowance amount.
-     */
-    // function allowance(address owner, address spender) public view virtual override returns (uint256) {
-    //     // Returns the allowance set in USPD terms directly from this contract's state.
-    //     // This is now handled by the inherited ERC20.allowance()
-    //     return _allowances[owner][spender];
-    // }
+    // Allowance functions and Permit functionality:
     // The inherited ERC20.allowance() will be used.
-
-    /**
-     * @notice Sets `uspdAmount` as the allowance of `spender` over the caller's USPD tokens.
-     * @dev Calculates the corresponding cUSPD share amount based on the current yield factor
-     *      and calls `approve` on the cUSPD token contract.
-     * @param spender The address authorized to spend.
-     * @param uspdAmount The amount of USPD tokens to approve.
-     * @return A boolean indicating success.
-     */
-    // function approve(address spender, uint256 uspdAmount) public virtual override returns (bool) {
-    //     // Approval is for USPD amounts and managed by this contract.
-    //     // No interaction with cUSPDToken.approve or yield factor conversion needed here.
-    //     // This is now handled by the inherited ERC20.approve()
-    //     _allowances[msg.sender][spender] = uspdAmount;
-    //     emit Approval(msg.sender, spender, uspdAmount);
-    //     return true;
-    // }
     // The inherited ERC20.approve() will be used.
 
     /**
