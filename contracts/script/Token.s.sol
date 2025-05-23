@@ -45,6 +45,7 @@ contract DeployScript is Script {
     bytes32 RATE_CONTRACT_SALT;
     bytes32 REPORTER_SALT; // <-- Add Reporter salt
     bytes32 INSURANCE_ESCROW_SALT; // <-- Add InsuranceEscrow salt
+    bytes32 BRIDGE_ESCROW_SALT;
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
@@ -64,6 +65,7 @@ contract DeployScript is Script {
     address reporterImplAddress;
     address reporterAddress;
     address insuranceEscrowAddress; // <-- Add InsuranceEscrow address
+    address bridgeEscrowAddress; // For L1 and L2
     address stabilizerEscrowImplAddress; // <-- Add StabilizerEscrow implementation address
     address positionEscrowImplAddress; // <-- Add PositionEscrow implementation address
 
@@ -102,6 +104,7 @@ contract DeployScript is Script {
         RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1");
         REPORTER_SALT = generateSalt("USPD_REPORTER_v1"); // <-- Initialize Reporter salt
         INSURANCE_ESCROW_SALT = generateSalt("USPD_INSURANCE_ESCROW_v1"); // <-- Initialize InsuranceEscrow salt
+        BRIDGE_ESCROW_SALT = generateSalt("USPD_BRIDGE_ESCROW_v1");
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
@@ -168,9 +171,12 @@ contract DeployScript is Script {
         deployProxyAdmin();
         deployOracleImplementation();
         deployOracleProxy(); // Needs ProxyAdmin, initializes Oracle
+        // BridgeEscrow is deployed for both L1 and L2 scenarios, but configured/used differently.
+        // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first in bridged.
+
 
         // --- Conditional Deployment ---
-        bool deployFullSystem = (chainId == 1 || chainId == 11155111 || chainId == 31337 || chainId == 112233);
+        bool deployFullSystem = (chainId == MAINNET_CHAIN_ID || chainId == 11155111 || chainId == 31337 || chainId == 112233);
 
         if (deployFullSystem) {
             console2.log("Deploying Full System...");
@@ -181,8 +187,9 @@ contract DeployScript is Script {
             deployReporterImplementation();
             deployStabilizerNFTProxy_NoInit(); // Deploy StabilizerNFT proxy first to get its address
             deployInsuranceEscrow(); // Deploy InsuranceEscrow, owned by StabilizerNFT proxy
-            deployCUSPDToken();
-            deployUspdToken();
+            deployCUSPDToken(); // Deploys cUSPD for L1
+            deployUspdToken();  // Deploys USPD for L1
+            deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // Deploy BridgeEscrow for L1
             deployReporterProxy();
             initializeStabilizerNFTProxy(); // Now initialize StabilizerNFT proxy, passing InsuranceEscrow address
             setupRolesAndPermissions();
@@ -191,13 +198,15 @@ contract DeployScript is Script {
             insuranceEscrowAddress = address(0); // Set to zero for bridged
             stabilizerImplAddress = address(0);
             stabilizerProxyAddress = address(0);
-            rateContractAddress = address(0);
+            rateContractAddress = address(0); // L2 might have its own rate contract, or sync from L1
             reporterImplAddress = address(0);
             reporterAddress = address(0);
             stabilizerEscrowImplAddress = address(0); // <-- Set escrow impls to 0
             positionEscrowImplAddress = address(0); // <-- Set escrow impls to 0
-            deployCUSPDToken_Bridged();
-            deployUspdToken_Bridged();
+            
+            deployCUSPDToken_Bridged(); // Deploys cUSPD for L2
+            deployUspdToken_Bridged();  // Deploys USPD for L2
+            deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // Deploy BridgeEscrow for L2
             setupRolesAndPermissions_Bridged();
         }
 
@@ -207,6 +216,19 @@ contract DeployScript is Script {
     }
 
     // --- Deployment Functions ---
+
+    function deployBridgeEscrow(address _cuspdToken, address _uspdToken) internal {
+        console2.log("Deploying BridgeEscrow...");
+        require(_cuspdToken != address(0), "cUSPD token not deployed for BridgeEscrow");
+        require(_uspdToken != address(0), "USPD token not deployed for BridgeEscrow");
+
+        bytes memory bytecode = abi.encodePacked(
+            type(BridgeEscrow).creationCode,
+            abi.encode(_cuspdToken, _uspdToken, deployer) // cUSPD, USPDToken, admin
+        );
+        bridgeEscrowAddress = createX.deployCreate2{value: 0}(BRIDGE_ESCROW_SALT, bytecode);
+        console2.log("BridgeEscrow deployed at:", bridgeEscrowAddress);
+    }
 
     // --- Helper: Deploy Proxy without Init Data ---
     function deployProxy_NoInit(bytes32 salt, address implementationAddress) internal returns (address proxyAddress) {
@@ -585,6 +607,13 @@ contract DeployScript is Script {
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
         // Deployer already has ADMIN, UPDATER roles from constructor
         coreToken.grantRole(coreToken.USPD_CALLER_ROLE(), uspdTokenAddress);
+        // Grant MINTER_ROLE and BURNER_ROLE to BridgeEscrow on L2
+        if (bridgeEscrowAddress != address(0)) {
+            coreToken.grantRole(coreToken.MINTER_ROLE(), bridgeEscrowAddress);
+            coreToken.grantRole(coreToken.BURNER_ROLE(), bridgeEscrowAddress);
+            console2.log("MINTER_ROLE and BURNER_ROLE granted to BridgeEscrow on cUSPDToken (bridged):", bridgeEscrowAddress);
+        }
+
 
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view, bridged) roles...");
@@ -615,9 +644,10 @@ contract DeployScript is Script {
                 '"rateContract": "0x0000000000000000000000000000000000000000",'
                 '"reporterImpl": "0x0000000000000000000000000000000000000000",'
                 '"reporter": "0x0000000000000000000000000000000000000000",'
-                '"insuranceEscrow": "0x0000000000000000000000000000000000000000",' // <-- Add InsuranceEscrow
-                '"stabilizerEscrowImpl": "0x0000000000000000000000000000000000000000",' // <-- Add StabilizerEscrow impl
-                '"positionEscrowImpl": "0x0000000000000000000000000000000000000000"' // <-- Add PositionEscrow impl
+                '"insuranceEscrow": "0x0000000000000000000000000000000000000000",'
+                '"bridgeEscrow": "0x0000000000000000000000000000000000000000",'
+                '"stabilizerEscrowImpl": "0x0000000000000000000000000000000000000000",'
+                '"positionEscrowImpl": "0x0000000000000000000000000000000000000000"'
             '},'
             '"config": {'
                 '"usdcAddress": "0x0000000000000000000000000000000000000000",'
@@ -651,6 +681,8 @@ contract DeployScript is Script {
         vm.writeJson(vm.toString(oracleProxyAddress), deploymentPath, ".contracts.oracle");
         vm.writeJson(vm.toString(cuspdTokenAddress), deploymentPath, ".contracts.cuspdToken");
         vm.writeJson(vm.toString(uspdTokenAddress), deploymentPath, ".contracts.uspdToken");
+        vm.writeJson(vm.toString(bridgeEscrowAddress), deploymentPath, ".contracts.bridgeEscrow");
+
 
         // Conditionally save full system contracts
         vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");

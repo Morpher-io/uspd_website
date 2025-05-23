@@ -13,10 +13,12 @@ import "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 contract BridgeEscrow is AccessControl, ReentrancyGuard {
     // --- State Variables ---
 
+    uint256 public constant MAINNET_CHAIN_ID = 1;
+
     IERC20 public immutable cUSPDToken;
     address public uspdTokenAddress; // Address of the USPDToken contract that can call escrowShares
 
-    uint256 public totalBridgedOutShares;
+    uint256 public totalBridgedOutShares; // On L1: total shares locked. On L2: net shares minted via bridge.
     mapping(uint256 => uint256) public bridgedOutSharesPerChain; // chainId => sharesAmount
     mapping(uint256 => uint256) public chainLimits; // chainId => maxSharesAllowed
 
@@ -90,24 +92,37 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
             revert InvalidAmount();
         }
 
-        uint256 currentChainLimit = chainLimits[targetChainId];
-        if (currentChainLimit > 0 && (bridgedOutSharesPerChain[targetChainId] + cUSPDShareAmount > currentChainLimit)) {
-            revert AmountExceedsChainLimit();
-        }
-
-        totalBridgedOutShares += cUSPDShareAmount;
-        bridgedOutSharesPerChain[targetChainId] += cUSPDShareAmount;
-
         // The cUSPD shares are expected to have been transferred to this contract (BridgeEscrow)
         // by the USPDToken contract (via cUSPDToken.executeTransfer from the Token Adapter to this BridgeEscrow)
         // *before* this escrowShares function is called.
-        // This function's primary role is to update accounting and emit the event.
         // The `tokenAdapter` parameter identifies the contract that initiated the lock via USPDToken.
 
-        // Removed check: Verify that the shares were indeed received.
-        // This relies on knowing the balance *before* the external transfer, which is tricky without more state.
-        // Given that `msg.sender` is the trusted `uspdTokenAddress`, this check might be omitted
-        // to save gas, assuming `uspdTokenAddress` behaves correctly.
+        if (block.chainid == MAINNET_CHAIN_ID) {
+            // L1: Shares are locked in this contract
+            uint256 currentChainLimit = chainLimits[targetChainId];
+            if (currentChainLimit > 0 && (bridgedOutSharesPerChain[targetChainId] + cUSPDShareAmount > currentChainLimit)) {
+                revert AmountExceedsChainLimit();
+            }
+            totalBridgedOutShares += cUSPDShareAmount;
+            bridgedOutSharesPerChain[targetChainId] += cUSPDShareAmount;
+        } else {
+            // L2 (Satellite Chain): Shares received by this contract are to be burned
+            // This contract needs BURNER_ROLE on cUSPDToken on L2.
+            IcUSPDToken(address(cUSPDToken)).burn(cUSPDShareAmount); // Burns shares held by this contract
+
+            // Accounting on L2: reflects shares removed from this L2's supply via bridging
+            // If bridgedOutSharesPerChain tracks net outflow to a specific chain, this would decrease.
+            // If it tracks total ever sent to a chain, it would increase.
+            // Assuming it tracks net shares "owed" by this L2 to other chains (or locked for them).
+            // When shares are burned (sent away from L2), bridgedOutSharesPerChain for the target increases.
+            // totalBridgedOutShares on L2 would represent total net shares sent from this L2.
+            uint256 currentChainLimit = chainLimits[targetChainId];
+             if (currentChainLimit > 0 && (bridgedOutSharesPerChain[targetChainId] + cUSPDShareAmount > currentChainLimit)) {
+                revert AmountExceedsChainLimit();
+            }
+            totalBridgedOutShares += cUSPDShareAmount; // Total net outflow from this L2 increases
+            bridgedOutSharesPerChain[targetChainId] += cUSPDShareAmount; // Net outflow to specific target chain increases
+        }
 
         emit SharesLockedForBridging(tokenAdapter, targetChainId, cUSPDShareAmount, uspdAmountIntended, l1YieldFactor);
     }
@@ -140,13 +155,25 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
             revert InsufficientBridgedShares();
         }
 
+        if (block.chainid == MAINNET_CHAIN_ID) {
+            // L1: Release locked shares by transferring from this contract
+            bridgedOutSharesPerChain[sourceChainId] -= cUSPDShareAmount;
+            totalBridgedOutShares -= cUSPDShareAmount;
 
-        bridgedOutSharesPerChain[sourceChainId] -= cUSPDShareAmount;
-        totalBridgedOutShares -= cUSPDShareAmount;
+            bool success = cUSPDToken.transfer(recipient, cUSPDShareAmount);
+            if (!success) {
+                revert TransferFailed();
+            }
+        } else {
+            // L2 (Satellite Chain): Mint new shares to the recipient
+            // This contract needs MINTER_ROLE on cUSPDToken on L2.
+            IcUSPDToken(address(cUSPDToken)).mint(recipient, cUSPDShareAmount);
 
-        bool success = cUSPDToken.transfer(recipient, cUSPDShareAmount);
-        if (!success) {
-            revert TransferFailed();
+            // Accounting on L2: reflects shares added to this L2's supply via bridging
+            // If bridgedOutSharesPerChain tracks net outflow from this L2 to sourceChainId, this would decrease.
+            // totalBridgedOutShares on L2 (total net outflow) decreases.
+            bridgedOutSharesPerChain[sourceChainId] -= cUSPDShareAmount; // Net outflow to source chain decreases
+            totalBridgedOutShares -= cUSPDShareAmount; // Total net outflow from this L2 decreases
         }
 
         emit SharesUnlockedFromBridge(recipient, sourceChainId, cUSPDShareAmount, uspdAmountIntended, l2YieldFactor);
