@@ -26,7 +26,7 @@ contract USPDToken is
 
     // --- Roles ---
     // DEFAULT_ADMIN_ROLE for managing dependencies.
-    // Specific roles for Token Adapters might be considered if not relying on msg.sender for lockForBridging.
+    bytes32 public constant TOKEN_ADAPTER_ROLE = keccak256("TOKEN_ADAPTER_ROLE");
 
     // --- Events ---
     // Standard ERC20 Transfer and Approval events are emitted by the underlying cUSPD token.
@@ -48,7 +48,7 @@ contract USPDToken is
     error InvalidYieldFactor();
     error AmountTooSmall();
     error BridgeEscrowNotSet();
-    // error CallerNotTokenAdapter(); // If a specific role is used for Token Adapters
+    error CallerNotTokenAdapter();
 
     // --- Constructor ---
     constructor(
@@ -215,10 +215,10 @@ contract USPDToken is
         address originalUserAddress,
         uint256 uspdAmountToBridge,
         uint256 targetChainId
-    ) external { // Consider adding nonReentrant if complex interactions arise
+    ) external onlyRole(TOKEN_ADAPTER_ROLE) { // Consider adding nonReentrant if complex interactions arise
         if (bridgeEscrowAddress == address(0)) revert BridgeEscrowNotSet();
         if (originalUserAddress == address(0)) revert ZeroAddress();
-        // require(hasRole(TOKEN_ADAPTER_ROLE, msg.sender), "CallerNotTokenAdapter"); // If using specific role
+        // The onlyRole modifier handles the TOKEN_ADAPTER_ROLE check.
 
         uint256 currentL1YieldFactor = rateContract.getYieldFactor();
         if (currentL1YieldFactor == 0) revert InvalidYieldFactor();

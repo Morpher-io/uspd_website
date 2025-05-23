@@ -552,6 +552,13 @@ contract DeployScript is Script {
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view) roles...");
         USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
+        // Example: Grant TOKEN_ADAPTER_ROLE to a placeholder address or a known adapter
+        // address exampleTokenAdapter = 0xYourTokenAdapterAddressHere;
+        // if (exampleTokenAdapter != address(0)) {
+        //     viewToken.grantRole(viewToken.TOKEN_ADAPTER_ROLE(), exampleTokenAdapter);
+        //     console2.log("TOKEN_ADAPTER_ROLE granted to:", exampleTokenAdapter);
+        // }
+
 
         // Grant roles to the Reporter
         console2.log("Granting Reporter roles...");
@@ -582,6 +589,12 @@ contract DeployScript is Script {
         // Grant roles to the USPDToken (View Layer) - Only admin needed
         console2.log("Granting USPDToken (view, bridged) roles...");
         USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
+        // Example: Grant TOKEN_ADAPTER_ROLE for bridged scenarios if applicable
+        // address exampleBridgedTokenAdapter = 0xYourBridgedTokenAdapterAddressHere;
+        // if (exampleBridgedTokenAdapter != address(0)) {
+        //     viewToken.grantRole(viewToken.TOKEN_ADAPTER_ROLE(), exampleBridgedTokenAdapter);
+        //     console2.log("TOKEN_ADAPTER_ROLE (bridged) granted to:", exampleBridgedTokenAdapter);
+        // }
 
         console2.log("Bridged roles setup complete.");
     }

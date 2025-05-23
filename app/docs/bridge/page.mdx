@@ -90,9 +90,9 @@ sequenceDiagram
 2.  **L1 `USPDToken.lockForBridging(uspdAmountToBridge, targetChainId)`:**
     *   **User Approval:** The user approves a "Token Adapter" contract (e.g., a specific contract for a bridge provider like Wormhole) to spend their L1 `USPDToken`.
     *   **Token Adapter Pulls USPD:** The Token Adapter calls `L1_USPDToken.transferFrom(userAddress, address(TokenAdapter), uspdAmountToBridge)`, moving the USPD from the user to itself.
-    *   **Token Adapter Initiates Lock:** The Token Adapter then calls `L1_USPDToken.lockForBridging(userAddress, uspdAmountToBridge, targetChainId)`. `userAddress` here is the original end-user.
+    *   **Token Adapter Initiates Lock:** The Token Adapter (which must have `TOKEN_ADAPTER_ROLE` on `L1_USPDToken`) then calls `L1_USPDToken.lockForBridging(userAddress, uspdAmountToBridge, targetChainId)`. `userAddress` here is the original end-user.
 2.  **L1 `USPDToken.lockForBridging(originalUserAddress, uspdAmountToBridge, targetChainId)`:**
-    *   This function is called by the Token Adapter (`msg.sender` is the Token Adapter).
+    *   This function is called by the Token Adapter (`msg.sender` is the Token Adapter) and requires `msg.sender` to have the `TOKEN_ADAPTER_ROLE`.
     *   It calculates `cUSPDShareAmountToLock = (uspdAmountToBridge * FACTOR_PRECISION) / currentL1YieldFactor`. The `currentL1YieldFactor` is fetched from the L1 `PoolSharesConversionRate`.
     *   **Share Transfer to Escrow:** `USPDToken` (which has `USPD_CALLER_ROLE` on `cUSPDToken`) calls `L1_cUSPDToken.executeTransfer(address(TokenAdapter), address(L1_BridgeEscrow), cUSPDShareAmountToLock)`. This transfers the `cUSPD` shares corresponding to the bridged USPD from the Token Adapter's balance directly to the `L1_BridgeEscrow` contract.
     *   It then calls `L1_BridgeEscrow.escrowShares(originalUserAddress, cUSPDShareAmountToLock, targetChainId, uspdAmountToBridge, currentL1YieldFactor)`.
@@ -239,7 +239,7 @@ This plan outlines the smart contract development and modifications required.
     *   `UnlockFromBridgingInitiated(address indexed recipient, uint256 sourceChainId, uint256 uspdAmountIntended, uint256 sourceL2YieldFactor, uint256 cUSPDShareAmount);`
 *   **Functions:**
     *   `lockForBridging(address originalUserAddress, uint256 uspdAmountToBridge, uint256 targetChainId)`:
-        *   Called by the Token Adapter (`msg.sender` is the Token Adapter).
+        *   Called by the Token Adapter (`msg.sender` is the Token Adapter). Requires `msg.sender` to have `TOKEN_ADAPTER_ROLE`.
         *   `require(bridgeEscrowAddress != address(0), "Escrow not set");`
         *   Calculates `cUSPDShareAmount` using L1 `rateContract.getYieldFactor()`.
         *   Calls `cUSPDToken.executeTransfer(msg.sender, bridgeEscrowAddress, cUSPDShareAmount)` to move shares from Token Adapter to `BridgeEscrow`. (Requires `USPDToken` to have `USPD_CALLER_ROLE` on `cUSPDToken`).
@@ -254,7 +254,9 @@ This plan outlines the smart contract development and modifications required.
         *   Emits `UnlockFromBridgingInitiated` (or rely on `BridgeEscrow` event).
     *   **Admin Functions:**
         *   `setBridgeEscrowAddress(address _bridgeEscrowAddress)` (onlyRole `DEFAULT_ADMIN_ROLE`)
-        *   `setAuthorizedRelayer(address relayer, bool isAuthorized)` (onlyRole `DEFAULT_ADMIN_ROLE`)
+        *   `grantRole(TOKEN_ADAPTER_ROLE, address tokenAdapterAddress)` (onlyRole `DEFAULT_ADMIN_ROLE`)
+        *   `revokeRole(TOKEN_ADAPTER_ROLE, address tokenAdapterAddress)` (onlyRole `DEFAULT_ADMIN_ROLE`)
+        *   `setAuthorizedRelayer(address relayer, bool isAuthorized)` (onlyRole `DEFAULT_ADMIN_ROLE`) // For unlockFromBridging if implemented here
 
 ### 3. `cUSPDToken.sol` Modifications (L2)
 
