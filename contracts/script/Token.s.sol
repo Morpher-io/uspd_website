@@ -224,7 +224,7 @@ contract DeployScript is Script {
 
         bytes memory bytecode = abi.encodePacked(
             type(BridgeEscrow).creationCode,
-            abi.encode(_cuspdToken, _uspdToken, deployer) // cUSPD, USPDToken, admin
+            abi.encode(_cuspdToken, _uspdToken) // cUSPD, USPDToken (admin removed)
         );
         bridgeEscrowAddress = createX.deployCreate2{value: 0}(BRIDGE_ESCROW_SALT, bytecode);
         console2.log("BridgeEscrow deployed at:", bridgeEscrowAddress);

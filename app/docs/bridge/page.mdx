@@ -211,7 +211,7 @@ The accuracy of USPD value representation on L2s depends on the L2 `PoolSharesCo
     *   `USPDToken.lockForBridging` (L1 & L2s) requires `RELAYER_ROLE` for the caller (e.g., Token Adapter).
     *   `USPDToken.unlockFromBridging` (L1 & L2s) requires `RELAYER_ROLE` for the caller (e.g., Token Adapter or Bridge Relayer Contract).
     *   `BridgeEscrow.escrowShares` and `BridgeEscrow.releaseShares` (L1 & L2s) require the caller to be the configured `uspdTokenAddress`.
-    *   Admin functions in `BridgeEscrow` are protected by `onlyOwner` (from `Ownable`).
+    *   `BridgeEscrow` has no owner-protected admin functions after deployment. Its parameters (`cUSPDToken`, `uspdTokenAddress`) are immutable.
     *   `BridgeEscrow` on L2s requires `MINTER_ROLE` and `BURNER_ROLE` on the L2 `cUSPDToken`.
     *   Other sensitive functions (`mintForBridging` in L2 `cUSPDToken`; `updateYieldFactor` in L2 `PoolSharesConversionRate`) must be protected by robust RBAC.
 *   **Bridge Relayer Security:** The security of the chosen off-chain bridge relayer system is paramount. Compromised relayers could submit fraudulent messages.
@@ -238,7 +238,7 @@ This plan outlines the smart contract development and modifications required.
     *   `event SharesLockedForBridging(address indexed tokenAdapter, uint256 indexed targetChainId, uint256 cUSPDShareAmount, uint256 uspdAmountIntended, uint256 l1YieldFactor);`
     *   `event SharesUnlockedFromBridge(address indexed recipient, uint256 indexed sourceChainId, uint256 cUSPDShareAmount, uint256 uspdAmountIntended, uint256 l2YieldFactor);`
 *   **Functions:**
-    *   `constructor(address _cUSPDTokenAddress, address _uspdTokenAddress, address _admin)`: Sets `_admin` as owner.
+    *   `constructor(address _cUSPDTokenAddress, address _uspdTokenAddress)`: Sets immutable addresses. No admin/owner.
     *   `escrowShares(uint256 cUSPDShareAmount, uint256 targetChainId, uint256 uspdAmountIntended, uint256 sourceYieldFactor, address tokenAdapter)`:
         *   `require(msg.sender == uspdTokenAddress, "Caller not USPDToken");`
         *   If `block.chainid == MAINNET_CHAIN_ID`: Accounts for shares already transferred to it.
@@ -251,12 +251,12 @@ This plan outlines the smart contract development and modifications required.
         *   If `block.chainid != MAINNET_CHAIN_ID`: Calls `cUSPDToken.mint(recipient, cUSPDShareAmount)`.
         *   Updates `totalBridgedOutShares` and `bridgedOutSharesPerChain[sourceChainId]`.
         *   Emits `SharesUnlockedFromBridge`.
-    *   **Admin Functions (all `onlyOwner`):**
-        // *   `setUspdTokenAddress(address _uspdTokenAddress)` // Removed as uspdTokenAddress is immutable
+    *   **Admin Functions:** None. The contract is not ownable and has no admin-modifiable state post-deployment.
+        // *   `setUspdTokenAddress(address _uspdTokenAddress)` // Removed
         // *   `setChainLimit(uint256 chainId, uint256 limit)` // Removed
-        *   `transferOwnership(address newOwner)`
-        *   `withdrawERC20(...)`
-        *   `withdrawETH(...)`
+        // *   `transferOwnership(address newOwner)` // Removed
+        // *   `withdrawERC20(...)` // Removed
+        // *   `withdrawETH(...)` // Removed (replaced by reverting receive())
 
 ### 2. `USPDToken.sol` Modifications (L1)
 
@@ -319,7 +319,7 @@ This plan outlines the smart contract development and modifications required.
 
 ### 6. Deployment & Configuration Steps:
 
-1.  Deploy `BridgeEscrow` contract on L1 and each L2, providing respective chain's `cUSPDToken` address, `USPDToken` address, and the admin address (which becomes owner).
+1.  Deploy `BridgeEscrow` contract on L1 and each L2, providing respective chain's `cUSPDToken` address and `USPDToken` address. (No admin address needed for `BridgeEscrow` constructor).
 2.  Call `USPDToken.setBridgeEscrowAddress()` on L1 and each L2 with their respective deployed `BridgeEscrow` address.
 3.  Grant `RELAYER_ROLE` on each `USPDToken` instance to the authorized relayer/Token Adapter contract addresses.
 4.  On L2s, grant `MINTER_ROLE` and `BURNER_ROLE` on L2 `cUSPDToken` to the L2 `BridgeEscrow` address.

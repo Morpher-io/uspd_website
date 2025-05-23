@@ -2,17 +2,17 @@
 pragma solidity ^0.8.20;
 
 import "./interfaces/IcUSPDToken.sol";
-import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol"; // Changed from AccessControl
+// import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol"; // Removed Ownable
 import "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title BridgeEscrow
  * @notice Holds cUSPD shares locked on L1 that back USPD on L2s.
  * Tracks total and per-chain bridged out shares.
- * Admin functions are owner-protected. Operational functions (escrowShares, releaseShares)
- * are callable only by the configured USPDToken contract.
+ * Operational functions (escrowShares, releaseShares) are callable only by the configured USPDToken contract.
+ * This contract has no owner or admin functions after initial deployment.
  */
-contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessControl
+contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
     // --- State Variables ---
 
     uint256 public constant MAINNET_CHAIN_ID = 1;
@@ -60,13 +60,13 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
 
     // --- Constructor ---
 
-    constructor(address _cUSPDTokenAddress, address _initialUspdTokenAddress, address _admin) {
-        if (_cUSPDTokenAddress == address(0) || _initialUspdTokenAddress == address(0) || _admin == address(0)) {
+    constructor(address _cUSPDTokenAddress, address _initialUspdTokenAddress) { // _admin parameter removed
+        if (_cUSPDTokenAddress == address(0) || _initialUspdTokenAddress == address(0)) { // _admin check removed
             revert ZeroAddress();
         }
         cUSPDToken = IcUSPDToken(_cUSPDTokenAddress);
         uspdTokenAddress = _initialUspdTokenAddress;
-        _transferOwnership(_admin); // Transfer ownership to the admin
+        // _transferOwnership(_admin); // Removed
     }
 
     // --- External Functions ---
@@ -211,25 +211,25 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
      * @param amount The amount to withdraw.
      * @param to The address to send the tokens to.
      */
-    function withdrawERC20(address tokenAddress, uint256 amount, address to) external onlyOwner { // Changed to onlyOwner
-        if (tokenAddress == address(0) || to == address(0)) {
-            revert ZeroAddress();
-        }
-        if (amount == 0) {
-            revert InvalidAmount();
-        }
-        // Cannot withdraw the cUSPDToken itself unless it's an excess amount not part of bridged shares.
-        // This is a basic recovery, for more complex scenarios, more logic would be needed.
-        // For now, allowing withdrawal of any token except the primary cUSPD if it matches totalBridgedOutShares.
-        if (tokenAddress == address(cUSPDToken) && IcUSPDToken(tokenAddress).balanceOf(address(this)) <= totalBridgedOutShares) {
-            revert("Cannot withdraw locked cUSPD shares");
-        }
-
-        bool success = IcUSPDToken(tokenAddress).transfer(to, amount);
-        if(!success) {
-            revert TransferFailed();
-        }
-    }
+    // function withdrawERC20(address tokenAddress, uint256 amount, address to) external onlyOwner { // Function removed
+    //     if (tokenAddress == address(0) || to == address(0)) { // Function removed
+    //         revert ZeroAddress(); // Function removed
+    //     } // Function removed
+    //     if (amount == 0) { // Function removed
+    //         revert InvalidAmount(); // Function removed
+    //     } // Function removed
+    //     // Cannot withdraw the cUSPDToken itself unless it's an excess amount not part of bridged shares. // Function removed
+    //     // This is a basic recovery, for more complex scenarios, more logic would be needed. // Function removed
+    //     // For now, allowing withdrawal of any token except the primary cUSPD if it matches totalBridgedOutShares. // Function removed
+    //     if (tokenAddress == address(cUSPDToken) && IcUSPDToken(tokenAddress).balanceOf(address(this)) <= totalBridgedOutShares) { // Function removed
+    //         revert("Cannot withdraw locked cUSPD shares"); // Function removed
+    //     } // Function removed
+    // // Function removed
+    //     bool success = IcUSPDToken(tokenAddress).transfer(to, amount); // Function removed
+    //     if(!success) { // Function removed
+    //         revert TransferFailed(); // Function removed
+    //     } // Function removed
+    // } // Function removed
 
     // --- Fallback Receiver ---
     // Prevent direct ETH transfers to this contract
