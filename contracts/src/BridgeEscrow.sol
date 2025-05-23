@@ -125,11 +125,15 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         // Alternative: User approves USPDToken. USPDToken pulls shares from user to itself. Then USPDToken transfers to BridgeEscrow.
         // Let's stick to the diagram: `user` approves `BridgeEscrow`. `USPDToken` calls `escrowShares`.
         // `BridgeEscrow` then calls `cUSPDToken.transferFrom(user, address(this), cUSPDShareAmount)`.
+        // --- MODIFIED FLOW ---
+        // The cUSPD shares are now expected to be transferred to this contract (BridgeEscrow)
+        // by the USPDToken contract (via cUSPDToken.executeTransfer) *before* this escrowShares function is called.
+        // This function's role is now to record the event and update accounting.
+        // The `user` parameter is the original end-user for whom the shares are being locked.
 
-        bool success = cUSPDToken.transferFrom(user, address(this), cUSPDShareAmount);
-        if (!success) {
-            revert TransferFailed();
-        }
+        // Verify shares are here (optional, as USPDToken is trusted caller)
+        // uint256 currentBalance = cUSPDToken.balanceOf(address(this));
+        // require(currentBalance >= previousBalance + cUSPDShareAmount, "Shares not received");
 
         emit SharesLockedForBridging(user, targetChainId, cUSPDShareAmount, uspdAmountIntended, l1YieldFactor);
     }
