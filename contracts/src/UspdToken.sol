@@ -6,6 +6,7 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Perm
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "./interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contract interface
 import "./interfaces/IcUSPDToken.sol"; // Import cUSPD interface
+import "./interfaces/IBridgeEscrow.sol"; // Import BridgeEscrow interface
 
 /**
  * @title USPDToken (Rebasing View Layer)
@@ -20,16 +21,34 @@ contract USPDToken is
     // --- State Variables ---
     IcUSPDToken public cuspdToken; // The core, non-rebasing share token
     IPoolSharesConversionRate public rateContract; // Tracks yield factor
+    address public bridgeEscrowAddress; // Address of the BridgeEscrow contract
     uint256 public constant FACTOR_PRECISION = 1e18; // Assuming rate contract uses 1e18
 
     // --- Roles ---
-    // Only DEFAULT_ADMIN_ROLE is needed for managing this view contract's dependencies
+    // DEFAULT_ADMIN_ROLE for managing dependencies.
+    // Specific roles for Token Adapters might be considered if not relying on msg.sender for lockForBridging.
 
     // --- Events ---
     // Standard ERC20 Transfer and Approval events are emitted by the underlying cUSPD token.
     // This contract *could* re-emit them, but it adds complexity. Let's rely on cUSPD events.
     event RateContractUpdated(address indexed oldRateContract, address indexed newRateContract);
     event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
+    event BridgeEscrowAddressUpdated(address indexed oldAddress, address indexed newAddress);
+    event LockForBridgingInitiated(
+        address indexed originalUser,
+        address indexed tokenAdapter,
+        uint256 indexed targetChainId,
+        uint256 uspdAmount,
+        uint256 cUSPDShareAmount
+    );
+    // TODO: Add UnlockFromBridgingInitiated event if unlockFromBridging is added here
+
+    // --- Errors ---
+    error ZeroAddress();
+    error InvalidYieldFactor();
+    error AmountTooSmall();
+    error BridgeEscrowNotSet();
+    // error CallerNotTokenAdapter(); // If a specific role is used for Token Adapters
 
     // --- Constructor ---
     constructor(
@@ -63,7 +82,7 @@ contract USPDToken is
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external payable {
         require(to != address(0), "USPD: Mint to zero address");
-        require(address(cuspdToken) != address(0), "USPD: cUSPD address not set");
+        if (address(cuspdToken) == address(0)) revert ZeroAddress(); // Using custom error
 
         // Forward the call and value to cUSPDToken.mintShares
         uint256 leftoverEth = cuspdToken.mintShares{value: msg.value}(to, priceQuery);
@@ -83,10 +102,9 @@ contract USPDToken is
      * @return The USPD balance.
      */
     function balanceOf(address account) public view virtual override returns (uint256) {
-        if (address(rateContract) == address(0) || address(cuspdToken) == address(0)) return 0; // Not initialized
+        if (address(rateContract) == address(0) || address(cuspdToken) == address(0)) return 0;
         uint256 yieldFactor = rateContract.getYieldFactor();
-        if (yieldFactor == 0) return 0; // Avoid division by zero if rate contract returns 0
-        // uspdBalance = cUSPD_shares * yieldFactor / factorPrecision
+        if (yieldFactor == 0) return 0; // Or revert InvalidYieldFactor();
         return (cuspdToken.balanceOf(account) * yieldFactor) / FACTOR_PRECISION;
     }
 
@@ -95,10 +113,9 @@ contract USPDToken is
      * @return The total USPD supply.
      */
     function totalSupply() public view virtual override returns (uint256) {
-        if (address(rateContract) == address(0) || address(cuspdToken) == address(0)) return 0; // Not initialized
+        if (address(rateContract) == address(0) || address(cuspdToken) == address(0)) return 0;
         uint256 yieldFactor = rateContract.getYieldFactor();
-        if (yieldFactor == 0) return 0; // Avoid division by zero
-        // totalSupply = total_cUSPD_shares * yieldFactor / factorPrecision
+        if (yieldFactor == 0) return 0; // Or revert InvalidYieldFactor();
         return (cuspdToken.totalSupply() * yieldFactor) / FACTOR_PRECISION;
     }
 
@@ -112,12 +129,10 @@ contract USPDToken is
      */
     function transfer(address to, uint256 uspdAmount) public virtual override returns (bool) {
         uint256 yieldFactor = rateContract.getYieldFactor();
-        require(yieldFactor > 0, "USPD: Invalid yield factor");
-        // Calculate shares to transfer: shares = uspdAmount * precision / yieldFactor
+        if (yieldFactor == 0) revert InvalidYieldFactor();
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
-        require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield"); // Prevent transferring 0 shares unless amount is 0
+        if (sharesToTransfer == 0 && uspdAmount > 0) revert AmountTooSmall();
 
-        // Call executeTransfer on the underlying cUSPD token, forwarding msg.sender as 'from'
         cuspdToken.executeTransfer(msg.sender, to, sharesToTransfer);
         return true; // Assuming executeTransfer does not return bool or reverts on failure
     }
@@ -138,10 +153,9 @@ contract USPDToken is
      */
     function transferFrom(address from, address to, uint256 uspdAmount) public virtual override returns (bool) {
         uint256 yieldFactor = rateContract.getYieldFactor();
-        require(yieldFactor > 0, "USPD: Invalid yield factor");
-        // Calculate shares to transfer: shares = uspdAmount * precision / yieldFactor
+        if (yieldFactor == 0) revert InvalidYieldFactor();
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
-        require(sharesToTransfer > 0 || uspdAmount == 0, "USPD: Transfer amount too small for current yield");
+        if (sharesToTransfer == 0 && uspdAmount > 0) revert AmountTooSmall();
 
         // Use the inherited _spendAllowance from ERC20.sol to check and update the allowance.
         // _spendAllowance will revert if allowance is insufficient and emit an Approval event.
@@ -160,7 +174,7 @@ contract USPDToken is
      * @dev Callable only by admin.
      */
     function updateRateContract(address newRateContract) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newRateContract != address(0), "USPD: Zero rate contract address");
+        if (newRateContract == address(0)) revert ZeroAddress();
         emit RateContractUpdated(address(rateContract), newRateContract);
         rateContract = IPoolSharesConversionRate(newRateContract);
     }
@@ -171,11 +185,70 @@ contract USPDToken is
      * @dev Callable only by admin.
      */
     function updateCUSPDAddress(address newCUSPDAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newCUSPDAddress != address(0), "USPD: Zero cUSPD address");
+        if (newCUSPDAddress == address(0)) revert ZeroAddress();
         emit CUSPDAddressUpdated(address(cuspdToken), newCUSPDAddress);
         cuspdToken = IcUSPDToken(newCUSPDAddress);
     }
 
+    /**
+     * @notice Updates the BridgeEscrow contract address.
+     * @param _bridgeEscrowAddress The address of the BridgeEscrow contract.
+     * @dev Callable only by admin.
+     */
+    function setBridgeEscrowAddress(address _bridgeEscrowAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_bridgeEscrowAddress == address(0)) revert ZeroAddress();
+        emit BridgeEscrowAddressUpdated(bridgeEscrowAddress, _bridgeEscrowAddress);
+        bridgeEscrowAddress = _bridgeEscrowAddress;
+    }
+
+    // --- Bridging Functions ---
+
+    /**
+     * @notice Called by a Token Adapter to lock USPD for bridging to an L2.
+     * @param originalUserAddress The original user initiating the bridge.
+     * @param uspdAmountToBridge The amount of USPD to bridge, already held by the Token Adapter (msg.sender).
+     * @param targetChainId The destination chain ID for the bridge.
+     * @dev The Token Adapter (msg.sender) must hold the cUSPD shares corresponding to uspdAmountToBridge.
+     *      This function transfers those cUSPD shares from the Token Adapter to the BridgeEscrow.
+     */
+    function lockForBridging(
+        address originalUserAddress,
+        uint256 uspdAmountToBridge,
+        uint256 targetChainId
+    ) external { // Consider adding nonReentrant if complex interactions arise
+        if (bridgeEscrowAddress == address(0)) revert BridgeEscrowNotSet();
+        if (originalUserAddress == address(0)) revert ZeroAddress();
+        // require(hasRole(TOKEN_ADAPTER_ROLE, msg.sender), "CallerNotTokenAdapter"); // If using specific role
+
+        uint256 currentL1YieldFactor = rateContract.getYieldFactor();
+        if (currentL1YieldFactor == 0) revert InvalidYieldFactor();
+
+        uint256 cUSPDShareAmount = (uspdAmountToBridge * FACTOR_PRECISION) / currentL1YieldFactor;
+        if (cUSPDShareAmount == 0 && uspdAmountToBridge > 0) revert AmountTooSmall();
+
+        // Transfer cUSPD shares from the Token Adapter (msg.sender) to the BridgeEscrow
+        // USPDToken must have USPD_CALLER_ROLE on cUSPDToken for this to work.
+        cuspdToken.executeTransfer(msg.sender, bridgeEscrowAddress, cUSPDShareAmount);
+
+        // Notify BridgeEscrow to record the locked shares
+        IBridgeEscrow(bridgeEscrowAddress).escrowShares(
+            originalUserAddress,
+            cUSPDShareAmount,
+            targetChainId,
+            uspdAmountToBridge,
+            currentL1YieldFactor
+        );
+
+        emit LockForBridgingInitiated(
+            originalUserAddress,
+            msg.sender, // Token Adapter
+            targetChainId,
+            uspdAmountToBridge,
+            cUSPDShareAmount
+        );
+    }
+
+    // TODO: Implement unlockFromBridging function for L2 -> L1 flow.
 
     // --- Fallback ---
     // Prevent direct ETH transfers
