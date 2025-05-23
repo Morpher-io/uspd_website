@@ -51,12 +51,13 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
 
     // --- Constructor ---
 
-    constructor(address _cUSPDTokenAddress, address _initialUspdTokenAddress) {
-        if (_cUSPDTokenAddress == address(0) || _initialUspdTokenAddress == address(0)) {
+    constructor(address _cUSPDTokenAddress, address _initialUspdTokenAddress, address _rateContractAddress) {
+        if (_cUSPDTokenAddress == address(0) || _initialUspdTokenAddress == address(0) || _rateContractAddress == address(0)) {
             revert ZeroAddress();
         }
         cUSPDToken = IcUSPDToken(_cUSPDTokenAddress);
         uspdTokenAddress = _initialUspdTokenAddress;
+        rateContract = IPoolSharesConversionRate(_rateContractAddress);
     }
 
     // --- External Functions ---

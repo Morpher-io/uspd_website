@@ -333,7 +333,9 @@ This plan outlines the smart contract development and modifications required.
 ### 5. `PoolSharesConversionRate.sol` Modifications (L2)
 
 *   **Functions:**
-    *   `updateYieldFactor(uint256 newYieldFactor)`: (callable by an authorized address, e.g., L2 bridge contract or admin). This function is crucial if the yield factor isn't updated directly by the `mintForBridging` logic.
+    *   `constructor(address _stETHAddress, address _lidoAddress, address _admin)`: On L1, stakes ETH. On L2, initializes `_yieldFactor` to `FACTOR_PRECISION`. Grants `_admin` `DEFAULT_ADMIN_ROLE` and `YIELD_FACTOR_UPDATER_ROLE` (on L2).
+    *   `getYieldFactor()`: Returns calculated factor on L1, stored `_yieldFactor` on L2.
+    *   `updateL2YieldFactor(uint256 newYieldFactor)`: Callable on L2 by `YIELD_FACTOR_UPDATER_ROLE`. Updates `_yieldFactor` if `newYieldFactor` is not smaller.
 
 ### 6. Deployment & Configuration Steps:
 

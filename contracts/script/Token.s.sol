@@ -543,13 +543,15 @@ contract DeployScript is Script {
 
         // Deploy using CREATE2, sending initial ETH value to the constructor (only if on L1)
         uint256 depositValue = (chainId == MAINNET_CHAIN_ID) ? initialRateContractDeposit : 0;
-        rateContractAddress = createX.deployCreate2{value: initialRateContractDeposit}(
+        rateContractAddress = createX.deployCreate2{value: depositValue}(
             RATE_CONTRACT_SALT,
             bytecode
         );
 
         console2.log("PoolSharesConversionRate deployed at:", rateContractAddress);
-        console2.log("Initial ETH deposit:", initialRateContractDeposit);
+        if (depositValue > 0) {
+            console2.log("Initial ETH deposit:", depositValue);
+        }
     }
 
     // Setup roles for the full system deployment
