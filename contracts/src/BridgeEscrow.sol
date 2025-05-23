@@ -180,56 +180,6 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
         emit SharesUnlockedFromBridge(recipient, sourceChainId, cUSPDShareAmount, uspdAmountIntended, l2YieldFactor);
     }
 
-    // --- Admin Functions ---
-
-    /**
-     * @notice Updates the USPDToken contract address.
-     * @param _newUspdTokenAddress The address of the new USPDToken contract.
-     */
-    // function setUspdTokenAddress(address _newUspdTokenAddress) external onlyOwner { // Removed
-    //     if (_newUspdTokenAddress == address(0)) { // Removed
-    //         revert ZeroAddress(); // Removed
-    //     } // Removed
-    //     emit UspdTokenAddressUpdated(uspdTokenAddress, _newUspdTokenAddress); // Removed
-    //     uspdTokenAddress = _newUspdTokenAddress; // Removed
-    // } // Removed
-
-    /**
-     * @notice Sets or updates the maximum shares allowed to be bridged to a specific chain.
-     * @param chainId The ID of the target chain.
-     * @param limit The maximum number of cUSPD shares. Set to 0 for no limit.
-     */
-    // function setChainLimit(uint256 chainId, uint256 limit) external onlyOwner { // Changed to onlyOwner
-    //     uint256 oldLimit = chainLimits[chainId]; // Removed
-    //     chainLimits[chainId] = limit; // Removed
-    //     emit ChainLimitUpdated(chainId, oldLimit, limit); // Removed
-    // } // Removed
-
-    /**
-     * @notice Allows admin to withdraw accidentally sent ERC20 tokens.
-     * @param tokenAddress The address of the ERC20 token to withdraw.
-     * @param amount The amount to withdraw.
-     * @param to The address to send the tokens to.
-     */
-    // function withdrawERC20(address tokenAddress, uint256 amount, address to) external onlyOwner { // Function removed
-    //     if (tokenAddress == address(0) || to == address(0)) { // Function removed
-    //         revert ZeroAddress(); // Function removed
-    //     } // Function removed
-    //     if (amount == 0) { // Function removed
-    //         revert InvalidAmount(); // Function removed
-    //     } // Function removed
-    //     // Cannot withdraw the cUSPDToken itself unless it's an excess amount not part of bridged shares. // Function removed
-    //     // This is a basic recovery, for more complex scenarios, more logic would be needed. // Function removed
-    //     // For now, allowing withdrawal of any token except the primary cUSPD if it matches totalBridgedOutShares. // Function removed
-    //     if (tokenAddress == address(cUSPDToken) && IcUSPDToken(tokenAddress).balanceOf(address(this)) <= totalBridgedOutShares) { // Function removed
-    //         revert("Cannot withdraw locked cUSPD shares"); // Function removed
-    //     } // Function removed
-    // // Function removed
-    //     bool success = IcUSPDToken(tokenAddress).transfer(to, amount); // Function removed
-    //     if(!success) { // Function removed
-    //         revert TransferFailed(); // Function removed
-    //     } // Function removed
-    // } // Function removed
 
     // --- Fallback Receiver ---
     // Prevent direct ETH transfers to this contract
