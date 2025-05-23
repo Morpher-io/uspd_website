@@ -4,9 +4,24 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../../src/BridgeEscrow.sol";
 import "../../src/UspdToken.sol";
-import "./mocks/MockcUSPDToken.sol";
-import "./mocks/MockPoolSharesConversionRate.sol";
+import "../../src/cUSPDToken.sol";
+import "../../src/PoolSharesConversionRate.sol";
+import "../../src/PriceOracle.sol";
+import "../../src/StabilizerNFT.sol";
+import "../../src/StabilizerEscrow.sol";
+import "../../src/PositionEscrow.sol";
+import "../../src/InsuranceEscrow.sol";
 import "../../src/interfaces/IBridgeEscrow.sol"; // For events
+import "../../src/interfaces/IPriceOracle.sol";
+import "../../src/interfaces/IcUSPDToken.sol";
+import "../mocks/MockStETH.sol";
+import "../mocks/MockLido.sol";
+import "../../../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "../../../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
+import "../../../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "../../../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
+import "../../../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+
 
 contract BridgeEscrowTest is Test {
     // --- Constants ---
@@ -15,50 +30,122 @@ contract BridgeEscrowTest is Test {
     uint256 constant FACTOR_PRECISION = 1e18;
 
     // --- State Variables ---
-    MockcUSPDToken internal cUSPD;
-    MockPoolSharesConversionRate internal rateContract;
-    USPDToken internal uspdToken;
+    cUSPDToken internal cUSPD; // Real cUSPDToken
+    PoolSharesConversionRate internal rateContract; // Real PoolSharesConversionRate
+    USPDToken internal uspdToken; // Real USPDToken
     BridgeEscrow internal bridgeEscrow;
+
+    PriceOracle internal priceOracle;
+    StabilizerNFT internal stabilizerNFT;
+    MockStETH internal mockStETH;
+    MockLido internal mockLido;
 
     address internal deployer;
     address internal uspdTokenAddress; // To interact with BridgeEscrow
     address internal tokenAdapter; // Simulates a Wormhole TokenManager or similar
     address internal user1;
     address internal user2;
+    address internal priceOracleSigner;
+    uint256 internal priceOracleSignerPk;
+
+    // Mainnet addresses for mocks
+    address public constant USDC_MAINNET = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant UNISWAP_ROUTER_MAINNET = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address public constant CHAINLINK_ETH_USD_MAINNET = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant WETH_MAINNET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant UNISWAP_V3_FACTORY_MAINNET = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+    address public constant MOCK_UNISWAP_POOL_MAINNET = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
+
 
     function setUp() public {
-        deployer = address(this); // Using the test contract itself as deployer for simplicity
+        deployer = address(this);
         tokenAdapter = makeAddr("tokenAdapter");
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
+        priceOracleSignerPk = 0xa11ce;
+        priceOracleSigner = vm.addr(priceOracleSignerPk);
 
-        // 1. Deploy Mocks
-        vm.chainId(MAINNET_CHAIN_ID); // Set initial chainId for deployment
-        cUSPD = new MockcUSPDToken(deployer);
-        rateContract = new MockPoolSharesConversionRate(FACTOR_PRECISION); // Initial yield factor = 1
+        vm.chainId(MAINNET_CHAIN_ID);
+        vm.warp(1000000); // For oracle timestamp staleness
 
-        // 2. Deploy USPDToken
+        // 1. Deploy PriceOracle
+        PriceOracle oracleImpl = new PriceOracle();
+        bytes memory initDataOracle = abi.encodeWithSelector(
+            PriceOracle.initialize.selector, 500, 300, USDC_MAINNET, UNISWAP_ROUTER_MAINNET, CHAINLINK_ETH_USD_MAINNET, deployer
+        );
+        ERC1967Proxy oracleProxy = new ERC1967Proxy(address(oracleImpl), initDataOracle);
+        priceOracle = PriceOracle(payable(address(oracleProxy)));
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), priceOracleSigner);
+        _setupOracleMocks();
+
+
+        // 2. Deploy StETH and Lido Mocks
+        mockStETH = new MockStETH();
+        mockLido = new MockLido(address(mockStETH));
+
+        // 3. Deploy PoolSharesConversionRate
+        vm.deal(deployer, 0.01 ether); // Fund for rate contract deployment
+        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
+
+        // 4. Deploy StabilizerNFT (needed by cUSPDToken constructor)
+        StabilizerNFT stabilizerImpl = new StabilizerNFT();
+        ERC1967Proxy stabilizerProxy = new ERC1967Proxy(address(stabilizerImpl), bytes(""));
+        stabilizerNFT = StabilizerNFT(payable(address(stabilizerProxy)));
+        // Dummy Escrow Impls for StabilizerNFT initialization
+        StabilizerEscrow stabEscrowImpl = new StabilizerEscrow();
+        PositionEscrow posEscrowImpl = new PositionEscrow();
+        InsuranceEscrow insuranceEsc = new InsuranceEscrow(address(mockStETH), address(stabilizerNFT));
+
+        stabilizerNFT.initialize(
+            address(0x1), // Temp cUSPD, will be updated if full flow tested
+            address(mockStETH),
+            address(mockLido),
+            address(rateContract),
+            address(0x2), // Temp Reporter
+            address(insuranceEsc),
+            "http://localhost/",
+            address(stabEscrowImpl),
+            address(posEscrowImpl),
+            deployer
+        );
+
+
+        // 5. Deploy cUSPDToken (Real)
+        cUSPD = new cUSPDToken("Core USPD", "cUSPD", address(priceOracle), address(stabilizerNFT), address(rateContract), deployer);
+
+        // 6. Deploy USPDToken (Real)
         uspdToken = new USPDToken("USPD Token", "USPD", address(cUSPD), address(rateContract), deployer);
         uspdTokenAddress = address(uspdToken);
 
-        // 3. Deploy BridgeEscrow
+        // 7. Deploy BridgeEscrow
         bridgeEscrow = new BridgeEscrow(address(cUSPD), uspdTokenAddress);
 
-        // 4. Configure USPDToken
+        // 8. Configure USPDToken
         uspdToken.setBridgeEscrowAddress(address(bridgeEscrow));
         uspdToken.grantRole(uspdToken.RELAYER_ROLE(), tokenAdapter);
 
-        // 5. Configure MockcUSPDToken roles
-        // USPDToken needs USPD_CALLER_ROLE on cUSPD to execute transfers
+        // 9. Configure cUSPDToken roles
         cUSPD.grantRole(cUSPD.USPD_CALLER_ROLE(), uspdTokenAddress);
-        // BridgeEscrow needs MINTER_ROLE and BURNER_ROLE on cUSPD for L2 operations
-        cUSPD.grantRole(cUSPD.MINTER_ROLE(), address(bridgeEscrow));
-        cUSPD.grantRole(cUSPD.BURNER_ROLE(), address(bridgeEscrow));
+        cUSPD.grantRole(cUSPD.MINTER_ROLE(), address(bridgeEscrow)); // For L2 minting
+        cUSPD.grantRole(cUSPD.BURNER_ROLE(), address(bridgeEscrow)); // For L2 burning
+        cUSPD.grantRole(cUSPD.MINTER_ROLE(), deployer); // Deployer can mint for setup
 
-        // Initial mint for users/adapters if needed for some tests
-        cUSPD.adminMint(tokenAdapter, 1_000_000 * FACTOR_PRECISION); // 1M cUSPD for adapter
-        cUSPD.adminMint(user1, 1_000_000 * FACTOR_PRECISION); // 1M cUSPD for user1
+        // 10. Initial mint for users/adapters
+        // Deployer (admin) mints cUSPD directly
+        cUSPD.mint(tokenAdapter, 1_000_000 * FACTOR_PRECISION);
+        cUSPD.mint(user1, 1_000_000 * FACTOR_PRECISION);
     }
+
+    function _setupOracleMocks() internal {
+        bytes memory mockChainlinkReturn = abi.encode(uint80(1), int(2000 * 1e8), uint256(block.timestamp), uint256(block.timestamp), uint80(1));
+        vm.mockCall(CHAINLINK_ETH_USD_MAINNET, abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector), mockChainlinkReturn);
+        vm.mockCall(UNISWAP_ROUTER_MAINNET, abi.encodeWithSelector(IUniswapV2Router01.WETH.selector), abi.encode(WETH_MAINNET));
+        vm.mockCall(UNISWAP_V3_FACTORY_MAINNET, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, WETH_MAINNET, USDC_MAINNET, 3000), abi.encode(MOCK_UNISWAP_POOL_MAINNET));
+        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000; // Approx $2000 WETH/USDC
+        bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
+        vm.mockCall(MOCK_UNISWAP_POOL_MAINNET, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
+    }
+
 
     function _asUspdToken(address target) internal returns (BridgeEscrow) {
         vm.prank(target);
@@ -102,10 +189,10 @@ contract BridgeEscrowTest is Test {
         emit SharesLockedForBridging(tokenAdapter, targetChainIdL1, sharesToBridge, uspdAmount, FACTOR_PRECISION);
 
         // Expect cUSPD.burn to be called
-        // MockcUSPDToken's burn burns from msg.sender (BridgeEscrow)
+        // Real cUSPDToken's burn burns from msg.sender (BridgeEscrow)
         vm.expectCall(
             address(cUSPD),
-            abi.encodeWithSelector(MockcUSPDToken.burn.selector, sharesToBridge)
+            abi.encodeWithSelector(cUSPDToken.burn.selector, sharesToBridge)
         );
 
         _asUspdToken(uspdTokenAddress).escrowShares(sharesToBridge, targetChainIdL1, uspdAmount, FACTOR_PRECISION, tokenAdapter);
@@ -135,11 +222,11 @@ contract BridgeEscrowTest is Test {
         // Setup: Lock some shares first
         _asUspdToken(uspdTokenAddress).escrowShares(sharesLocked, sourceChainId, uspdAmountLocked, FACTOR_PRECISION, tokenAdapter);
         // For L1 release, BridgeEscrow must hold the shares. USPDToken.lockForBridging ensures this.
-        // In the unit test for escrowShares_L1, we didn't transfer, but for release, we need them.
-        // The shares are "in" BridgeEscrow conceptually due to accounting.
         // The actual cUSPD tokens are transferred to BridgeEscrow by USPDToken.lockForBridging
         // So, for this unit test to pass, BridgeEscrow needs the cUSPD balance.
-        cUSPD.adminMint(address(bridgeEscrow), sharesLocked);
+        // This is typically achieved by USPDToken.lockForBridging transferring shares to BridgeEscrow.
+        // For this isolated unit test, we'll directly mint to BridgeEscrow.
+        cUSPD.mint(address(bridgeEscrow), sharesLocked);
 
 
         uint256 sharesToRelease = 150 * FACTOR_PRECISION;
@@ -178,7 +265,7 @@ contract BridgeEscrowTest is Test {
         // Expect cUSPD.mint to be called
         vm.expectCall(
             address(cUSPD),
-            abi.encodeWithSelector(MockcUSPDToken.mint.selector, user1, sharesToReleaseOnL2)
+            abi.encodeWithSelector(cUSPDToken.mint.selector, user1, sharesToReleaseOnL2)
         );
 
         uint256 user1BalanceBefore = cUSPD.balanceOf(user1);
@@ -250,11 +337,9 @@ contract BridgeEscrowTest is Test {
         uint256 expectedShares = uspdToLock; // Assuming yield factor 1
         uint256 targetL2Chain = L2_CHAIN_ID;
 
-        // TokenAdapter needs cUSPD to cover the USPD amount
-        // balanceOf for USPDToken uses cUSPD.balanceOf.
+        // TokenAdapter needs cUSPD to cover the USPD amount.
         // USPDToken.lockForBridging will call cUSPD.executeTransfer from tokenAdapter to bridgeEscrow.
-        // So, tokenAdapter must have cUSPD.
-        // cUSPD.adminMint(tokenAdapter, expectedShares); // Already done in setUp
+        // This is handled by the initial mint in setUp.
 
         assertEq(cUSPD.balanceOf(tokenAdapter), 1_000_000 * FACTOR_PRECISION, "Adapter pre-balance");
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0, "Escrow pre-balance");
@@ -308,7 +393,7 @@ contract BridgeEscrowTest is Test {
 
         // On L2, USPDToken.lockForBridging will transfer shares from tokenAdapter to BridgeEscrow.
         // Then BridgeEscrow.escrowShares will burn these shares from itself.
-        // cUSPD.adminMint(tokenAdapter, expectedShares); // Done in setUp
+        // Initial cUSPD for tokenAdapter is handled in setUp.
 
         assertEq(cUSPD.balanceOf(tokenAdapter), 1_000_000 * FACTOR_PRECISION);
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0);
@@ -319,7 +404,7 @@ contract BridgeEscrowTest is Test {
         // Expect burn call from BridgeEscrow on shares it now holds
         vm.expectCall(
             address(cUSPD),
-            abi.encodeWithSelector(MockcUSPDToken.burn.selector, expectedShares),
+            abi.encodeWithSelector(cUSPDToken.burn.selector, expectedShares),
             1 // times
         );
 
@@ -358,7 +443,7 @@ contract BridgeEscrowTest is Test {
         // Expect mint call to user1 for sharesToMintOnL2
          vm.expectCall(
             address(cUSPD),
-            abi.encodeWithSelector(MockcUSPDToken.mint.selector, user1, sharesToMintOnL2),
+            abi.encodeWithSelector(cUSPDToken.mint.selector, user1, sharesToMintOnL2),
             1 // times
         );
 
