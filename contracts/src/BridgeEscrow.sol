@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import "./interfaces/IcUSPDToken.sol";
-// import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol"; // Removed Ownable
 import "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 /**
@@ -22,10 +21,6 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
 
     uint256 public totalBridgedOutShares; // On L1: total shares locked. On L2: net shares minted via bridge.
     mapping(uint256 => uint256) public bridgedOutSharesPerChain; // chainId => sharesAmount
-    // mapping(uint256 => uint256) public chainLimits; // chainId => maxSharesAllowed // Removed
-
-    // --- Roles ---
-    // CALLER_ROLE removed as uspdTokenAddress is now the sole caller for operational functions.
 
     // --- Events ---
 
@@ -45,28 +40,22 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
         uint256 l2YieldFactor      // For off-chain informational purposes
     );
 
-    // event UspdTokenAddressUpdated(address indexed oldAddress, address indexed newAddress); // Removed
-    // CallerRoleGranted and CallerRoleRevoked events removed
-    // event ChainLimitUpdated(uint256 indexed chainId, uint256 oldLimit, uint256 newLimit); // Removed
-
 
     // --- Errors ---
     error ZeroAddress();
     error CallerNotUspdToken();
-    // error AmountExceedsChainLimit(); // Removed
     error InsufficientBridgedShares();
     error TransferFailed();
     error InvalidAmount();
 
     // --- Constructor ---
 
-    constructor(address _cUSPDTokenAddress, address _initialUspdTokenAddress) { // _admin parameter removed
-        if (_cUSPDTokenAddress == address(0) || _initialUspdTokenAddress == address(0)) { // _admin check removed
+    constructor(address _cUSPDTokenAddress, address _initialUspdTokenAddress) {
+        if (_cUSPDTokenAddress == address(0) || _initialUspdTokenAddress == address(0)) {
             revert ZeroAddress();
         }
         cUSPDToken = IcUSPDToken(_cUSPDTokenAddress);
         uspdTokenAddress = _initialUspdTokenAddress;
-        // _transferOwnership(_admin); // Removed
     }
 
     // --- External Functions ---
@@ -100,10 +89,6 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
 
         if (block.chainid == MAINNET_CHAIN_ID) {
             // L1: Shares are locked in this contract
-            // uint256 currentChainLimit = chainLimits[targetChainId]; // Removed
-            // if (currentChainLimit > 0 && (bridgedOutSharesPerChain[targetChainId] + cUSPDShareAmount > currentChainLimit)) { // Removed
-            //     revert AmountExceedsChainLimit(); // Removed
-            // } // Removed
             totalBridgedOutShares += cUSPDShareAmount;
             bridgedOutSharesPerChain[targetChainId] += cUSPDShareAmount;
         } else {
@@ -139,7 +124,7 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
         uint256 sourceChainId,
         uint256 uspdAmountIntended,
         uint256 l2YieldFactor
-    ) external nonReentrant { // removed onlyRole(CALLER_ROLE)
+    ) external nonReentrant {
         if (msg.sender != uspdTokenAddress) { // Check if caller is the configured USPDToken
             revert CallerNotUspdToken();
         }
