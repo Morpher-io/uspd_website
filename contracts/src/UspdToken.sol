@@ -213,7 +213,6 @@ contract USPDToken is
      *      specifying the L2 recipient when interacting with the bridge provider.
      */
     function lockForBridging(
-        // originalUserAddress removed
         uint256 uspdAmountToBridge,
         uint256 targetChainId
     ) external onlyRole(TOKEN_ADAPTER_ROLE) { // Consider adding nonReentrant if complex interactions arise
@@ -233,7 +232,6 @@ contract USPDToken is
 
         // Notify BridgeEscrow to record the locked shares
         IBridgeEscrow(bridgeEscrowAddress).escrowShares(
-            // originalUserAddress removed
             cUSPDShareAmount,
             targetChainId,
             uspdAmountToBridge,
@@ -242,7 +240,6 @@ contract USPDToken is
         );
 
         emit LockForBridgingInitiated(
-            // originalUserAddress removed
             msg.sender, // Token Adapter
             targetChainId,
             uspdAmountToBridge,
