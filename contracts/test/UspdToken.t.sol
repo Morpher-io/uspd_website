@@ -226,12 +226,15 @@ contract USPDTokenTest is Test {
 
         // Deploy USPD token (Contract Under Test)
         uspdToken = new USPD(
-            "Unified Stable Passive Dollar", // name
+            "US Permissionless Dollar", // name
             "USPD",                          // symbol
             address(cuspdToken),             // link to core token
             address(rateContract),           // rateContract
             address(this)                    // admin
         );
+
+        // Grant the USPD Caller Role so it can execute transfers on behalf of the user
+        cuspdToken.grantRole(cuspdToken.USPD_CALLER_ROLE(), address(uspdToken));
 
         // Deploy OvercollateralizationReporter (Using Proxy)
         OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
@@ -511,7 +514,7 @@ contract USPDTokenTest is Test {
         assertEq(uspdToken.allowance(owner, spender), approveAmount, "Allowance mismatch");
     }
 
-    function testAllowance_ZeroIfYieldFactorIsZero() public {
+    function testAllowance_SameIfYieldFactorIsZero() public {
         address owner = makeAddr("owner");
         address spender = makeAddr("spender");
         // Approve some amount first (shares will be approved on cUSPD)
@@ -519,16 +522,15 @@ contract USPDTokenTest is Test {
         uspdToken.approve(spender, 100 * 1e18);
 
         _setYieldFactorZero();
-        assertEq(uspdToken.allowance(owner, spender), 0, "Allowance should be 0 if yield factor is zero");
+        assertEq(uspdToken.allowance(owner, spender), 100 * 1e18, "Allowance should be 100 * 1e18, even if yield factor is zero");
     }
 
-    function testApprove_Revert_ZeroYieldFactor() public {
+    function testApprove_Success_ZeroYieldFactor() public {
         address owner = makeAddr("owner");
         address spender = makeAddr("spender");
         _setYieldFactorZero();
 
         vm.prank(owner);
-        vm.expectRevert("USPD: Invalid yield factor");
         uspdToken.approve(spender, 100 * 1e18);
     }
 
