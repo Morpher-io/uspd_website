@@ -394,8 +394,17 @@ contract BridgeEscrowTest is Test {
      function test_Integration_LockViaUSPDToken_L2_BurnsSharesInEscrow() public {
         vm.chainId(L2_CHAIN_ID); // Operate on L2
         uint256 uspdToLock = 100 * FACTOR_PRECISION;
-        uint256 expectedShares = uspdToLock;
+        // uint256 expectedShares = uspdToLock; // Will be recalculated
         uint256 targetL1Chain = MAINNET_CHAIN_ID;
+
+        // Set a specific L2 yield factor different from the default 1e18
+        // The test contract (deployer) has YIELD_FACTOR_UPDATER_ROLE on L2 rateContract
+        uint256 l2YieldFactor = 1.05 * FACTOR_PRECISION; // e.g., 5% yield
+        rateContract.updateL2YieldFactor(l2YieldFactor);
+        assertEq(rateContract.getYieldFactor(), l2YieldFactor, "L2 yield factor not updated");
+
+        uint256 expectedShares = (uspdToLock * FACTOR_PRECISION) / l2YieldFactor;
+
 
         // On L2, USPDToken.lockForBridging will transfer shares from tokenAdapter to BridgeEscrow.
         // Then BridgeEscrow.escrowShares will burn these shares from itself.
@@ -405,7 +414,8 @@ contract BridgeEscrowTest is Test {
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0);
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetL1Chain, expectedShares, uspdToLock, FACTOR_PRECISION);
+        // The last parameter of SharesLockedForBridging is the yield factor of the source chain (L2 in this case)
+        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetL1Chain, expectedShares, uspdToLock, l2YieldFactor);
 
         // Expect burn call from BridgeEscrow on shares it now holds
         vm.expectCall(
