@@ -85,7 +85,7 @@ contract BridgeEscrowTest is Test {
 
         // 3. Deploy PoolSharesConversionRate
         vm.deal(deployer, 0.01 ether); // Fund for rate contract deployment
-        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
+        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
 
         // 4. Deploy StabilizerNFT (needed by cUSPDToken constructor)
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
@@ -118,7 +118,7 @@ contract BridgeEscrowTest is Test {
         uspdTokenAddress = address(uspdToken);
 
         // 7. Deploy BridgeEscrow
-        bridgeEscrow = new BridgeEscrow(address(cUSPD), uspdTokenAddress);
+        bridgeEscrow = new BridgeEscrow(address(cUSPD), uspdTokenAddress, address(rateContract));
 
         // 8. Configure USPDToken
         uspdToken.setBridgeEscrowAddress(address(bridgeEscrow));
