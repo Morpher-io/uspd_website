@@ -2,28 +2,30 @@
 pragma solidity ^0.8.20;
 
 import "./interfaces/IcUSPDToken.sol";
-import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
+import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol"; // Changed from AccessControl
 import "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title BridgeEscrow
  * @notice Holds cUSPD shares locked on L1 that back USPD on L2s.
  * Tracks total and per-chain bridged out shares.
+ * Admin functions are owner-protected. Operational functions (escrowShares, releaseShares)
+ * are callable only by the configured USPDToken contract.
  */
-contract BridgeEscrow is AccessControl, ReentrancyGuard {
+contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessControl
     // --- State Variables ---
 
     uint256 public constant MAINNET_CHAIN_ID = 1;
 
     IcUSPDToken public immutable cUSPDToken; 
-    address public uspdTokenAddress; // Address of the USPDToken contract that can call escrowShares
+    address public uspdTokenAddress; // Address of the USPDToken contract that can call escrowShares and releaseShares
 
     uint256 public totalBridgedOutShares; // On L1: total shares locked. On L2: net shares minted via bridge.
     mapping(uint256 => uint256) public bridgedOutSharesPerChain; // chainId => sharesAmount
     mapping(uint256 => uint256) public chainLimits; // chainId => maxSharesAllowed
 
     // --- Roles ---
-    bytes32 public constant CALLER_ROLE = keccak256("CALLER_ROLE"); // For authorized relayers/contracts calling releaseShares
+    // CALLER_ROLE removed as uspdTokenAddress is now the sole caller for operational functions.
 
     // --- Events ---
 
@@ -44,8 +46,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
     );
 
     event UspdTokenAddressUpdated(address indexed oldAddress, address indexed newAddress);
-    event CallerRoleGranted(address indexed caller, uint256 indexed chainId); // Example if role is per chain
-    event CallerRoleRevoked(address indexed caller, uint256 indexed chainId); // Example if role is per chain
+    // CallerRoleGranted and CallerRoleRevoked events removed
     event ChainLimitUpdated(uint256 indexed chainId, uint256 oldLimit, uint256 newLimit);
 
 
@@ -63,9 +64,9 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         if (_cUSPDTokenAddress == address(0) || _initialUspdTokenAddress == address(0) || _admin == address(0)) {
             revert ZeroAddress();
         }
-        cUSPDToken = IcUSPDToken(_cUSPDTokenAddress); // Changed from IERC20
+        cUSPDToken = IcUSPDToken(_cUSPDTokenAddress);
         uspdTokenAddress = _initialUspdTokenAddress;
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _transferOwnership(_admin); // Transfer ownership to the admin
     }
 
     // --- External Functions ---
@@ -85,7 +86,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         uint256 l1YieldFactor,
         address tokenAdapter
     ) external nonReentrant {
-        if (msg.sender != uspdTokenAddress) {
+        if (msg.sender != uspdTokenAddress) { // Check if caller is the configured USPDToken
             revert CallerNotUspdToken();
         }
         if (cUSPDShareAmount == 0) {
@@ -141,7 +142,10 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         uint256 sourceChainId,
         uint256 uspdAmountIntended,
         uint256 l2YieldFactor
-    ) external nonReentrant onlyRole(CALLER_ROLE) {
+    ) external nonReentrant { // removed onlyRole(CALLER_ROLE)
+        if (msg.sender != uspdTokenAddress) { // Check if caller is the configured USPDToken
+            revert CallerNotUspdToken();
+        }
         if (recipient == address(0)) {
             revert ZeroAddress();
         }
@@ -185,7 +189,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
      * @notice Updates the USPDToken contract address.
      * @param _newUspdTokenAddress The address of the new USPDToken contract.
      */
-    function setUspdTokenAddress(address _newUspdTokenAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setUspdTokenAddress(address _newUspdTokenAddress) external onlyOwner { // Changed to onlyOwner
         if (_newUspdTokenAddress == address(0)) {
             revert ZeroAddress();
         }
@@ -194,29 +198,11 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants or revokes the CALLER_ROLE to an address.
-     * @param caller The address to grant/revoke the role.
-     * @param isAuthorized True to grant, false to revoke.
-     */
-    function setAuthorizedCaller(address caller, bool isAuthorized) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (caller == address(0)) {
-            revert ZeroAddress();
-        }
-        if (isAuthorized) {
-            _grantRole(CALLER_ROLE, caller);
-            // emit CallerRoleGranted(caller, 0); // ChainId 0 for general caller role
-        } else {
-            _revokeRole(CALLER_ROLE, caller);
-            // emit CallerRoleRevoked(caller, 0);
-        }
-    }
-
-    /**
      * @notice Sets or updates the maximum shares allowed to be bridged to a specific chain.
      * @param chainId The ID of the target chain.
      * @param limit The maximum number of cUSPD shares. Set to 0 for no limit.
      */
-    function setChainLimit(uint256 chainId, uint256 limit) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setChainLimit(uint256 chainId, uint256 limit) external onlyOwner { // Changed to onlyOwner
         uint256 oldLimit = chainLimits[chainId];
         chainLimits[chainId] = limit;
         emit ChainLimitUpdated(chainId, oldLimit, limit);
@@ -228,7 +214,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
      * @param amount The amount to withdraw.
      * @param to The address to send the tokens to.
      */
-    function withdrawERC20(address tokenAddress, uint256 amount, address to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function withdrawERC20(address tokenAddress, uint256 amount, address to) external onlyOwner { // Changed to onlyOwner
         if (tokenAddress == address(0) || to == address(0)) {
             revert ZeroAddress();
         }
@@ -238,11 +224,11 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         // Cannot withdraw the cUSPDToken itself unless it's an excess amount not part of bridged shares.
         // This is a basic recovery, for more complex scenarios, more logic would be needed.
         // For now, allowing withdrawal of any token except the primary cUSPD if it matches totalBridgedOutShares.
-        if (tokenAddress == address(cUSPDToken) && IcUSPDToken(tokenAddress).balanceOf(address(this)) <= totalBridgedOutShares) { // Changed from IERC20
+        if (tokenAddress == address(cUSPDToken) && IcUSPDToken(tokenAddress).balanceOf(address(this)) <= totalBridgedOutShares) {
             revert("Cannot withdraw locked cUSPD shares");
         }
 
-        bool success = IcUSPDToken(tokenAddress).transfer(to, amount); // Changed from IERC20
+        bool success = IcUSPDToken(tokenAddress).transfer(to, amount);
         if(!success) {
             revert TransferFailed();
         }
@@ -253,7 +239,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
      * @param amount The amount of ETH to withdraw.
      * @param to The address to send the ETH to.
      */
-    function withdrawETH(uint256 amount, address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function withdrawETH(uint256 amount, address payable to) external onlyOwner { // Changed to onlyOwner
         if (to == address(0)) {
             revert ZeroAddress();
         }

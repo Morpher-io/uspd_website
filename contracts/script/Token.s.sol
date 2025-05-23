@@ -581,11 +581,11 @@ contract DeployScript is Script {
         //     console2.log("RELAYER_ROLE granted to:", exampleRelayerOrAdapter);
         // }
 
-        // Grant USPDToken the CALLER_ROLE on BridgeEscrow
-        if (bridgeEscrowAddress != address(0) && uspdTokenAddress != address(0)) {
-            BridgeEscrow(bridgeEscrowAddress).grantRole(BridgeEscrow(bridgeEscrowAddress).CALLER_ROLE(), uspdTokenAddress);
-            console2.log("CALLER_ROLE granted to USPDToken on BridgeEscrow:", uspdTokenAddress);
-        }
+        // Grant USPDToken the CALLER_ROLE on BridgeEscrow - This is no longer needed as USPDToken is the hardcoded caller.
+        // if (bridgeEscrowAddress != address(0) && uspdTokenAddress != address(0)) {
+        //     BridgeEscrow(bridgeEscrowAddress).grantRole(BridgeEscrow(bridgeEscrowAddress).CALLER_ROLE(), uspdTokenAddress);
+        //     console2.log("CALLER_ROLE granted to USPDToken on BridgeEscrow:", uspdTokenAddress);
+        // }
 
 
         // Grant roles to the Reporter
@@ -631,11 +631,11 @@ contract DeployScript is Script {
         //     console2.log("RELAYER_ROLE (bridged) granted to:", exampleBridgedRelayerOrAdapter);
         // }
 
-        // Grant USPDToken the CALLER_ROLE on BridgeEscrow for L2
-        if (bridgeEscrowAddress != address(0) && uspdTokenAddress != address(0)) {
-            BridgeEscrow(bridgeEscrowAddress).grantRole(BridgeEscrow(bridgeEscrowAddress).CALLER_ROLE(), uspdTokenAddress);
-            console2.log("CALLER_ROLE granted to USPDToken on BridgeEscrow (bridged):", uspdTokenAddress);
-        }
+        // Grant USPDToken the CALLER_ROLE on BridgeEscrow for L2 - This is no longer needed.
+        // if (bridgeEscrowAddress != address(0) && uspdTokenAddress != address(0)) {
+        //     BridgeEscrow(bridgeEscrowAddress).grantRole(BridgeEscrow(bridgeEscrowAddress).CALLER_ROLE(), uspdTokenAddress);
+        //     console2.log("CALLER_ROLE granted to USPDToken on BridgeEscrow (bridged):", uspdTokenAddress);
+        // }
 
         console2.log("Bridged roles setup complete.");
     }
