@@ -325,8 +325,10 @@ contract BridgeEscrowTest is Test {
 
     // --- Receive ETH Test ---
     function test_Revert_DirectEthTransfer() public {
-        // vm.expectRevert("BridgeEscrow: Direct ETH transfers not allowed"); //expecting a boolean false
-        payable(address(bridgeEscrow)).transfer(1 ether);
+        // Attempt a low-level call with value
+        (bool success, ) = payable(address(bridgeEscrow)).call{value: 1 ether}("");
+        // Assert that the call was not successful because the receive function should revert
+        assertFalse(success, "Direct ETH transfer should fail and return false");
     }
 
 
