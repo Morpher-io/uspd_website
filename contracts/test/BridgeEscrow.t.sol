@@ -401,9 +401,10 @@ contract BridgeEscrowTest is Test {
         uint256 targetL1Chain = MAINNET_CHAIN_ID;
 
         // Set a specific L2 yield factor different from the default 1e18
-        // The test contract (deployer) has YIELD_FACTOR_UPDATER_ROLE on L2 rateContract
+        // Grant deployer YIELD_FACTOR_UPDATER_ROLE on the rateContract as it was deployed as L1 type
+        rateContract.grantRole(rateContract.YIELD_FACTOR_UPDATER_ROLE(), deployer);
         uint256 l2YieldFactor = (105 * FACTOR_PRECISION) / 100; // 1.05 * FACTOR_PRECISION (e.g., 5% yield)
-        vm.prank(address(bridgeEscrow));
+        vm.prank(deployer); // Deployer (admin) calls updateL2YieldFactor
         rateContract.updateL2YieldFactor(l2YieldFactor);
         assertEq(rateContract.getYieldFactor(), l2YieldFactor, "L2 yield factor not updated");
 
@@ -441,6 +442,13 @@ contract BridgeEscrowTest is Test {
 
     function test_Integration_UnlockViaUSPDToken_L2_MintsSharesToRecipient() public {
         vm.chainId(L2_CHAIN_ID);
+
+        // Grant deployer YIELD_FACTOR_UPDATER_ROLE on the rateContract and set initial L2 yield factor
+        rateContract.grantRole(rateContract.YIELD_FACTOR_UPDATER_ROLE(), deployer);
+        vm.prank(deployer);
+        rateContract.updateL2YieldFactor(FACTOR_PRECISION); // Set to 1e18 for this test's setup
+        assertEq(rateContract.getYieldFactor(), FACTOR_PRECISION, "L2 yield factor setup failed for unlock test");
+
         uint256 uspdIntendedFromL1 = 100 * FACTOR_PRECISION;
         uint256 sharesToMintOnL2 = uspdIntendedFromL1; // Assuming yield factor 1 from L1 message
         uint256 sourceL1Chain = MAINNET_CHAIN_ID;
