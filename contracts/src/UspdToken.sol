@@ -211,20 +211,19 @@ contract USPDToken is
 
     /**
      * @notice Called by a Token Adapter to lock USPD for bridging to an L2.
-     * @param uspdAmountToBridge The amount of USPD to bridge, already held by the Token Adapter (msg.sender).
+     * @param uspdAmountToBridge The amount of USPD to bridge, already held by the caller (e.g., Token Adapter).
      * @param targetChainId The destination chain ID for the bridge.
-     * @dev The Token Adapter (msg.sender) must hold the cUSPD shares corresponding to uspdAmountToBridge.
-     *      This function transfers those cUSPD shares from the Token Adapter to the BridgeEscrow.
-     *      The original user's address is not passed here; the Token Adapter is responsible for
+     * @dev The caller (msg.sender, e.g., Token Adapter) must have RELAYER_ROLE and hold the cUSPD shares.
+     *      This function transfers cUSPD shares from the caller to the BridgeEscrow.
+     *      The original user's address is not passed here; the caller is responsible for
      *      specifying the L2 recipient when interacting with the bridge provider.
      */
     function lockForBridging(
         uint256 uspdAmountToBridge,
         uint256 targetChainId
-    ) external onlyRole(TOKEN_ADAPTER_ROLE) { // Consider adding nonReentrant if complex interactions arise
+    ) external onlyRole(RELAYER_ROLE) { // Consider adding nonReentrant if complex interactions arise
         if (bridgeEscrowAddress == address(0)) revert BridgeEscrowNotSet();
-        // if (originalUserAddress == address(0)) revert ZeroAddress(); // Removed
-        // The onlyRole modifier handles the TOKEN_ADAPTER_ROLE check.
+        // The onlyRole modifier handles the RELAYER_ROLE check.
 
         uint256 currentL1YieldFactor = rateContract.getYieldFactor();
         if (currentL1YieldFactor == 0) revert InvalidYieldFactor();
