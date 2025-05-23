@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IcUSPDToken.sol"; // Changed from IERC20
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
@@ -15,7 +15,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
 
     uint256 public constant MAINNET_CHAIN_ID = 1;
 
-    IERC20 public immutable cUSPDToken;
+    IcUSPDToken public immutable cUSPDToken; // Changed from IERC20
     address public uspdTokenAddress; // Address of the USPDToken contract that can call escrowShares
 
     uint256 public totalBridgedOutShares; // On L1: total shares locked. On L2: net shares minted via bridge.
@@ -63,7 +63,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         if (_cUSPDTokenAddress == address(0) || _initialUspdTokenAddress == address(0) || _admin == address(0)) {
             revert ZeroAddress();
         }
-        cUSPDToken = IERC20(_cUSPDTokenAddress);
+        cUSPDToken = IcUSPDToken(_cUSPDTokenAddress); // Changed from IERC20
         uspdTokenAddress = _initialUspdTokenAddress;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -238,11 +238,11 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         // Cannot withdraw the cUSPDToken itself unless it's an excess amount not part of bridged shares.
         // This is a basic recovery, for more complex scenarios, more logic would be needed.
         // For now, allowing withdrawal of any token except the primary cUSPD if it matches totalBridgedOutShares.
-        if (tokenAddress == address(cUSPDToken) && IERC20(tokenAddress).balanceOf(address(this)) <= totalBridgedOutShares) {
+        if (tokenAddress == address(cUSPDToken) && IcUSPDToken(tokenAddress).balanceOf(address(this)) <= totalBridgedOutShares) { // Changed from IERC20
             revert("Cannot withdraw locked cUSPD shares");
         }
 
-        bool success = IERC20(tokenAddress).transfer(to, amount);
+        bool success = IcUSPDToken(tokenAddress).transfer(to, amount); // Changed from IERC20
         if(!success) {
             revert TransferFailed();
         }
