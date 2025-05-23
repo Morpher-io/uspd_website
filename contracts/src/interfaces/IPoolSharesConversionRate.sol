@@ -24,6 +24,19 @@ interface IPoolSharesConversionRate {
      */
     function FACTOR_PRECISION() external view returns (uint256 precision);
 
+    // --- Events ---
+    event YieldFactorUpdated(uint256 oldYieldFactor, uint256 newYieldFactor);
+
+    // --- Functions ---
+    /**
+     * @notice Updates the yield factor on L2 chains.
+     * @dev Callable only by authorized updaters.
+     *      The new yield factor cannot be less than the current one.
+     *      This function should revert if called on L1.
+     * @param newYieldFactor The new yield factor to set.
+     */
+    function updateL2YieldFactor(uint256 newYieldFactor) external;
+
      /**
      * @notice Returns the initial stETH balance deposited into the contract.
      * @return balance The initial balance.
