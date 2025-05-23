@@ -20,9 +20,11 @@ import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow implementation
 import "../src/interfaces/ILido.sol";
 import "../test/mocks/MockStETH.sol";
 import "../test/mocks/MockLido.sol";
+import "../src/BridgeEscrow.sol"; // <-- Add BridgeEscrow import
 
 contract DeployScript is Script {
     // Configuration
+    uint256 internal constant MAINNET_CHAIN_ID = 1; // <-- Define MAINNET_CHAIN_ID
     address deployer;
     uint256 chainId;
     string deploymentPath;
