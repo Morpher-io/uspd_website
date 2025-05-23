@@ -14,22 +14,24 @@ To enhance USPD's utility, it needs to be transferable and usable across multipl
 
 ## Solution Architecture Overview
 
-The USPD cross-chain solution utilizes a sophisticated lock-and-mint mechanism for transferring tokens from Ethereum Mainnet (L1) to other chains (L2s/satellites), and a corresponding burn-and-unlock mechanism for returning tokens from L2s to L1. This architecture is facilitated by a core set of smart contracts on L1 and their counterparts on L2s, with off-chain relayers handling message passing.
+The USPD cross-chain solution uses a lock-and-mint mechanism. To transfer tokens from Ethereum Mainnet (L1) to other chains (L2s/satellites), tokens are locked on L1 and minted on the L2. To return tokens from L2s to L1, tokens are burned on the L2 and unlocked on L1. Smart contracts on L1 and L2s facilitate this process, with off-chain relayers handling message passing.
 
-A key aspect of this design is the `BridgeEscrow` contract on L1, which manages a **global pool of locked `cUSPD` shares for each destination chain ID**. When USPD is bridged from L1 to an L2:
-1.  The user interacts with a Token Adapter (e.g., for Wormhole, LayerZero).
+The `BridgeEscrow` contract on L1 is central to this design. It manages a global pool of locked `cUSPD` shares for each destination chain.
+
+When USPD is bridged from L1 to an L2:
+1.  A user interacts with a Token Adapter (e.g., for Wormhole, LayerZero).
 2.  The Token Adapter calls `USPDToken.lockForBridging` on L1.
-3.  `USPDToken` calculates the equivalent `cUSPD` shares and transfers them from the Token Adapter to the `L1_BridgeEscrow` contract.
-4.  `L1_BridgeEscrow` then records these shares as locked for the specified `targetChainId`.
+3.  `USPDToken` calculates the equivalent `cUSPD` shares. It then transfers these shares from the Token Adapter to the `L1_BridgeEscrow` contract.
+4.  `L1_BridgeEscrow` records these shares as locked for the specified `targetChainId`.
 
-From the perspective of the Token Adapter, this `lockForBridging` interaction appears similar to a "burn" operation, as the USPD (represented by `cUSPD` shares) is removed from its control and secured by the `BridgeEscrow`.
+To the Token Adapter, this `lockForBridging` interaction resembles a "burn" operation. The USPD (as `cUSPD` shares) is removed from the Token Adapter's control and secured by the `BridgeEscrow`.
 
-Conversely, when tokens are bridged from an L2 back to L1:
-1.  The process on the L2 effectively burns L2 `cUSPD` shares (facilitated by the L2 `USPDToken` and L2 `BridgeEscrow`).
+When tokens are bridged from an L2 back to L1:
+1.  L2 `cUSPD` shares are burned. This is managed by the L2 `USPDToken` and L2 `BridgeEscrow`.
 2.  A message is relayed to L1.
-3.  The L1 `USPDToken.unlockFromBridging` function is called, which instructs the `L1_BridgeEscrow` to release the previously locked `cUSPD` shares to the recipient. This appears like a "mint" operation on L1 from the user's perspective, as they receive USPD.
+3.  The L1 `USPDToken.unlockFromBridging` function is called. This instructs `L1_BridgeEscrow` to release the previously locked `cUSPD` shares to the recipient. For the user, this appears like a "mint" operation on L1.
 
-This global lock-per-chain model within `BridgeEscrow` allows multiple bridge providers (Token Adapters) to interact with a unified liquidity and accounting system on L1, rather than each bridge maintaining its own separate locked pool.
+This global lock-per-chain model in `BridgeEscrow` allows different bridge providers (Token Adapters) to use a single liquidity and accounting system on L1. This avoids separate locked pools for each bridge.
 
 ### Core Contracts Involved:
 
