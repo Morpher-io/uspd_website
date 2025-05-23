@@ -17,7 +17,8 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
     uint256 public constant MAINNET_CHAIN_ID = 1;
 
     IcUSPDToken public immutable cUSPDToken; 
-    address public immutable uspdTokenAddress; // Address of the USPDToken contract, now immutable
+    address public immutable uspdTokenAddress; // Address of the USPDToken contract
+    IPoolSharesConversionRate public immutable rateContract; // Address of the PoolSharesConversionRate contract
 
     uint256 public totalBridgedOutShares; // On L1: total shares locked. On L2: net shares minted via bridge.
     mapping(uint256 => uint256) public bridgedOutSharesPerChain; // chainId => sharesAmount
@@ -160,6 +161,10 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
             // totalBridgedOutShares on L2 (total net outflow) decreases.
             bridgedOutSharesPerChain[sourceChainId] -= cUSPDShareAmount; // Net outflow to source chain decreases
             totalBridgedOutShares -= cUSPDShareAmount; // Total net outflow from this L2 decreases
+
+            // Update the L2 yield factor using the source chain's yield factor from the message
+            // BridgeEscrow needs YIELD_FACTOR_UPDATER_ROLE on PoolSharesConversionRate on L2
+            rateContract.updateL2YieldFactor(l2YieldFactor);
         }
 
         emit SharesUnlockedFromBridge(recipient, sourceChainId, cUSPDShareAmount, uspdAmountIntended, l2YieldFactor);

@@ -226,7 +226,7 @@ contract DeployScript is Script {
 
         bytes memory bytecode = abi.encodePacked(
             type(BridgeEscrow).creationCode,
-            abi.encode(_cuspdToken, _uspdToken) // cUSPD, USPDToken (admin removed)
+            abi.encode(_cuspdToken, _uspdToken, rateContractAddress) // cUSPD, USPDToken, RateContract
         );
         bridgeEscrowAddress = createX.deployCreate2{value: 0}(BRIDGE_ESCROW_SALT, bytecode);
         console2.log("BridgeEscrow deployed at:", bridgeEscrowAddress);
@@ -538,10 +538,11 @@ contract DeployScript is Script {
         // Get the bytecode of PoolSharesConversionRate with constructor arguments
         bytes memory bytecode = abi.encodePacked(
             type(PoolSharesConversionRate).creationCode,
-            abi.encode(stETHAddress, lidoAddress)
+            abi.encode(stETHAddress, lidoAddress, deployer) // Added deployer as admin
         );
 
-        // Deploy using CREATE2, sending initial ETH value to the constructor
+        // Deploy using CREATE2, sending initial ETH value to the constructor (only if on L1)
+        uint256 depositValue = (chainId == MAINNET_CHAIN_ID) ? initialRateContractDeposit : 0;
         rateContractAddress = createX.deployCreate2{value: initialRateContractDeposit}(
             RATE_CONTRACT_SALT,
             bytecode
@@ -615,11 +616,18 @@ contract DeployScript is Script {
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
         // Deployer already has ADMIN, UPDATER roles from constructor
         coreToken.grantRole(coreToken.USPD_CALLER_ROLE(), uspdTokenAddress);
-        // Grant MINTER_ROLE and BURNER_ROLE to BridgeEscrow on L2
+        // Grant MINTER_ROLE and BURNER_ROLE to BridgeEscrow on L2 cUSPDToken
         if (bridgeEscrowAddress != address(0)) {
             coreToken.grantRole(coreToken.MINTER_ROLE(), bridgeEscrowAddress);
             coreToken.grantRole(coreToken.BURNER_ROLE(), bridgeEscrowAddress);
             console2.log("MINTER_ROLE and BURNER_ROLE granted to BridgeEscrow on cUSPDToken (bridged):", bridgeEscrowAddress);
+        }
+
+        // Grant YIELD_FACTOR_UPDATER_ROLE on L2 PoolSharesConversionRate to BridgeEscrow
+        if (rateContractAddress != address(0) && bridgeEscrowAddress != address(0)) {
+            PoolSharesConversionRate l2RateContract = PoolSharesConversionRate(payable(rateContractAddress));
+            l2RateContract.grantRole(l2RateContract.YIELD_FACTOR_UPDATER_ROLE(), bridgeEscrowAddress);
+            console2.log("YIELD_FACTOR_UPDATER_ROLE granted to BridgeEscrow on PoolSharesConversionRate (bridged):", bridgeEscrowAddress);
         }
 
 
