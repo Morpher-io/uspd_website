@@ -109,7 +109,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         // Given that `msg.sender` is the trusted `uspdTokenAddress`, this check might be omitted
         // to save gas, assuming `uspdTokenAddress` behaves correctly.
 
-        emit SharesLockedForBridging(user, targetChainId, cUSPDShareAmount, uspdAmountIntended, l1YieldFactor);
+        emit SharesLockedForBridging(tokenAdapter, targetChainId, cUSPDShareAmount, uspdAmountIntended, l1YieldFactor);
     }
 
     /**
