@@ -117,10 +117,7 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
             // Assuming it tracks net shares "owed" by this L2 to other chains (or locked for them).
             // When shares are burned (sent away from L2), bridgedOutSharesPerChain for the target increases.
             // totalBridgedOutShares on L2 would represent total net shares sent from this L2.
-            uint256 currentChainLimit = chainLimits[targetChainId];
-             if (currentChainLimit > 0 && (bridgedOutSharesPerChain[targetChainId] + cUSPDShareAmount > currentChainLimit)) {
-                revert AmountExceedsChainLimit();
-            }
+            // Chain limit checks are removed as this is delegated to Token Adapters.
             totalBridgedOutShares += cUSPDShareAmount; // Total net outflow from this L2 increases
             bridgedOutSharesPerChain[targetChainId] += cUSPDShareAmount; // Net outflow to specific target chain increases
         }
