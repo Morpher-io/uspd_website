@@ -250,11 +250,15 @@ contract BridgeEscrowTest is Test {
         uint256 uspdAmountBridgedOutL2 = sharesBridgedOutL2;
         uint256 sourceChainIdL1 = MAINNET_CHAIN_ID; // Coming from L1
 
-        // Simulate shares having been bridged out from this L2
-        // No actual cUSPD burn needed for this setup, just accounting in BridgeEscrow
+        // Simulate shares having been bridged out from this L2.
+        // For escrowShares on L2 to succeed (as it burns shares from itself),
+        // BridgeEscrow must first hold these shares.
+        cUSPD.mint(address(bridgeEscrow), sharesBridgedOutL2); // Mint shares to BridgeEscrow
+        
         vm.prank(uspdTokenAddress);
         bridgeEscrow.escrowShares(sharesBridgedOutL2, sourceChainIdL1, uspdAmountBridgedOutL2, FACTOR_PRECISION, tokenAdapter);
-        // totalBridgedOutShares and bridgedOutSharesPerChain[MAINNET_CHAIN_ID] are now sharesBridgedOutL2
+        // Now, totalBridgedOutShares and bridgedOutSharesPerChain[MAINNET_CHAIN_ID] are sharesBridgedOutL2,
+        // and the sharesBridgedOutL2 amount has been burned from BridgeEscrow's balance.
 
         uint256 sharesToReleaseOnL2 = 150 * FACTOR_PRECISION;
         uint256 uspdAmountToRelease = sharesToReleaseOnL2;
