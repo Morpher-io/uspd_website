@@ -200,7 +200,8 @@ contract USPDTokenTest is Test {
         vm.deal(address(this), 0.001 ether); // Fund for rate contract deployment
         rateContract = new PoolSharesConversionRate{value: 0.001 ether}(
             address(mockStETH),
-            address(mockLido)
+            address(mockLido),
+            address(this)
         );
 
         // Deploy StabilizerNFT (Implementation + Proxy, NO Init yet)
@@ -463,7 +464,7 @@ contract USPDTokenTest is Test {
         _setYieldFactorZero();
 
         vm.prank(sender);
-        vm.expectRevert("USPD: Invalid yield factor");
+        vm.expectRevert(USPD.InvalidYieldFactor.selector);
         uspdToken.transfer(receiver, 100 * 1e18);
     }
 
@@ -481,7 +482,7 @@ contract USPDTokenTest is Test {
         _setHighYieldFactor(); // Set a very high yield factor
 
         vm.prank(sender);
-        vm.expectRevert("USPD: Transfer amount too small for current yield");
+        vm.expectRevert(USPD.AmountTooSmall.selector);
         uspdToken.transfer(receiver, 1); // 1 wei of USPD, should result in 0 shares
     }
 
@@ -569,7 +570,7 @@ contract USPDTokenTest is Test {
         _setYieldFactorZero();
 
         vm.prank(spender);
-        vm.expectRevert("USPD: Invalid yield factor");
+        vm.expectRevert(USPD.InvalidYieldFactor.selector);
         uspdToken.transferFrom(owner, receiver, 100 * 1e18);
     }
 
@@ -636,7 +637,7 @@ contract USPDTokenTest is Test {
         uspdToken.updateRateContract(makeAddr("anotherRateContract"));
         vm.stopPrank();
         // Check zero address revert
-        vm.expectRevert("USPD: Zero rate contract address"); // Updated error message check
+        vm.expectRevert(USPD.ZeroAddress.selector); // Updated error message check
         uspdToken.updateRateContract(address(0));
     }
 
