@@ -591,7 +591,7 @@ contract USPDTokenTest is Test {
         _setHighYieldFactor(); // Set a very high yield factor
 
         vm.prank(spender);
-        vm.expectRevert("USPD: Transfer amount too small for current yield");
+        vm.expectRevert(USPD.AmountTooSmall.selector);
         uspdToken.transferFrom(owner, receiver, 1); // 1 wei of USPD
     }
 
