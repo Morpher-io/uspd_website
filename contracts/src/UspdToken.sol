@@ -27,6 +27,7 @@ contract USPDToken is
     // --- Roles ---
     // DEFAULT_ADMIN_ROLE for managing dependencies.
     bytes32 public constant TOKEN_ADAPTER_ROLE = keccak256("TOKEN_ADAPTER_ROLE");
+    bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
 
     // --- Events ---
     // Standard ERC20 Transfer and Approval events are emitted by the underlying cUSPD token.
@@ -41,7 +42,13 @@ contract USPDToken is
         uint256 uspdAmount,
         uint256 cUSPDShareAmount
     );
-    // TODO: Add UnlockFromBridgingInitiated event if unlockFromBridging is added here
+    event UnlockFromBridgingInitiated(
+        address indexed recipient,
+        uint256 indexed sourceChainId,
+        uint256 uspdAmountIntended,
+        uint256 sourceChainYieldFactor,
+        uint256 cUSPDShareAmount
+    );
 
     // --- Errors ---
     error ZeroAddress();
@@ -247,7 +254,46 @@ contract USPDToken is
         );
     }
 
-    // TODO: Implement unlockFromBridging function for L2 -> L1 flow.
+    /**
+     * @notice Called by an authorized Relayer to initiate unlocking of funds bridged from another chain.
+     * @param recipient The final recipient of the USPD tokens (via cUSPD shares).
+     * @param uspdAmountIntended The amount of USPD that was intended to be bridged.
+     * @param sourceChainYieldFactor The yield factor from the source chain at the time of bridging.
+     * @param sourceChainId The chain ID from which the funds are being bridged.
+     * @dev This function calls the BridgeEscrow contract to release/mint the shares.
+     *      The USPDToken contract itself must have CALLER_ROLE on the BridgeEscrow.
+     *      The msg.sender (Relayer) must have RELAYER_ROLE on this USPDToken contract.
+     */
+    function unlockFromBridging(
+        address recipient,
+        uint256 uspdAmountIntended,
+        uint256 sourceChainYieldFactor,
+        uint256 sourceChainId
+    ) external onlyRole(RELAYER_ROLE) { // Consider adding nonReentrant
+        if (bridgeEscrowAddress == address(0)) revert BridgeEscrowNotSet();
+        if (recipient == address(0)) revert ZeroAddress();
+        if (sourceChainYieldFactor == 0) revert InvalidYieldFactor(); // Cannot determine shares if source yield factor is zero
+
+        uint256 cUSPDShareAmountToUnlock = (uspdAmountIntended * FACTOR_PRECISION) / sourceChainYieldFactor;
+        if (cUSPDShareAmountToUnlock == 0 && uspdAmountIntended > 0) revert AmountTooSmall();
+
+
+        IBridgeEscrow(bridgeEscrowAddress).releaseShares(
+            recipient,
+            cUSPDShareAmountToUnlock,
+            sourceChainId,
+            uspdAmountIntended,
+            sourceChainYieldFactor
+        );
+
+        emit UnlockFromBridgingInitiated(
+            recipient,
+            sourceChainId,
+            uspdAmountIntended,
+            sourceChainYieldFactor,
+            cUSPDShareAmountToUnlock
+        );
+    }
 
     // --- Fallback ---
     // Prevent direct ETH transfers
