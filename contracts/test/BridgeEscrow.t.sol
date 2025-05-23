@@ -399,7 +399,7 @@ contract BridgeEscrowTest is Test {
 
         // Set a specific L2 yield factor different from the default 1e18
         // The test contract (deployer) has YIELD_FACTOR_UPDATER_ROLE on L2 rateContract
-        uint256 l2YieldFactor = 1.05 * FACTOR_PRECISION; // e.g., 5% yield
+        uint256 l2YieldFactor = (105 * FACTOR_PRECISION) / 100; // 1.05 * FACTOR_PRECISION (e.g., 5% yield)
         rateContract.updateL2YieldFactor(l2YieldFactor);
         assertEq(rateContract.getYieldFactor(), l2YieldFactor, "L2 yield factor not updated");
 
