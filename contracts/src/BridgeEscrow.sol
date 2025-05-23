@@ -234,24 +234,9 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
         }
     }
 
-    /**
-     * @notice Allows admin to withdraw accidentally sent ETH.
-     * @param amount The amount of ETH to withdraw.
-     * @param to The address to send the ETH to.
-     */
-    function withdrawETH(uint256 amount, address payable to) external onlyOwner { // Changed to onlyOwner
-        if (to == address(0)) {
-            revert ZeroAddress();
-        }
-        if (amount == 0) {
-            revert InvalidAmount();
-        }
-        if (address(this).balance < amount) {
-            revert InsufficientBridgedShares(); // Reusing error for insufficient ETH balance
-        }
-        (bool success, ) = to.call{value: amount}("");
-        if(!success) {
-            revert TransferFailed();
-        }
+    // --- Fallback Receiver ---
+    // Prevent direct ETH transfers to this contract
+    receive() external payable {
+        revert("BridgeEscrow: Direct ETH transfers not allowed");
     }
 }
