@@ -319,7 +319,8 @@ contract BridgeEscrowTest is Test {
         // Trying to release 150 from L2_CHAIN_ID will fail on per-chain check first.
         // If per-chain check passed (e.g. per-chain = 150, total = 100), then total check would fail.
         // This state (per-chain > total) should not be reachable.
-        skip("Skipping total insufficient shares test as per-chain check is primary");
+        // Skipping total insufficient shares test as per-chain check is primary
+        skip(); 
     }
 
     // --- Receive ETH Test ---
