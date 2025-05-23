@@ -35,7 +35,7 @@ contract USPDToken is
     event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
     event BridgeEscrowAddressUpdated(address indexed oldAddress, address indexed newAddress);
     event LockForBridgingInitiated(
-        address indexed originalUser,
+        // originalUser removed
         address indexed tokenAdapter,
         uint256 indexed targetChainId,
         uint256 uspdAmount,
@@ -205,19 +205,20 @@ contract USPDToken is
 
     /**
      * @notice Called by a Token Adapter to lock USPD for bridging to an L2.
-     * @param originalUserAddress The original user initiating the bridge.
      * @param uspdAmountToBridge The amount of USPD to bridge, already held by the Token Adapter (msg.sender).
      * @param targetChainId The destination chain ID for the bridge.
      * @dev The Token Adapter (msg.sender) must hold the cUSPD shares corresponding to uspdAmountToBridge.
      *      This function transfers those cUSPD shares from the Token Adapter to the BridgeEscrow.
+     *      The original user's address is not passed here; the Token Adapter is responsible for
+     *      specifying the L2 recipient when interacting with the bridge provider.
      */
     function lockForBridging(
-        address originalUserAddress,
+        // originalUserAddress removed
         uint256 uspdAmountToBridge,
         uint256 targetChainId
     ) external onlyRole(TOKEN_ADAPTER_ROLE) { // Consider adding nonReentrant if complex interactions arise
         if (bridgeEscrowAddress == address(0)) revert BridgeEscrowNotSet();
-        if (originalUserAddress == address(0)) revert ZeroAddress();
+        // if (originalUserAddress == address(0)) revert ZeroAddress(); // Removed
         // The onlyRole modifier handles the TOKEN_ADAPTER_ROLE check.
 
         uint256 currentL1YieldFactor = rateContract.getYieldFactor();
@@ -232,15 +233,16 @@ contract USPDToken is
 
         // Notify BridgeEscrow to record the locked shares
         IBridgeEscrow(bridgeEscrowAddress).escrowShares(
-            originalUserAddress,
+            // originalUserAddress removed
             cUSPDShareAmount,
             targetChainId,
             uspdAmountToBridge,
-            currentL1YieldFactor
+            currentL1YieldFactor,
+            msg.sender // Pass the Token Adapter address
         );
 
         emit LockForBridgingInitiated(
-            originalUserAddress,
+            // originalUserAddress removed
             msg.sender, // Token Adapter
             targetChainId,
             uspdAmountToBridge,

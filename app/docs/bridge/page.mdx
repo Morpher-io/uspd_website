@@ -61,19 +61,20 @@ sequenceDiagram
     
     BridgeUI->>TokenAdapter: Call bridge transfer function (e.g., Wormhole's transferTokens)
     TokenAdapter->>L1_USPDToken: transferFrom(userAddress, address(TokenAdapter), uspdAmountToBridge)
-    Note over TokenAdapter: USPD tokens are now at TokenAdapter address
-    TokenAdapter->>L1_USPDToken: lockForBridging(userAddress, uspdAmountToBridge, targetChainId)
+    Note over TokenAdapter: USPD tokens are now at TokenAdapter address. It also knows original userAddress.
+    TokenAdapter->>L1_USPDToken: lockForBridging(uspdAmountToBridge, targetChainId)
     
     L1_USPDToken->>L1_USPDToken: Calculate cUSPDShareAmountToLock = (uspdAmountToBridge * FP) / currentL1YieldFactor
     Note over L1_USPDToken: USPDToken has USPD_CALLER_ROLE on cUSPDToken
     L1_USPDToken->>L1_cUSPDToken: executeTransfer(address(TokenAdapter), address(L1_BridgeEscrow), cUSPDShareAmountToLock)
     Note over L1_cUSPDToken: cUSPD shares moved from TokenAdapter to BridgeEscrow
-    L1_USPDToken->>L1_BridgeEscrow: escrowShares(userAddress, cUSPDShareAmountToLock, targetChainId, uspdAmountToBridge, currentL1YieldFactor)
+    L1_USPDToken->>L1_BridgeEscrow: escrowShares(cUSPDShareAmountToLock, targetChainId, uspdAmountToBridge, currentL1YieldFactor, address(TokenAdapter))
     
     L1_BridgeEscrow->>L1_BridgeEscrow: Update totalBridgedOutShares, bridgedOutSharesPerChain
-    L1_BridgeEscrow->>Relayer: Emit SharesLockedForBridging(userAddress, targetChainId, cUSPDShareAmountToLock, uspdAmountToBridge, currentL1YieldFactor)
+    L1_BridgeEscrow->>Relayer: Emit SharesLockedForBridging(address(TokenAdapter), targetChainId, cUSPDShareAmountToLock, uspdAmountToBridge, currentL1YieldFactor)
     
-    Relayer->>Relayer: Construct cross-chain message (userAddress, uspdAmountToBridge, currentL1YieldFactor)
+    Note over Relayer: Relayer gets L2 recipient from Token Adapter's bridge message parameters, not from this L1 event.
+    Relayer->>Relayer: Construct cross-chain message (L2_recipient_address, uspdAmountToBridge, currentL1YieldFactor)
     Relayer->>L2_BridgeContract: Submit message to L2
     
     L2_BridgeContract->>L2_BridgeContract: Authenticate message
@@ -89,21 +90,24 @@ sequenceDiagram
 1.  **User Interaction:** The user specifies the `uspdAmountToBridge` and the `targetChainId` through a bridge interface or by interacting with an integrated application.
 2.  **L1 `USPDToken.lockForBridging(uspdAmountToBridge, targetChainId)`:**
     *   **User Approval:** The user approves a "Token Adapter" contract (e.g., a specific contract for a bridge provider like Wormhole) to spend their L1 `USPDToken`.
-    *   **Token Adapter Pulls USPD:** The Token Adapter calls `L1_USPDToken.transferFrom(userAddress, address(TokenAdapter), uspdAmountToBridge)`, moving the USPD from the user to itself.
-    *   **Token Adapter Initiates Lock:** The Token Adapter (which must have `TOKEN_ADAPTER_ROLE` on `L1_USPDToken`) then calls `L1_USPDToken.lockForBridging(userAddress, uspdAmountToBridge, targetChainId)`. `userAddress` here is the original end-user.
-2.  **L1 `USPDToken.lockForBridging(originalUserAddress, uspdAmountToBridge, targetChainId)`:**
+    *   **Token Adapter Pulls USPD:** The Token Adapter calls `L1_USPDToken.transferFrom(userAddress, address(TokenAdapter), uspdAmountToBridge)`, moving the USPD from the user to itself. The Token Adapter now knows the `userAddress` (original initiator).
+    *   **Token Adapter Initiates Lock:** The Token Adapter (which must have `TOKEN_ADAPTER_ROLE` on `L1_USPDToken`) then calls `L1_USPDToken.lockForBridging(uspdAmountToBridge, targetChainId)`.
+2.  **L1 `USPDToken.lockForBridging(uspdAmountToBridge, targetChainId)`:**
     *   This function is called by the Token Adapter (`msg.sender` is the Token Adapter) and requires `msg.sender` to have the `TOKEN_ADAPTER_ROLE`.
     *   It calculates `cUSPDShareAmountToLock = (uspdAmountToBridge * FACTOR_PRECISION) / currentL1YieldFactor`. The `currentL1YieldFactor` is fetched from the L1 `PoolSharesConversionRate`.
     *   **Share Transfer to Escrow:** `USPDToken` (which has `USPD_CALLER_ROLE` on `cUSPDToken`) calls `L1_cUSPDToken.executeTransfer(address(TokenAdapter), address(L1_BridgeEscrow), cUSPDShareAmountToLock)`. This transfers the `cUSPD` shares corresponding to the bridged USPD from the Token Adapter's balance directly to the `L1_BridgeEscrow` contract.
-    *   It then calls `L1_BridgeEscrow.escrowShares(originalUserAddress, cUSPDShareAmountToLock, targetChainId, uspdAmountToBridge, currentL1YieldFactor)`.
-3.  **L1 `BridgeEscrow.escrowShares(originalUserAddress, cUSPDShareAmountToLock, targetChainId, uspdAmountIntended, l1YieldFactor)`:**
+    *   It then calls `L1_BridgeEscrow.escrowShares(cUSPDShareAmountToLock, targetChainId, uspdAmountToBridge, currentL1YieldFactor, address(TokenAdapter))`.
+3.  **L1 `BridgeEscrow.escrowShares(cUSPDShareAmountToLock, targetChainId, uspdAmountIntended, l1YieldFactor, tokenAdapterAddress)`:**
     *   This function on the L1 `BridgeEscrow` contract is called by `L1_USPDToken`.
     *   **No Token Transfer:** It no longer performs a `transferFrom`. The `cUSPD` shares are assumed to have already been transferred to its address by `L1_USPDToken`.
     *   It updates its internal state: increments `totalBridgedOutShares` and `bridgedOutSharesPerChain[targetChainId]` by `cUSPDShareAmountToLock`.
-    *   It emits a `SharesLockedForBridging` event containing `originalUserAddress`, `targetChainId`, `cUSPDShareAmountToLock`, `uspdAmountIntended`, and `l1YieldFactor`.
+    *   It emits a `SharesLockedForBridging` event containing `tokenAdapterAddress`, `targetChainId`, `cUSPDShareAmountToLock`, `uspdAmountIntended`, and `l1YieldFactor`.
 4.  **Off-Chain Bridge Relayer:** A relayer service (specific to the chosen bridge provider like Wormhole, LayerZero, etc.) monitors for `SharesLockedForBridging` events on L1 `BridgeEscrow`.
-5.  **Cross-Chain Message to L2:** Upon detecting the event, the relayer constructs and sends a message to the target L2. This message includes:
-    *   `recipientAddress` (the user's address on L2).
+5.  **Cross-Chain Message to L2:**
+    *   The Token Adapter, when initiating the bridge transfer with the bridge provider (e.g., calling Wormhole's `transferTokens`), specifies the `originalUserAddress` (or their L2 equivalent) as the L2 recipient.
+    *   The relayer detects the `SharesLockedForBridging` event. It correlates this event (e.g., by `tokenAdapterAddress`, `targetChainId`, amounts) with the message initiated by the Token Adapter.
+    *   The relayer constructs and sends the message (or validates/processes the provider's message) to the target L2. This message includes:
+        *   `recipientAddress` (the original user's address on L2, as specified by the Token Adapter).
     *   `uspdAmountIntended` (this is the same as `uspdAmountToBridge` from L1).
     *   `sourceL1YieldFactor` (this is the `currentL1YieldFactor` from L1 at the time of locking).
 6.  **L2 Bridge Contract:** A corresponding bridge contract on the L2 receives and authenticates the message from the relayer.
@@ -209,15 +213,15 @@ This plan outlines the smart contract development and modifications required.
     *   `mapping(address => bool) public authorizedRelayers; // For releaseShares`
     *   `address public uspdTokenAddress; // To verify caller of escrowShares`
 *   **Events:**
-    *   `event SharesLockedForBridging(address indexed user, uint256 indexed targetChainId, uint256 cUSPDShareAmount, uint256 uspdAmountIntended, uint256 l1YieldFactor);`
+    *   `event SharesLockedForBridging(address indexed tokenAdapter, uint256 indexed targetChainId, uint256 cUSPDShareAmount, uint256 uspdAmountIntended, uint256 l1YieldFactor);`
     *   `event SharesUnlockedFromBridge(address indexed recipient, uint256 indexed sourceChainId, uint256 cUSPDShareAmount, uint256 uspdAmountIntended, uint256 l2YieldFactor);`
 *   **Functions:**
     *   `constructor(address _cUSPDTokenAddress, address _uspdTokenAddress, address _admin)`
-    *   `escrowShares(address user, uint256 cUSPDShareAmount, uint256 targetChainId, uint256 uspdAmountIntended, uint256 l1YieldFactor)`:
+    *   `escrowShares(uint256 cUSPDShareAmount, uint256 targetChainId, uint256 uspdAmountIntended, uint256 l1YieldFactor, address tokenAdapter)`:
         *   `require(msg.sender == uspdTokenAddress, "Caller not USPDToken");`
         *   **No token transfer performed here.** Assumes `cUSPD` shares were already transferred to this contract by `USPDToken`.
         *   Updates `totalBridgedOutShares` and `bridgedOutSharesPerChain[targetChainId]`.
-        *   Emits `SharesLockedForBridging` with all passed parameters.
+        *   Emits `SharesLockedForBridging`.
     *   `releaseShares(address recipient, uint256 cUSPDShareAmount, uint256 sourceChainId, uint256 uspdAmountIntended, uint256 l2YieldFactor)`:
         *   `require(authorizedRelayers[msg.sender], "Caller not authorized relayer");`
         *   Checks `bridgedOutSharesPerChain[sourceChainId] >= cUSPDShareAmount`.
@@ -235,15 +239,15 @@ This plan outlines the smart contract development and modifications required.
 *   **State Variables:**
     *   `address public bridgeEscrowAddress;`
 *   **Events (Consider if new events are needed here or if `BridgeEscrow` events suffice):**
-    *   `LockForBridgingInitiated(address indexed user, uint256 targetChainId, uint256 uspdAmount, uint256 cUSPDShareAmount);`
+    *   `LockForBridgingInitiated(address indexed tokenAdapter, uint256 targetChainId, uint256 uspdAmount, uint256 cUSPDShareAmount);`
     *   `UnlockFromBridgingInitiated(address indexed recipient, uint256 sourceChainId, uint256 uspdAmountIntended, uint256 sourceL2YieldFactor, uint256 cUSPDShareAmount);`
 *   **Functions:**
-    *   `lockForBridging(address originalUserAddress, uint256 uspdAmountToBridge, uint256 targetChainId)`:
+    *   `lockForBridging(uint256 uspdAmountToBridge, uint256 targetChainId)`:
         *   Called by the Token Adapter (`msg.sender` is the Token Adapter). Requires `msg.sender` to have `TOKEN_ADAPTER_ROLE`.
         *   `require(bridgeEscrowAddress != address(0), "Escrow not set");`
         *   Calculates `cUSPDShareAmount` using L1 `rateContract.getYieldFactor()`.
         *   Calls `cUSPDToken.executeTransfer(msg.sender, bridgeEscrowAddress, cUSPDShareAmount)` to move shares from Token Adapter to `BridgeEscrow`. (Requires `USPDToken` to have `USPD_CALLER_ROLE` on `cUSPDToken`).
-        *   Calls `BridgeEscrow(bridgeEscrowAddress).escrowShares(originalUserAddress, cUSPDShareAmount, targetChainId, uspdAmountToBridge, l1YieldFactor)`.
+        *   Calls `BridgeEscrow(bridgeEscrowAddress).escrowShares(cUSPDShareAmount, targetChainId, uspdAmountToBridge, l1YieldFactor, msg.sender)`.
         *   Emits `LockForBridgingInitiated` (or rely on `BridgeEscrow` event).
     *   `unlockFromBridging(address recipient, uint256 uspdAmountIntended, uint256 sourceL2YieldFactor, uint256 sourceL2ChainId)`:
         *   Called by an authorized relayer/bridge contract.

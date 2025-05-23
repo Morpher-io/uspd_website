@@ -26,7 +26,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
     // --- Events ---
 
     event SharesLockedForBridging(
-        address indexed user,
+        address indexed tokenAdapter, // Changed from user to tokenAdapter
         uint256 indexed targetChainId,
         uint256 cUSPDShareAmount,
         uint256 uspdAmountIntended, // For off-chain informational purposes
@@ -70,18 +70,18 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
 
     /**
      * @notice Called by USPDToken to escrow cUSPD shares for bridging.
-     * @param user The original user initiating the bridge.
      * @param cUSPDShareAmount The amount of cUSPD shares to lock.
      * @param targetChainId The destination chain ID.
      * @param uspdAmountIntended The original USPD amount intended by user (for event).
      * @param l1YieldFactor The L1 yield factor at time of lock (for event).
+     * @param tokenAdapter The address of the token adapter that initiated the lock.
      */
     function escrowShares(
-        address user,
         uint256 cUSPDShareAmount,
         uint256 targetChainId,
         uint256 uspdAmountIntended,
-        uint256 l1YieldFactor
+        uint256 l1YieldFactor,
+        address tokenAdapter
     ) external nonReentrant {
         if (msg.sender != uspdTokenAddress) {
             revert CallerNotUspdToken();
@@ -102,7 +102,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
         // by the USPDToken contract (via cUSPDToken.executeTransfer from the Token Adapter to this BridgeEscrow)
         // *before* this escrowShares function is called.
         // This function's primary role is to update accounting and emit the event.
-        // The `user` parameter is the original end-user initiating the bridge via a Token Adapter.
+        // The `tokenAdapter` parameter identifies the contract that initiated the lock via USPDToken.
 
         // Removed check: Verify that the shares were indeed received.
         // This relies on knowing the balance *before* the external transfer, which is tricky without more state.

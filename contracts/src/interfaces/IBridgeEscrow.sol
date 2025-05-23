@@ -4,18 +4,18 @@ pragma solidity ^0.8.20;
 interface IBridgeEscrow {
     /**
      * @notice Called by USPDToken to record the escrow of cUSPD shares for bridging.
-     * @param user The original user initiating the bridge.
      * @param cUSPDShareAmount The amount of cUSPD shares locked.
      * @param targetChainId The destination chain ID.
      * @param uspdAmountIntended The original USPD amount intended by user (for event).
      * @param l1YieldFactor The L1 yield factor at time of lock (for event).
+     * @param tokenAdapter The address of the token adapter that initiated the lock.
      */
     function escrowShares(
-        address user,
         uint256 cUSPDShareAmount,
         uint256 targetChainId,
         uint256 uspdAmountIntended,
-        uint256 l1YieldFactor
+        uint256 l1YieldFactor,
+        address tokenAdapter // Added to identify who initiated, if originalUser is removed
     ) external;
 
     /**
