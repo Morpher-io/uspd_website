@@ -130,6 +130,9 @@ contract BridgeEscrowTest is Test {
         cUSPD.grantRole(cUSPD.BURNER_ROLE(), address(bridgeEscrow)); // For L2 burning
         cUSPD.grantRole(cUSPD.MINTER_ROLE(), deployer); // Deployer can mint for setup
 
+        // Grant BridgeEscrow YIELD_FACTOR_UPDATER_ROLE on PoolSharesConversionRate for L2 operations
+        rateContract.grantRole(rateContract.YIELD_FACTOR_UPDATER_ROLE(), address(bridgeEscrow));
+
         // 10. Initial mint for users/adapters
         // Deployer (admin) mints cUSPD directly
         cUSPD.mint(tokenAdapter, 1_000_000 * FACTOR_PRECISION);
