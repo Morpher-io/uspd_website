@@ -65,6 +65,14 @@ interface IcUSPDToken is IERC20 {
      */
     function burn(uint256 amount) external;
 
+    /**
+     * @notice Allows an authorized contract (like USPDToken) to execute a transfer on behalf of a user.
+     * @param from The address to transfer shares from.
+     * @param to The address to transfer shares to.
+     * @param amount The amount of shares to transfer.
+     */
+    function executeTransfer(address from, address to, uint256 amount) external;
+
     // --- Optional: Add getters if needed by USPDToken or others ---
     function oracle() external view returns (IPriceOracle);
     function stabilizer() external view returns (IStabilizerNFT);
