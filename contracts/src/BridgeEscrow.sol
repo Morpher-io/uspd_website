@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./interfaces/IcUSPDToken.sol"; // Changed from IERC20
+import "./interfaces/IcUSPDToken.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
@@ -15,7 +15,7 @@ contract BridgeEscrow is AccessControl, ReentrancyGuard {
 
     uint256 public constant MAINNET_CHAIN_ID = 1;
 
-    IcUSPDToken public immutable cUSPDToken; // Changed from IERC20
+    IcUSPDToken public immutable cUSPDToken; 
     address public uspdTokenAddress; // Address of the USPDToken contract that can call escrowShares
 
     uint256 public totalBridgedOutShares; // On L1: total shares locked. On L2: net shares minted via bridge.
