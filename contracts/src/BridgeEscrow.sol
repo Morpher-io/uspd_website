@@ -22,7 +22,7 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
 
     uint256 public totalBridgedOutShares; // On L1: total shares locked. On L2: net shares minted via bridge.
     mapping(uint256 => uint256) public bridgedOutSharesPerChain; // chainId => sharesAmount
-    mapping(uint256 => uint256) public chainLimits; // chainId => maxSharesAllowed
+    // mapping(uint256 => uint256) public chainLimits; // chainId => maxSharesAllowed // Removed
 
     // --- Roles ---
     // CALLER_ROLE removed as uspdTokenAddress is now the sole caller for operational functions.
@@ -47,13 +47,13 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
 
     event UspdTokenAddressUpdated(address indexed oldAddress, address indexed newAddress);
     // CallerRoleGranted and CallerRoleRevoked events removed
-    event ChainLimitUpdated(uint256 indexed chainId, uint256 oldLimit, uint256 newLimit);
+    // event ChainLimitUpdated(uint256 indexed chainId, uint256 oldLimit, uint256 newLimit); // Removed
 
 
     // --- Errors ---
     error ZeroAddress();
     error CallerNotUspdToken();
-    error AmountExceedsChainLimit();
+    // error AmountExceedsChainLimit(); // Removed
     error InsufficientBridgedShares();
     error TransferFailed();
     error InvalidAmount();
@@ -100,10 +100,10 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
 
         if (block.chainid == MAINNET_CHAIN_ID) {
             // L1: Shares are locked in this contract
-            uint256 currentChainLimit = chainLimits[targetChainId];
-            if (currentChainLimit > 0 && (bridgedOutSharesPerChain[targetChainId] + cUSPDShareAmount > currentChainLimit)) {
-                revert AmountExceedsChainLimit();
-            }
+            // uint256 currentChainLimit = chainLimits[targetChainId]; // Removed
+            // if (currentChainLimit > 0 && (bridgedOutSharesPerChain[targetChainId] + cUSPDShareAmount > currentChainLimit)) { // Removed
+            //     revert AmountExceedsChainLimit(); // Removed
+            // } // Removed
             totalBridgedOutShares += cUSPDShareAmount;
             bridgedOutSharesPerChain[targetChainId] += cUSPDShareAmount;
         } else {
@@ -202,11 +202,11 @@ contract BridgeEscrow is Ownable, ReentrancyGuard { // Changed from AccessContro
      * @param chainId The ID of the target chain.
      * @param limit The maximum number of cUSPD shares. Set to 0 for no limit.
      */
-    function setChainLimit(uint256 chainId, uint256 limit) external onlyOwner { // Changed to onlyOwner
-        uint256 oldLimit = chainLimits[chainId];
-        chainLimits[chainId] = limit;
-        emit ChainLimitUpdated(chainId, oldLimit, limit);
-    }
+    // function setChainLimit(uint256 chainId, uint256 limit) external onlyOwner { // Changed to onlyOwner
+    //     uint256 oldLimit = chainLimits[chainId]; // Removed
+    //     chainLimits[chainId] = limit; // Removed
+    //     emit ChainLimitUpdated(chainId, oldLimit, limit); // Removed
+    // } // Removed
 
     /**
      * @notice Allows admin to withdraw accidentally sent ERC20 tokens.

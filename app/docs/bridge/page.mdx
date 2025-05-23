@@ -216,7 +216,7 @@ The accuracy of USPD value representation on L2s depends on the L2 `PoolSharesCo
     *   Other sensitive functions (`mintForBridging` in L2 `cUSPDToken`; `updateYieldFactor` in L2 `PoolSharesConversionRate`) must be protected by robust RBAC.
 *   **Bridge Relayer Security:** The security of the chosen off-chain bridge relayer system is paramount. Compromised relayers could submit fraudulent messages.
 *   **Message Authentication:** Cross-chain messages must be rigorously authenticated on the destination chain to prevent spoofing.
-*   **Per-Chain Limits:** The `BridgeEscrow` contract's `bridgedOutSharesPerChain` tracking can be extended to enforce maximum limits on the amount of `cUSPD` that can be bridged to any single L2, mitigating the impact of a compromise on one L2.
+*   **Per-Chain Limits:** Per-chain limits are not enforced by the `BridgeEscrow` contract itself. This responsibility is delegated to the Token Adapter contracts, which will only be granted `RELAYER_ROLE` on `USPDToken` if they implement appropriate velocity/limit controls.
 *   **Reentrancy Guards:** Apply reentrancy guards where appropriate, especially in functions involving external calls and state changes.
 *   **Audits:** Thorough independent security audits of all involved smart contracts and the overall bridging architecture are essential.
 *   **Emergency Pausability:** Consider pausable mechanisms for critical functions in case of detected vulnerabilities.
@@ -253,7 +253,7 @@ This plan outlines the smart contract development and modifications required.
         *   Emits `SharesUnlockedFromBridge`.
     *   **Admin Functions (all `onlyOwner`):**
         *   `setUspdTokenAddress(address _uspdTokenAddress)`
-        *   `setChainLimit(uint256 chainId, uint256 limit)`
+        // *   `setChainLimit(uint256 chainId, uint256 limit)` // Removed
         *   `transferOwnership(address newOwner)`
         *   `withdrawERC20(...)`
         *   `withdrawETH(...)`
