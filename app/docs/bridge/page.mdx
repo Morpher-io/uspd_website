@@ -323,9 +323,9 @@ This plan outlines the smart contract development and modifications required.
 2.  Call `USPDToken.setBridgeEscrowAddress()` on L1 and each L2 with their respective deployed `BridgeEscrow` address.
 3.  Grant `RELAYER_ROLE` on each `USPDToken` instance to the authorized relayer/Token Adapter contract addresses.
 4.  On L2s, grant `MINTER_ROLE` and `BURNER_ROLE` on L2 `cUSPDToken` to the L2 `BridgeEscrow` address.
-6.  Deploy L2 versions of `USPDToken`, `cUSPDToken`, and `PoolSharesConversionRate` (if L2 has independent yield or needs a rate placeholder).
-7.  Configure L2 `USPDToken` with L2 `cUSPDToken` and L2 `PoolSharesConversionRate` addresses.
-8.  Configure authorized updaters for L2 `PoolSharesConversionRate.updateYieldFactor()` if applicable.
+5.  Deploy L2 versions of `USPDToken`, `cUSPDToken`, and `PoolSharesConversionRate` (if L2 has independent yield or needs a rate placeholder).
+6.  Configure L2 `USPDToken` with L2 `cUSPDToken` and L2 `PoolSharesConversionRate` addresses.
+7.  Configure authorized updaters for L2 `PoolSharesConversionRate.updateYieldFactor()` if applicable.
 
 ### 7. Off-Chain Components:
 
