@@ -103,4 +103,9 @@ contract MockStETH is ERC20, Ownable {
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
+
+    // --- Burn function for admin control in tests ---
+    function adminBurn(address account, uint256 amount) external onlyOwner {
+        _burn(account, amount);
+    }
 }

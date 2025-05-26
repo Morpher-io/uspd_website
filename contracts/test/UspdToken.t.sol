@@ -399,12 +399,14 @@ contract USPDTokenTest is Test {
 
     // Helper function to make rateContract.getYieldFactor() return 0
     function _setYieldFactorZero() private {
-        // Get the storage slot for the _balances mapping entry for rateContract in MockStETH.
-        // Assuming MockStETH declares _holders (slot 0) and _holderIndex (slot 1) before ERC20's _balances (slot 2).
-        bytes32 balancesMappingSlot = bytes32(uint256(2));
-        bytes32 keyHash = keccak256(abi.encode(address(rateContract), balancesMappingSlot));
-        
-        vm.store(address(mockStETH), keyHash, bytes32(uint256(0)));
+        // Set the stETH balance of the rateContract to 0.
+        // The rateContract initially receives 0.001 ether worth of stETH in setUp.
+        uint256 currentRateContractStEthBalance = mockStETH.balanceOf(address(rateContract));
+        if (currentRateContractStEthBalance > 0) {
+            vm.prank(address(this)); // 'this' is the owner of MockStETH
+            mockStETH.adminBurn(address(rateContract), currentRateContractStEthBalance);
+        }
+        assertEq(mockStETH.balanceOf(address(rateContract)), 0, "MockStETH balance of rateContract should be 0");
         assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test setup");
     }
 
@@ -421,13 +423,20 @@ contract USPDTokenTest is Test {
         // currentBalance * 1e3 > 1e18
         // currentBalance > 1e15
         // Let's set currentBalance to something like 1e18 * 1e18 to ensure yieldFactor is huge.
-        // Get the storage slot for the _balances mapping entry for rateContract in MockStETH.
-        // Assuming MockStETH declares _holders (slot 0) and _holderIndex (slot 1) before ERC20's _balances (slot 2).
-        bytes32 balancesMappingSlot = bytes32(uint256(2));
-        bytes32 keyHash = keccak256(abi.encode(address(rateContract), balancesMappingSlot));
+        
+        // First, ensure the current balance is known (or zero it out)
+        uint256 currentRateContractStEthBalance = mockStETH.balanceOf(address(rateContract));
+        if (currentRateContractStEthBalance > 0) {
+            vm.prank(address(this)); // 'this' is the owner of MockStETH
+            mockStETH.adminBurn(address(rateContract), currentRateContractStEthBalance);
+        }
 
         // Set a very large balance for rateContract in mockStETH
-        vm.store(address(mockStETH), keyHash, bytes32(uint256(1e18 * 1e18))); // Extremely large balance
+        uint256 veryLargeBalance = 1e18 * 1e18; // Extremely large balance
+        vm.prank(address(this)); // 'this' is the owner of MockStETH
+        mockStETH.adminMint(address(rateContract), veryLargeBalance);
+        
+        assertEq(mockStETH.balanceOf(address(rateContract)), veryLargeBalance, "MockStETH balance of rateContract not set to very large value");
 
         uint256 yieldFactor = rateContract.getYieldFactor();
         assertTrue(yieldFactor > uspdToken.FACTOR_PRECISION() * 100, "Yield factor should be very high"); // Check it's significantly high
