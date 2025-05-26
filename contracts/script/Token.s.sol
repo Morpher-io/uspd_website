@@ -32,11 +32,9 @@ contract DeployScript is Script {
 
     address oracleSignerAddress = 0x00051CeA64B7aA576421E2b5AC0852f1d7E14Fa5;
 
-    function generateSalt(string memory identifier) internal view returns (bytes32) {
-        bytes32 salt = bytes32(uint256(uint160(deployer)) << 96);
-        bytes32 identifierHash = bytes32(uint256(keccak256(abi.encodePacked(identifier))));
-        // Combine: deployer (20 bytes) + 0x00 (1 byte) + identifier hash (last 11 bytes)
-        return salt | (identifierHash & bytes32(uint256(0x00000000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFF)));
+    function generateSalt(string memory identifier) internal pure returns (bytes32) {
+        // Salt is now derived solely from the identifier string, making it deployer-independent.
+        return keccak256(abi.encodePacked(identifier));
     }
 
     // Define salts for each contract

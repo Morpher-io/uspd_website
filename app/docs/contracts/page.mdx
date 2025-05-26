@@ -20,21 +20,7 @@ Currently, the deployment script (`Token.s.sol`) generates salts that incorporat
 *   **Consistency:** This ensures the official team controls the timing and bytecode integrity of the initial deployment on each supported network.
 *   **Address Variation:** While deterministic for a *given* deployer and configuration, if constructor arguments need to differ between chains (e.g., providing the `StabilizerNFT` address on L1 but `address(0)` on L2), this *will* result in different `init_code` hashes and therefore **different deployed addresses** for the tokens on L1 versus L2s under the current script logic.
 
-This approach prioritizes controlled rollout and security over allowing permissionless deployment by third parties at the canonical address.
-
-## Future Roadmap: Unified Addresses & Open Deployment
-
-A long-term goal is to enable **unified addresses** for the core user-facing contracts (`PoolSharesConversionRate`, `cUSPDToken`, `USPDToken`) across all chains, while allowing **open, permissionless deployment** by the community on new networks.
-
-This potential future strategy involves:
-
-1.  **Deployer-Independent Salts:** Using salts derived only from public identifiers (e.g., `keccak256("USPD_TOKEN_V1")`) for the Rate and Token contracts.
-2.  **Minimal Constructors:** Removing chain-specific arguments (like `_stabilizer`, `_rateContract`, `_stETH`, `_lido`) from the constructors of these three contracts. The constructor would only take arguments guaranteed to be identical everywhere (e.g., `name`, `symbol`, and a hardcoded `_admin` address pointing to the core team multisig or future DAO).
-3.  **Post-Deployment Configuration:** Introducing protected `initialize` / `setConfiguration` functions on these contracts, callable only once by the hardcoded `DEFAULT_ADMIN_ROLE`. After anyone deploys the contract using the public salt, the core team would call these functions to set chain-specific parameters (`isMainchain` flag, `oracle`, `stabilizer`, `stETH`, `lido` addresses).
-4.  **Conditional Logic:** Contracts would use an `isMainchain` flag (set during initialization) or check for non-zero addresses (`stabilizer != address(0)`) to determine their behavior based on the chain type.
-5.  **Bridged Rate Contract:** The `PoolSharesConversionRate` contract on non-mainchain deployments would require a mechanism (e.g., cross-chain messaging integration like LayerZero/Axelar, keeper updates) to fetch or receive the yield factor from the mainnet instance. This remains a significant design consideration.
-
-**Trade-offs:** This future approach achieves unified addresses and open deployment but introduces complexity (two-step deployment on mainnet, reliance on cross-chain data for L2 yield factor) and makes key configuration parameters non-immutable. The current, simpler permissioned approach is prioritized for initial launch stability and control.
+This method is chosen to allow for open and permissionless deployment to consistent addresses, provided the initialization parameters remain the same.
 
 ## Upgradeable Core Logic Contracts (UUPS Proxies)
 
