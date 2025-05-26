@@ -36,21 +36,37 @@ This potential future strategy involves:
 
 **Trade-offs:** This future approach achieves unified addresses and open deployment but introduces complexity (two-step deployment on mainnet, reliance on cross-chain data for L2 yield factor) and makes key configuration parameters non-immutable. The current, simpler permissioned approach is prioritized for initial launch stability and control.
 
-## Upgradeable Core Logic Contracts (Proxies)
+## Upgradeable Core Logic Contracts (UUPS Proxies)
 
-Several core logic contracts, particularly those managing the stabilization mechanism and oracle interactions, are designed to be upgradeable for bug fixes and future enhancements. These utilize the **Transparent Upgradeable Proxy (TUP)** pattern:
+Several core logic contracts, particularly those managing the stabilization mechanism and oracle interactions, are designed to be upgradeable for bug fixes and future enhancements. These now utilize the **UUPS (Universal Upgradeable Proxy Standard)** pattern, typically via `ERC1967Proxy` and OpenZeppelin's `UUPSUpgradeable` contract:
 
 *   `PriceOracle.sol`
 *   `StabilizerNFT.sol`
 *   `OvercollateralizationReporter.sol`
 
-The deployment script (`Token.s.sol`) deploys both the implementation logic contract and a `TransparentUpgradeableProxy` contract pointing to it. User interactions occur with the proxy address, which delegates calls to the current implementation. These proxies are currently deployed using the permissioned (deployer-dependent) CREATE2 salt method.
+The deployment script (`Token.s.sol`) deploys both the implementation logic contract and an `ERC1967Proxy` contract pointing to it. User interactions occur with the proxy address, which delegates calls to the current implementation. These proxies are deployed using the permissioned (deployer-dependent) CREATE2 salt method.
 
-## Proxy Administration & Future Governance
+With UUPS proxies, the upgrade logic resides within the implementation contract itself. Upgrades are initiated by calling an `upgradeTo(newImplementation)` function directly on the proxy, which is then authorized by a specific role (e.g., `UPGRADER_ROLE`) within the implementation. This removes the need for a central `ProxyAdmin` contract for these UUPS-based proxies.
 
-Currently, the upgrades for these proxies are managed by a central `ProxyAdmin` contract, controlled by the core development team (PermissionLess).
+## Phased Role Management & Decentralization Plan
 
-However, the long-term vision is to decentralize control. The plan is to transition the administration of these proxies, along with other critical administrative roles, to a **robust on-chain governance system**. This system is currently under development, and the transition will occur once the core protocol functionality is deemed feature-complete and stable. A specific timeline for this transition cannot be provided at this stage.
+The management of critical administrative roles, such as the `UPGRADER_ROLE` (for contract upgrades) and the `DEFAULT_ADMIN_ROLE` (for general administrative functions like granting other roles), will follow a phased approach towards decentralization:
+
+1.  **Initial Deployment & Test Phase (Hardware Wallet Control):**
+    *   The initial set of smart contracts will be deployed using a hardware wallet (e.g., Trezor or Ledger).
+    *   During an initial testing period, estimated to be 2-4 weeks post-launch, this hardware wallet will retain the `UPGRADER_ROLE` and `DEFAULT_ADMIN_ROLE`. This allows the core team to address any critical bugs or unforeseen issues rapidly.
+
+2.  **Interim Phase (Multisignature Wallet Control):**
+    *   After the initial phase, the `UPGRADER_ROLE` and `DEFAULT_ADMIN_ROLE` will be transferred to a secure multisignature wallet.
+    *   This multisig will initially consist of N=3 hardware wallets held by distinct core team members, requiring N-1 (i.e., 2 out of 3) signatures to authorize an action.
+    *   The number of signers (N) may increase over time to further enhance security.
+    *   This phase is expected to last approximately 3-12 months, depending on the stability of the ecosystem and the frequency of necessary updates or bug fixes.
+
+3.  **Long-Term Phase (DAO Governance):**
+    *   Once the system demonstrates sustained stability and maturity, the `UPGRADER_ROLE` and `DEFAULT_ADMIN_ROLE` will be transferred to a decentralized autonomous organization (DAO).
+    *   The specific implementation details for DAO voting mechanisms are currently under exploration. Considerations include whether voting rights will be tied to collateral provided by stabilizers, a dedicated governance token, or other means of weighted participation for actions such as contract upgrades or role management. The DAO will be built on standardized and audited smart contract architectures.
+
+This phased approach aims to balance initial agility for security and bug fixing with a clear path towards progressive decentralization and community governance.
 
 ## Access Control & Role Management
 
