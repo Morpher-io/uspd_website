@@ -104,7 +104,7 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
         if (block.chainid == MAINNET_CHAIN_ID) {
             uint256 initialBalance = initialStEthBalance;
             if (initialBalance == 0) { // Should not happen due to constructor checks on L1
-                return FACTOR_PRECISION;
+                revert InitialBalanceZero(); // Revert if invariant is broken
             }
             uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
             return (currentBalance * FACTOR_PRECISION) / initialBalance;
