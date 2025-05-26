@@ -38,9 +38,6 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
     // --- Roles ---
     bytes32 public constant YIELD_FACTOR_UPDATER_ROLE = keccak256("YIELD_FACTOR_UPDATER_ROLE");
 
-    // --- Events ---
-    event YieldFactorUpdated(uint256 oldYieldFactor, uint256 newYieldFactor);
-
 
     /**
      * @dev The precision factor used for yield calculations (e.g., 1e18).
