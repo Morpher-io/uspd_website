@@ -320,10 +320,10 @@ contract DeployScript is Script {
             )
         );
 
-        // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
+        // Deploy ERC1967Proxy (UUPS) with CREATE2 using CreateX
         bytes memory bytecode = abi.encodePacked(
-            type(TransparentUpgradeableProxy).creationCode,
-            abi.encode(oracleImplAddress, proxyAdminAddress, initData)
+            type(ERC1967Proxy).creationCode,
+            abi.encode(oracleImplAddress, initData) // Pass implementation and init data to ERC1967Proxy constructor
         );
 
         oracleProxyAddress = createX.deployCreate2{value: 0}(ORACLE_PROXY_SALT, bytecode);
@@ -465,10 +465,10 @@ contract DeployScript is Script {
             )
         );
 
-        // Deploy TransparentUpgradeableProxy with CREATE2 using CreateX
+        // Deploy ERC1967Proxy (UUPS) with CREATE2 using CreateX
         bytes memory bytecode = abi.encodePacked(
-            type(TransparentUpgradeableProxy).creationCode,
-            abi.encode(reporterImplAddress, proxyAdminAddress, initData)
+            type(ERC1967Proxy).creationCode,
+            abi.encode(reporterImplAddress, initData) // Pass implementation and init data to ERC1967Proxy constructor
         );
 
         reporterAddress = createX.deployCreate2{value: 0}(REPORTER_SALT, bytecode);

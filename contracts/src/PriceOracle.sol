@@ -5,7 +5,8 @@ import "./interfaces/IPriceOracle.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol"; // <-- Add UUPSUpgradeable
+import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/cryptography/ECDSA.sol";
 
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
@@ -29,10 +30,12 @@ contract PriceOracle is
     IPriceOracle,
     Initializable,
     PausableUpgradeable,
-    AccessControlUpgradeable
+    AccessControlUpgradeable,
+    UUPSUpgradeable // <-- Add UUPSUpgradeable inheritance
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant SIGNER_ROLE = keccak256("SIGNER_ROLE");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
     uint256 public constant PRICE_PRECISION = 1e18;
     uint256 public maxDeviationPercentage = 500; // 5% = 500 basis points
 
@@ -80,8 +83,10 @@ contract PriceOracle is
     ) public initializer {
         __Pausable_init();
         __AccessControl_init();
+        __UUPSUpgradeable_init(); // <-- Initialize UUPSUpgradeable
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(UPGRADER_ROLE, _admin); // <-- Grant UPGRADER_ROLE to initial admin
 
         config.maxPriceDeviation = _maxPriceDeviation;
         config.priceStalenessPeriod = _priceStalenessPeriod;
@@ -93,8 +98,20 @@ contract PriceOracle is
 
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(AccessControlUpgradeable) returns (bool) {
+    ) public view override(AccessControlUpgradeable, UUPSUpgradeable) returns (bool) { // <-- Add UUPSUpgradeable
         return super.supportsInterface(interfaceId);
+    }
+
+    /**
+     * @dev Authorizes an upgrade to a new implementation contract.
+     *      Only callable by an address with the UPGRADER_ROLE.
+     */
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(UPGRADER_ROLE)
+    {
+        // Intentional empty body: AccessControlUpgradeable's onlyRole modifier handles authorization.
     }
 
     function getUniswapV3WethUsdcPrice() public view returns (uint) {

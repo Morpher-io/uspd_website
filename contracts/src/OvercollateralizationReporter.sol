@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol"; // <-- Add UUPSUpgradeable
 import "./interfaces/IOvercollateralizationReporter.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
 import "./interfaces/IcUSPDToken.sol";
@@ -13,7 +14,7 @@ import "./interfaces/IPriceOracle.sol"; // Needed for PriceResponse struct
  * @notice Tracks the global collateral snapshot for the USPD system and calculates the system ratio.
  * @dev Receives updates from the StabilizerNFT contract.
  */
-contract OvercollateralizationReporter is Initializable, AccessControlUpgradeable, IOvercollateralizationReporter {
+contract OvercollateralizationReporter is Initializable, AccessControlUpgradeable, UUPSUpgradeable, IOvercollateralizationReporter { // <-- Add UUPSUpgradeable
     // --- State Variables ---
     uint256 public override totalEthEquivalentAtLastSnapshot;
     uint256 public override yieldFactorAtLastSnapshot;
@@ -26,6 +27,7 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
 
     // --- Roles ---
     bytes32 public constant UPDATER_ROLE = keccak256("UPDATER_ROLE"); // StabilizerNFT contract
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -46,6 +48,7 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
         address _cuspdToken
     ) public initializer {
         __AccessControl_init();
+        __UUPSUpgradeable_init(); // <-- Initialize UUPSUpgradeable
 
         require(_admin != address(0), "Reporter: Zero admin address");
         require(_stabilizerNFTContract != address(0), "Reporter: Zero StabilizerNFT address");
@@ -54,6 +57,7 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(UPDATER_ROLE, _stabilizerNFTContract);
+        _grantRole(UPGRADER_ROLE, _admin); // <-- Grant UPGRADER_ROLE to initial admin
 
         stabilizerNFTContract = _stabilizerNFTContract;
         rateContract = IPoolSharesConversionRate(_rateContract);
@@ -221,6 +225,27 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
      * @dev See {IERC165-supportsInterface}.
      */
     // function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, IAccessControlUpgradeable) returns (bool) {
+    //     return interfaceId == type(IOvercollateralizationReporter).interfaceId || super.supportsInterface(interfaceId);
+    // }
+
+    /**
+     * @dev Authorizes an upgrade to a new implementation contract.
+     *      Only callable by an address with the UPGRADER_ROLE.
+     */
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(UPGRADER_ROLE)
+    {
+        // Intentional empty body: AccessControlUpgradeable's onlyRole modifier handles authorization.
+    }
+
+    // supportsInterface is already provided by AccessControlUpgradeable and UUPSUpgradeable will be included
+    // by inheriting it. If IOvercollateralizationReporter itself inherited IAccessControlUpgradeable,
+    // then the explicit override for supportsInterface might be needed as shown commented out.
+    // For now, relying on OpenZeppelin's default handling.
+    // If a specific override is needed due to multiple inheritance paths of supportsInterface:
+    // function supportsInterface(bytes4 interfaceId) public view override(AccessControlUpgradeable, UUPSUpgradeable) returns (bool) {
     //     return interfaceId == type(IOvercollateralizationReporter).interfaceId || super.supportsInterface(interfaceId);
     // }
 }

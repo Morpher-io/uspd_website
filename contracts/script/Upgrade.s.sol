@@ -100,19 +100,34 @@ contract UpgradeScript is Script {
         StabilizerNFT newStabilizerImpl = new StabilizerNFT();
         newStabilizerImplAddress = address(newStabilizerImpl);
 
+        // Deploy new OvercollateralizationReporter implementation with regular CREATE
+        OvercollateralizationReporter newReporterImpl = new OvercollateralizationReporter();
+        address newReporterImplAddressLocal = address(newReporterImpl); // Local var to avoid state var conflict if run multiple times
+
         console2.log("New implementations deployed:");
         console2.log("- PriceOracle:", newOracleImplAddress);
         // console2.log("- UspdCollateralizedPositionNFT:", newPositionNFTImplAddress); // Removed
         console2.log("- StabilizerNFT:", newStabilizerImplAddress);
+        console2.log("- OvercollateralizationReporter:", newReporterImplAddressLocal);
+
+        // Save the new reporter implementation address to the JSON for the upgradeProxies function to read
+        // This assumes a temporary key, or you might pass it directly.
+        // For simplicity, let's assume it's written to a known temporary key or the final key if no re-read.
+        // If updateDeploymentInfo is called last, it will overwrite.
+        // A better pattern might be to deploy all, then upgrade all, then save all.
+        // For now, saving it to a temporary key for upgradeProxies to pick up.
+        vm.writeJson(vm.toString(newReporterImplAddressLocal), deploymentPath, ".contracts.reporterImpl_new");
     }
     
     function upgradeProxies() internal {
-        // Assuming PriceOracle might still be a Transparent Proxy managed by ProxyAdmin
-        // If PriceOracle is also UUPS, its upgrade logic would change similarly to StabilizerNFT.
+        // Upgrade PriceOracle (UUPS)
+        // The caller (deployer/msg.sender of this script) must have UPGRADER_ROLE on PriceOracle
         if (oracleProxyAddress != address(0) && newOracleImplAddress != address(0)) {
-            ProxyAdmin proxyAdmin = ProxyAdmin(proxyAdminAddress);
-            proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(oracleProxyAddress), newOracleImplAddress, "");
-            console2.log("PriceOracle upgraded successfully (assuming Transparent Proxy)");
+            console2.log("Upgrading PriceOracle (UUPS) to new implementation:", newOracleImplAddress);
+            PriceOracle(payable(oracleProxyAddress)).upgradeTo(newOracleImplAddress);
+            // If upgradeToAndCall is needed:
+            // PriceOracle(payable(oracleProxyAddress)).upgradeToAndCall(newOracleImplAddress, abi.encodeWithSignature("someReinitializeFunction()"));
+            console2.log("PriceOracle (UUPS) upgraded successfully");
         }
 
 
@@ -126,6 +141,20 @@ contract UpgradeScript is Script {
             // If upgradeToAndCall is needed:
             // StabilizerNFT(payable(stabilizerProxyAddress)).upgradeToAndCall(newStabilizerImplAddress, abi.encodeWithSignature("someReinitializeFunction()"));
             console2.log("StabilizerNFT (UUPS) upgraded successfully");
+        }
+
+        // Upgrade OvercollateralizationReporter (UUPS)
+        // The caller (deployer/msg.sender of this script) must have UPGRADER_ROLE on OvercollateralizationReporter
+        // Assuming reporterAddress is the proxy address for OvercollateralizationReporter
+        address reporterProxyAddress = vm.parseJsonAddress(vm.readFile(deploymentPath), ".contracts.reporter");
+        address newReporterImplAddress = vm.parseJsonAddress(vm.readFile(deploymentPath), ".contracts.reporterImpl_new"); // Assuming new impl is saved like this
+
+        if (reporterProxyAddress != address(0) && newReporterImplAddress != address(0)) {
+            console2.log("Upgrading OvercollateralizationReporter (UUPS) to new implementation:", newReporterImplAddress);
+            OvercollateralizationReporter(payable(reporterProxyAddress)).upgradeTo(newReporterImplAddress);
+            // If upgradeToAndCall is needed:
+            // OvercollateralizationReporter(payable(reporterProxyAddress)).upgradeToAndCall(newReporterImplAddress, abi.encodeWithSignature("someReinitializeFunction()"));
+            console2.log("OvercollateralizationReporter (UUPS) upgraded successfully");
         }
     }
     
@@ -144,6 +173,16 @@ contract UpgradeScript is Script {
         vm.writeJson(vm.toString(newOracleImplAddress), deploymentPath, ".contracts.oracleImpl");
         // vm.writeJson(vm.toString(newPositionNFTImplAddress), deploymentPath, ".contracts.positionNFTImpl"); // Removed
         vm.writeJson(vm.toString(newStabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
+        // Assuming newReporterImplAddress was deployed and its address is available
+        // If newReporterImplAddress was a local variable in deployNewImplementations, it needs to be re-read or passed.
+        // For this example, let's assume it's correctly fetched or already a state var if needed by other parts.
+        // The current structure writes it to .contracts.reporterImpl_new, then upgradeProxies reads it.
+        // After upgrade, we update the main .contracts.reporterImpl
+        address finalNewReporterImpl = vm.parseJsonAddress(vm.readFile(deploymentPath), ".contracts.reporterImpl_new");
+        vm.writeJson(vm.toString(finalNewReporterImpl), deploymentPath, ".contracts.reporterImpl");
+        // Clean up the temporary key
+        vm.removeFile(string.concat(deploymentPath, ".contracts.reporterImpl_new"));
+
 
         // Add upgrade metadata
         vm.writeJson(vm.toString(block.timestamp), deploymentPath, ".upgrades.lastUpgradeTimestamp");
