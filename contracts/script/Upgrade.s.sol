@@ -3,12 +3,13 @@ pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ITransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol"; // Keep if other TUPs exist
+// import {ITransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol"; // Not needed if all are UUPS or direct call
+import {IERC1967} from "../lib/openzeppelin-contracts/contracts/interfaces/IERC1967.sol"; // For UUPS upgradeTo
 import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 
 import "../src/PriceOracle.sol";
-import "../src/StabilizerNFT.sol";
+import "../src/StabilizerNFT.sol"; // For casting to call upgradeTo
 // Removed UspdCollateralizedPositionNFT import
 
 contract UpgradeScript is Script {
@@ -106,19 +107,26 @@ contract UpgradeScript is Script {
     }
     
     function upgradeProxies() internal {
-        ProxyAdmin proxyAdmin = ProxyAdmin(proxyAdminAddress);
-        
-        // Upgrade PriceOracle - no initialization data needed for upgrade
-        // If we were changing the initialize function signature, we would need to include initialization data
-        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(oracleProxyAddress), newOracleImplAddress, "");
-        console2.log("PriceOracle upgraded successfully");
+        // Assuming PriceOracle might still be a Transparent Proxy managed by ProxyAdmin
+        // If PriceOracle is also UUPS, its upgrade logic would change similarly to StabilizerNFT.
+        if (oracleProxyAddress != address(0) && newOracleImplAddress != address(0)) {
+            ProxyAdmin proxyAdmin = ProxyAdmin(proxyAdminAddress);
+            proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(oracleProxyAddress), newOracleImplAddress, "");
+            console2.log("PriceOracle upgraded successfully (assuming Transparent Proxy)");
+        }
+
 
         // Upgrade UspdCollateralizedPositionNFT removed
 
-        // Upgrade StabilizerNFT - no initialization data needed for upgrade
-        // If we were changing the initialize function signature, we would need to include initialization data
-        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(stabilizerProxyAddress), newStabilizerImplAddress, "");
-        console2.log("StabilizerNFT upgraded successfully");
+        // Upgrade StabilizerNFT (UUPS)
+        // The caller (deployer/msg.sender of this script) must have UPGRADER_ROLE on StabilizerNFT
+        if (stabilizerProxyAddress != address(0) && newStabilizerImplAddress != address(0)) {
+            console2.log("Upgrading StabilizerNFT (UUPS) to new implementation:", newStabilizerImplAddress);
+            StabilizerNFT(payable(stabilizerProxyAddress)).upgradeTo(newStabilizerImplAddress);
+            // If upgradeToAndCall is needed:
+            // StabilizerNFT(payable(stabilizerProxyAddress)).upgradeToAndCall(newStabilizerImplAddress, abi.encodeWithSignature("someReinitializeFunction()"));
+            console2.log("StabilizerNFT (UUPS) upgraded successfully");
+        }
     }
     
     function updateDeploymentInfo() internal {

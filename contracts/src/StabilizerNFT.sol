@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
 import {ERC721EnumerableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-
+import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol"; // <-- Add UUPSUpgradeable import
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "./UspdToken.sol"; // Keep for view layer reference if needed (e.g., for ratio calc)
@@ -27,12 +27,14 @@ contract StabilizerNFT is
     Initializable,
     ERC721Upgradeable,
     ERC721EnumerableUpgradeable,
-    AccessControlUpgradeable
+    AccessControlUpgradeable,
+    UUPSUpgradeable // <-- Add UUPSUpgradeable inheritance
 {
     // --- Constants ---
     uint256 public constant FACTOR_PRECISION = 1e18;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
     uint256 public constant MIN_GAS = 100000;
 
     struct StabilizerPosition {
@@ -148,8 +150,10 @@ contract StabilizerNFT is
         __ERC721_init("USPD Stabilizer", "USPDS");
         __ERC721Enumerable_init();
         __AccessControl_init();
+        __UUPSUpgradeable_init(); // <-- Initialize UUPSUpgradeable
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(UPGRADER_ROLE, _admin); // <-- Grant UPGRADER_ROLE to initial admin
         cuspdToken = IcUSPDToken(_cuspdToken);
         stETH = _stETH;
         lido = _lido;
@@ -1010,10 +1014,23 @@ contract StabilizerNFT is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable, AccessControlUpgradeable)
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable, AccessControlUpgradeable, UUPSUpgradeable) // <-- Add UUPSUpgradeable
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    /**
+     * @dev Authorizes an upgrade to a new implementation contract.
+     *      Only callable by an address with the UPGRADER_ROLE.
+     */
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(UPGRADER_ROLE) // <-- Use UPGRADER_ROLE
+    {
+        // Intentional empty body: AccessControlUpgradeable's onlyRole modifier handles authorization.
+        // Additional checks for the newImplementation address can be added here if needed.
     }
 
     // --- Admin Collateral Reset (REMOVED - Moved to Reporter) ---

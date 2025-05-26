@@ -3,7 +3,8 @@ pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol"; // Keep for other proxies
+import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol"; // <-- Add ERC1967Proxy
 import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 
@@ -233,11 +234,19 @@ contract DeployScript is Script {
     }
 
     // --- Helper: Deploy Proxy without Init Data ---
-    function deployProxy_NoInit(bytes32 salt, address implementationAddress) internal returns (address proxyAddress) {
-         bytes memory bytecode = abi.encodePacked(
-            type(TransparentUpgradeableProxy).creationCode,
-            abi.encode(implementationAddress, proxyAdminAddress, bytes("")) // Empty init data
-        );
+    function deployProxy_NoInit(bytes32 salt, address implementationAddress, bool isUUPS) internal returns (address proxyAddress) {
+        bytes memory bytecode;
+        if (isUUPS) {
+            bytecode = abi.encodePacked(
+                type(ERC1967Proxy).creationCode,
+                abi.encode(implementationAddress, bytes("")) // Empty init data for UUPS, init called separately
+            );
+        } else {
+            bytecode = abi.encodePacked(
+                type(TransparentUpgradeableProxy).creationCode,
+                abi.encode(implementationAddress, proxyAdminAddress, bytes("")) // Empty init data
+            );
+        }
         proxyAddress = createX.deployCreate2{value: 0}(salt, bytecode);
     }
 
@@ -469,11 +478,12 @@ contract DeployScript is Script {
 
     // Deploy StabilizerNFT Proxy without initializing
     function deployStabilizerNFTProxy_NoInit() internal {
-        console2.log("Deploying StabilizerNFT proxy (no init)...");
+        console2.log("Deploying StabilizerNFT UUPS proxy (no init)...");
         require(stabilizerImplAddress != address(0), "StabilizerNFT implementation not deployed");
-        stabilizerProxyAddress = deployProxy_NoInit(STABILIZER_PROXY_SALT, stabilizerImplAddress);
+        // Deploy as UUPS proxy
+        stabilizerProxyAddress = deployProxy_NoInit(STABILIZER_PROXY_SALT, stabilizerImplAddress, true);
         console2.log(
-            "StabilizerNFT proxy (uninitialized) deployed at:",
+            "StabilizerNFT UUPS proxy (uninitialized) deployed at:",
             stabilizerProxyAddress
         );
     }
@@ -568,7 +578,12 @@ contract DeployScript is Script {
         // Grant roles to the StabilizerNFT
         console2.log("Granting StabilizerNFT roles...");
         StabilizerNFT stabilizer = StabilizerNFT(payable(stabilizerProxyAddress));
-        stabilizer.grantRole(stabilizer.MINTER_ROLE(), deployer);
+        // MINTER_ROLE is typically granted to specific contracts/addresses that need to mint NFTs,
+        // not necessarily the deployer by default unless the deployer performs initial mints.
+        // The UPGRADER_ROLE is granted to the deployer (admin) during StabilizerNFT.initialize().
+        // If deployer needs to mint directly post-deployment for setup, grant MINTER_ROLE here:
+        // stabilizer.grantRole(stabilizer.MINTER_ROLE(), deployer);
+
 
         // Grant roles to the cUSPDToken
         console2.log("Granting cUSPDToken roles...");
