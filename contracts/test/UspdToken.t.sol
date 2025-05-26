@@ -109,6 +109,9 @@ contract USPDTokenTest is Test {
     }
 
     function setUp() public {
+        // Ensure tests run in L1 context for PoolSharesConversionRate L1 logic
+        vm.chainId(PoolSharesConversionRate.MAINNET_CHAIN_ID);
+
         // Setup signer for price attestations
         signerPrivateKey = 0xa11ce;
         signer = vm.addr(signerPrivateKey);
