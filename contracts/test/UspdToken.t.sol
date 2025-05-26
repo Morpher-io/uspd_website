@@ -399,9 +399,10 @@ contract USPDTokenTest is Test {
 
     // Helper function to make rateContract.getYieldFactor() return 0
     function _setYieldFactorZero() private {
-        // Get the storage slot for the _balances mapping entry for rateContract in MockStETH (which is an ERC20)
-        // ERC20._balances is at slot 0.
-        bytes32 keyHash = keccak256(abi.encode(address(rateContract), uint256(0))); // key, mapping_slot_itself
+        // Get the storage slot for the _balances mapping entry for rateContract in MockStETH.
+        // Assuming MockStETH declares _holders (slot 0) and _holderIndex (slot 1) before ERC20's _balances (slot 2).
+        bytes32 balancesMappingSlot = bytes32(uint256(2));
+        bytes32 keyHash = keccak256(abi.encode(address(rateContract), balancesMappingSlot));
         
         vm.store(address(mockStETH), keyHash, bytes32(uint256(0)));
         assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test setup");
@@ -420,9 +421,10 @@ contract USPDTokenTest is Test {
         // currentBalance * 1e3 > 1e18
         // currentBalance > 1e15
         // Let's set currentBalance to something like 1e18 * 1e18 to ensure yieldFactor is huge.
-        // Get the storage slot for the _balances mapping entry for rateContract in MockStETH (which is an ERC20)
-        // ERC20._balances is at slot 0.
-        bytes32 keyHash = keccak256(abi.encode(address(rateContract), uint256(0))); // key, mapping_slot_itself
+        // Get the storage slot for the _balances mapping entry for rateContract in MockStETH.
+        // Assuming MockStETH declares _holders (slot 0) and _holderIndex (slot 1) before ERC20's _balances (slot 2).
+        bytes32 balancesMappingSlot = bytes32(uint256(2));
+        bytes32 keyHash = keccak256(abi.encode(address(rateContract), balancesMappingSlot));
 
         // Set a very large balance for rateContract in mockStETH
         vm.store(address(mockStETH), keyHash, bytes32(uint256(1e18 * 1e18))); // Extremely large balance
