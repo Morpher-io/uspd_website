@@ -433,8 +433,8 @@ contract USPDTokenTest is Test {
 
         // Set a very large balance for rateContract in mockStETH
         uint256 veryLargeBalance = 1e18 * 1e18; // Extremely large balance
-        vm.prank(address(this)); // 'this' is the owner of MockStETH
-        mockStETH.adminMint(address(rateContract), veryLargeBalance);
+        vm.prank(address(this)); // 'this' can be considered the "minter" in this test context
+        mockStETH.mint(address(rateContract), veryLargeBalance); // Use public mint
         
         assertEq(mockStETH.balanceOf(address(rateContract)), veryLargeBalance, "MockStETH balance of rateContract not set to very large value");
 
