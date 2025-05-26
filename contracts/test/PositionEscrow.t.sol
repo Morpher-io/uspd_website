@@ -89,7 +89,7 @@ contract PositionEscrowTest is
         vm.deal(admin, INITIAL_RATE_DEPOSIT);
         rateContract = new PoolSharesConversionRate{
             value: INITIAL_RATE_DEPOSIT
-        }(address(mockStETH), address(mockLido));
+        }(address(mockStETH), address(mockLido), address(this));
 
         // Deploy PositionEscrow Implementation
         PositionEscrow escrowImpl = new PositionEscrow();
@@ -188,7 +188,7 @@ contract PositionEscrowTest is
     // =============================================
 
     // Test the state set by initialize in setUp
-    function testInitialize() public {
+    function testInitialize() public view {
         // Assert state set by initialize (called via proxy in setUp)
         assertEq(positionEscrow.stabilizerNFTContract(), admin);
         assertEq(positionEscrow.stETH(), address(mockStETH));
@@ -630,8 +630,8 @@ contract PositionEscrowTest is
     function test_removeCollateral_success() public {
         uint256 initialBalance = 2 ether;
         uint256 totalToRemove = 1 ether;
-        uint256 userShare = 0.4 ether;
-        uint256 stabilizerShare = totalToRemove - userShare; // 0.6 ether
+        // uint256 userShare = 0.4 ether;
+        // uint256 stabilizerShare = totalToRemove - userShare; // 0.6 ether
 
         // Fund escrow
         mockStETH.mint(address(positionEscrow), initialBalance);
@@ -679,7 +679,7 @@ contract PositionEscrowTest is
     function test_removeCollateral_revert_insufficientBalance() public {
         uint256 initialBalance = 0.5 ether;
         uint256 totalToRemove = 1 ether;
-        uint256 userShare = 0.4 ether;
+        // uint256 userShare = 0.4 ether;
 
         // Fund escrow
         mockStETH.mint(address(positionEscrow), initialBalance);
