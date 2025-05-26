@@ -121,16 +121,18 @@ contract PositionEscrowTest is
     function reportCollateralAddition(
         uint256 /* stEthAmount */
     ) external override {
-        // Dummy implementation - does nothing, just prevents revert
+        // Mock implementation for IStabilizerNFT interface.
+        // PositionEscrow calls this; for these tests, we don't need to check specific side-effects within this mock.
     }
 
     function reportCollateralRemoval(
         uint256 /* stEthAmount */
     ) external override {
-        // Dummy implementation - does nothing, just prevents revert
+        // Mock implementation for IStabilizerNFT interface.
+        // PositionEscrow calls this; for these tests, we don't need to check specific side-effects within this mock.
     }
 
-    // Dummy implementations for other IStabilizerNFT functions (not used in these tests)
+    // Dummy implementations for other IStabilizerNFT functions (not called by PositionEscrow directly)
     function allocateStabilizerFunds(
         uint256 /* ethUsdPrice */,
         uint256 /* priceDecimals */
