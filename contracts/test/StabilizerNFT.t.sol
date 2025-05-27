@@ -1224,14 +1224,14 @@ contract StabilizerNFTTest is Test {
         // This ratio (108%) should be < default liquidation threshold (110%)
         // And initialCollateralInPosition should be > expected payout to liquidator (105% of par at new price)
         // uint256 initialSharesUSDValue = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
-        uint256 targetRatioForLiquidation = 10800; // 108%
+        // uint256 targetRatioForLiquidation = 10800; // Inlined: 108%
 
-        uint256 calculatedPriceForLiquidationTest = ((targetRatioForLiquidation * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
+        uint256 calculatedPriceForLiquidationTest = ((10800 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(calculatedPriceForLiquidationTest, block.timestamp);
 
         assertEq(positionEscrow.getCollateralizationRatio(
             IPriceOracle.PriceResponse(calculatedPriceForLiquidationTest, 18, block.timestamp * 1000)
-        ), targetRatioForLiquidation, "Collateral ratio not 108% with new price");
+        ), 10800, "Collateral ratio not 108% with new price"); // Inlined 10800
 
         // --- Calculate Expected Payout and Remainder ---
         // stETH Par Value at the new, lower price for all shares
