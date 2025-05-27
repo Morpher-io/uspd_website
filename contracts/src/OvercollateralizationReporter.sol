@@ -116,7 +116,7 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
     /**
      * @notice Calculates the approximate current system-wide collateralization ratio.
      * @param priceResponse The current valid price response for stETH/USD.
-     * @return ratio The ratio (scaled by 100, e.g., 110 means 110%). Returns type(uint256).max if liability is zero.
+     * @return ratio The ratio (scaled by 10000, e.g., 11000 means 110.00%). Returns type(uint256).max if liability is zero.
      */
     function getSystemCollateralizationRatio(IPriceOracle.PriceResponse memory priceResponse) external view override returns (uint256 ratio) {
         // Calculate liability based on cUSPD shares and current yield factor
@@ -153,8 +153,8 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
         require(priceResponse.price > 0, "Reporter: Oracle price cannot be zero");
         uint256 estimatedCollateralValueUSD = (estimatedCurrentCollateralStEth * priceResponse.price) / 1e18;
 
-        // Calculate ratio = (Collateral Value / Liability Value) * 100
-        ratio = (estimatedCollateralValueUSD * 100) / liabilityValueUSD;
+        // Calculate ratio = (Collateral Value / Liability Value) * 10000
+        ratio = (estimatedCollateralValueUSD * 10000) / liabilityValueUSD;
 
         return ratio;
     }
