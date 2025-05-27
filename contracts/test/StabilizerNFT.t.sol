@@ -1120,16 +1120,16 @@ contract StabilizerNFTTest is Test {
 
         // --- Simulate ETH Price Drop to achieve 105% Collateral Ratio for the Target Position ---
         uint256 initialSharesUSDValue = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
-        uint256 targetRatioScaledForLiquidation = 10500; // 105% (below default 110% threshold)
+        // uint256 targetRatioScaledForLiquidation = 10500; // Inlined: 105% (below default 110% threshold)
 
-        // newPrice = (targetRatioScaled * initialSharesUSDValue) / (initialCollateral * 10000)
-        uint256 priceForLiquidationTest = ((targetRatioScaledForLiquidation * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
+        // newPrice = (10500 * initialSharesUSDValue) / (initialCollateral * 10000)
+        uint256 priceForLiquidationTest = ((10500 * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
 
         // Verify the new ratio is indeed 105% with the new price
         assertEq(positionEscrow.getCollateralizationRatio(
             IPriceOracle.PriceResponse(priceForLiquidationTest, 18, block.timestamp * 1000)
-        ), targetRatioScaledForLiquidation, "Collateral ratio not 105% with new price");
+        ), 10500, "Collateral ratio not 105% with new price"); // Inlined 10500
         assertEq(positionEscrow.getCurrentStEthBalance(), initialCollateralInPosition, "PositionEscrow stETH balance should be unchanged by price drop simulation");
 
         // --- Calculate Expected Payout based on priceForLiquidationTest ---
