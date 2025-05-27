@@ -1310,9 +1310,9 @@ contract StabilizerNFTTest is Test {
         assertEq(positionEscrow.getCurrentStEthBalance(), 0.8 ether, "Collateral in PositionEscrow not set correctly after manual reduction");
 
         // --- Fund InsuranceEscrow ---
-        uint256 insuranceFundAmount = 0.5 ether; // Enough to cover expected shortfall
-        mockStETH.mint(address(insuranceEscrow), insuranceFundAmount);
-        assertEq(insuranceEscrow.getStEthBalance(), insuranceFundAmount, "InsuranceEscrow initial funding failed");
+        // uint256 insuranceFundAmount = 0.5 ether; // Inlined: Enough to cover expected shortfall
+        mockStETH.mint(address(insuranceEscrow), 0.5 ether);
+        assertEq(insuranceEscrow.getStEthBalance(), 0.5 ether, "InsuranceEscrow initial funding failed");
 
         // // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
         // uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(user3);
@@ -1344,7 +1344,7 @@ contract StabilizerNFTTest is Test {
 
         uint256 expectedStEthFromPosition = 0.8 ether; // Inlined: Position pays all it has (collateralActuallyInEscrow)
         uint256 expectedShortfall = targetTotalPayoutToLiquidator - expectedStEthFromPosition;
-        require(insuranceFundAmount >= expectedShortfall, "Test setup: Insurance not funded enough for the calculated shortfall");
+        require(0.5 ether >= expectedShortfall, "Test setup: Insurance not funded enough for the calculated shortfall"); // Inlined insuranceFundAmount
         uint256 expectedStEthFromInsurance = expectedShortfall; // Insurance covers the full shortfall
 
         // --- Temporarily increase maxPriceDeviation in PriceOracle ---
