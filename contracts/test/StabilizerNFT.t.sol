@@ -1150,7 +1150,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(owner);
         priceOracle.setMaxDeviationPercentage(100000); // Set to 1000%
 
-{
+
         // --- Action: Liquidate ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
