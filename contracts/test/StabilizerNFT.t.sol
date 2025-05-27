@@ -42,6 +42,7 @@ contract StabilizerNFTTest is Test {
     address public owner;
     address public user1;
     address public user2;
+    address public user3; // New user for owning the backing stabilizer
     uint256 internal signerPrivateKey;
     address internal signer;
 
@@ -1857,11 +1858,11 @@ contract StabilizerNFTTest is Test {
         uint256 initialShares = positionEscrow.backedPoolShares(); // These are the shares user1 effectively "owes"
 
         // --- Setup a separate stabilizer to back the liquidator's shares ---#
-        uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(owner); // Owner owns this backing stabilizer
-        vm.deal(owner, 2 ether); // Fund owner for this stabilizer
-        vm.prank(owner);
+        uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(user3); // Mint to user3
+        vm.deal(user3, 2 ether); // Fund user3 for this stabilizer
+        vm.prank(user3);
         stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(liquidatorBackingStabilizerId);
-        vm.prank(owner);
+        vm.prank(user3);
         stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 11000); // Standard ratio
 
         // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
