@@ -1856,7 +1856,7 @@ contract StabilizerNFTTest is Test {
         uint256 initialCollateral = positionEscrow.getCurrentStEthBalance();
         uint256 initialShares = positionEscrow.backedPoolShares(); // These are the shares user1 effectively "owes"
 
-        // --- Setup a separate stabilizer to back the liquidator's shares ---
+        // --- Setup a separate stabilizer to back the liquidator's shares ---#
         uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(owner); // Owner owns this backing stabilizer
         vm.deal(owner, 2 ether); // Fund owner for this stabilizer
         vm.prank(owner);
