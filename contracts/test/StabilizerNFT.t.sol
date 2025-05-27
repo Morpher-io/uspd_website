@@ -1106,16 +1106,16 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12000); // 120% ratio
 
         // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
-        uint256 sharesToLiquidate = initialSharesInPosition; // Liquidator will attempt to liquidate all shares
+        // uint256 sharesToLiquidate = initialSharesInPosition; // Inlined: Liquidator will attempt to liquidate all shares
 
-        // ETH needed for user2 to mint 'sharesToLiquidate' (1 ETH worth at 2000 price)
-        vm.deal(user2, ((sharesToLiquidate * 1 ether) / (2000 ether)) + 0.1 ether); // Deal ETH for minting + gas
+        // ETH needed for user2 to mint 'initialSharesInPosition' (1 ETH worth at 2000 price)
+        vm.deal(user2, ((initialSharesInPosition * 1 ether) / (2000 ether)) + 0.1 ether); // Deal ETH for minting + gas
         vm.prank(user2); // user2 mints their own cUSPD
-        cuspdToken.mintShares{value: ((sharesToLiquidate * 1 ether) / (2000 ether))}(user2, priceQueryOriginal); // Assumes yield factor 1 for the 2000 price
-        // Now user2 has 'sharesToLiquidate' cUSPD, backed by liquidatorBackingStabilizerId
+        cuspdToken.mintShares{value: ((initialSharesInPosition * 1 ether) / (2000 ether))}(user2, priceQueryOriginal); // Assumes yield factor 1 for the 2000 price
+        // Now user2 has 'initialSharesInPosition' cUSPD, backed by liquidatorBackingStabilizerId
 
         vm.startPrank(user2);
-        cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate); // user2 approves StabilizerNFT
+        cuspdToken.approve(address(stabilizerNFT), initialSharesInPosition); // user2 approves StabilizerNFT
         vm.stopPrank();
 
         // --- Simulate ETH Price Drop to achieve 105% Collateral Ratio for the Target Position ---
@@ -1159,10 +1159,10 @@ contract StabilizerNFTTest is Test {
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
         // Liquidator uses tokenId 0 (default threshold), which is 11000. Position is at 10500.
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, 0, sharesToLiquidate, calculatedExpectedPayout, calculatedPriceForLiquidationTest, 11000);
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, 0, initialSharesInPosition, calculatedExpectedPayout, calculatedPriceForLiquidationTest, 11000);
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, sharesToLiquidate, priceQueryLiquidation);
+        stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
 
         // --- Reset maxPriceDeviation in PriceOracle ---
         vm.prank(owner);
@@ -1173,7 +1173,7 @@ contract StabilizerNFTTest is Test {
         // After liquidation, the position escrow should have paid out `calculatedExpectedPayout`.
         // Since we set up the collateral to be almost exactly `calculatedExpectedPayout`, the remainder should be close to 0.
         assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - calculatedExpectedPayout, 1, "PositionEscrow balance mismatch");
-        assertEq(positionEscrow.backedPoolShares(), initialSharesInPosition - sharesToLiquidate, "PositionEscrow shares mismatch"); // Should be 0 if all shares liquidated
+        assertEq(positionEscrow.backedPoolShares(), initialSharesInPosition - initialSharesInPosition, "PositionEscrow shares mismatch"); // Should be 0 if all shares liquidated
         assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator should have 0 cUSPD left");
         assertEq(cuspdToken.balanceOf(address(stabilizerNFT)), 0, "StabilizerNFT should have burned cUSPD");
         assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore, "Insurance balance should be unchanged"); // No remainder expected
