@@ -6,7 +6,7 @@ import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgrad
 import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol"; // <-- Add UUPSUpgradeable
-import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/cryptography/ECDSA.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
@@ -31,7 +31,7 @@ contract PriceOracle is
     Initializable,
     PausableUpgradeable,
     AccessControlUpgradeable,
-    UUPSUpgradeable // <-- Add UUPSUpgradeable inheritance
+    UUPSUpgradeable 
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant SIGNER_ROLE = keccak256("SIGNER_ROLE");
@@ -98,7 +98,7 @@ contract PriceOracle is
 
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(AccessControlUpgradeable, UUPSUpgradeable) returns (bool) { // <-- Add UUPSUpgradeable
+    ) public view override(AccessControlUpgradeable) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 
