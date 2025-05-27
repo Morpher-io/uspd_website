@@ -341,69 +341,62 @@ contract StabilizerNFT is
         // Burn the transferred shares - Requires StabilizerNFT to have BURNER_ROLE on cUSPDToken
         cuspdToken.burn(cuspdSharesToLiquidate);
 
-        // 7. Calculate Payouts (in stETH) and Actual Backing Collateral
-        //    IMPORTANT: Calculate currentRatio for actualBackingStEth *before* modifying allocation.
-        uint256 currentRatioForPayoutCalc = positionEscrow.getCollateralizationRatio(priceResponse);
+        // 6. Update PositionEscrow's backed shares.
+        // IMPORTANT: Payout calculations (step 7 & 8) must use the collateral ratio *before* this modification.
+        // `positionCollateralRatio` (calculated earlier) holds this pre-modification ratio.
+        positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate));
 
-        // 6. Update PositionEscrow's backed shares (Done AFTER getting the ratio for payout calc)
-        positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate)); // Use input shares amount
-
-        // uint256 currentYieldFactor = rateContract.getYieldFactor(); //inlined
-        require(rateContract.getYieldFactor() > 0, "Invalid yield factor");
-
-        // Calculate stETH par value for the shares being liquidated (uspdValueToLiquidate inlined)
-        uint256 stEthParValue = (((cuspdSharesToLiquidate * rateContract.getYieldFactor()) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price;
-
-        // Calculate the actual stETH backing these specific shares based on the ratio *before* this liquidation slice's share modification
-        uint256 actualBackingStEth = (stEthParValue * currentRatioForPayoutCalc) / 10000;
-        // Target stETH payout to liquidator (e.g., 105% of par value)
-        uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
+        // Declare variables needed outside the payout scope
         uint256 stEthPaidToLiquidator = 0;
-        uint256 stEthRemovedFromPosition = 0; // Track how much is removed from PositionEscrow
+        uint256 stEthRemovedFromPosition = 0;
 
-        // 8. Distribute Collateral (Based on actualBackingStEth)
-        if (actualBackingStEth >= targetPayoutToLiquidator) {
-            // Sufficient backing collateral for the target payout
+        // Scope for payout logic to reduce stack pressure
+        {
+            // 7. Calculate Payouts (in stETH) and Actual Backing Collateral
+            require(rateContract.getYieldFactor() > 0, "Invalid yield factor");
 
-            // Remove payout amount from PositionEscrow and send to liquidator
-            positionEscrow.removeCollateral(targetPayoutToLiquidator, msg.sender);
-            stEthPaidToLiquidator = targetPayoutToLiquidator;
-            stEthRemovedFromPosition = targetPayoutToLiquidator;
+            // Calculate stETH par value for the shares being liquidated
+            uint256 stEthParValue = (((cuspdSharesToLiquidate * rateContract.getYieldFactor()) / FACTOR_PRECISION) * (10**uint256(priceResponse.decimals))) / priceResponse.price;
 
-            // Calculate remainder and send to InsuranceEscrow if any
-            uint256 remainderToInsurance = actualBackingStEth - targetPayoutToLiquidator;
-            if (remainderToInsurance > 0) {
-                // Remove remainder from PositionEscrow and send to InsuranceEscrow
-                positionEscrow.removeCollateral(remainderToInsurance, address(this)); // Send to StabilizerNFT
-                IERC20(stETH).approve(address(insuranceEscrow), remainderToInsurance);
-                insuranceEscrow.depositStEth(remainderToInsurance);
-                stEthRemovedFromPosition += remainderToInsurance;
-            }
-        } else {
-            // Insufficient backing collateral for the target payout
+            // Calculate the actual stETH backing these specific shares using the ratio *before* this liquidation slice's share modification
+            uint256 actualBackingStEth = (stEthParValue * positionCollateralRatio) / 10000; // Use positionCollateralRatio
+            // Target stETH payout to liquidator (e.g., 105% of par value)
+            uint256 targetPayoutToLiquidator = (stEthParValue * liquidationLiquidatorPayoutPercent) / 100;
 
-            // Remove all available backing collateral from PositionEscrow and send to liquidator
-            if (actualBackingStEth > 0) {
-                positionEscrow.removeCollateral(actualBackingStEth, msg.sender);
-                stEthPaidToLiquidator = actualBackingStEth;
-                stEthRemovedFromPosition = actualBackingStEth;
-            }
+            // 8. Distribute Collateral (Based on actualBackingStEth)
+            if (actualBackingStEth >= targetPayoutToLiquidator) {
+                // Sufficient backing collateral for the target payout
+                positionEscrow.removeCollateral(targetPayoutToLiquidator, msg.sender);
+                stEthPaidToLiquidator = targetPayoutToLiquidator;
+                stEthRemovedFromPosition = targetPayoutToLiquidator;
 
-            // Calculate shortfall and try to cover from InsuranceEscrow (shortfall and insuranceBalance inlined where possible)
-            if (targetPayoutToLiquidator > actualBackingStEth) { // Check if shortfall exists
-                uint256 shortfallAmount = targetPayoutToLiquidator - actualBackingStEth;
-                uint256 currentInsuranceBalance = insuranceEscrow.getStEthBalance();
-                uint256 stEthFromInsurance = shortfallAmount > currentInsuranceBalance ? currentInsuranceBalance : shortfallAmount;
+                uint256 remainderToInsurance = actualBackingStEth - targetPayoutToLiquidator;
+                if (remainderToInsurance > 0) {
+                    positionEscrow.removeCollateral(remainderToInsurance, address(this)); // Send to StabilizerNFT
+                    IERC20(stETH).approve(address(insuranceEscrow), remainderToInsurance);
+                    insuranceEscrow.depositStEth(remainderToInsurance);
+                    stEthRemovedFromPosition += remainderToInsurance;
+                }
+            } else {
+                // Insufficient backing collateral for the target payout
+                if (actualBackingStEth > 0) {
+                    positionEscrow.removeCollateral(actualBackingStEth, msg.sender);
+                    stEthPaidToLiquidator = actualBackingStEth;
+                    stEthRemovedFromPosition = actualBackingStEth;
+                }
 
-                if (stEthFromInsurance > 0) {
-                    // InsuranceEscrow.withdrawStEth is called by StabilizerNFT (owner)
-                    // and transfers stETH from InsuranceEscrow to msg.sender (liquidator)
-                    insuranceEscrow.withdrawStEth(msg.sender, stEthFromInsurance);
-                    stEthPaidToLiquidator += stEthFromInsurance;
+                if (targetPayoutToLiquidator > actualBackingStEth) { // Check if shortfall exists
+                    uint256 shortfallAmount = targetPayoutToLiquidator - actualBackingStEth;
+                    uint256 currentInsuranceBalance = insuranceEscrow.getStEthBalance();
+                    uint256 stEthFromInsurance = shortfallAmount > currentInsuranceBalance ? currentInsuranceBalance : shortfallAmount;
+
+                    if (stEthFromInsurance > 0) {
+                        insuranceEscrow.withdrawStEth(msg.sender, stEthFromInsurance);
+                        stEthPaidToLiquidator += stEthFromInsurance;
+                    }
                 }
             }
-        }
-
+        } // End of payout logic scope
 
         // 9. Snapshot Update: Report the actual amount removed from the PositionEscrow
         if (stEthRemovedFromPosition > 0) {
