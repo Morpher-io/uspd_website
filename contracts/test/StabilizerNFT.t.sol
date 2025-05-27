@@ -1915,50 +1915,50 @@ contract StabilizerNFTTest is Test {
         // --- Attempt 2: Liquidate with liquidatorTokenId = 1 (Privileged 125% threshold) ---
         // Position at 120% SHOULD be liquidatable by 125% threshold.
         // (Assuming privilegedLiquidatorNFTId gives a threshold < 12000, e.g. 12450 if ID is 2)
+        _testPrivilegedLiquidationAttempt(
+            privilegedLiquidatorNFTId,
+            positionToLiquidateTokenId,
+            sharesToLiquidate,
+            priceQueryLiquidation,
+            stEthParValueForPayout,
+            initialCollateral // This is the stETH in positionEscrow before this liquidation attempt
+        );
+    }
 
+    function _testPrivilegedLiquidationAttempt(
+        uint256 _privilegedLiquidatorNFTId,
+        uint256 _positionToLiquidateTokenId,
+        uint256 _sharesToLiquidate,
+        IPriceOracle.PriceAttestationQuery memory _priceQueryLiquidation,
+        uint256 _stEthParValueForPayout, // Par value of shares at current (liquidation) price
+        uint256 _initialPositionCollateral // Actual stETH in position before liquidation
+    ) internal {
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
+        IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(_positionToLiquidateTokenId));
 
-        // Calculate expected payout and remainder using stEthParValueForPayout (based on new price)
-        uint256 expectedTargetPayout = (stEthParValueForPayout * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
-        // The actual collateral in the position is initialCollateral (stETH)
-        // Its value at the new price is initialCollateral * priceForLiquidationTest
-        // The actualBackingStEth for the shares being liquidated is initialCollateral (if liquidating all shares)
-        // For this test, sharesToLiquidate == initialShares, so actualBackingStEth is initialCollateral.
+        // Calculate expected payout and remainder using _stEthParValueForPayout
+        uint256 expectedTargetPayout = (_stEthParValueForPayout * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
         uint256 expectedRemainderToInsurance;
-        if (initialCollateral >= expectedTargetPayout) {
-            expectedRemainderToInsurance = initialCollateral - expectedTargetPayout;
-        } else {
-            // If initialCollateral < expectedTargetPayout, insurance might cover, or payout is capped.
-            // For this test, we assume initialCollateral is enough for the target payout + remainder.
-            // This needs to be true: initialCollateral (e.g. 1.3 ETH) must be >= expectedTargetPayout
-            // targetPayoutToLiquidator = (stEthParValueForPayout * 105) / 100
-            // stEthParValueForPayout = (initialSharesUSDValue * 1e18) / priceForLiquidationTest
-            // Example: initialSharesUSDValue = 2000, priceForLiquidationTest = 1846.15
-            // stEthParValueForPayout = (2000 * 1e18) / 1846.15e18 = ~1.083 ETH
-            // expectedTargetPayout = 1.083 * 1.05 = ~1.137 ETH
-            // If initialCollateral = 1.3 ETH, then 1.3 >= 1.137, so there's a remainder.
-            // expectedRemainderToInsurance = 1.3 - 1.137 = ~0.163 ETH
-            require(initialCollateral >= expectedTargetPayout, "Test setup error: initialCollateral not enough for target payout at new price");
-            expectedRemainderToInsurance = initialCollateral - expectedTargetPayout;
-        }
 
+        // This require was in the main test, ensuring the setup is correct for this path
+        require(_initialPositionCollateral >= expectedTargetPayout, "Test setup error: _initialPositionCollateral not enough for target payout at new price");
+        expectedRemainderToInsurance = _initialPositionCollateral - expectedTargetPayout;
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
         emit StabilizerNFT.PositionLiquidated(
-            positionToLiquidateTokenId,
-            user2,
-            privilegedLiquidatorNFTId,
-            sharesToLiquidate,
+            _positionToLiquidateTokenId,
+            user2, // Assuming user2 is the liquidator for this privileged attempt
+            _privilegedLiquidatorNFTId,
+            _sharesToLiquidate,
             expectedTargetPayout,
-            priceForLiquidationTest, // Use the new lower price
-            12450 // expectedThresholdUsed (assuming privilegedLiquidatorNFTId results in this)
+            _priceQueryLiquidation.price,
+            12450 // expectedThresholdUsed (assuming _privilegedLiquidatorNFTId results in this)
         );
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(privilegedLiquidatorNFTId, positionToLiquidateTokenId, sharesToLiquidate, priceQueryLiquidation);
+        stabilizerNFT.liquidatePosition(_privilegedLiquidatorNFTId, _positionToLiquidateTokenId, _sharesToLiquidate, _priceQueryLiquidation);
 
-        // --- Assertions for Successful Liquidation ---
         assertEq(
             mockStETH.balanceOf(user2),
             liquidatorStEthBefore + expectedTargetPayout,
@@ -1971,6 +1971,7 @@ contract StabilizerNFTTest is Test {
             "InsuranceEscrow balance mismatch (privileged)"
         );
     }
+
 
     // =============================================
     // XI. allocateStabilizerFunds Tests (via cUSPDToken.mintShares)
