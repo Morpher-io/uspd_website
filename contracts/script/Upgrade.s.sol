@@ -10,6 +10,7 @@ import {ICreateX} from "../lib/createx/src/ICreateX.sol";
 
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol"; // For casting to call upgradeTo
+import "../src/OvercollateralizationReporter.sol"; // For casting to call upgradeTo
 // Removed UspdCollateralizedPositionNFT import
 
 contract UpgradeScript is Script {
