@@ -131,6 +131,7 @@ contract StabilizerNFT is
 
     // --- Errors ---
     error SystemUnstableUnallocationNotAllowed();
+    error LiquidationNotBelowSystemRatio();
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -317,8 +318,20 @@ contract StabilizerNFT is
         }
 
         // 4. Check Liquidation Condition
+        uint256 positionCollateralRatio = positionEscrow.getCollateralizationRatio(priceResponse);
+
+        // New Check: Position's ratio must be below the system-wide collateralization ratio
+        if (address(reporter) != address(0)) { // Reporter might not be set in all test environments initially
+            uint256 systemCollateralRatio = reporter.getSystemCollateralizationRatio(priceResponse);
+            // Allow liquidation if system ratio is max (no liability) or if position is worse than system
+            if (systemCollateralRatio != type(uint256).max && positionCollateralRatio >= systemCollateralRatio) {
+                revert LiquidationNotBelowSystemRatio();
+            }
+        }
+
+        // Existing Check: Position's ratio must be below its calculated liquidation threshold
         require(
-            positionEscrow.getCollateralizationRatio(priceResponse) < calculatedThreshold,
+            positionCollateralRatio < calculatedThreshold,
             "Position not below liquidation threshold"
         );
 
