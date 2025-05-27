@@ -1,0 +1,88 @@
+# USPD Stabilization Mechanisms
+
+The Unified Stable Passive Dollar (USPD) protocol is designed to maintain its peg to the US Dollar through a series of interconnected economic incentives and automated processes. This document outlines how the system achieves stability under various market conditions.
+
+## Core Principle: Overcollateralization
+
+The fundamental principle underpinning USPD's stability is overcollateralization. Every USPD token in circulation is backed by more than $1 worth of collateral, primarily in the form of staked Ether (stETH). This collateral is managed within individual Stabilizer Positions, each associated with a Stabilizer NFT.
+
+## Minting USPD (Stable State)
+
+In a stable state, the system is sufficiently overcollateralized (e.g., individual positions are at least 110% collateralized, with the system average potentially much higher, like 125% or more).
+
+1.  **User Initiates Minting:** A user wishes to mint USPD. For example, they want to convert 1 ETH into USPD when ETH is priced at $3000.
+2.  **Oracle Price:** The user provides a signed price attestation for the current ETH/USD exchange rate (e.g., $3000/ETH) from the `PriceOracle`.
+3.  **Collateral Allocation:** The user calls the `mint` function on the `USPDToken` (which calls `cUSPDToken.mintShares`), sending their 1 ETH.
+4.  **Stabilizer Contribution:** The `StabilizerNFT` contract identifies an available Stabilizer Position. This position contributes additional collateral (e.g., 0.25 ETH, representing a 25% overcollateralization contribution from the stabilizer for the user's 1 ETH).
+5.  **Position Escrow:** The user's 1 ETH and the stabilizer's 0.25 ETH (both converted to stETH) are locked in a dedicated `PositionEscrow` contract associated with that Stabilizer NFT.
+6.  **USPD Minted:** The user receives $3000 worth of USPD (in the form of `cUSPD` shares, which `USPDToken` represents as USPD).
+7.  **Market Interaction:** The user can then use their USPD in DeFi applications, such as providing liquidity on Uniswap or lending on Aave.
+
+## Maintaining the Peg: Arbitrage and Redemption
+
+The USPD peg to the US Dollar is maintained through arbitrage opportunities and a direct redemption mechanism.
+
+### 1. Arbitrage on Decentralized Exchanges (DEXs)
+
+*   **USPD > $1 on DEX:** If USPD trades above $1 on a DEX (e.g., $1.02), arbitrageurs are incentivized to:
+    *   Mint new USPD at par value ($1 worth of ETH for 1 USPD via the `mintShares` function).
+    *   Sell this newly minted USPD on the DEX for $1.02, profiting from the difference.
+    *   This selling pressure helps drive the USPD price on the DEX back towards $1.
+*   **USPD < $1 on DEX:** If USPD trades below $1 on a DEX (e.g., $0.98), arbitrageurs are incentivized to:
+    *   Buy USPD on the DEX at $0.98.
+    *   Redeem this USPD for $1 worth of stETH via the `cUSPDToken.burnShares` function (if the system is stable).
+    *   This buying pressure helps drive the USPD price on the DEX back towards $1.
+
+### 2. Direct Redemption (`cUSPDToken.burnShares`)
+
+When the system is stable (i.e., sufficiently overcollateralized, as checked by `StabilizerNFT.unallocateStabilizerFunds`), users can directly redeem their USPD for stETH at the prevailing oracle price (effectively $1 worth of stETH for 1 USPD).
+
+*   **Process:** A user calls `burnShares` on `cUSPDToken` (typically via `USPDToken`).
+*   **Collateral Release:** The `StabilizerNFT` contract identifies the corresponding collateral in `PositionEscrow` contracts. The user's portion of the stETH collateral is returned to them, and the stabilizer's overcollateralization portion is released back to their unallocated funds in their `StabilizerEscrow`.
+*   **No Slippage:** This mechanism provides a guaranteed $1 redemption value (in stETH terms), unlike DEX swaps which can incur slippage, especially for large amounts.
+
+## Handling Price Volatility and Instability
+
+The system is designed to handle volatility in the price of ETH (the primary collateral).
+
+### Scenario 1: ETH Price Rises
+
+*   **Increased Collateralization:** If the price of ETH rises, the value of the stETH collateral held in `PositionEscrow` contracts increases. This improves the collateralization ratio of individual positions and the overall system health.
+*   **Benefit:** The system becomes more robust. Stabilizers see their overcollateralization increase, and the risk of liquidation decreases.
+
+### Scenario 2: ETH Price Falls - Stabilizer Liquidations
+
+If the price of ETH falls, individual Stabilizer Positions might become undercollateralized.
+
+*   **Liquidation Threshold:** Each Stabilizer Position has a minimum collateralization ratio (e.g., 110%). If a position's ratio falls below this, it becomes eligible for liquidation. The exact threshold for a specific liquidation can also be influenced by the liquidator's own Stabilizer NFT ID, allowing for a tiered liquidation system.
+*   **Liquidation Process (`StabilizerNFT.liquidatePosition`):**
+    1.  A liquidator (any user) acquires USPD (e.g., by buying from a DEX or minting new USPD if the system allows).
+    2.  The liquidator calls `liquidatePosition` on the `StabilizerNFT` contract, specifying the undercollateralized position and providing the USPD to be "burned" against that position's debt.
+    3.  The `StabilizerNFT` contract verifies the position is indeed below its liquidation threshold using the current oracle price.
+    4.  The liquidator's USPD is burned.
+    5.  The liquidator receives stETH from the liquidated position's collateral. This payout is typically the par value of the burned USPD plus a bonus (e.g., 5%), making liquidation an attractive economic activity.
+*   **Effect:** Unhealthy (undercollateralized) positions are removed from the system, and the total supply of USPD is reduced, helping to restore overall system health. The stabilizer whose position was liquidated bears the loss of their overcollateralized portion.
+
+### Scenario 3: The Insurance Fund
+
+To further protect the system and incentivize liquidators even when a position is severely undercollateralized:
+
+*   **Funding:** When a position is liquidated and its collateralization ratio is *above* the liquidator's payout target (e.g., >105%), the excess collateral (beyond the liquidator's payout) is sent to an `InsuranceEscrow` contract.
+*   **Payout Support:** If a liquidated position's collateral is *insufficient* to cover the liquidator's target payout (e.g., position is at 99% collateralized, but liquidator expects 105%), the `InsuranceEscrow` attempts to cover the shortfall, ensuring the liquidator still receives their incentive.
+*   **Purpose:** The insurance fund acts as a buffer, making liquidations more consistently profitable and thereby encouraging the timely removal of bad debt.
+
+### Scenario 4: Extreme Market Conditions (Flash Crash & System Undercollateralization)
+
+In a severe flash crash where the ETH price drops significantly and rapidly, a large number of Stabilizer Positions might become undercollateralized, and the `InsuranceEscrow` could be depleted. This could lead to the overall system becoming undercollateralized (e.g., total collateral value < total USPD value).
+
+*   **Restricted Redemptions:** In such a scenario, the `StabilizerNFT.unallocateStabilizerFunds` function (which is called by `cUSPDToken.burnShares`) will revert if the system-wide collateralization ratio (checked via `OvercollateralizationReporter`) is below 100%. This prevents direct redemptions at par value, which would exacerbate the undercollateralized state (a "bank run").
+*   **Market-Driven Price Discovery:** USPD might trade below $1 on DEXs.
+*   **Liquidation as Primary Recovery:**
+    *   Even if the system is globally undercollateralized (e.g., at 95%), liquidating individual Stabilizer Positions remains viable and crucial.
+    *   Arbitrageurs can buy USPD on DEXs at a discount (e.g., $0.90).
+    *   They can then use this discounted USPD to liquidate a Stabilizer Position. If that position, despite being undercollateralized, still holds collateral worth, say, $0.95 for every $1 of USPD debt it backed, the liquidator profits ($0.95 payout - $0.90 cost).
+    *   The stabilizer whose position is liquidated absorbs the loss from their provided overcollateral.
+    *   This process reduces the total USPD supply, helping the system to gradually return to a healthier collateralization ratio as bad debt is cleared.
+*   **System Resilience:** The expectation is that even in extreme scenarios, the combination of discounted USPD on secondary markets and the remaining (though diminished) collateral in Stabilizer Positions creates economic incentives for liquidation. This helps the system find a new equilibrium and deleverage. If the ETH price subsequently recovers, the system's collateralization ratio will improve more rapidly due to the reduced USPD supply.
+
+This multi-layered approach, combining overcollateralization, arbitrage, direct redemptions (in stable times), incentivized liquidations, and an insurance fund, aims to create a resilient stablecoin that can adapt to various market stresses.
