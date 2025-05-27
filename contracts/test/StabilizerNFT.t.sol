@@ -1889,7 +1889,8 @@ contract StabilizerNFTTest is Test {
 
         // newPrice = (targetRatioScaled * initialSharesUSDValue) / (initialCollateral * 10000)
         // Ensure price has 18 decimals for consistency with other price representations
-        uint256 priceForLiquidationTest = (targetRatioScaled * initialSharesUSDValue * (10**18)) / (initialCollateral * 10000);
+        // Add 1 wei to the price to counteract potential truncation issues leading to an off-by-one in the ratio calculation.
+        uint256 priceForLiquidationTest = ((targetRatioScaled * initialSharesUSDValue * (10**18)) / (initialCollateral * 10000)) + 1;
         
         // Create a new priceQuery for the liquidation attempts using the lower price
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
