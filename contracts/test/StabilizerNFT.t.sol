@@ -1241,8 +1241,8 @@ contract StabilizerNFTTest is Test {
 
         // Ensure initial collateral (actual stETH) is enough for payout and leaves a remainder
         require(initialCollateralInPosition > expectedPayoutToLiquidator, "Test setup: initialCollateralInPosition must be > expectedPayoutToLiquidator for a remainder");
-        uint256 expectedRemainderToInsurance = initialCollateralInPosition - expectedPayoutToLiquidator;
-        require(expectedRemainderToInsurance > 0, "Test setup: expectedRemainderToInsurance must be > 0");
+        // uint256 expectedRemainderToInsurance = initialCollateralInPosition - expectedPayoutToLiquidator; // Inlined
+        require((initialCollateralInPosition - expectedPayoutToLiquidator) > 0, "Test setup: expectedRemainderToInsurance must be > 0");
 
         // --- Temporarily increase maxPriceDeviation in PriceOracle ---
         uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
@@ -1260,7 +1260,7 @@ contract StabilizerNFTTest is Test {
 
         // Expect deposit event from InsuranceEscrow
         vm.expectEmit(true, true, true, true, address(insuranceEscrow));
-        emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), expectedRemainderToInsurance);
+        emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), (initialCollateralInPosition - expectedPayoutToLiquidator));
 
 
         vm.prank(user2);
@@ -1278,7 +1278,7 @@ contract StabilizerNFTTest is Test {
         assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow shares mismatch (should be 0)");
         assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator should have 0 cUSPD left");
         assertEq(cuspdToken.balanceOf(address(stabilizerNFT)), 0, "StabilizerNFT should have burned cUSPD");
-        assertApproxEqAbs(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, 1, "Insurance balance mismatch");
+        assertApproxEqAbs(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + (initialCollateralInPosition - expectedPayoutToLiquidator), 1, "Insurance balance mismatch");
     }
 
     function testLiquidation_Success_InsufficientCollateral_InsuranceCoversFullShortfall() public {
