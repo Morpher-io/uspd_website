@@ -1907,6 +1907,11 @@ contract StabilizerNFTTest is Test {
         // Recalculate stEthParValue based on the new priceForLiquidationTest for payout calculations
         uint256 stEthParValueForPayout = (initialSharesUSDValue * (10**18)) / priceForLiquidationTest;
 
+        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
+        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
+        vm.prank(owner); // Assuming 'owner' has DEFAULT_ADMIN_ROLE on PriceOracle
+        priceOracle.setMaxDeviationPercentage(100000); // Set to 1000% (a very large value)
+
 
         // --- Attempt 1: Liquidate with liquidatorTokenId = 0 (Default 110% threshold) ---
         // Position at 120% (due to price drop) should NOT be liquidatable by 110% threshold.
