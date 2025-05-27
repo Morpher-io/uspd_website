@@ -1109,10 +1109,9 @@ contract StabilizerNFTTest is Test {
         uint256 sharesToLiquidate = initialSharesInPosition; // Liquidator will attempt to liquidate all shares
 
         // ETH needed for user2 to mint 'sharesToLiquidate' (1 ETH worth at 2000 price)
-        uint256 ethNeededForLiquidatorShares = (sharesToLiquidate * 1 ether) / (2000 ether); // Assumes yield factor 1
-        vm.deal(user2, ethNeededForLiquidatorShares + 0.1 ether); // Deal ETH for minting + gas
+        vm.deal(user2, ((sharesToLiquidate * 1 ether) / (2000 ether)) + 0.1 ether); // Deal ETH for minting + gas
         vm.prank(user2); // user2 mints their own cUSPD
-        cuspdToken.mintShares{value: ethNeededForLiquidatorShares}(user2, priceQueryOriginal);
+        cuspdToken.mintShares{value: ((sharesToLiquidate * 1 ether) / (2000 ether))}(user2, priceQueryOriginal); // Assumes yield factor 1 for the 2000 price
         // Now user2 has 'sharesToLiquidate' cUSPD, backed by liquidatorBackingStabilizerId
 
         vm.startPrank(user2);
@@ -1135,9 +1134,9 @@ contract StabilizerNFTTest is Test {
 
         // --- Calculate Expected Payout based on priceForLiquidationTest ---
         // Par value of shares at the new, lower price
-        uint256 stEthParValueForPayout = (initialSharesUSDValue * (10**18)) / priceForLiquidationTest;
+        // uint256 stEthParValueForPayout = (initialSharesUSDValue * (10**18)) / priceForLiquidationTest; // Inlined
         // Target Payout (105% of par value, as per stabilizerNFT.liquidationLiquidatorPayoutPercent())
-        uint256 expectedPayoutToLiquidator = (stEthParValueForPayout * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+        uint256 expectedPayoutToLiquidator = ((initialSharesUSDValue * (10**18)) / priceForLiquidationTest * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // In this scenario, collateral should be exactly enough for the payout (since we targeted 105% ratio and payout is 105%)
         // initialCollateralInPosition is the stETH available. Its value at priceForLiquidationTest is exactly what's needed for 105% ratio.
