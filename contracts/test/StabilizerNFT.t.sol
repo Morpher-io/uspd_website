@@ -56,6 +56,8 @@ contract StabilizerNFTTest is Test {
         signerPrivateKey = 0xa11ce;
         signer = vm.addr(signerPrivateKey);
 
+        vm.chainId(1);
+
         owner = address(this);
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
@@ -104,7 +106,8 @@ contract StabilizerNFTTest is Test {
         vm.deal(address(this), 0.001 ether);
         rateContract = new PoolSharesConversionRate{value: 0.001 ether}(
             address(mockStETH),
-            address(mockLido)
+            address(mockLido),
+            address(this)
         );
 
         // 2. Deploy Implementations
@@ -2081,7 +2084,7 @@ contract StabilizerNFTTest is Test {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
         uint256 reporterSnapshotBefore = reporter.totalEthEquivalentAtLastSnapshot();
-        uint256 reporterYieldFactorBefore = reporter.yieldFactorAtLastSnapshot();
+        // uint256 reporterYieldFactorBefore = reporter.yieldFactorAtLastSnapshot();
 
 
         vm.deal(owner, userEthForAllocation);
@@ -2114,7 +2117,7 @@ contract StabilizerNFTTest is Test {
     // --- setInsuranceEscrow ---
     function testSetInsuranceEscrow_Success() public {
         address newInsuranceEscrowAddr = makeAddr("newInsuranceEscrow");
-        IInsuranceEscrow newInsuranceEscrow = IInsuranceEscrow(newInsuranceEscrowAddr); // Cast for type matching
+        // IInsuranceEscrow newInsuranceEscrow = IInsuranceEscrow(newInsuranceEscrowAddr); // Cast for type matching
 
         vm.prank(owner); // Owner is admin
         vm.expectEmit(true, true, false, true, address(stabilizerNFT)); // Event from StabilizerNFT
@@ -2223,12 +2226,12 @@ contract StabilizerNFTTest is Test {
         uint256 stEthAmount = 1 ether;
         address nonRoleHolder = makeAddr("nonRoleHolder");
 
-        vm.prank(nonRoleHolder);
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonRoleHolder, stabilizerNFT.POSITION_ESCROW_ROLE()));
+        vm.prank(nonRoleHolder);
         stabilizerNFT.reportCollateralAddition(stEthAmount);
 
-        vm.prank(nonRoleHolder);
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonRoleHolder, stabilizerNFT.POSITION_ESCROW_ROLE()));
+        vm.prank(nonRoleHolder);
         stabilizerNFT.reportCollateralRemoval(stEthAmount);
     }
 
