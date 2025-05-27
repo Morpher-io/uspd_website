@@ -1123,26 +1123,25 @@ contract StabilizerNFTTest is Test {
         // uint256 targetRatioScaledForLiquidation = 10500; // Inlined: 105% (below default 110% threshold)
 
         // newPrice = (10500 * initialSharesUSDValue) / (initialCollateral * 10000)
-        // uint256 priceForLiquidationTest = ((10500 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1; // Inlined
-        IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(((10500 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1, block.timestamp);
+        uint256 calculatedPriceForLiquidationTest = ((10500 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
+        IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(calculatedPriceForLiquidationTest, block.timestamp);
 
         // Verify the new ratio is indeed 105% with the new price
         assertEq(positionEscrow.getCollateralizationRatio(
-            IPriceOracle.PriceResponse(((10500 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1, 18, block.timestamp * 1000)
+            IPriceOracle.PriceResponse(calculatedPriceForLiquidationTest, 18, block.timestamp * 1000)
         ), 10500, "Collateral ratio not 105% with new price"); // Inlined 10500
         assertEq(positionEscrow.getCurrentStEthBalance(), initialCollateralInPosition, "PositionEscrow stETH balance should be unchanged by price drop simulation");
 
-        // --- Calculate Expected Payout based on priceForLiquidationTest ---
+        // --- Calculate Expected Payout based on calculatedPriceForLiquidationTest ---
         // Par value of shares at the new, lower price
-        // uint256 stEthParValueForPayout = (initialSharesUSDValue * (10**18)) / priceForLiquidationTest; // Inlined
+        // uint256 stEthParValueForPayout = (initialSharesUSDValue * (10**18)) / calculatedPriceForLiquidationTest; // Inlined
         // Target Payout (105% of par value, as per stabilizerNFT.liquidationLiquidatorPayoutPercent())
-        // uint256 expectedPayoutToLiquidator = ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (((10500 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100; // Inlined
+        uint256 calculatedExpectedPayout = ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / calculatedPriceForLiquidationTest * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // In this scenario, collateral should be exactly enough for the payout (since we targeted 105% ratio and payout is 105%)
-        // initialCollateralInPosition is the stETH available. Its value at priceForLiquidationTest is exactly what's needed for 105% ratio.
+        // initialCollateralInPosition is the stETH available. Its value at calculatedPriceForLiquidationTest is exactly what's needed for 105% ratio.
         // The payout is 105% of par value. So, all initialCollateralInPosition should go to liquidator.
         // Allow for 1 wei difference due to potential integer arithmetic nuances.
-        uint256 calculatedExpectedPayout = ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (((10500 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
         require(initialCollateralInPosition >= calculatedExpectedPayout - 1 && initialCollateralInPosition <= calculatedExpectedPayout + 1, "Test setup: initialCollateralInPosition should be approx equal to expectedPayoutToLiquidator");
 
 
@@ -1160,7 +1159,7 @@ contract StabilizerNFTTest is Test {
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
         // Liquidator uses tokenId 0 (default threshold), which is 11000. Position is at 10500.
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, 0, sharesToLiquidate, calculatedExpectedPayout, ((10500 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1, 11000);
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, 0, sharesToLiquidate, calculatedExpectedPayout, calculatedPriceForLiquidationTest, 11000);
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, sharesToLiquidate, priceQueryLiquidation);
