@@ -1119,11 +1119,11 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
 
         // --- Simulate ETH Price Drop to achieve 105% Collateral Ratio for the Target Position ---
-        uint256 initialSharesUSDValue = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
+        // uint256 initialSharesUSDValue = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
         // uint256 targetRatioScaledForLiquidation = 10500; // Inlined: 105% (below default 110% threshold)
 
         // newPrice = (10500 * initialSharesUSDValue) / (initialCollateral * 10000)
-        uint256 priceForLiquidationTest = ((10500 * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
+        uint256 priceForLiquidationTest = ((10500 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
 
         // Verify the new ratio is indeed 105% with the new price
@@ -1136,7 +1136,7 @@ contract StabilizerNFTTest is Test {
         // Par value of shares at the new, lower price
         // uint256 stEthParValueForPayout = (initialSharesUSDValue * (10**18)) / priceForLiquidationTest; // Inlined
         // Target Payout (105% of par value, as per stabilizerNFT.liquidationLiquidatorPayoutPercent())
-        uint256 expectedPayoutToLiquidator = ((initialSharesUSDValue * (10**18)) / priceForLiquidationTest * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+        uint256 expectedPayoutToLiquidator = ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // In this scenario, collateral should be exactly enough for the payout (since we targeted 105% ratio and payout is 105%)
         // initialCollateralInPosition is the stETH available. Its value at priceForLiquidationTest is exactly what's needed for 105% ratio.
