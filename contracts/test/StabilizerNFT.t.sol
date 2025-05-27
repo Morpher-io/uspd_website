@@ -1330,15 +1330,15 @@ contract StabilizerNFTTest is Test {
 
         // --- Simulate ETH Price Drop to make the (already reduced) collateral appear below threshold ---
         // Liability in USD (par value of shares)
-        uint256 liabilityUSD = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
+        // uint256 liabilityUSD = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
         // uint256 targetLiquidationRatioPercentage = 8000; // Inlined: e.g., 80%, well below 110% default
 
-        uint256 priceForLiquidationTest = (8000 * liabilityUSD * (10**18)) / (collateralActuallyInEscrow * 10000) + 1;
+        uint256 priceForLiquidationTest = (8000 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (collateralActuallyInEscrow * 10000) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
 
         // --- Calculate Expected Payouts based on priceForLiquidationTest ---
         // stETH Par Value of shares at the new, lower price
-        uint256 stEthParValueAtLiquidationPrice = (liabilityUSD * (10**18)) / priceForLiquidationTest;
+        uint256 stEthParValueAtLiquidationPrice = (((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest;
         // Target Payout to liquidator (e.g., 105% of par value)
         uint256 targetTotalPayoutToLiquidator = (stEthParValueAtLiquidationPrice * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
