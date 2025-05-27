@@ -1181,90 +1181,104 @@ contract StabilizerNFTTest is Test {
 
 
     function testLiquidation_Success_BelowThreshold_RemainderToInsurance() public {
-        // uint256 initialStabilizerEth = 1 ether; // Inlined
-        // uint256 userEthForAllocation = 1 ether; // Inlined
-        // uint256 price = 2000 ether; // Inlined below
-
-        // --- Setup Position ---
-        uint256 tokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId
-        vm.deal(user1, 1 ether); // Inlined initialStabilizerEth
+        // --- Setup Position to be Liquidated (owned by user1) ---
+        uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
+        // Fund user1's stabilizer (e.g., 0.15 ETH for 1 ETH mint at 115% target ratio for position)
+        vm.deal(user1, 0.15 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(tokenId); // Inlined initialStabilizerEth
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.15 ether}(positionToLiquidateTokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000); // 110%
+        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 11500); // Set its min ratio to 115%
 
-        // Inlined price in priceQueryAlloc creation
-        IPriceOracle.PriceAttestationQuery memory priceQueryAlloc = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.deal(owner, 1 ether); // Inlined userEthForAllocation
+        // Allocate to user1's position (1 ETH from user, 0.15 ETH from stabilizer = 1.15 ETH total collateral)
+        IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, 1 ether); // Minter needs ETH
         vm.prank(owner);
-        cuspdToken.mintShares{value: 1 ether}(user1, priceQueryAlloc); // Inlined userEthForAllocation
+        cuspdToken.mintShares{value: 1 ether}(user1, priceQueryOriginal);
 
-        // address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId); // Inlined
-        IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId)); // Inlined positionEscrowAddr
-        uint256 initialCollateral = positionEscrow.getCurrentStEthBalance(); // 1.1 ETH
-        uint256 initialShares = positionEscrow.backedPoolShares(); // 2000 shares
+        IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
+        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 1.15 ETH
+        uint256 initialSharesInPosition = positionEscrow.backedPoolShares(); // Should be 2000 shares (1 ETH * 2000 price / 1 yield)
+        assertEq(initialCollateralInPosition, 1.15 ether, "Initial collateral in position mismatch");
+        assertEq(initialSharesInPosition, 2000 ether, "Initial shares in position mismatch");
 
-        // --- Artificially Lower Collateral (but keep above payout) ---
-        // Target Ratio: 108% (below 110% min for NFT 1, which has 125% threshold)
-        // Liability = 2000 USD
-        // Target Collateral for 108% = 2000 USD * 108 / 100 = 2160 USD
-        // Target stETH for 108% = 2160 USD / (2000 ether price) = 1.08 ether
-        uint256 collateralToSet = 1.08 ether;
-        // uint256 collateralToRemove = initialCollateral - collateralToSet; // Inlined below
-        vm.prank(address(positionEscrow));
-        mockStETH.transfer(address(0xdead), initialCollateral - collateralToSet); // Inlined calculation
-        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSet, "Collateral not set correctly");
+        // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
+        uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(user3);
+        vm.deal(user3, 0.2 ether);
+        vm.prank(user3);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(liquidatorBackingStabilizerId);
+        vm.prank(user3);
+        stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12000);
 
-        // --- Setup Liquidator ---
-        // uint256 sharesToLiquidate = 1000 ether; // Inlined // Liquidate half
-        vm.prank(owner);
-        cuspdToken.mint(user2, 1000 ether); // Inlined sharesToLiquidate
+        // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
+        // Liquidator will attempt to liquidate all shares of the target position
+        vm.deal(user2, ((initialSharesInPosition * 1 ether) / (2000 ether)) + 0.1 ether);
+        vm.prank(user2);
+        cuspdToken.mintShares{value: ((initialSharesInPosition * 1 ether) / (2000 ether))}(user2, priceQueryOriginal);
+
         vm.startPrank(user2);
-        cuspdToken.approve(address(stabilizerNFT), 1000 ether); // Inlined sharesToLiquidate
+        cuspdToken.approve(address(stabilizerNFT), initialSharesInPosition);
         vm.stopPrank();
 
-        // --- Calculate Expected Payout & Remainder ---
-        // Par value = 1000 shares * 1 yield / 1e18 = 1000 USD
-        // stETH Par Value = 1000 USD / (2000 ether price) = 0.5 ether
-        // Target Payout (105%) = 0.5 ether * 105 / 100 = 0.525 ether
-        uint256 expectedPayout = 0.525 ether; // Keep for readability in require
-        // Total collateral released = collateralToSet = 1.08 ether
-        // uint256 expectedRemainderToInsurance = collateralToSet - expectedPayout; // Inlined below
-        require(collateralToSet > expectedPayout, "Test setup error: Not enough collateral for remainder");
+        // --- Simulate ETH Price Drop to achieve e.g. 108% Collateral Ratio for the Target Position ---
+        // This ratio (108%) should be < default liquidation threshold (110%)
+        // And initialCollateralInPosition should be > expected payout to liquidator (105% of par at new price)
+        uint256 initialSharesUSDValue = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
+        uint256 targetRatioForLiquidation = 10800; // 108%
+
+        uint256 calculatedPriceForLiquidationTest = ((targetRatioForLiquidation * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
+        IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(calculatedPriceForLiquidationTest, block.timestamp);
+
+        assertEq(positionEscrow.getCollateralizationRatio(
+            IPriceOracle.PriceResponse(calculatedPriceForLiquidationTest, 18, block.timestamp * 1000)
+        ), targetRatioForLiquidation, "Collateral ratio not 108% with new price");
+
+        // --- Calculate Expected Payout and Remainder ---
+        // stETH Par Value at the new, lower price for all shares
+        uint256 stEthParValueForPayout = (initialSharesUSDValue * (10**18)) / calculatedPriceForLiquidationTest;
+        // Target Payout to liquidator (e.g., 105% of par value)
+        uint256 expectedPayoutToLiquidator = (stEthParValueForPayout * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+
+        // Ensure initial collateral (actual stETH) is enough for payout and leaves a remainder
+        require(initialCollateralInPosition > expectedPayoutToLiquidator, "Test setup: initialCollateralInPosition must be > expectedPayoutToLiquidator for a remainder");
+        uint256 expectedRemainderToInsurance = initialCollateralInPosition - expectedPayoutToLiquidator;
+        require(expectedRemainderToInsurance > 0, "Test setup: expectedRemainderToInsurance must be > 0");
+
+        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
+        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
+        vm.prank(owner);
+        priceOracle.setMaxDeviationPercentage(100000); // Set to 1000%
 
         // --- Action: Liquidate ---
-        // IPriceOracle.PriceAttestationQuery memory priceQueryLiq = createSignedPriceAttestation(2000 ether, block.timestamp); //inlined stack too deep
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
+        uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance(); // This is initialCollateralInPosition
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        // Inlined expectedPayout and price in emit
-        // Added liquidatorTokenId (0) and thresholdUsed (11000)
-        emit StabilizerNFT.PositionLiquidated(tokenId, user2, 0, 1000 ether, 0.525 ether, 2000 ether, 11000); // Inlined sharesToLiquidate
-        
-        // Correctly calculate expected remainder for the event
-        uint256 actualBackingForLiquidatedPortion = (1000 ether * collateralToSet) / initialShares;
-        uint256 expectedRemainderToInsurance = actualBackingForLiquidatedPortion - 0.525 ether;
+        // Liquidator uses tokenId 0 (default threshold 11000). Position is at 10800.
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, 0, initialSharesInPosition, expectedPayoutToLiquidator, calculatedPriceForLiquidationTest, 11000);
 
-        // Expect deposit event from InsuranceEscrow - vm.expectEmit removed, relying on balance check below.
+        // Expect deposit event from InsuranceEscrow
+        vm.expectEmit(true, true, true, true, address(insuranceEscrow));
+        emit IInsuranceEscrow.FundsDeposited(address(stabilizerNFT), expectedRemainderToInsurance);
 
 
         vm.prank(user2);
-        // Inlined priceQueryLiq and price
-        // Added liquidatorTokenId (0)
-        stabilizerNFT.liquidatePosition(0, tokenId, 1000 ether, createSignedPriceAttestation(2000 ether, block.timestamp)); // Inlined sharesToLiquidate
+        stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
+
+        // --- Reset maxPriceDeviation in PriceOracle ---
+        vm.prank(owner);
+        priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
 
         // --- Assertions ---
-        // actualBackingForLiquidatedPortion was calculated above for the event
-        // expectedRemainderToInsurance was calculated above for the event
-
-        // Inlined expectedPayout in assertion
-        assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + 0.525 ether, "Liquidator stETH payout mismatch");
-        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSet - actualBackingForLiquidatedPortion, "PositionEscrow balance mismatch after partial liquidation");
-        assertEq(positionEscrow.backedPoolShares(), initialShares - 1000 ether, "PositionEscrow shares mismatch"); // Inlined sharesToLiquidate
+        assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedPayoutToLiquidator, 1, "Liquidator stETH payout mismatch");
+        // PositionEscrow should have paid out all its collateral (initialCollateralInPosition)
+        // which was split between liquidator and insurance. So, its balance should be 0.
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - initialCollateralInPosition, 1, "PositionEscrow balance mismatch (should be near 0)");
+        assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow shares mismatch (should be 0)");
         assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator should have 0 cUSPD left");
         assertEq(cuspdToken.balanceOf(address(stabilizerNFT)), 0, "StabilizerNFT should have burned cUSPD");
-        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, "Insurance balance mismatch");
+        assertApproxEqAbs(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, 1, "Insurance balance mismatch");
     }
 
     function testLiquidation_Success_InsufficientCollateral_InsuranceCoversFullShortfall() public {
