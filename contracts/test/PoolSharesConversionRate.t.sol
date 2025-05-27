@@ -31,6 +31,7 @@ contract PoolSharesConversionRateTest is Test {
 
     function setUp() public {
         deployer = address(this);
+        vm.chainId(1); //set to mainchain
 
         // 1. Deploy MockStETH
         mockStETH = new MockStETH();
@@ -42,7 +43,8 @@ contract PoolSharesConversionRateTest is Test {
         // 3. Deploy PoolSharesConversionRate with ETH value
         rateContract = new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(
             address(mockStETH),
-            address(mockLido)
+            address(mockLido),
+            address(this)
         );
         rateContractAddress = address(rateContract);
         rateContractInterface = IPoolSharesConversionRate(rateContractAddress);
@@ -62,13 +64,13 @@ contract PoolSharesConversionRateTest is Test {
 
     // --- Test Cases (Task 5.2) ---
 
-    function testDeployment() public {
+    function testDeployment() public view {
         assertEq(rateContractInterface.stETH(), address(mockStETH), "Incorrect stETH address");
         assertEq(rateContractInterface.initialStEthBalance(), INITIAL_ETH_DEPOSIT, "Incorrect initial balance");
         assertEq(rateContractInterface.FACTOR_PRECISION(), FACTOR_PRECISION, "Incorrect precision");
     }
 
-    function testInitialYieldFactor() public {
+    function testInitialYieldFactor() public view {
         assertEq(rateContractInterface.getYieldFactor(), FACTOR_PRECISION, "Initial yield factor should be precision");
     }
 
@@ -116,12 +118,12 @@ contract PoolSharesConversionRateTest is Test {
 
     function testRevertIf_Constructor_StEthAddressZero() public {
         vm.expectRevert(PoolSharesConversionRate.StEthAddressZero.selector);
-        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(0), address(mockLido));
+        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(0), address(mockLido), address(this));
     }
 
     function testRevertIf_Constructor_LidoAddressZero() public {
         vm.expectRevert(PoolSharesConversionRate.LidoAddressZero.selector);
-        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(mockStETH), address(0));
+        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(mockStETH), address(0), address(this));
     }
 
     function testRevertIf_Constructor_NoEthSent() public {
@@ -129,7 +131,7 @@ contract PoolSharesConversionRateTest is Test {
         MockStETH localMockStETH = new MockStETH();
         MockLido localMockLido = new MockLido(address(localMockStETH));
         vm.expectRevert(PoolSharesConversionRate.NoEthSent.selector);
-        new PoolSharesConversionRate(address(localMockStETH), address(localMockLido)); // No {value: ...}
+        new PoolSharesConversionRate(address(localMockStETH), address(localMockLido), address(this)); // No {value: ...}
     }
 
     function testRevertIf_Constructor_InitialBalanceZero_AfterLidoSubmit() public {
@@ -138,7 +140,7 @@ contract PoolSharesConversionRateTest is Test {
         localLido.setShouldMintOnSubmit(false); // Configure MockLido to not mint stETH
 
         vm.expectRevert(PoolSharesConversionRate.InitialBalanceZero.selector);
-        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(localStETH), address(localLido));
+        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(localStETH), address(localLido), address(this));
     }
 
     // --- getYieldFactor specific tests ---

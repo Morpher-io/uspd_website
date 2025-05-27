@@ -29,7 +29,7 @@ import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAc
 
 // Libraries & Proxies
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "../lib/openzeppelin-contracts/contracts/proxy/utils/UUPSUpgradeable.sol"; // Needed if Reporter is UUPS
+// import "../lib/openzeppelin-contracts/contracts/proxy/utils/UUPSUpgradeable.sol"; // Needed if Reporter is UUPS
 import "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -74,6 +74,8 @@ contract OvercollateralizationReporterTest is Test {
         signer = vm.addr(signerPrivateKey);
         vm.warp(1000000);
 
+        vm.chainId(1);
+
         // 2. Deploy Mocks & Dependencies
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
@@ -89,7 +91,7 @@ contract OvercollateralizationReporterTest is Test {
 
         // Deploy RateContract
         vm.deal(admin, 0.001 ether);
-        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
+        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
 
         // Deploy StabilizerNFT Implementation
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
@@ -177,7 +179,7 @@ contract OvercollateralizationReporterTest is Test {
     // I. Initialization Tests
     // =============================================
 
-    function testInitialization_Success() public {
+    function testInitialization_Success() public view {
         assertEq(reporter.stabilizerNFTContract(), updater, "StabilizerNFT address mismatch");
         assertEq(address(reporter.rateContract()), address(rateContract), "RateContract address mismatch");
         assertEq(address(reporter.cuspdToken()), address(cuspdToken), "cUSPDToken address mismatch");
@@ -185,7 +187,7 @@ contract OvercollateralizationReporterTest is Test {
         assertTrue(reporter.hasRole(reporter.UPDATER_ROLE(), updater), "Updater role mismatch");
     }
 
-    function testInitialization_SnapshotVariables() public {
+    function testInitialization_SnapshotVariables() public view {
         // Adapted from StabilizerNFTTest
         assertEq(reporter.totalEthEquivalentAtLastSnapshot(), 0, "Initial ETH snapshot should be 0");
         assertEq(reporter.yieldFactorAtLastSnapshot(), reporter.FACTOR_PRECISION(), "Initial yield snapshot should be 1e18");
@@ -216,7 +218,7 @@ contract OvercollateralizationReporterTest is Test {
         vm.prank(updater);
         reporter.updateSnapshot(initialDelta);
         uint256 initialSnapshot = reporter.totalEthEquivalentAtLastSnapshot();
-        uint256 initialYield = reporter.yieldFactorAtLastSnapshot();
+        // uint256 initialYield = reporter.yieldFactorAtLastSnapshot();
 
         // Simulate another addition
         int256 secondDelta = 0.5 ether;
@@ -239,7 +241,7 @@ contract OvercollateralizationReporterTest is Test {
         vm.prank(updater);
         reporter.updateSnapshot(initialDelta);
         uint256 initialSnapshot = reporter.totalEthEquivalentAtLastSnapshot();
-        uint256 initialYield = reporter.yieldFactorAtLastSnapshot();
+        // uint256 initialYield = reporter.yieldFactorAtLastSnapshot();
 
         // Simulate removal
         int256 negativeDelta = -0.7 ether;
@@ -372,7 +374,7 @@ contract OvercollateralizationReporterTest is Test {
         // Collateral Value (USD) = initialEthSnapshot * ETH_Price = 100 * 2000 = 200,000 USD
         // Liability Value (USD) = cuspdTotalSupply (since yield factor is 1e18) = 50,000 USD
         // Ratio = (200,000 / 50,000) * 100 = 400
-        uint256 expectedRatio = 400;
+        uint256 expectedRatio = 40000;
 
         uint256 ratio = reporter.getSystemCollateralizationRatio(price);
         assertEq(ratio, expectedRatio, "Ratio mismatch for typical success case");
@@ -520,7 +522,7 @@ contract OvercollateralizationReporterTest is Test {
         cuspdToken.mint(user1, cuspdTotalSupply);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
-        uint256 expectedRatio = 80; // (20000 / 25000) * 100
+        uint256 expectedRatio = 8000; // (20000 / 25000) * 100
 
         uint256 ratio = reporter.getSystemCollateralizationRatio(price);
         assertEq(ratio, expectedRatio, "Ratio mismatch for <100% case");
@@ -539,7 +541,7 @@ contract OvercollateralizationReporterTest is Test {
         cuspdToken.mint(user1, cuspdTotalSupply);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
-        uint256 expectedRatio = 100;
+        uint256 expectedRatio = 10000;
 
         uint256 ratio = reporter.getSystemCollateralizationRatio(price);
         assertEq(ratio, expectedRatio, "Ratio mismatch for 100% case");
@@ -558,7 +560,7 @@ contract OvercollateralizationReporterTest is Test {
         cuspdToken.mint(user1, cuspdTotalSupply);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
-        uint256 expectedRatio = 200;
+        uint256 expectedRatio = 20000;
 
         uint256 ratio = reporter.getSystemCollateralizationRatio(price);
         assertEq(ratio, expectedRatio, "Ratio mismatch for >100% case");
@@ -651,7 +653,7 @@ contract OvercollateralizationReporterTest is Test {
         address oldRateContractAddr = address(reporter.rateContract());
         vm.deal(address(this), 0.001 ether);
         // Deploy a new mock/instance for the rate contract
-        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
+        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
         address newRateContractAddr = address(newRateContract);
 
         vm.expectEmit(true, true, true, false, address(reporter)); // old, new, contract
@@ -671,7 +673,7 @@ contract OvercollateralizationReporterTest is Test {
 
     function test_UpdateRateContract_Revert_NotAdmin() public {
         vm.deal(address(this), 0.001 ether);
-        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
+        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
         address newRateContractAddr = address(newRateContract);
 
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, reporter.DEFAULT_ADMIN_ROLE()));

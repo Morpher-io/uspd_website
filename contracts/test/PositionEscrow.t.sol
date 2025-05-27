@@ -1084,7 +1084,7 @@ contract PositionEscrowTest is
     // VIII. View Functions Tests
     // =============================================
 
-    function test_getCollateralizationRatio_zeroShares() public {
+    function test_getCollateralizationRatio_zeroShares() public view {
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
             .PriceResponse(2000 ether, 18, block.timestamp * 1000);
         assertEq(

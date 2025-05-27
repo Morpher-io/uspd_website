@@ -237,7 +237,6 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         _burn(msg.sender, amount);
     }
 
-    // --- ERC20 Standard Functions ---
 
     // --- Execution functions for USPDToken proxying ---
 
@@ -248,28 +247,6 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * @param amount The amount of shares to transfer.
      */
     function executeTransfer(address from, address to, uint256 amount) external onlyRole(USPD_CALLER_ROLE) {
-        _transfer(from, to, amount);
-    }
-
-    /**
-     * @notice Allows an authorized contract (like USPDToken) to execute an approval on behalf of a user.
-     * @param owner The address granting the approval.
-     * @param spender The address being approved.
-     * @param amount The amount of shares to approve.
-     */
-    function executeApprove(address owner, address spender, uint256 amount) external onlyRole(USPD_CALLER_ROLE) {
-        _approve(owner, spender, amount);
-    }
-
-    /**
-     * @notice Allows an authorized contract (like USPDToken) to execute a transferFrom on behalf of a user.
-     * @param spender The address initiating the transfer (msg.sender to USPDToken.transferFrom).
-     * @param from The address whose shares are being transferred.
-     * @param to The address receiving the shares.
-     * @param amount The amount of shares to transfer.
-     */
-    function executeTransferFrom(address spender, address from, address to, uint256 amount) external onlyRole(USPD_CALLER_ROLE) {
-        _spendAllowance(from, spender, amount);
         _transfer(from, to, amount);
     }
 

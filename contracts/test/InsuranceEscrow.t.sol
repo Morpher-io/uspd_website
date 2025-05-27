@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {IERC20} from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {InsuranceEscrow} from "../src/InsuranceEscrow.sol";
 import {MockStETH} from "./mocks/MockStETH.sol";
 
@@ -18,8 +18,6 @@ contract FalseReturnERC20 is IERC20 {
     bool public shouldReturnFalseTransfer = false;
     bool public shouldReturnFalseTransferFrom = false;
 
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     constructor(string memory name_, string memory symbol_, uint8 decimals_) {
         _name = name_;
@@ -173,7 +171,7 @@ contract InsuranceEscrowTest is Test {
 
     // --- receive() Tests ---
     function test_RevertIf_ReceiveEth() public {
-        vm.expectRevert("InsuranceEscrow: Direct ETH transfers not allowed");
+        // vm.expectRevert("InsuranceEscrow: Direct ETH transfers not allowed"); //it will not revert if called as low level call, hence the !succes check
         (bool success, ) = address(insuranceEscrow).call{value: 1 ether}("");
         assertTrue(!success, "ETH transfer should have reverted");
     }

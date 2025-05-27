@@ -11,13 +11,11 @@ export default {
   contracts: {
       title: "USPD Contracts"
   },
+  economics: {
+      title: "Economics, Liquidations"
+  },
   bridge: {
       title: "USPD Cross-Chain (Bridge)"
-  },
-  integration: {
-    // Alternatively, you can set title with `title` property
-    title: 'Missing Integration Steps'
-    // ... and provide extra configurations
   }
 }
  

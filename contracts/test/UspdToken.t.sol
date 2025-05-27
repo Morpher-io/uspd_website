@@ -110,7 +110,7 @@ contract USPDTokenTest is Test {
 
     function setUp() public {
         // Ensure tests run in L1 context for PoolSharesConversionRate L1 logic
-        vm.chainId(PoolSharesConversionRate.MAINNET_CHAIN_ID);
+        vm.chainId(1);
 
         // Setup signer for price attestations
         signerPrivateKey = 0xa11ce;
@@ -285,7 +285,7 @@ contract USPDTokenTest is Test {
     }
 
 
-    function testAdminRoleAssignment() public {
+    function testAdminRoleAssignment() public view {
         // Verify that the constructor correctly assigned admin roles
         assertTrue(uspdToken.hasRole(uspdToken.DEFAULT_ADMIN_ROLE(), address(this)), "Admin role not assigned");
     }
@@ -302,6 +302,7 @@ contract USPDTokenTest is Test {
         // Check the specific revert message from USPDToken's receive()
         vm.expectRevert("USPD: Direct ETH transfers not allowed");
         (bool success, ) = address(uspdToken).call{value: 1 ether}("");
+        assertTrue(success, "Call to uspd Token did not work");
         assertGt(uspdBuyer.balance, initialBalance - 0.1 ether, "Buyer ETH balance decreased too much (gas?)");
     }
 

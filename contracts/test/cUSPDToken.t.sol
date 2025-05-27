@@ -96,6 +96,8 @@ contract cUSPDTokenTest is Test {
         signer = vm.addr(signerPrivateKey);
         vm.warp(1000000); // Ensure block.timestamp is not zero for oracle checks
 
+        vm.chainId(1);
+
         // 2. Deploy Mocks & Dependencies
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
@@ -111,7 +113,7 @@ contract cUSPDTokenTest is Test {
 
         // Deploy RateContract
         vm.deal(admin, 0.001 ether);
-        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido));
+        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
 
         // Deploy StabilizerNFT Implementation
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
@@ -231,7 +233,7 @@ contract cUSPDTokenTest is Test {
     // I. Constructor & Initialization Tests
     // =============================================
 
-    function testConstructor_Success() public {
+    function testConstructor_Success() public view {
         assertEq(address(cuspdToken.oracle()), address(priceOracle), "Oracle address mismatch");
         assertEq(address(cuspdToken.stabilizer()), address(stabilizerNFT), "Stabilizer address mismatch");
         assertEq(address(cuspdToken.rateContract()), address(rateContract), "RateContract address mismatch");
