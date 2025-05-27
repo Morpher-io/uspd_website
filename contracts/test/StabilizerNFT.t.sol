@@ -1907,24 +1907,41 @@ contract StabilizerNFTTest is Test {
 
         // --- Attempt 2: Liquidate with liquidatorTokenId = 1 (Privileged 125% threshold) ---
         // Position at 120% SHOULD be liquidatable by 125% threshold.
-        uint256 expectedThresholdUsed = 12450; // Corrected: liquidatorTokenId will be 2, so 12500 - (2-1)*50
-        uint256 targetPayoutToLiquidator = (stEthParValue * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
-        // uint256 expectedStEthPaid = targetPayoutToLiquidator; // Inlined
-        uint256 expectedRemainderToInsurance = collateralToSetInPosition - targetPayoutToLiquidator;
+        // Inlined variables: expectedThresholdUsed, targetPayoutToLiquidator, expectedRemainderToInsurance
 
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, privilegedLiquidatorNFTId, sharesToLiquidate, targetPayoutToLiquidator, 2000 ether, expectedThresholdUsed); // Use captured IDs, inlined expectedStEthPaid
+        emit StabilizerNFT.PositionLiquidated(
+            positionToLiquidateTokenId,
+            user2,
+            privilegedLiquidatorNFTId,
+            sharesToLiquidate,
+            (stEthParValue * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100, // targetPayoutToLiquidator inlined
+            2000 ether,
+            12450 // expectedThresholdUsed inlined (12500 - (privilegedLiquidatorNFTId - 1) * 50), assuming privilegedLiquidatorNFTId is effectively 2 for this calculation if it's the second NFT minted overall.
+                  // If privilegedLiquidatorNFTId is literally 1, then 12500. The test setup implies it's the *second* NFT minted to user2,
+                  // but the logic in StabilizerNFT uses the actual token ID.
+                  // The value 12450 was previously calculated based on privilegedLiquidatorNFTId being 2.
+                  // Let's assume privilegedLiquidatorNFTId is indeed the ID that results in 12450.
+        );
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(privilegedLiquidatorNFTId, positionToLiquidateTokenId, sharesToLiquidate, priceQuery); // Use captured IDs & reused priceQuery
 
         // --- Assertions for Successful Liquidation ---
-        assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + targetPayoutToLiquidator, "Liquidator stETH payout mismatch (privileged)"); // Inlined expectedStEthPaid
+        assertEq(
+            mockStETH.balanceOf(user2),
+            liquidatorStEthBefore + (stEthParValue * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100, // targetPayoutToLiquidator inlined
+            "Liquidator stETH payout mismatch (privileged)"
+        );
         assertEq(positionEscrow.getCurrentStEthBalance(), 0, "PositionEscrow balance should be 0 (privileged)");
-        assertEq(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, "InsuranceEscrow balance mismatch (privileged)");
+        assertEq(
+            insuranceEscrow.getStEthBalance(),
+            insuranceStEthBefore + (collateralToSetInPosition - (stEthParValue * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100), // expectedRemainderToInsurance inlined
+            "InsuranceEscrow balance mismatch (privileged)"
+        );
     }
 
     // =============================================
