@@ -1303,11 +1303,11 @@ contract StabilizerNFTTest is Test {
         uint256 initialSharesInPosition = positionEscrow.backedPoolShares(); // Should be 2000 shares
 
         // --- Artificially Lower Collateral in PositionEscrow to create insufficiency ---
-        uint256 collateralActuallyInEscrow = 0.8 ether; // Manually set actual stETH in escrow
-        require(collateralActuallyInEscrow < initialCollateralBeforeManualReduction, "Manual reduction error");
+        // uint256 collateralActuallyInEscrow = 0.8 ether; // Inlined: Manually set actual stETH in escrow
+        require(0.8 ether < initialCollateralBeforeManualReduction, "Manual reduction error");
         vm.prank(address(positionEscrow)); // Bypass access control for direct transfer
-        mockStETH.transfer(address(0xdead), initialCollateralBeforeManualReduction - collateralActuallyInEscrow);
-        assertEq(positionEscrow.getCurrentStEthBalance(), collateralActuallyInEscrow, "Collateral in PositionEscrow not set correctly after manual reduction");
+        mockStETH.transfer(address(0xdead), initialCollateralBeforeManualReduction - 0.8 ether);
+        assertEq(positionEscrow.getCurrentStEthBalance(), 0.8 ether, "Collateral in PositionEscrow not set correctly after manual reduction");
 
         // --- Fund InsuranceEscrow ---
         uint256 insuranceFundAmount = 0.5 ether; // Enough to cover expected shortfall
@@ -1333,7 +1333,7 @@ contract StabilizerNFTTest is Test {
         // uint256 liabilityUSD = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
         // uint256 targetLiquidationRatioPercentage = 8000; // Inlined: e.g., 80%, well below 110% default
 
-        uint256 priceForLiquidationTest = (8000 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (collateralActuallyInEscrow * 10000) + 1;
+        uint256 priceForLiquidationTest = (8000 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (0.8 ether * 10000) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
 
         // --- Calculate Expected Payouts based on priceForLiquidationTest ---
@@ -1342,7 +1342,7 @@ contract StabilizerNFTTest is Test {
         // Target Payout to liquidator (e.g., 105% of par value)
         uint256 targetTotalPayoutToLiquidator = (stEthParValueAtLiquidationPrice * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
-        uint256 expectedStEthFromPosition = collateralActuallyInEscrow; // Position pays all it has
+        uint256 expectedStEthFromPosition = 0.8 ether; // Inlined: Position pays all it has (collateralActuallyInEscrow)
         uint256 expectedShortfall = targetTotalPayoutToLiquidator - expectedStEthFromPosition;
         require(insuranceFundAmount >= expectedShortfall, "Test setup: Insurance not funded enough for the calculated shortfall");
         uint256 expectedStEthFromInsurance = expectedShortfall; // Insurance covers the full shortfall
@@ -1354,7 +1354,7 @@ contract StabilizerNFTTest is Test {
         // --- Action: Liquidate ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
-        uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance(); // Should be collateralActuallyInEscrow
+        uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance(); // Should be 0.8 ether (collateralActuallyInEscrow)
 
         // vm.expectEmit for PositionLiquidated
         // vm.expectEmit for FundsWithdrawn from InsuranceEscrow (if possible to make it work reliably)
