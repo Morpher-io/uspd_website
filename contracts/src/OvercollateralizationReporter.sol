@@ -231,7 +231,7 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(AccessControlUpgradeable, UUPSUpgradeable) // Added explicit override
+        override(AccessControlUpgradeable) // Removed UUPSUpgradeable
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
@@ -254,11 +254,10 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
     // then the explicit override for supportsInterface might be needed as shown commented out.
     // For now, relying on OpenZeppelin's default handling.
     // If a specific override is needed due to multiple inheritance paths of supportsInterface:
-    // function supportsInterface(bytes4 interfaceId) public view override(AccessControlUpgradeable, UUPSUpgradeable) returns (bool) {
+    // function supportsInterface(bytes4 interfaceId) public view override(AccessControlUpgradeable) returns (bool) {
     //     return interfaceId == type(IOvercollateralizationReporter).interfaceId || super.supportsInterface(interfaceId);
     // }
     // The above explicit override for IOvercollateralizationReporter is not strictly necessary if
     // IOvercollateralizationReporter does not itself declare supportsInterface or inherit from something
-    // that does in a way that creates ambiguity with AccessControlUpgradeable and UUPSUpgradeable.
-    // The added override for AccessControlUpgradeable and UUPSUpgradeable is the key fix.
+    // that does in a way that creates ambiguity with AccessControlUpgradeable.
 }

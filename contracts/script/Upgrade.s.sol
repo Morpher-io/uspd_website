@@ -125,8 +125,8 @@ contract UpgradeScript is Script {
         // The caller (deployer/msg.sender of this script) must have UPGRADER_ROLE on PriceOracle
         if (oracleProxyAddress != address(0) && newOracleImplAddress != address(0)) {
             console2.log("Upgrading PriceOracle (UUPS) to new implementation:", newOracleImplAddress);
-            PriceOracle(payable(oracleProxyAddress)).upgradeTo(newOracleImplAddress);
-            // If upgradeToAndCall is needed:
+            PriceOracle(payable(oracleProxyAddress)).upgradeToAndCall(newOracleImplAddress, bytes(""));
+            // If a reinitialization call is needed:
             // PriceOracle(payable(oracleProxyAddress)).upgradeToAndCall(newOracleImplAddress, abi.encodeWithSignature("someReinitializeFunction()"));
             console2.log("PriceOracle (UUPS) upgraded successfully");
         }
@@ -138,8 +138,8 @@ contract UpgradeScript is Script {
         // The caller (deployer/msg.sender of this script) must have UPGRADER_ROLE on StabilizerNFT
         if (stabilizerProxyAddress != address(0) && newStabilizerImplAddress != address(0)) {
             console2.log("Upgrading StabilizerNFT (UUPS) to new implementation:", newStabilizerImplAddress);
-            StabilizerNFT(payable(stabilizerProxyAddress)).upgradeTo(newStabilizerImplAddress);
-            // If upgradeToAndCall is needed:
+            StabilizerNFT(payable(stabilizerProxyAddress)).upgradeToAndCall(newStabilizerImplAddress, bytes(""));
+            // If a reinitialization call is needed:
             // StabilizerNFT(payable(stabilizerProxyAddress)).upgradeToAndCall(newStabilizerImplAddress, abi.encodeWithSignature("someReinitializeFunction()"));
             console2.log("StabilizerNFT (UUPS) upgraded successfully");
         }
@@ -152,8 +152,8 @@ contract UpgradeScript is Script {
 
         if (reporterProxyAddress != address(0) && newReporterImplAddress != address(0)) {
             console2.log("Upgrading OvercollateralizationReporter (UUPS) to new implementation:", newReporterImplAddress);
-            OvercollateralizationReporter(payable(reporterProxyAddress)).upgradeTo(newReporterImplAddress);
-            // If upgradeToAndCall is needed:
+            OvercollateralizationReporter(payable(reporterProxyAddress)).upgradeToAndCall(newReporterImplAddress, bytes(""));
+            // If a reinitialization call is needed:
             // OvercollateralizationReporter(payable(reporterProxyAddress)).upgradeToAndCall(newReporterImplAddress, abi.encodeWithSignature("someReinitializeFunction()"));
             console2.log("OvercollateralizationReporter (UUPS) upgraded successfully");
         }

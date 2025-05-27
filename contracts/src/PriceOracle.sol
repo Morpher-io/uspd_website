@@ -98,7 +98,7 @@ contract PriceOracle is
 
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(AccessControlUpgradeable, UUPSUpgradeable) returns (bool) { // Added UUPSUpgradeable
+    ) public view override(AccessControlUpgradeable) returns (bool) { // Removed UUPSUpgradeable
         return super.supportsInterface(interfaceId);
     }
 
