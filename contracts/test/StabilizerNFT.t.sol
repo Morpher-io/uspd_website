@@ -1842,9 +1842,10 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup Position to be Liquidated (owned by user1) ---
         uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
-        vm.deal(user1, 2 ether); // Give user1 enough ETH for their stabilizer
+        // Fund user1's stabilizer with exactly enough for their 1 ETH mint at 130% ratio (0.3 ETH)
+        vm.deal(user1, 0.3 ether); 
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(positionToLiquidateTokenId); // Fund user1's stabilizer
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.3 ether}(positionToLiquidateTokenId); 
         vm.prank(user1);
         stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 13000); // Set its min ratio (e.g., 130%)
 
