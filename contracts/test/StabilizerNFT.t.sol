@@ -1331,9 +1331,9 @@ contract StabilizerNFTTest is Test {
         // --- Simulate ETH Price Drop to make the (already reduced) collateral appear below threshold ---
         // Liability in USD (par value of shares)
         uint256 liabilityUSD = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
-        uint256 targetLiquidationRatioPercentage = 8000; // e.g., 80%, well below 110% default
+        // uint256 targetLiquidationRatioPercentage = 8000; // Inlined: e.g., 80%, well below 110% default
 
-        uint256 priceForLiquidationTest = (targetLiquidationRatioPercentage * liabilityUSD * (10**18)) / (collateralActuallyInEscrow * 10000) + 1;
+        uint256 priceForLiquidationTest = (8000 * liabilityUSD * (10**18)) / (collateralActuallyInEscrow * 10000) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
 
         // --- Calculate Expected Payouts based on priceForLiquidationTest ---
