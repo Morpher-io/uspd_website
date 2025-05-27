@@ -62,6 +62,7 @@ contract StabilizerNFTTest is Test {
         owner = address(this);
         user1 = makeAddr("user1");
         user2 = makeAddr("user2");
+        user3 = makeAddr("user3"); // Initialize user3
 
         // 1. Deploy Mocks & Dependencies
         mockStETH = new MockStETH();
