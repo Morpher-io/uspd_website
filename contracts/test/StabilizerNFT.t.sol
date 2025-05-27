@@ -1925,6 +1925,10 @@ contract StabilizerNFTTest is Test {
             stEthParValueForPayout,
             initialCollateral // This is the stETH in positionEscrow before this liquidation attempt
         );
+
+        // --- Reset maxPriceDeviation in PriceOracle ---
+        vm.prank(owner);
+        priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
     }
 
     function _testPrivilegedLiquidationAttempt(
