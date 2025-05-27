@@ -1314,11 +1314,11 @@ contract StabilizerNFTTest is Test {
         mockStETH.mint(address(insuranceEscrow), insuranceFundAmount);
         assertEq(insuranceEscrow.getStEthBalance(), insuranceFundAmount, "InsuranceEscrow initial funding failed");
 
-        // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
-        uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(user3);
-        vm.deal(user3, 0.2 ether); vm.prank(user3);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(liquidatorBackingStabilizerId);
-        vm.prank(user3); stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12000);
+        // // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
+        // uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(user3);
+        // vm.deal(user3, 0.2 ether); vm.prank(user3);
+        // stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(liquidatorBackingStabilizerId);
+        // vm.prank(user3); stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12000);
 
         // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
         vm.deal(user2, ((initialSharesInPosition * 1 ether) / (2000 ether)) + 0.1 ether);
@@ -1348,8 +1348,8 @@ contract StabilizerNFTTest is Test {
         uint256 expectedStEthFromInsurance = expectedShortfall; // Insurance covers the full shortfall
 
         // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
+        vm.prank(owner); 
+        priceOracle.setMaxDeviationPercentage(100000);
 
         // --- Action: Liquidate ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
@@ -1362,9 +1362,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
 
-        // --- Reset maxPriceDeviation in PriceOracle ---
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
-
+       
         // --- Assertions ---
         assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + targetTotalPayoutToLiquidator, 1, "Liquidator total stETH payout mismatch");
         assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - expectedStEthFromPosition, 1, "PositionEscrow balance mismatch (should be near 0)");
