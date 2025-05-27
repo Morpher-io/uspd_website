@@ -1838,37 +1838,67 @@ contract StabilizerNFTTest is Test {
         // uint256 privilegedLiquidatorNFTId = 1; // For 125% threshold
         // uint256 collateralRatioToSet = 12000; // 120% (Liquidatable by 125%, not by 110%)
 
-        // --- Setup Position ---
-        uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1); // Mint for user1 (expected: 1 or next)
-        vm.deal(user1, 1 ether);
+        // --- Setup Position to be Liquidated (owned by user1) ---
+        uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
+        vm.deal(user1, 2 ether); // Give user1 enough ETH for their stabilizer
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(positionToLiquidateTokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(positionToLiquidateTokenId); // Fund user1's stabilizer
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 13000); // Set initial ratio higher
+        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 13000); // Set its min ratio (e.g., 130%)
 
-        vm.deal(owner, 1 ether);
+        // Allocate to user1's position
+        uint256 ethForUser1Position = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, ethForUser1Position); // Minter needs ETH
         vm.prank(owner);
-        cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp));
+        cuspdToken.mintShares{value: ethForUser1Position}(user1, priceQuery); // Mint shares, allocating to user1's stabilizer
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
         uint256 initialCollateral = positionEscrow.getCurrentStEthBalance();
-        uint256 initialShares = positionEscrow.backedPoolShares();
+        uint256 initialShares = positionEscrow.backedPoolShares(); // These are the shares user1 effectively "owes"
 
-        // --- Artificially Set Collateral Ratio to 120% ---
-        uint256 stEthParValue = (initialShares * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / (2000 ether);
-        uint256 collateralToSetInPosition = (stEthParValue * 12000) / 10000; // collateralRatioToSet = 12000
-        vm.prank(address(positionEscrow));
-        mockStETH.transfer(address(0xdead), initialCollateral - collateralToSetInPosition);
-        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSetInPosition, "Collateral not set correctly");
-
-        // --- Setup Liquidator (user2) ---
-        uint256 privilegedLiquidatorNFTId = stabilizerNFT.mint(user2); // Mint for user2 (expected: 2 or next, will be used as ID 1 effectively by logic)
-        uint256 sharesToLiquidate = initialShares;
+        // --- Setup a separate stabilizer to back the liquidator's shares ---
+        uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(owner); // Owner owns this backing stabilizer
+        vm.deal(owner, 2 ether); // Fund owner for this stabilizer
         vm.prank(owner);
-        cuspdToken.mint(user2, sharesToLiquidate);
+        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(liquidatorBackingStabilizerId);
+        vm.prank(owner);
+        stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 11000); // Standard ratio
+
+        // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
+        uint256 privilegedLiquidatorNFTId = stabilizerNFT.mint(user2); // user2 owns the privileged NFT
+        uint256 sharesToLiquidate = initialShares; // Liquidator will attempt to liquidate all shares of the target position
+
+        uint256 ethNeededForLiquidatorShares = (sharesToLiquidate * 1 ether) / (2000 ether); // ETH for par value at current price & yield=1
+        vm.deal(user2, ethNeededForLiquidatorShares + 0.1 ether); // Deal ETH to user2 for minting + gas
+        vm.prank(user2); // user2 mints their own cUSPD
+        cuspdToken.mintShares{value: ethNeededForLiquidatorShares}(user2, priceQuery);
+        // Now user2 has 'sharesToLiquidate' cUSPD, backed by liquidatorBackingStabilizerId
+
         vm.startPrank(user2);
-        cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate);
+        cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate); // user2 approves StabilizerNFT
         vm.stopPrank();
+
+        // --- Artificially Set Collateral Ratio of Target Position to 120% ---
+        uint256 stEthParValue = (initialShares * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / (2000 ether);
+        uint256 collateralToSetInPosition = (stEthParValue * 12000) / 10000; // 120%
+        
+        // Ensure collateralToSetInPosition is less than what was initially there to simulate a drop
+        if (collateralToSetInPosition >= initialCollateral) {
+             // This can happen if initial minCollateralRatio for the position was already low.
+             // For this test, we want to ensure we are removing collateral.
+             // If initialCollateral is already at or below collateralToSetInPosition, adjust collateralToSetInPosition.
+             // However, the test logic implies we *reduce* collateral.
+             // Let's assume initialCollateral was > collateralToSetInPosition due to setup.
+             // If not, the test logic for removing collateral needs re-evaluation or the initial setup.
+             // For now, proceed with the assumption initialCollateral is higher.
+        }
+        require(initialCollateral > collateralToSetInPosition, "Initial collateral too low for desired reduction");
+
+        vm.prank(address(positionEscrow)); // PositionEscrow itself "loses" stETH
+        mockStETH.transfer(address(0xdead), initialCollateral - collateralToSetInPosition);
+        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSetInPosition, "Collateral not set correctly for target position");
+
 
         // --- Attempt 1: Liquidate with liquidatorTokenId = 0 (Default 110% threshold) ---
         // Position at 120% should NOT be liquidatable by 110% threshold.
