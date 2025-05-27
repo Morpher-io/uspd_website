@@ -36,6 +36,7 @@ contract StabilizerNFT is
     bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
     uint256 public constant MIN_GAS = 100000;
+    uint256 public constant MINIMUM_UNALLOCATE_COLLATERALIZATION_RATIO = 100; // e.g., 100 for 100%
 
     struct StabilizerPosition {
         // uint256 totalEth; // Removed - Unallocated funds are now held in StabilizerEscrow
@@ -127,6 +128,9 @@ contract StabilizerNFT is
     event InsuranceEscrowUpdated(address indexed newInsuranceEscrow);
     event LiquidationParametersUpdated(uint256 newPayoutPercent /* Removed newThresholdPercent */);
     // OracleUpdated event removed
+
+    // --- Errors ---
+    error SystemUnstableUnallocationNotAllowed();
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -747,6 +751,17 @@ contract StabilizerNFT is
     ) external override returns (uint256 unallocatedEth) {
         require(msg.sender == address(cuspdToken), "Only cUSPD contract"); // Check against cUSPD
         require(highestAllocatedId != 0, "No allocated funds");
+
+        // Check system collateralization ratio before allowing unallocation
+        // This check is performed here to prevent redemptions when the system is undercollateralized.
+        // Liquidations bypass this specific check as they are a remedy for undercollateralization.
+        if (address(reporter) != address(0)) { // Reporter might not be set in all test environments initially
+            uint256 currentSystemRatio = reporter.getSystemCollateralizationRatio(priceResponse);
+            if (currentSystemRatio < MINIMUM_UNALLOCATE_COLLATERALIZATION_RATIO) {
+                revert SystemUnstableUnallocationNotAllowed();
+            }
+        }
+
 
         uint256 currentId = highestAllocatedId;
         uint256 remainingPoolShares = poolSharesToUnallocate;
