@@ -1342,10 +1342,10 @@ contract StabilizerNFTTest is Test {
         // Target Payout to liquidator (e.g., 105% of par value)
         uint256 targetTotalPayoutToLiquidator = (stEthParValueAtLiquidationPrice * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
-        uint256 expectedStEthFromPosition = 0.8 ether; // Inlined: Position pays all it has (collateralActuallyInEscrow)
-        uint256 expectedShortfall = targetTotalPayoutToLiquidator - expectedStEthFromPosition;
+        // uint256 expectedStEthFromPosition = 0.8 ether; // Inlined: Position pays all it has (collateralActuallyInEscrow)
+        uint256 expectedShortfall = targetTotalPayoutToLiquidator - 0.8 ether; // Inlined expectedStEthFromPosition
         require(0.5 ether >= expectedShortfall, "Test setup: Insurance not funded enough for the calculated shortfall"); // Inlined insuranceFundAmount
-        uint256 expectedStEthFromInsurance = expectedShortfall; // Insurance covers the full shortfall
+        // uint256 expectedStEthFromInsurance = expectedShortfall; // Inlined: Insurance covers the full shortfall, use expectedShortfall directly
 
         // --- Temporarily increase maxPriceDeviation in PriceOracle ---
         vm.prank(owner); 
@@ -1365,10 +1365,10 @@ contract StabilizerNFTTest is Test {
        
         // --- Assertions ---
         assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + targetTotalPayoutToLiquidator, 1, "Liquidator total stETH payout mismatch");
-        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - expectedStEthFromPosition, 1, "PositionEscrow balance mismatch (should be near 0)");
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - 0.8 ether, 1, "PositionEscrow balance mismatch (should be near 0)"); // Inlined expectedStEthFromPosition
         assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow shares mismatch (should be 0)");
         assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator should have 0 cUSPD left");
-        assertApproxEqAbs(insuranceEscrow.getStEthBalance(), insuranceStEthBefore - expectedStEthFromInsurance, 1, "InsuranceEscrow balance mismatch after covering shortfall");
+        assertApproxEqAbs(insuranceEscrow.getStEthBalance(), insuranceStEthBefore - expectedShortfall, 1, "InsuranceEscrow balance mismatch after covering shortfall"); // Use expectedShortfall
 
         if (initialSharesInPosition == initialSharesInPosition) { // True if liquidating all shares
             assertEq(stabilizerNFT.lowestAllocatedId(), 0, "Position should be removed from allocated list");
