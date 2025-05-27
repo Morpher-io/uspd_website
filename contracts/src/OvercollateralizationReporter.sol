@@ -228,6 +228,15 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
     //     return interfaceId == type(IOvercollateralizationReporter).interfaceId || super.supportsInterface(interfaceId);
     // }
 
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(AccessControlUpgradeable, UUPSUpgradeable) // Added explicit override
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
     /**
      * @dev Authorizes an upgrade to a new implementation contract.
      *      Only callable by an address with the UPGRADER_ROLE.
@@ -248,4 +257,8 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
     // function supportsInterface(bytes4 interfaceId) public view override(AccessControlUpgradeable, UUPSUpgradeable) returns (bool) {
     //     return interfaceId == type(IOvercollateralizationReporter).interfaceId || super.supportsInterface(interfaceId);
     // }
+    // The above explicit override for IOvercollateralizationReporter is not strictly necessary if
+    // IOvercollateralizationReporter does not itself declare supportsInterface or inherit from something
+    // that does in a way that creates ambiguity with AccessControlUpgradeable and UUPSUpgradeable.
+    // The added override for AccessControlUpgradeable and UUPSUpgradeable is the key fix.
 }
