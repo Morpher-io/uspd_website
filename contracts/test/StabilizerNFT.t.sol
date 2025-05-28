@@ -1832,10 +1832,10 @@ contract StabilizerNFTTest is Test {
         }
 
         uint256 liquidatorsNFTId = stabilizerNFT.mint(user2); // This ID should now be >= 31
-        uint256 sharesToLiquidate = initialShares;
+        // uint256 sharesToLiquidate = initialShares; //inlining
         // user2 already has 'sharesToLiquidate' from the earlier cuspdToken.mintShares call.
         vm.startPrank(user2);
-        cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate);
+        cuspdToken.approve(address(stabilizerNFT), initialShares);
         vm.stopPrank();
 
         // --- Calculate Expected Payout ---
@@ -1845,14 +1845,18 @@ contract StabilizerNFTTest is Test {
 
         // Recalculate expected remainder based on the effective ratio the PositionEscrow will report.
         // This accounts for potential precision differences in getCollateralizationRatio.
-        IPriceOracle.PriceResponse memory liquidationPriceResponse = IPriceOracle.PriceResponse(
+        // IPriceOracle.PriceResponse memory liquidationPriceResponse = IPriceOracle.PriceResponse(
+        //     1800 ether, // The price used in the actual liquidation call
+        //     18,
+        //     block.timestamp // Timestamp doesn't strictly matter for this ratio check if price is fixed
+        // );
+        // uint256 effectiveRatioFromEscrow = positionEscrow.getCollateralizationRatio(liquidationPriceResponse); // e.g., 10799 //inlined
+        
+        uint256 actualBackingStEthByContractLogic = (stEthParValue * positionEscrow.getCollateralizationRatio(IPriceOracle.PriceResponse(
             1800 ether, // The price used in the actual liquidation call
             18,
             block.timestamp // Timestamp doesn't strictly matter for this ratio check if price is fixed
-        );
-        uint256 effectiveRatioFromEscrow = positionEscrow.getCollateralizationRatio(liquidationPriceResponse); // e.g., 10799
-        
-        uint256 actualBackingStEthByContractLogic = (stEthParValue * effectiveRatioFromEscrow) / 10000;
+        ))) / 10000;
 
         uint256 expectedRemainderToInsurance;
         if (actualBackingStEthByContractLogic >= targetPayoutToLiquidator) {
@@ -1875,10 +1879,10 @@ contract StabilizerNFTTest is Test {
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
         // Expect 11000 as thresholdUsed due to high liquidatorsNFTId
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 1800 ether, 11000); 
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, initialShares, expectedStEthPaid, 1800 ether, 11000); 
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(liquidatorsNFTId, positionToLiquidateTokenId, sharesToLiquidate, createSignedPriceAttestation(1800 ether, block.timestamp)); // Use captured IDs
+        stabilizerNFT.liquidatePosition(liquidatorsNFTId, positionToLiquidateTokenId, initialShares, createSignedPriceAttestation(1800 ether, block.timestamp)); // Use captured IDs
 
         // --- Assertions ---
         assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedStEthPaid, "Liquidator stETH payout mismatch");
