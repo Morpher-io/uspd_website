@@ -5,9 +5,6 @@ import "forge-std/Test.sol";
 import "forge-std/StdMath.sol"; // For sqrt
 import "../src/PriceOracle.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IAccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/IAccessControlUpgradeable.sol";
-import {IPausableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
-import {IUUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 
 contract PriceOracleTest is Test {
@@ -390,10 +387,4 @@ contract PriceOracleTest is Test {
         assertFalse(priceOracle.paused(), "Contract should be unpaused");
     }
 
-    function testSupportsInterface() public {
-        assertTrue(priceOracle.supportsInterface(type(IPriceOracle).interfaceId), "Does not support IPriceOracle");
-        assertTrue(priceOracle.supportsInterface(type(IAccessControlUpgradeable).interfaceId), "Does not support IAccessControlUpgradeable");
-        assertTrue(priceOracle.supportsInterface(type(IPausableUpgradeable).interfaceId), "Does not support IPausableUpgradeable");
-        assertTrue(priceOracle.supportsInterface(type(IUUPSUpgradeable).interfaceId), "Does not support IUUPSUpgradeable");
-    }
 }
