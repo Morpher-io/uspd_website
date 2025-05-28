@@ -193,6 +193,47 @@ contract OvercollateralizationReporterTest is Test {
         assertEq(reporter.yieldFactorAtLastSnapshot(), reporter.FACTOR_PRECISION(), "Initial yield snapshot should be 1e18");
     }
 
+    function testInitialize_Revert_ZeroAdmin() public {
+        OvercollateralizationReporter newReporterImpl = new OvercollateralizationReporter();
+        bytes memory initData = abi.encodeWithSelector(
+            OvercollateralizationReporter.initialize.selector,
+            address(0), updater, address(rateContract), address(cuspdToken)
+        );
+        vm.expectRevert("Reporter: Zero admin address");
+        new ERC1967Proxy(address(newReporterImpl), initData);
+    }
+
+    function testInitialize_Revert_ZeroStabilizerNFT() public {
+        OvercollateralizationReporter newReporterImpl = new OvercollateralizationReporter();
+        bytes memory initData = abi.encodeWithSelector(
+            OvercollateralizationReporter.initialize.selector,
+            admin, address(0), address(rateContract), address(cuspdToken)
+        );
+        vm.expectRevert("Reporter: Zero StabilizerNFT address");
+        new ERC1967Proxy(address(newReporterImpl), initData);
+    }
+
+    function testInitialize_Revert_ZeroRateContract() public {
+        OvercollateralizationReporter newReporterImpl = new OvercollateralizationReporter();
+        bytes memory initData = abi.encodeWithSelector(
+            OvercollateralizationReporter.initialize.selector,
+            admin, updater, address(0), address(cuspdToken)
+        );
+        vm.expectRevert("Reporter: Zero RateContract address");
+        new ERC1967Proxy(address(newReporterImpl), initData);
+    }
+
+    function testInitialize_Revert_ZeroCUSPDToken() public {
+        OvercollateralizationReporter newReporterImpl = new OvercollateralizationReporter();
+        bytes memory initData = abi.encodeWithSelector(
+            OvercollateralizationReporter.initialize.selector,
+            admin, updater, address(rateContract), address(0)
+        );
+        vm.expectRevert("Reporter: Zero cUSPDToken address");
+        new ERC1967Proxy(address(newReporterImpl), initData);
+    }
+
+
     // =============================================
     // II. updateSnapshot Tests
     // =============================================
@@ -353,6 +394,44 @@ contract OvercollateralizationReporterTest is Test {
         vm.prank(updater);
         vm.expectRevert("Reporter: Current yield factor is zero");
         reporter.updateSnapshot(1 ether); // Delta value doesn't matter for this specific revert
+    }
+
+    function testUpdateSnapshot_Revert_InconsistentInitialState() public {
+        // Force yieldFactorAtLastSnapshot = 0 and totalEthEquivalentAtLastSnapshot != 0
+        stdstore.target(address(reporter)).sig(reporter.yieldFactorAtLastSnapshot.selector).checked_write(uint256(0));
+        stdstore.target(address(reporter)).sig(reporter.totalEthEquivalentAtLastSnapshot.selector).checked_write(1 ether);
+
+        assertEq(reporter.yieldFactorAtLastSnapshot(), 0);
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), 1 ether);
+        
+        // Ensure current yield factor is valid
+        assertGt(rateContract.getYieldFactor(), 0);
+
+        vm.prank(updater);
+        vm.expectRevert("Reporter: Inconsistent initial state");
+        reporter.updateSnapshot(0.5 ether); // Delta can be anything
+    }
+
+    function testUpdateSnapshot_Success_ForcedZeroInitialYieldAndSnapshot() public {
+        // Force yieldFactorAtLastSnapshot = 0 and totalEthEquivalentAtLastSnapshot = 0
+        stdstore.target(address(reporter)).sig(reporter.yieldFactorAtLastSnapshot.selector).checked_write(uint256(0));
+        stdstore.target(address(reporter)).sig(reporter.totalEthEquivalentAtLastSnapshot.selector).checked_write(uint256(0));
+
+        assertEq(reporter.yieldFactorAtLastSnapshot(), 0);
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), 0);
+
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        assertGt(currentYieldFactor, 0, "Current yield factor should be > 0 for test validity");
+
+        int256 delta = 1 ether;
+        vm.expectEmit(true, false, false, true, address(reporter));
+        emit IOvercollateralizationReporter.SnapshotUpdated(uint256(delta), currentYieldFactor);
+
+        vm.prank(updater);
+        reporter.updateSnapshot(delta);
+
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), uint256(delta), "ETH snapshot mismatch");
+        assertEq(reporter.yieldFactorAtLastSnapshot(), currentYieldFactor, "Yield snapshot mismatch");
     }
 
     // =============================================
@@ -715,5 +794,49 @@ contract OvercollateralizationReporterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, reporter.DEFAULT_ADMIN_ROLE()));
         vm.prank(user1);
         reporter.updateCUSPDToken(newCUSPDTokenAddr);
+    }
+
+    // =============================================
+    // VI. Interface and Upgradeability Tests
+    // =============================================
+
+    function testSupportsInterface() public view {
+        assertTrue(reporter.supportsInterface(type(IOvercollateralizationReporter).interfaceId), "Does not support IOvercollateralizationReporter");
+        assertTrue(reporter.supportsInterface(type(IAccessControlUpgradeable).interfaceId), "Does not support IAccessControlUpgradeable");
+        assertTrue(reporter.supportsInterface(type(IUUPSUpgradeable).interfaceId), "Does not support IUUPSUpgradeable");
+        bytes4 someRandomInterfaceId = 0x12345678;
+        assertFalse(reporter.supportsInterface(someRandomInterfaceId), "Supports random interfaceId");
+    }
+
+    function testUpgrade_Success() public {
+        OvercollateralizationReporter v2Implementation = new OvercollateralizationReporter();
+        
+        // Check current implementation
+        address initialImplementation = vm.load(address(reporter), bytes32(uint256(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc))); // ERC1967 impl slot
+        assertNotEq(initialImplementation, address(v2Implementation), "Initial implementation should not be V2");
+
+        vm.prank(admin); // Admin has UPGRADER_ROLE
+        reporter.upgradeTo(address(v2Implementation));
+
+        address newImplementation = vm.load(address(reporter), bytes32(uint256(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc)));
+        assertEq(newImplementation, address(v2Implementation), "Implementation address did not update to V2");
+
+        // Check if state is preserved (e.g., admin role)
+        assertTrue(reporter.hasRole(reporter.DEFAULT_ADMIN_ROLE(), admin), "Admin role lost after upgrade");
+        assertTrue(reporter.hasRole(reporter.UPGRADER_ROLE(), admin), "Upgrader role lost after upgrade");
+    }
+
+    function testUpgrade_Revert_NotUpgrader() public {
+        OvercollateralizationReporter v2Implementation = new OvercollateralizationReporter();
+        
+        vm.prank(user1); // user1 does not have UPGRADER_ROLE
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                user1,
+                reporter.UPGRADER_ROLE()
+            )
+        );
+        reporter.upgradeTo(address(v2Implementation));
     }
 }
