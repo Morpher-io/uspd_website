@@ -1823,10 +1823,16 @@ contract StabilizerNFTTest is Test {
         assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSetInPosition, "Collateral not set correctly");
 
         // --- Setup Liquidator (user2) ---
-        uint256 liquidatorsNFTId = stabilizerNFT.mint(user2); // Mint for user2 (expected: 2 or next, will be used as ID 500 effectively by logic)
+        // Mint dummy NFTs to ensure liquidatorsNFTId is high enough to trigger the minimum threshold.
+        // The threshold logic is: 12500 - (ID-1)*50, min 11000.
+        // To reach 11000, (ID-1)*50 must be >= 1500. So, ID-1 >= 30, meaning ID >= 31.
+        // If positionToLiquidateTokenId is 1, we need to mint 29 dummies for the next to be 31.
+        for (uint i = 0; i < 29; i++) { // Mint dummy NFTs (e.g., IDs 2 through 30 if first was 1)
+            stabilizerNFT.mint(address(this)); // Mint to test contract or any address
+        }
+        uint256 liquidatorsNFTId = stabilizerNFT.mint(user2); // This ID should now be >= 31
         uint256 sharesToLiquidate = initialShares;
-        // vm.prank(owner);
-        // cuspdToken.mint(user2, sharesToLiquidate);
+        // user2 already has 'sharesToLiquidate' from the earlier cuspdToken.mintShares call.
         vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate);
         vm.stopPrank();
@@ -1845,7 +1851,8 @@ contract StabilizerNFTTest is Test {
         priceOracle.setMaxDeviationPercentage(10000);
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 1800 ether, 12450); // Use captured IDs, expectedThresholdUsed = 11000
+        // Expect 11000 as thresholdUsed due to high liquidatorsNFTId
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 1800 ether, 11000); 
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(liquidatorsNFTId, positionToLiquidateTokenId, sharesToLiquidate, createSignedPriceAttestation(1800 ether, block.timestamp)); // Use captured IDs
