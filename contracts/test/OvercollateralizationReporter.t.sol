@@ -805,13 +805,13 @@ contract OvercollateralizationReporterTest is Test {
         OvercollateralizationReporter v2Implementation = new OvercollateralizationReporter();
         
         // Check current implementation
-        address initialImplementation = vm.load(address(reporter), bytes32(uint256(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc))); // ERC1967 impl slot
+        address initialImplementation = address(uint160(uint256(vm.load(address(reporter), bytes32(uint256(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc)))))); // ERC1967 impl slot
         assertNotEq(initialImplementation, address(v2Implementation), "Initial implementation should not be V2");
 
         vm.prank(admin); // Admin has UPGRADER_ROLE
-        reporter.upgradeTo(address(v2Implementation));
+        reporter.upgradeToAndCall(address(v2Implementation), "");
 
-        address newImplementation = vm.load(address(reporter), bytes32(uint256(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc)));
+        address newImplementation = address(uint160(uint256(vm.load(address(reporter), bytes32(uint256(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc))))));
         assertEq(newImplementation, address(v2Implementation), "Implementation address did not update to V2");
 
         // Check if state is preserved (e.g., admin role)
@@ -830,6 +830,6 @@ contract OvercollateralizationReporterTest is Test {
                 reporter.UPGRADER_ROLE()
             )
         );
-        reporter.upgradeTo(address(v2Implementation));
+        reporter.upgradeToAndCall(address(v2Implementation), "");
     }
 }
