@@ -290,6 +290,22 @@ contract USPDTokenTest is Test {
         assertTrue(uspdToken.hasRole(uspdToken.DEFAULT_ADMIN_ROLE(), address(this)), "Admin role not assigned");
     }
 
+    // --- Constructor Revert Tests ---
+    function testConstructor_Revert_ZeroCUSPDAddress() public {
+        vm.expectRevert("USPD: Zero cUSPD address");
+        new USPD("Test USPD", "TUSPD", address(0), address(rateContract), address(this));
+    }
+
+    function testConstructor_Revert_ZeroRateContractAddress() public {
+        vm.expectRevert("USPD: Zero rate contract address");
+        new USPD("Test USPD", "TUSPD", address(cuspdToken), address(0), address(this));
+    }
+
+    function testConstructor_Revert_ZeroAdminAddress() public {
+        vm.expectRevert("USPD: Zero admin address");
+        new USPD("Test USPD", "TUSPD", address(cuspdToken), address(rateContract), address(0));
+    }
+
     function testMintByDirectEtherTransfer() public {
         // Test that sending ETH directly to the USPD view token reverts.
         address uspdBuyer = makeAddr("uspdBuyer");
@@ -654,6 +670,52 @@ contract USPDTokenTest is Test {
         uspdToken.updateRateContract(address(0));
     }
 
+    function testUpdateCUSPDAddress() public {
+        address newCUSPDAddr = makeAddr("newCUSPD");
+        address nonAdmin = makeAddr("nonAdminCUSPD");
+
+        // Check event
+        vm.expectEmit(true, true, false, true, address(uspdToken));
+        emit CUSPDAddressUpdated(address(cuspdToken), newCUSPDAddr);
+        uspdToken.updateCUSPDAddress(newCUSPDAddr);
+
+        // Check state
+        assertEq(address(uspdToken.cuspdToken()), newCUSPDAddr, "cUSPD address not updated");
+
+        // Check role enforcement
+        vm.startPrank(nonAdmin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        uspdToken.updateCUSPDAddress(makeAddr("anotherCUSPD"));
+        vm.stopPrank();
+
+        // Check zero address revert
+        vm.expectRevert(USPD.ZeroAddress.selector);
+        uspdToken.updateCUSPDAddress(address(0));
+    }
+
+    function testSetBridgeEscrowAddress() public {
+        address newBridgeEscrowAddr = makeAddr("newBridgeEscrow");
+        address nonAdmin = makeAddr("nonAdminBridge");
+
+        // Check event
+        vm.expectEmit(true, true, false, true, address(uspdToken));
+        emit USPD.BridgeEscrowAddressUpdated(uspdToken.bridgeEscrowAddress(), newBridgeEscrowAddr); // Use getter for old address
+        uspdToken.setBridgeEscrowAddress(newBridgeEscrowAddr);
+
+        // Check state
+        assertEq(uspdToken.bridgeEscrowAddress(), newBridgeEscrowAddr, "BridgeEscrow address not updated");
+
+        // Check role enforcement
+        vm.startPrank(nonAdmin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        uspdToken.setBridgeEscrowAddress(makeAddr("anotherBridgeEscrow"));
+        vm.stopPrank();
+
+        // Check zero address revert
+        vm.expectRevert(USPD.ZeroAddress.selector);
+        uspdToken.setBridgeEscrowAddress(address(0));
+    }
+
 
     // --- Helper to mint and fund a stabilizer ---
     function _setupStabilizer(address owner, uint256 ethAmount) internal returns (uint256) {
@@ -823,6 +885,153 @@ contract USPDTokenTest is Test {
         uspdToken.mint{value: 1 ether}(recipient, priceQuery);
     }
 
+    function testMint_Revert_CUSPDTokenAddressZero() public {
+        address minter = makeAddr("minter");
+        address recipient = makeAddr("recipient");
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Set cuspdToken address to zero
+        uspdToken.updateCUSPDAddress(address(0));
+        assertEq(address(uspdToken.cuspdToken()), address(0));
+
+        vm.deal(minter, 1 ether);
+        vm.prank(minter);
+        vm.expectRevert(USPD.ZeroAddress.selector); // Expecting USPD's ZeroAddress error
+        uspdToken.mint{value: 1 ether}(recipient, priceQuery);
+    }
+
+    function testMint_Success_ExactEthNoRefund() public {
+        address minter = makeAddr("minter");
+        address recipient = makeAddr("recipient");
+        uint256 mintAmountEth = 1 ether; // Exact amount expected by cUSPD for full allocation
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth); 
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        
+        vm.deal(minter, mintAmountEth); // Deal exact amount, no extra for gas to simplify balance check
+        uint256 minterInitialEth = minter.balance;
+
+        // Mock cUSPDToken.mintShares to return 0 leftoverEth
+        // To do this, we need to know the exact selector and arguments.
+        // bytes4 selector = IcUSPDToken.mintShares.selector;
+        // bytes memory callData = abi.encodeWithSelector(selector, recipient, priceQuery);
+        // vm.mockCall(address(cuspdToken), msg.value, callData, abi.encode(uint256(0))); 
+        // Simpler: Assume cUSPDToken.mintShares will consume all msg.value if it's the exact amount.
+        // The actual cUSPDToken.mintShares logic should handle this.
+
+        vm.prank(minter);
+        uspdToken.mint{value: mintAmountEth}(recipient, priceQuery);
+
+        // Check minter ETH balance. Should be 0 if exactly mintAmountEth was spent.
+        // This is hard to assert perfectly due to gas, but if no refund happens, it means leftoverEth was 0.
+        // A more robust check would be to ensure no ETH was transferred back to minter.
+        // For simplicity, we rely on the fact that if leftoverEth > 0, a transfer happens.
+        // If the test doesn't revert due to failed refund (e.g. minter can't receive ETH), it implies no refund was attempted.
+        assertEq(minter.balance, minterInitialEth - mintAmountEth, "Minter ETH balance mismatch, implies unexpected refund or consumption");
+    }
+
+
+    // --- Bridging Function Revert Tests ---
+
+    function testLockForBridging_Revert_BridgeEscrowNotSet() public {
+        address relayer = makeAddr("relayer");
+        uspdToken.grantRole(uspdToken.RELAYER_ROLE(), relayer);
+        vm.prank(relayer);
+        vm.expectRevert(USPD.BridgeEscrowNotSet.selector);
+        uspdToken.lockForBridging(100e18, 10); // 100 USPD, chainId 10
+    }
+
+    function testLockForBridging_Revert_AccessControl() public {
+        address nonRelayer = makeAddr("nonRelayer");
+        // Bridge escrow needs to be set for the check to pass to access control
+        uspdToken.setBridgeEscrowAddress(makeAddr("mockBridgeEscrow"));
+        vm.prank(nonRelayer);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonRelayer, uspdToken.RELAYER_ROLE()));
+        uspdToken.lockForBridging(100e18, 10);
+    }
+    
+    function testLockForBridging_Revert_ZeroYieldFactor() public {
+        address relayer = makeAddr("relayer");
+        uspdToken.grantRole(uspdToken.RELAYER_ROLE(), relayer);
+        uspdToken.setBridgeEscrowAddress(makeAddr("mockBridgeEscrow"));
+        _setYieldFactorZero();
+
+        vm.prank(relayer);
+        vm.expectRevert(USPD.InvalidYieldFactor.selector);
+        uspdToken.lockForBridging(100e18, 10);
+    }
+
+    function testLockForBridging_Revert_AmountTooSmallForHighYield() public {
+        address relayer = makeAddr("relayer");
+        uspdToken.grantRole(uspdToken.RELAYER_ROLE(), relayer);
+        uspdToken.setBridgeEscrowAddress(makeAddr("mockBridgeEscrow"));
+        
+        // Mint some tokens to relayer so they have something to bridge (shares)
+        _setupStabilizer(makeAddr("stabilizerOwner"), 1 ether);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(relayer, 1 ether + 0.1 ether);
+        vm.prank(relayer);
+        uspdToken.mint{value: 1 ether}(relayer, priceQuery);
+
+        _setHighYieldFactor();
+
+        vm.prank(relayer);
+        vm.expectRevert(USPD.AmountTooSmall.selector);
+        uspdToken.lockForBridging(1, 10); // 1 wei USPD
+    }
+
+    function testUnlockFromBridging_Revert_BridgeEscrowNotSet() public {
+        address relayer = makeAddr("relayer");
+        address recipient = makeAddr("recipient");
+        uspdToken.grantRole(uspdToken.RELAYER_ROLE(), relayer);
+        vm.prank(relayer);
+        vm.expectRevert(USPD.BridgeEscrowNotSet.selector);
+        uspdToken.unlockFromBridging(recipient, 100e18, 1e18, 10);
+    }
+
+    function testUnlockFromBridging_Revert_AccessControl() public {
+        address nonRelayer = makeAddr("nonRelayer");
+        address recipient = makeAddr("recipient");
+        uspdToken.setBridgeEscrowAddress(makeAddr("mockBridgeEscrow"));
+        vm.prank(nonRelayer);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonRelayer, uspdToken.RELAYER_ROLE()));
+        uspdToken.unlockFromBridging(recipient, 100e18, 1e18, 10);
+    }
+
+    function testUnlockFromBridging_Revert_ZeroRecipient() public {
+        address relayer = makeAddr("relayer");
+        uspdToken.grantRole(uspdToken.RELAYER_ROLE(), relayer);
+        uspdToken.setBridgeEscrowAddress(makeAddr("mockBridgeEscrow"));
+        vm.prank(relayer);
+        vm.expectRevert(USPD.ZeroAddress.selector);
+        uspdToken.unlockFromBridging(address(0), 100e18, 1e18, 10);
+    }
+
+    function testUnlockFromBridging_Revert_ZeroSourceYieldFactor() public {
+        address relayer = makeAddr("relayer");
+        address recipient = makeAddr("recipient");
+        uspdToken.grantRole(uspdToken.RELAYER_ROLE(), relayer);
+        uspdToken.setBridgeEscrowAddress(makeAddr("mockBridgeEscrow"));
+        vm.prank(relayer);
+        vm.expectRevert(USPD.InvalidYieldFactor.selector);
+        uspdToken.unlockFromBridging(recipient, 100e18, 0, 10);
+    }
+
+    function testUnlockFromBridging_Revert_AmountTooSmall() public {
+        address relayer = makeAddr("relayer");
+        address recipient = makeAddr("recipient");
+        uspdToken.grantRole(uspdToken.RELAYER_ROLE(), relayer);
+        uspdToken.setBridgeEscrowAddress(makeAddr("mockBridgeEscrow"));
+        
+        // To make shares 0 for uspdAmount > 0, sourceChainYieldFactor must be very high
+        // cUSPDShareAmountToUnlock = (uspdAmountIntended * FACTOR_PRECISION) / sourceChainYieldFactor;
+        // If uspdAmountIntended = 1, FACTOR_PRECISION = 1e18.
+        // If sourceChainYieldFactor > 1e18, then shares will be 0.
+        uint256 veryHighYieldFactor = uspdToken.FACTOR_PRECISION() * 2;
+
+        vm.prank(relayer);
+        vm.expectRevert(USPD.AmountTooSmall.selector);
+        uspdToken.unlockFromBridging(recipient, 1, veryHighYieldFactor, 10); // 1 wei USPD
+    }
 }
 
 // Removed RevertingContract as burn tests are removed
