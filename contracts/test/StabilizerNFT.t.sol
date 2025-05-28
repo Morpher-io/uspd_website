@@ -1741,29 +1741,29 @@ contract StabilizerNFTTest is Test {
 
         // --- Calculate Liquidation Price & Expected Payouts ---
         // Target ratio: 124.4% (12440), just below 124.5% (12450) threshold for NFT ID 2.
-        uint256 targetRatioScaled = 12440;
-        uint256 initialSharesUSDValue = (initialShares * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Liability in USD (2000e18)
+        // uint256 targetRatioScaled = 12440; // Inlined
+        // uint256 initialSharesUSDValue = (initialShares * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined: Liability in USD (2000e18)
 
-        // price = (targetRatio * LiabilityUSD * 1e18) / (Collateral_stETH * 10000)
-        uint256 priceForLiquidationTest = ((targetRatioScaled * initialSharesUSDValue) / (initialCollateralInPosition * 10000 / (10**18))) +1; // Add 1 wei for safety
+        // price = (12440 * initialSharesUSDValue) / (Collateral_stETH * 10000)
+        uint256 priceForLiquidationTest = ((12440 * ((initialShares * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION())) / (initialCollateralInPosition * 10000 / (10**18))) +1; // Add 1 wei for safety
 
         // stETH Par Value at the new (lower) liquidation price
-        uint256 stEthParValueAtLiquidationPrice = (initialSharesUSDValue * (10**18)) / priceForLiquidationTest;
+        // uint256 stEthParValueAtLiquidationPrice = (((initialShares * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest; // Inlined
         
-        uint256 targetPayoutToLiquidator = (stEthParValueAtLiquidationPrice * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
-        uint256 expectedStEthPaid = targetPayoutToLiquidator;
+        // uint256 targetPayoutToLiquidator = ( ((((initialShares * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100; // Inlined
+        uint256 expectedStEthPaid = ( ((((initialShares * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // Effective backing based on contract's view at liquidation price
-        IPriceOracle.PriceResponse memory liquidationPriceResponse = IPriceOracle.PriceResponse(priceForLiquidationTest, 18, block.timestamp * 1000);
-        uint256 effectiveRatioFromEscrow = positionEscrow.getCollateralizationRatio(liquidationPriceResponse);
-        uint256 actualBackingStEthByContractLogic = (stEthParValueAtLiquidationPrice * effectiveRatioFromEscrow) / 10000;
+        // IPriceOracle.PriceResponse memory liquidationPriceResponse = IPriceOracle.PriceResponse(priceForLiquidationTest, 18, block.timestamp * 1000); // Inlined
+        uint256 effectiveRatioFromEscrow = positionEscrow.getCollateralizationRatio(IPriceOracle.PriceResponse(priceForLiquidationTest, 18, block.timestamp * 1000));
+        uint256 actualBackingStEthByContractLogic = ( ((((initialShares * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest) * effectiveRatioFromEscrow) / 10000;
         
         // Ensure our setup implies a remainder or exact payout
-        require(actualBackingStEthByContractLogic >= targetPayoutToLiquidator -1, "Test logic error: contract sees less backing than target payout.");
+        require(actualBackingStEthByContractLogic >= expectedStEthPaid -1, "Test logic error: contract sees less backing than target payout."); // Use expectedStEthPaid
 
         uint256 expectedRemainderToInsurance;
-        if (actualBackingStEthByContractLogic >= targetPayoutToLiquidator) {
-            expectedRemainderToInsurance = actualBackingStEthByContractLogic - targetPayoutToLiquidator;
+        if (actualBackingStEthByContractLogic >= expectedStEthPaid) { // Use expectedStEthPaid
+            expectedRemainderToInsurance = actualBackingStEthByContractLogic - expectedStEthPaid; // Use expectedStEthPaid
         } else {
             expectedRemainderToInsurance = 0; // Should be covered by the require above
         }
