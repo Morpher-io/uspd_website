@@ -344,7 +344,7 @@ contract PriceOracleTest is Test {
         address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
         vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
         // sqrtPrice for uniswapPriceVal (e.g., 1990)
-        uint160 sqrtPriceUniswap = uint160(sqrt(uniswapPriceVal / (10**12)) * (2**96));
+        uint160 sqrtPriceUniswap = uint160(StdMath.sqrt(uniswapPriceVal / (10**12)) * (2**96));
         bytes memory mockSlot0UniswapReturn = abi.encode(sqrtPriceUniswap, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
         vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0UniswapReturn);
 
