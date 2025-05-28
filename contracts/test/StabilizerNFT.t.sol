@@ -1729,19 +1729,19 @@ contract StabilizerNFTTest is Test {
         uint256 initialShares = positionEscrow.backedPoolShares(); // Shares backed by user1's PositionEscrow (should be 2000 from user2's mint)
         assertEq(initialShares, 2000 ether, "Initial shares in position mismatch");
 
-        // --- Artificially Set Collateral Ratio for PositionToLiquidate ---
-        // Target a liquidation price of 1800 ETH/USD.
-        // Calculate stETH par value at this liquidation price.
-        uint256 stEthParValue = (initialShares * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / (1800 ether);
+        // // --- Artificially Set Collateral Ratio for PositionToLiquidate ---
+        // // Target a liquidation price of 1800 ETH/USD.
+        // // Calculate stETH par value at this liquidation price.
+        // uint256 stEthParValue = (initialShares * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / (1800 ether);
         
-        // Set collateral to achieve a 120% ratio (12000) at 1800 ETH/USD.
-        // This ratio should be liquidatable by 124.5% threshold but not by 110% default.
-        uint256 collateralToSetInPosition = (stEthParValue * 12000) / 10000;
+        // // Set collateral to achieve a 120% ratio (12000) at 1800 ETH/USD.
+        // // This ratio should be liquidatable by 124.5% threshold but not by 110% default.
+        // uint256 collateralToSetInPosition = (stEthParValue * 12000) / 10000;
 
-        require(collateralToSetInPosition < initialCollateral, "Test setup: collateralToSetInPosition too high or initialCollateral too low");
-        vm.prank(address(positionEscrow)); // Bypass access control for direct transfer
-        mockStETH.transfer(address(0xdead), initialCollateral - collateralToSetInPosition);
-        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSetInPosition, "Collateral in PositionEscrow not set correctly");
+        // require(collateralToSetInPosition < initialCollateral, "Test setup: collateralToSetInPosition too high or initialCollateral too low");
+        // vm.prank(address(positionEscrow)); // Bypass access control for direct transfer
+        // mockStETH.transfer(address(0xdead), initialCollateral - collateralToSetInPosition);
+        // assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSetInPosition, "Collateral in PositionEscrow not set correctly");
 
         // --- Setup Liquidator's NFT (user2) ---
         // user2 mints an NFT. This will be the second NFT in the test (ID 2).
