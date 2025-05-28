@@ -6,6 +6,7 @@ import "forge-std/StdMath.sol"; // For sqrt
 import "../src/PriceOracle.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 
 contract PriceOracleTest is Test {
@@ -253,7 +254,7 @@ contract PriceOracleTest is Test {
         // Mock UNISWAP_ROUTER.WETH() call
         vm.mockCall(
             UNISWAP_ROUTER,
-            abi.encodeWithSelector(IUniswapV2Router02.WETH.selector),
+            abi.encodeWithSelector(IUniswapV2Router01.WETH.selector),
             abi.encode(WETH_ADDRESS)
         );
 
@@ -302,7 +303,7 @@ contract PriceOracleTest is Test {
         // Mock UNISWAP_ROUTER.WETH() call
         vm.mockCall(
             UNISWAP_ROUTER,
-            abi.encodeWithSelector(IUniswapV2Router02.WETH.selector),
+            abi.encodeWithSelector(IUniswapV2Router01.WETH.selector),
             abi.encode(WETH_ADDRESS)
         );
 
@@ -346,7 +347,7 @@ contract PriceOracleTest is Test {
         // Mock UNISWAP_ROUTER.WETH() call
         vm.mockCall(
             UNISWAP_ROUTER,
-            abi.encodeWithSelector(IUniswapV2Router02.WETH.selector),
+            abi.encodeWithSelector(IUniswapV2Router01.WETH.selector),
             abi.encode(WETH_ADDRESS)
         );
 
