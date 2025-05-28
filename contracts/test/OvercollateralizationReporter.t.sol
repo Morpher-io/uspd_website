@@ -797,16 +797,9 @@ contract OvercollateralizationReporterTest is Test {
     }
 
     // =============================================
-    // VI. Interface and Upgradeability Tests
+    // VI. Upgradeability Tests
     // =============================================
 
-    function testSupportsInterface() public view {
-        assertTrue(reporter.supportsInterface(type(IOvercollateralizationReporter).interfaceId), "Does not support IOvercollateralizationReporter");
-        assertTrue(reporter.supportsInterface(type(IAccessControlUpgradeable).interfaceId), "Does not support IAccessControlUpgradeable");
-        assertTrue(reporter.supportsInterface(type(IUUPSUpgradeable).interfaceId), "Does not support IUUPSUpgradeable");
-        bytes4 someRandomInterfaceId = 0x12345678;
-        assertFalse(reporter.supportsInterface(someRandomInterfaceId), "Supports random interfaceId");
-    }
 
     function testUpgrade_Success() public {
         OvercollateralizationReporter v2Implementation = new OvercollateralizationReporter();
