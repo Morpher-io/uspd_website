@@ -189,7 +189,11 @@ contract PoolSharesConversionRateTest is Test {
         vm.chainId(1); // Ensure current context is L1
         uint256 newFactor = FACTOR_PRECISION + 100;
 
-        // Attempting as deployer (who is admin and has YIELD_FACTOR_UPDATER_ROLE on L1 instance if it were L2)
+        // Grant YIELD_FACTOR_UPDATER_ROLE to deployer for the L1 instance to bypass role check
+        // and specifically test the NotL2Chain revert.
+        rateContract.grantRole(rateContract.YIELD_FACTOR_UPDATER_ROLE(), address(this));
+
+        // Attempting as deployer (who now has the role)
         vm.expectRevert(PoolSharesConversionRate.NotL2Chain.selector);
         vm.prank(address(this)); 
         rateContract.updateL2YieldFactor(newFactor);
