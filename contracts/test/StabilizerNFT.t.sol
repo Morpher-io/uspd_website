@@ -1405,25 +1405,6 @@ contract StabilizerNFTTest is Test {
         mockStETH.mint(address(insuranceEscrow), 0.1 ether);
         assertEq(insuranceEscrow.getStEthBalance(), 0.1 ether, "InsuranceEscrow partial funding failed");
 
-        // // --- Setup Liquidator (user2) ---
-        // // User2 mints their own StabilizerNFT.
-        // uint256 liquidatorStabilizerTokenId = stabilizerNFT.mint(user2);
-
-        // // User2 funds their StabilizerEscrow. To back 'initialSharesInPosition' (which is 2000 shares, or 1 ETH worth at 2000 price)
-        // // at a 120% ratio, user2 needs 0.2 ETH in their StabilizerEscrow.
-        // vm.deal(user2, 0.2 ether); 
-        // vm.prank(user2);
-        // stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(liquidatorStabilizerTokenId);
-        // vm.prank(user2);
-        // stabilizerNFT.setMinCollateralizationRatio(liquidatorStabilizerTokenId, 12000); // Set 120% ratio for user2's stabilizer
-
-        // User2 mints cUSPD shares via mintShares.
-        // To get 'initialSharesInPosition' (2000 shares, 1 ETH par value at 2000 price), user2 provides 1 ETH.
-        // uint256 ethForLiquidatorShares = (initialSharesInPosition * 1 ether) / (2000 ether); // Should be 1 ether
-        // vm.deal(user2, ethForLiquidatorShares + 0.1 ether); // Deal ETH for minting value + gas
-        // vm.prank(user2);
-        // cuspdToken.mintShares{value: ethForLiquidatorShares}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
-        
         // Verify user2 has the correct amount of shares
         assertEq(cuspdToken.balanceOf(user2), initialSharesInPosition, "Liquidator share balance mismatch after mintShares");
 
@@ -1434,20 +1415,13 @@ contract StabilizerNFTTest is Test {
 
         // --- Simulate ETH Price Drop ---
         // Target a price that makes the 0.8 ETH collateral look like, e.g., 80% ratio
-        // Liability in USD (par value of shares)
-        // uint256 liabilityUSD = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
-        // Price = (Ratio * LiabilityUSD * 1e18) / (ActualCollateral * 10000)
         uint256 priceForLiquidationTest = (8000 * ((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (0.8 ether * 10000) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
 
         // --- Calculate Expected Payouts ---
-        // stETH Par Value of shares at the new, lower price
-        // uint256 stEthParValueAtLiquidationPrice = (((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest; // Inlined
-        // Target Payout to liquidator (e.g., 105% of par value)
         uint256 targetTotalPayoutToLiquidator = ( ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // Position pays all it has (0.8 ether)
-        // uint256 shortfallAfterPositionPayout = targetTotalPayoutToLiquidator - 0.8 ether; // Inlined
         // Insurance pays what it can (0.1 ether), up to the shortfall
         uint256 actualStEthFromInsurance = 0.1 ether < (targetTotalPayoutToLiquidator - 0.8 ether) ? 0.1 ether : (targetTotalPayoutToLiquidator - 0.8 ether);
         uint256 actualTotalPayoutToLiquidator = 0.8 ether + actualStEthFromInsurance;
