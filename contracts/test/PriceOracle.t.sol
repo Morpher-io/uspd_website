@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/StdMath.sol"; // For sqrt
 import "../src/PriceOracle.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 
 contract PriceOracleTest is Test {
@@ -339,14 +340,13 @@ contract PriceOracleTest is Test {
         );
 
         // Mock Uniswap V3 (close to Morpher price)
-        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
-        address wethAddress = priceOracle.uniswapRouter().WETH();
-        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
-        vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
+        // address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984; //inlined
+        // address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640); //inlined
+        vm.mockCall(0x1F98431c8aD98523631AE4a59f267346ea31F984, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, priceOracle.uniswapRouter().WETH(), USDC, 3000), abi.encode(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640));
         // sqrtPrice for uniswapPriceVal (e.g., 1990)
-        uint160 sqrtPriceUniswap = uint160(StdMath.sqrt(uniswapPriceVal / (10**12)) * (2**96));
+        uint160 sqrtPriceUniswap = uint160(Math.sqrt(uniswapPriceVal / (10**12)) * (2**96));
         bytes memory mockSlot0UniswapReturn = abi.encode(sqrtPriceUniswap, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
-        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0UniswapReturn);
+        vm.mockCall(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0UniswapReturn);
 
 
         IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
@@ -377,7 +377,7 @@ contract PriceOracleTest is Test {
         assertTrue(priceOracle.paused(), "Contract should be paused");
 
         // Attempt to unpause as non-PAUSER_ROLE
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUpgradeable.AccessControlUnauthorizedAccount.selector, user1, priceOracle.PAUSER_ROLE()));
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, priceOracle.PAUSER_ROLE()));
         vm.prank(user1);
         priceOracle.unpause();
 
