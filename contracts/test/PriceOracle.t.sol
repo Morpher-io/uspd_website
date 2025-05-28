@@ -118,4 +118,72 @@ contract PriceOracleTest is Test {
         vm.expectRevert(InvalidSignature.selector);
         priceOracle.attestationService(query);
     }
+
+    function testAttestationService_WhenPaused() public {
+        // Grant PAUSER_ROLE to self to pause
+        priceOracle.grantRole(priceOracle.PAUSER_ROLE(), owner);
+        priceOracle.pause();
+
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: 2000 ether,
+                decimals: 18,
+                dataTimestamp: block.timestamp * 1000, // Current time in ms
+                assetPair: keccak256("MORPHER:ETH_USD"),
+                signature: bytes("") // Signature doesn't matter as it should revert before
+            });
+
+        vm.expectRevert(OraclePaused.selector);
+        priceOracle.attestationService(query);
+    }
+
+    function testAttestationService_InvalidDecimals() public {
+        // Create price attestation with invalid decimals
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: 2000 ether,
+                decimals: 8, // Invalid decimals
+                dataTimestamp: block.timestamp * 1000,
+                assetPair: keccak256("MORPHER:ETH_USD"),
+                signature: bytes("")
+            });
+        
+        // Sign the message (even though it will revert before full signature check)
+        // This ensures the signer role check is passed if it were to reach that point.
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), vm.addr(0x123)); // Dummy signer
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            0x123,
+            keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair))
+        );
+        query.signature = abi.encodePacked(r, s, v);
+
+
+        vm.expectRevert(abi.encodeWithSelector(InvalidDecimals.selector, 18, 8));
+        priceOracle.attestationService(query);
+    }
+
+    function testAttestationService_StalePriceData() public {
+        uint256 stalenessPeriod = priceOracle.config().priceStalenessPeriod;
+        uint256 staleTimestamp = (block.timestamp - stalenessPeriod - 1) * 1000; // One second too old, in ms
+
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: 2000 ether,
+                decimals: 18,
+                dataTimestamp: staleTimestamp,
+                assetPair: keccak256("MORPHER:ETH_USD"),
+                signature: bytes("")
+            });
+
+        // Sign the message
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), vm.addr(0x123)); // Dummy signer
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            0x123,
+            keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair))
+        );
+        query.signature = abi.encodePacked(r, s, v);
+
+        vm.expectRevert(abi.encodeWithSelector(PriceDataTooOld.selector, staleTimestamp, block.timestamp));
+        priceOracle.attestationService(query);
+    }
 }
