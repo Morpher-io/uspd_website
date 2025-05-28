@@ -190,8 +190,8 @@ contract PoolSharesConversionRateTest is Test {
         uint256 newFactor = FACTOR_PRECISION + 100;
 
         // Attempting as deployer (who is admin and has YIELD_FACTOR_UPDATER_ROLE on L1 instance if it were L2)
-        vm.prank(deployer); 
         vm.expectRevert(PoolSharesConversionRate.NotL2Chain.selector);
+        vm.prank(address(this)); 
         rateContract.updateL2YieldFactor(newFactor);
     }
 
@@ -216,14 +216,14 @@ contract PoolSharesConversionRateTest is Test {
         address nonUpdater = vm.addr(0x123); // Some random address
         uint256 newFactor = FACTOR_PRECISION + 100;
 
-        vm.prank(nonUpdater);
         vm.expectRevert(
             abi.encodeWithSelector(
-                AccessControl.AccessControlUnauthorizedAccount.selector,
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
                 nonUpdater,
                 l2RateContract.YIELD_FACTOR_UPDATER_ROLE()
             )
         );
+        vm.prank(nonUpdater);
         l2RateContract.updateL2YieldFactor(newFactor);
     }
 
