@@ -20,6 +20,8 @@ contract PriceOracleTest is Test {
         owner = address(this);
         user1 = makeAddr("user1");
 
+        vm.warp(1_000_000_000); // Set a consistent, large timestamp for tests
+
         // Deploy implementation and proxy
         PriceOracle implementation = new PriceOracle();
 
@@ -89,7 +91,7 @@ contract PriceOracleTest is Test {
             .PriceAttestationQuery({
                 price: 2000 ether,
                 decimals: 18,
-                dataTimestamp: block.timestamp,
+                dataTimestamp: block.timestamp * 1000, // Convert to milliseconds
                 assetPair: keccak256("MORPHER:ETH_USD"),
                 signature: bytes("")
             });
