@@ -1294,9 +1294,9 @@ contract StabilizerNFTTest is Test {
 
         // Allocate to user1's position (1 ETH from user, 0.1 ETH from stabilizer = 1.1 ETH total collateral)
         // IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp); // Inlined
-        vm.deal(owner, 1 ether); // Minter needs ETH
-        vm.prank(owner);
-        cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp));
+        vm.deal(user2, 1 ether); // Minter needs ETH
+        vm.prank(user2);
+        cuspdToken.mintShares{value: 1 ether}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
         uint256 initialCollateralBeforeManualReduction = positionEscrow.getCurrentStEthBalance(); // Should be 1.1 ETH
@@ -1321,9 +1321,9 @@ contract StabilizerNFTTest is Test {
         // vm.prank(user3); stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12000);
 
         // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
-        vm.deal(user2, ((initialSharesInPosition * 1 ether) / (2000 ether)) + 0.1 ether);
-        vm.prank(user2);
-        cuspdToken.mintShares{value: ((initialSharesInPosition * 1 ether) / (2000 ether))}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
+        // vm.deal(user2, ((initialSharesInPosition * 1 ether) / (2000 ether)) + 0.1 ether);
+        // vm.prank(user2);
+        // cuspdToken.mintShares{value: ((initialSharesInPosition * 1 ether) / (2000 ether))}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
         vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), initialSharesInPosition);
         vm.stopPrank();
