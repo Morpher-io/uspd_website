@@ -199,4 +199,192 @@ contract PriceOracleTest is Test {
         vm.expectRevert(abi.encodeWithSelector(PriceDataTooOld.selector, staleTimestamp, block.timestamp));
         priceOracle.attestationService(query);
     }
+
+    function testAttestationService_L2Behavior() public {
+        vm.chainId(10); // Set to a non-mainnet chain ID (e.g., Optimism)
+
+        // Grant signer role
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: 2100 ether,
+                decimals: 18,
+                dataTimestamp: block.timestamp * 1000,
+                assetPair: keccak256("MORPHER:ETH_USD"),
+                signature: bytes("")
+            });
+        
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)
+        );
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
+        query.signature = abi.encodePacked(r, s, v);
+
+        // On L2, attestationService should return the price directly without deviation checks
+        IPriceOracle.PriceResponse memory response = priceOracle.attestationService(query);
+
+        assertEq(response.price, query.price, "L2 price mismatch");
+        assertEq(response.decimals, query.decimals, "L2 decimals mismatch");
+        assertEq(response.timestamp, query.dataTimestamp, "L2 timestamp mismatch");
+
+        vm.chainId(1); // Reset chainId for subsequent tests
+    }
+
+    function testAttestationService_L1_ChainlinkUnavailable() public {
+        // Ensure we are on L1
+        vm.chainId(1);
+
+        // Grant signer role
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        // Mock Chainlink to return 0 price
+        bytes memory mockChainlinkZeroReturn = abi.encode(uint80(1), int256(0), uint256(block.timestamp), uint256(block.timestamp), uint80(1));
+        vm.mockCall(
+            CHAINLINK_ETH_USD,
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            mockChainlinkZeroReturn
+        );
+
+        // Mock Uniswap V3 to return a valid price (so it doesn't revert for Uniswap)
+        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+        address wethAddress = priceOracle.uniswapRouter().WETH(); // Get WETH from router
+        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640); // Example pool
+        vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
+        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000; // Approx 2000 USD/ETH
+        bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
+        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
+
+
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: 2000 ether,
+                decimals: 18,
+                dataTimestamp: block.timestamp * 1000,
+                assetPair: keccak256("MORPHER:ETH_USD"),
+                signature: bytes("")
+            });
+        
+        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
+        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
+        query.signature = abi.encodePacked(r, s, v);
+
+        vm.expectRevert(abi.encodeWithSelector(PriceSourceUnavailable.selector, "Chainlink"));
+        priceOracle.attestationService(query);
+
+        vm.clearMockedCalls(); // Clear mocks for subsequent tests
+    }
+
+    function testAttestationService_L1_UniswapV3Unavailable() public {
+        vm.chainId(1);
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        // Mock Chainlink to return a valid price
+        int mockPriceAnswer = 2000 * 1e8;
+        bytes memory mockChainlinkValidReturn = abi.encode(uint80(1), mockPriceAnswer, uint256(block.timestamp), uint256(block.timestamp), uint80(1));
+        vm.mockCall(
+            CHAINLINK_ETH_USD,
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            mockChainlinkValidReturn
+        );
+
+        // Mock Uniswap V3 getPool to return address(0)
+        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+        address wethAddress = priceOracle.uniswapRouter().WETH();
+        vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(address(0)));
+
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: 2000 ether, // Morpher price
+                decimals: 18,
+                dataTimestamp: block.timestamp * 1000,
+                assetPair: keccak256("MORPHER:ETH_USD"),
+                signature: bytes("")
+            });
+        
+        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
+        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
+        query.signature = abi.encodePacked(r, s, v);
+
+        vm.expectRevert(abi.encodeWithSelector(PriceSourceUnavailable.selector, "Uniswap V3"));
+        priceOracle.attestationService(query);
+        vm.clearMockedCalls();
+    }
+
+    function testAttestationService_L1_PriceDeviationTooHigh_MorpherVsChainlink() public {
+        vm.chainId(1);
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        uint256 morpherPrice = 2000 ether;
+        uint256 chainlinkPriceVal = 1000 ether; // Significantly different
+        uint256 uniswapPriceVal = 1990 ether;   // Close to Morpher price
+
+        // Mock Chainlink
+        bytes memory mockChainlinkDeviatedReturn = abi.encode(uint80(1), int(chainlinkPriceVal / (10**10)), uint256(block.timestamp), uint256(block.timestamp), uint80(1));
+        vm.mockCall(
+            CHAINLINK_ETH_USD,
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            mockChainlinkDeviatedReturn
+        );
+
+        // Mock Uniswap V3 (close to Morpher price)
+        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+        address wethAddress = priceOracle.uniswapRouter().WETH();
+        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
+        vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
+        // sqrtPrice for uniswapPriceVal (e.g., 1990)
+        uint160 sqrtPriceUniswap = uint160(sqrt(uniswapPriceVal / (10**12)) * (2**96));
+        bytes memory mockSlot0UniswapReturn = abi.encode(sqrtPriceUniswap, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
+        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0UniswapReturn);
+
+
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: morpherPrice,
+                decimals: 18,
+                dataTimestamp: block.timestamp * 1000,
+                assetPair: keccak256("MORPHER:ETH_USD"),
+                signature: bytes("")
+            });
+        
+        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
+        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
+        query.signature = abi.encodePacked(r, s, v);
+
+        vm.expectRevert(abi.encodeWithSelector(PriceDeviationTooHigh.selector, morpherPrice, chainlinkPriceVal, uniswapPriceVal));
+        priceOracle.attestationService(query);
+        vm.clearMockedCalls();
+    }
+
+    function testUnpause() public {
+        // Grant PAUSER_ROLE to self to pause and unpause
+        priceOracle.grantRole(priceOracle.PAUSER_ROLE(), owner);
+        
+        // Pause the contract first
+        priceOracle.pause();
+        assertTrue(priceOracle.paused(), "Contract should be paused");
+
+        // Attempt to unpause as non-PAUSER_ROLE
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUpgradeable.AccessControlUnauthorizedAccount.selector, user1, priceOracle.PAUSER_ROLE()));
+        vm.prank(user1);
+        priceOracle.unpause();
+
+        // Unpause as PAUSER_ROLE
+        vm.prank(owner);
+        priceOracle.unpause();
+        assertFalse(priceOracle.paused(), "Contract should be unpaused");
+    }
+
+    function testSupportsInterface() public {
+        assertTrue(priceOracle.supportsInterface(type(IPriceOracle).interfaceId), "Does not support IPriceOracle");
+        assertTrue(priceOracle.supportsInterface(type(IAccessControlUpgradeable).interfaceId), "Does not support IAccessControlUpgradeable");
+        assertTrue(priceOracle.supportsInterface(type(IPausableUpgradeable).interfaceId), "Does not support IPausableUpgradeable");
+        assertTrue(priceOracle.supportsInterface(type(IUUPSUpgradeable).interfaceId), "Does not support IUUPSUpgradeable");
+    }
 }
