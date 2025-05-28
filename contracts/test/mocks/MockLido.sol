@@ -9,7 +9,8 @@ import "./MockStETH.sol";
  */
 contract MockLido {
     MockStETH public immutable stETH;
-    bool public shouldMintOnSubmit = true; // Added flag
+    bool public shouldMintOnSubmit = true; 
+    bool public shouldRevertOnSubmit = false; // Flag to control revert behavior
 
     event Submitted(address indexed sender, uint256 amount, address referral);
 
@@ -24,6 +25,9 @@ contract MockLido {
      * @return amount of stETH received (equal to msg.value).
      */
     function submit(address _referral) external payable returns (uint256) {
+        if (shouldRevertOnSubmit) {
+            revert("MockLido: Forced revert on submit");
+        }
         uint256 amount = msg.value;
         require(amount > 0, "MockLido: Amount must be greater than zero");
 
@@ -48,5 +52,13 @@ contract MockLido {
      */
     function setShouldMintOnSubmit(bool _shouldMint) external {
         shouldMintOnSubmit = _shouldMint;
+    }
+
+    /**
+     * @dev Allows tests to control whether the submit function reverts.
+     * @param _shouldRevert True to make submit revert, false otherwise.
+     */
+    function setShouldRevertOnSubmit(bool _shouldRevert) external {
+        shouldRevertOnSubmit = _shouldRevert;
     }
 }
