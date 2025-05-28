@@ -15,6 +15,8 @@ contract PriceOracleTest is Test {
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address public constant CHAINLINK_ETH_USD =
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant WETH_ADDRESS = 
+        0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
     address public owner;
     address public user1;
@@ -248,6 +250,13 @@ contract PriceOracleTest is Test {
         // Grant signer role
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
 
+        // Mock UNISWAP_ROUTER.WETH() call
+        vm.mockCall(
+            UNISWAP_ROUTER,
+            abi.encodeWithSelector(IUniswapV2Router02.WETH.selector),
+            abi.encode(WETH_ADDRESS)
+        );
+
         // Mock Chainlink to return 0 price
         bytes memory mockChainlinkZeroReturn = abi.encode(uint80(1), int256(0), uint256(block.timestamp), uint256(block.timestamp), uint80(1));
         vm.mockCall(
@@ -290,6 +299,13 @@ contract PriceOracleTest is Test {
         vm.chainId(1);
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
 
+        // Mock UNISWAP_ROUTER.WETH() call
+        vm.mockCall(
+            UNISWAP_ROUTER,
+            abi.encodeWithSelector(IUniswapV2Router02.WETH.selector),
+            abi.encode(WETH_ADDRESS)
+        );
+
         // Mock Chainlink to return a valid price
         int mockPriceAnswer = 2000 * 1e8;
         bytes memory mockChainlinkValidReturn = abi.encode(uint80(1), mockPriceAnswer, uint256(block.timestamp), uint256(block.timestamp), uint80(1));
@@ -326,6 +342,13 @@ contract PriceOracleTest is Test {
     function testAttestationService_L1_PriceDeviationTooHigh_MorpherVsChainlink() public {
         vm.chainId(1);
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        // Mock UNISWAP_ROUTER.WETH() call
+        vm.mockCall(
+            UNISWAP_ROUTER,
+            abi.encodeWithSelector(IUniswapV2Router02.WETH.selector),
+            abi.encode(WETH_ADDRESS)
+        );
 
         uint256 morpherPrice = 2000 ether;
         uint256 chainlinkPriceVal = 1000 ether; // Significantly different
