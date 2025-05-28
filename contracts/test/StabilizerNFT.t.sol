@@ -1385,9 +1385,9 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 11000);
 
         // User1 (via owner) mints 1 ETH worth of cUSPD shares, backed by positionToLiquidateTokenId
-        vm.deal(owner, 1 ether);
-        vm.prank(owner);
-        cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp));
+        vm.deal(user2, 1 ether);
+        vm.prank(user2);
+        cuspdToken.mintShares{value: 1 ether}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
         uint256 initialCollateralBeforeManualReduction = positionEscrow.getCurrentStEthBalance(); // e.g., 1.1 ETH
@@ -1405,24 +1405,24 @@ contract StabilizerNFTTest is Test {
         mockStETH.mint(address(insuranceEscrow), 0.1 ether);
         assertEq(insuranceEscrow.getStEthBalance(), 0.1 ether, "InsuranceEscrow partial funding failed");
 
-        // --- Setup Liquidator (user2) ---
-        // User2 mints their own StabilizerNFT.
-        uint256 liquidatorStabilizerTokenId = stabilizerNFT.mint(user2);
+        // // --- Setup Liquidator (user2) ---
+        // // User2 mints their own StabilizerNFT.
+        // uint256 liquidatorStabilizerTokenId = stabilizerNFT.mint(user2);
 
-        // User2 funds their StabilizerEscrow. To back 'initialSharesInPosition' (which is 2000 shares, or 1 ETH worth at 2000 price)
-        // at a 120% ratio, user2 needs 0.2 ETH in their StabilizerEscrow.
-        vm.deal(user2, 0.2 ether); 
-        vm.prank(user2);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(liquidatorStabilizerTokenId);
-        vm.prank(user2);
-        stabilizerNFT.setMinCollateralizationRatio(liquidatorStabilizerTokenId, 12000); // Set 120% ratio for user2's stabilizer
+        // // User2 funds their StabilizerEscrow. To back 'initialSharesInPosition' (which is 2000 shares, or 1 ETH worth at 2000 price)
+        // // at a 120% ratio, user2 needs 0.2 ETH in their StabilizerEscrow.
+        // vm.deal(user2, 0.2 ether); 
+        // vm.prank(user2);
+        // stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(liquidatorStabilizerTokenId);
+        // vm.prank(user2);
+        // stabilizerNFT.setMinCollateralizationRatio(liquidatorStabilizerTokenId, 12000); // Set 120% ratio for user2's stabilizer
 
         // User2 mints cUSPD shares via mintShares.
         // To get 'initialSharesInPosition' (2000 shares, 1 ETH par value at 2000 price), user2 provides 1 ETH.
-        uint256 ethForLiquidatorShares = (initialSharesInPosition * 1 ether) / (2000 ether); // Should be 1 ether
-        vm.deal(user2, ethForLiquidatorShares + 0.1 ether); // Deal ETH for minting value + gas
-        vm.prank(user2);
-        cuspdToken.mintShares{value: ethForLiquidatorShares}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
+        // uint256 ethForLiquidatorShares = (initialSharesInPosition * 1 ether) / (2000 ether); // Should be 1 ether
+        // vm.deal(user2, ethForLiquidatorShares + 0.1 ether); // Deal ETH for minting value + gas
+        // vm.prank(user2);
+        // cuspdToken.mintShares{value: ethForLiquidatorShares}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
         
         // Verify user2 has the correct amount of shares
         assertEq(cuspdToken.balanceOf(user2), initialSharesInPosition, "Liquidator share balance mismatch after mintShares");
