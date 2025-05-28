@@ -368,10 +368,12 @@ contract PriceOracleTest is Test {
         // address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640); //inlined
         vm.mockCall(0x1F98431c8aD98523631AE4a59f267346ea31F984, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, priceOracle.uniswapRouter().WETH(), USDC, 3000), abi.encode(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640));
         // sqrtPrice for uniswapPriceVal (e.g., 1990)
-        uint160 sqrtPriceUniswap = uint160(Math.sqrt(uniswapPriceVal / (10**12)) * (2**96));
+        uint160 sqrtPriceUniswap = uint160(Math.sqrt(uniswapPriceVal / (10**12)) * (2**96)); // uniswapPriceVal is 1990e18
         bytes memory mockSlot0UniswapReturn = abi.encode(sqrtPriceUniswap, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
         vm.mockCall(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0UniswapReturn);
 
+        // Get the actual Uniswap price that will be calculated by the oracle from the mock
+        uint256 actualUniswapPriceFromMock = priceOracle.getUniswapV3WethUsdcPrice();
 
         IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
             .PriceAttestationQuery({
