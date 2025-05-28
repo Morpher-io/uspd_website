@@ -1431,9 +1431,9 @@ contract StabilizerNFTTest is Test {
         uint256 targetTotalPayoutToLiquidator = ( ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // Position pays all it has (0.8 ether)
-        uint256 shortfallAfterPositionPayout = targetTotalPayoutToLiquidator - 0.8 ether;
+        // uint256 shortfallAfterPositionPayout = targetTotalPayoutToLiquidator - 0.8 ether; // Inlined
         // Insurance pays what it can (0.1 ether), up to the shortfall
-        uint256 actualStEthFromInsurance = 0.1 ether < shortfallAfterPositionPayout ? 0.1 ether : shortfallAfterPositionPayout;
+        uint256 actualStEthFromInsurance = 0.1 ether < (targetTotalPayoutToLiquidator - 0.8 ether) ? 0.1 ether : (targetTotalPayoutToLiquidator - 0.8 ether);
         uint256 actualTotalPayoutToLiquidator = 0.8 ether + actualStEthFromInsurance;
 
         require(actualStEthFromInsurance == 0.1 ether, "Test setup: Insurance should be fully drained for partial coverage");
