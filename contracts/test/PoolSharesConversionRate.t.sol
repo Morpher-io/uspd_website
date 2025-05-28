@@ -150,4 +150,92 @@ contract PoolSharesConversionRateTest is Test {
     // `if (initialBalance == 0)` branch in `getYieldFactor` is unreachable by design.
     // function testGetYieldFactor_WhenInitialBalanceIsZero() public { ... }
 
+    // --- L2 Specific Tests ---
+
+    function testL2Deployment_And_InitialYieldFactor() public {
+        vm.chainId(10); // Arbitrary L2 chain ID
+
+        address admin = address(this); // Use deployer as admin for simplicity
+        PoolSharesConversionRate l2RateContract = new PoolSharesConversionRate(
+            address(0), // stETH address not used on L2
+            address(0), // Lido address not used on L2
+            admin
+        ); // No ETH value needed for L2 deployment
+
+        assertEq(l2RateContract.stETH(), address(0), "L2 stETH address should be zero");
+        assertEq(l2RateContract.initialStEthBalance(), 0, "L2 initialStEthBalance should be zero");
+        assertEq(l2RateContract.getYieldFactor(), FACTOR_PRECISION, "L2 initial yield factor should be precision");
+        assertTrue(l2RateContract.hasRole(l2RateContract.YIELD_FACTOR_UPDATER_ROLE(), admin), "Admin should have updater role on L2");
+    }
+
+    function testUpdateL2YieldFactor_Success() public {
+        vm.chainId(10); // Arbitrary L2 chain ID
+        address admin = address(this);
+        PoolSharesConversionRate l2RateContract = new PoolSharesConversionRate(address(0), address(0), admin);
+
+        uint256 newFactor = FACTOR_PRECISION + 100; // e.g., 1e18 + 100
+
+        vm.expectEmit(true, true, true, true, address(l2RateContract));
+        emit IPoolSharesConversionRate.YieldFactorUpdated(FACTOR_PRECISION, newFactor);
+        
+        vm.prank(admin); // Admin has YIELD_FACTOR_UPDATER_ROLE by default on L2
+        l2RateContract.updateL2YieldFactor(newFactor);
+
+        assertEq(l2RateContract.getYieldFactor(), newFactor, "L2 yield factor not updated");
+    }
+
+    function testUpdateL2YieldFactor_Revert_NotL2Chain() public {
+        // rateContract is deployed on L1 (chainId 1) in setUp
+        vm.chainId(1); // Ensure current context is L1
+        uint256 newFactor = FACTOR_PRECISION + 100;
+
+        // Attempting as deployer (who is admin and has YIELD_FACTOR_UPDATER_ROLE on L1 instance if it were L2)
+        vm.prank(deployer); 
+        vm.expectRevert(PoolSharesConversionRate.NotL2Chain.selector);
+        rateContract.updateL2YieldFactor(newFactor);
+    }
+
+    function testUpdateL2YieldFactor_Revert_DecreaseNotAllowed() public {
+        vm.chainId(10); // Arbitrary L2 chain ID
+        address admin = address(this);
+        PoolSharesConversionRate l2RateContract = new PoolSharesConversionRate(address(0), address(0), admin);
+
+        uint256 initialFactor = l2RateContract.getYieldFactor(); // Should be FACTOR_PRECISION
+        uint256 decreasedFactor = initialFactor - 1;
+
+        vm.prank(admin);
+        vm.expectRevert(PoolSharesConversionRate.YieldFactorDecreaseNotAllowed.selector);
+        l2RateContract.updateL2YieldFactor(decreasedFactor);
+    }
+
+    function testUpdateL2YieldFactor_Revert_AccessControl() public {
+        vm.chainId(10); // Arbitrary L2 chain ID
+        address admin = address(this);
+        PoolSharesConversionRate l2RateContract = new PoolSharesConversionRate(address(0), address(0), admin);
+        
+        address nonUpdater = vm.addr(0x123); // Some random address
+        uint256 newFactor = FACTOR_PRECISION + 100;
+
+        vm.prank(nonUpdater);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AccessControl.AccessControlUnauthorizedAccount.selector,
+                nonUpdater,
+                l2RateContract.YIELD_FACTOR_UPDATER_ROLE()
+            )
+        );
+        l2RateContract.updateL2YieldFactor(newFactor);
+    }
+
+    function testConstructor_Revert_LidoSubmitFailed() public {
+        vm.chainId(1); // Ensure L1 for this test
+        MockStETH localStETH = new MockStETH();
+        MockLido localLido = new MockLido(address(localStETH));
+        
+        // Configure MockLido to revert on submit
+        localLido.setShouldRevertOnSubmit(true);
+
+        vm.expectRevert(PoolSharesConversionRate.LidoSubmitFailed.selector);
+        new PoolSharesConversionRate{value: INITIAL_ETH_DEPOSIT}(address(localStETH), address(localLido), address(this));
+    }
 }
