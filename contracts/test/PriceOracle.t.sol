@@ -2,8 +2,13 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
+import "forge-std/StdMath.sol"; // For sqrt
 import "../src/PriceOracle.sol";
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IAccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/IAccessControlUpgradeable.sol";
+import {IPausableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
+import {IUUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+
 
 contract PriceOracleTest is Test {
     PriceOracle public priceOracle;
@@ -15,10 +20,14 @@ contract PriceOracleTest is Test {
 
     address public owner;
     address public user1;
+    uint256 internal signerPrivateKey;
+    address internal signer;
 
     function setUp() public {
         owner = address(this);
         user1 = makeAddr("user1");
+        signerPrivateKey = 0xa11ce; // Same as StabilizerNFTTest for consistency
+        signer = vm.addr(signerPrivateKey);
 
         vm.warp(1_000_000_000); // Set a consistent, large timestamp for tests
 
