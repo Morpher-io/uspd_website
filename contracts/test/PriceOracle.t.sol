@@ -163,7 +163,7 @@ contract PriceOracleTest is Test {
     }
 
     function testAttestationService_StalePriceData() public {
-        uint256 stalenessPeriod = priceOracle.config().priceStalenessPeriod;
+        (uint256 maxDeviation, uint256 stalenessPeriod) = priceOracle.config();
         uint256 staleTimestamp = (block.timestamp - stalenessPeriod - 1) * 1000; // One second too old, in ms
 
         IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
