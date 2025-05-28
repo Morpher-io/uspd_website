@@ -1828,8 +1828,9 @@ contract StabilizerNFTTest is Test {
         // To reach 11000, (ID-1)*50 must be >= 1500. So, ID-1 >= 30, meaning ID >= 31.
         // If positionToLiquidateTokenId is 1, we need to mint 29 dummies for the next to be 31.
         for (uint i = 0; i < 29; i++) { // Mint dummy NFTs (e.g., IDs 2 through 30 if first was 1)
-            stabilizerNFT.mint(address(this)); // Mint to test contract or any address
+            stabilizerNFT.mint(user3); // Mint to test contract or any address
         }
+
         uint256 liquidatorsNFTId = stabilizerNFT.mint(user2); // This ID should now be >= 31
         uint256 sharesToLiquidate = initialShares;
         // user2 already has 'sharesToLiquidate' from the earlier cuspdToken.mintShares call.
