@@ -387,7 +387,7 @@ contract PriceOracleTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
         query.signature = abi.encodePacked(r, s, v);
 
-        vm.expectRevert(abi.encodeWithSelector(PriceDeviationTooHigh.selector, morpherPrice, chainlinkPriceVal, uniswapPriceVal));
+        vm.expectRevert(abi.encodeWithSelector(PriceDeviationTooHigh.selector, morpherPrice, chainlinkPriceVal, actualUniswapPriceFromMock));
         priceOracle.attestationService(query);
         vm.clearMockedCalls();
     }
