@@ -1805,16 +1805,16 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1);
         stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 13000); // Set initial ratio higher
 
-        vm.deal(owner, 1 ether);
-        vm.prank(owner);
-        cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp));
+        vm.deal(user2, 1 ether);
+        vm.prank(user2);
+        cuspdToken.mintShares{value: 1 ether}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
         uint256 initialCollateral = positionEscrow.getCurrentStEthBalance();
         uint256 initialShares = positionEscrow.backedPoolShares();
 
         // --- Artificially Set Collateral Ratio ---
-        uint256 stEthParValue = (initialShares * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / (2000 ether);
+        uint256 stEthParValue = (initialShares * rateContract.getYieldFactor() / stabilizerNFT.FACTOR_PRECISION() * (10**18)) / (1800 ether);
         uint256 collateralToSetInPosition = (stEthParValue * 10800) / 10000; // collateralRatioToSet = 10800
 
         require(collateralToSetInPosition < initialCollateral, "Test setup: collateralToSetInPosition too high");
@@ -1825,8 +1825,8 @@ contract StabilizerNFTTest is Test {
         // --- Setup Liquidator (user2) ---
         uint256 liquidatorsNFTId = stabilizerNFT.mint(user2); // Mint for user2 (expected: 2 or next, will be used as ID 500 effectively by logic)
         uint256 sharesToLiquidate = initialShares;
-        vm.prank(owner);
-        cuspdToken.mint(user2, sharesToLiquidate);
+        // vm.prank(owner);
+        // cuspdToken.mint(user2, sharesToLiquidate);
         vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate);
         vm.stopPrank();
@@ -1841,11 +1841,14 @@ contract StabilizerNFTTest is Test {
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
+        vm.prank(owner);
+        priceOracle.setMaxDeviationPercentage(10000);
+
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 2000 ether, 12450); // Use captured IDs, expectedThresholdUsed = 11000
+        emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, sharesToLiquidate, expectedStEthPaid, 1800 ether, 12450); // Use captured IDs, expectedThresholdUsed = 11000
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(liquidatorsNFTId, positionToLiquidateTokenId, sharesToLiquidate, createSignedPriceAttestation(2000 ether, block.timestamp)); // Use captured IDs
+        stabilizerNFT.liquidatePosition(liquidatorsNFTId, positionToLiquidateTokenId, sharesToLiquidate, createSignedPriceAttestation(1800 ether, block.timestamp)); // Use captured IDs
 
         // --- Assertions ---
         assertEq(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedStEthPaid, "Liquidator stETH payout mismatch");
