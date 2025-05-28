@@ -77,9 +77,13 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
 
             stETH = _stETHAddress;
 
-            ILido(_lidoAddress).submit{value: msg.value}(address(0));
+            try ILido(_lidoAddress).submit{value: msg.value}(address(0)) {}
+            catch {
+                revert LidoSubmitFailed();
+            }
+            
             uint256 balance = IERC20(stETH).balanceOf(address(this));
-            if (balance == 0) revert InitialBalanceZero();
+            if (balance == 0) revert InitialBalanceZero(); // This check remains important
             initialStEthBalance = balance;
             // _yieldFactor on L1 is implicitly calculated by getYieldFactor()
         } else {
