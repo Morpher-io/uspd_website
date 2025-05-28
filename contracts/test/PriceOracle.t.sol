@@ -148,12 +148,17 @@ contract PriceOracleTest is Test {
                 signature: bytes("")
             });
         
-        // Sign the message (even though it will revert before full signature check)
-        // This ensures the signer role check is passed if it were to reach that point.
+        // Sign the message
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), vm.addr(0x123)); // Dummy signer
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)
+        );
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            0x123,
-            keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair))
+            0x123, // private key for vm.addr(0x123)
+            prefixedHash
         );
         query.signature = abi.encodePacked(r, s, v);
 
@@ -177,9 +182,15 @@ contract PriceOracleTest is Test {
 
         // Sign the message
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), vm.addr(0x123)); // Dummy signer
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)
+        );
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            0x123,
-            keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair))
+            0x123, // private key for vm.addr(0x123)
+            prefixedHash
         );
         query.signature = abi.encodePacked(r, s, v);
 
