@@ -1426,9 +1426,9 @@ contract StabilizerNFTTest is Test {
 
         // --- Calculate Expected Payouts ---
         // stETH Par Value of shares at the new, lower price
-        uint256 stEthParValueAtLiquidationPrice = (((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest;
+        // uint256 stEthParValueAtLiquidationPrice = (((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest; // Inlined
         // Target Payout to liquidator (e.g., 105% of par value)
-        uint256 targetTotalPayoutToLiquidator = (stEthParValueAtLiquidationPrice * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+        uint256 targetTotalPayoutToLiquidator = ( ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / priceForLiquidationTest) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // Position pays all it has (0.8 ether)
         uint256 shortfallAfterPositionPayout = targetTotalPayoutToLiquidator - 0.8 ether;
