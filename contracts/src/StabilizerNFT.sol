@@ -324,7 +324,7 @@ contract StabilizerNFT is
         if (address(reporter) != address(0)) { // Reporter might not be set in all test environments initially
             uint256 systemCollateralRatio = reporter.getSystemCollateralizationRatio(priceResponse);
             // Allow liquidation if system ratio is max (no liability) or if position is worse than system
-            if (systemCollateralRatio != type(uint256).max && positionCollateralRatio >= systemCollateralRatio) {
+            if (systemCollateralRatio != type(uint256).max && positionCollateralRatio > systemCollateralRatio) { //needs to be greater, not greater or equal, otherwise cannot liquidate last stabilizer.
                 revert LiquidationNotBelowSystemRatio();
             }
         }

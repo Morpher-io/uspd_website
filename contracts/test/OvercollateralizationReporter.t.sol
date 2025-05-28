@@ -822,7 +822,6 @@ contract OvercollateralizationReporterTest is Test {
     function testUpgrade_Revert_NotUpgrader() public {
         OvercollateralizationReporter v2Implementation = new OvercollateralizationReporter();
         
-        vm.prank(user1); // user1 does not have UPGRADER_ROLE
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
@@ -830,6 +829,7 @@ contract OvercollateralizationReporterTest is Test {
                 reporter.UPGRADER_ROLE()
             )
         );
+        vm.prank(user1); // user1 does not have UPGRADER_ROLE
         reporter.upgradeToAndCall(address(v2Implementation), "");
     }
 }
