@@ -2008,8 +2008,8 @@ contract StabilizerNFTTest is Test {
         // P2 (undercollateralized) par value for 1000 shares at $900: (1000e18 * 1e18) / 900e18 = 1.111... ether
         uint256 p2_userParStEth = (1000 ether * (10**18)) / liquidationPrice;
         // P2 collateral at 99% ratio: p2_userParStEth * 0.99 = 1.1 ether
-        uint256 p2_collateralAtRatio = (p2_userParStEth * 9900) / 10000;
-        uint256 p2_shortfall = p2_userParStEth - p2_collateralAtRatio;
+        // uint256 p2_collateralAtRatio = (p2_userParStEth * 9900) / 10000; // Inlined
+        uint256 p2_shortfall = p2_userParStEth - ((p2_userParStEth * 9900) / 10000);
         
         mockStETH.mint(address(insuranceEscrow), p2_shortfall + 0.1 ether); // Fund slightly more than exact shortfall
         uint256 insuranceEscrowInitialBalance = insuranceEscrow.getStEthBalance();
@@ -2045,11 +2045,11 @@ contract StabilizerNFTTest is Test {
         uint256 p1_userParStEth = (1000 ether * (10**18)) / liquidationPrice;
         // P1 collateral at 144% ratio: p1_userParStEth * 1.44 = 1.6 ether
         // uint256 p1_collateralAtRatio = (p1_userParStEth * 14400) / 10000; // Already asserted
-        uint256 p1_stEthReturnedToStabilizer = ((p1_userParStEth * 14400) / 10000) - p1_userParStEth;
+        // uint256 p1_stEthReturnedToStabilizer = ((p1_userParStEth * 14400) / 10000) - p1_userParStEth; // Inlined
 
         assertEq(p1_escrow.backedPoolShares(), 0, "P1 shares after burn");
         assertApproxEqAbs(p1_escrow.getCurrentStEthBalance(), 0, 1e12, "P1 collateral after burn (should be empty)");
-        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH(), s1_stabilizerEscrowBeforeBurn + p1_stEthReturnedToStabilizer, 1e12, "S1 StabilizerEscrow balance (received excess)");
+        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH(), s1_stabilizerEscrowBeforeBurn + (((p1_userParStEth * 14400) / 10000) - p1_userParStEth), 1e12, "S1 StabilizerEscrow balance (received excess)");
 
         // Total ETH returned to minterUser:
         // From P2 (undercollateralized, insurance covered): p2_userParStEth
