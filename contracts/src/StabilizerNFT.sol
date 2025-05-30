@@ -491,6 +491,7 @@ contract StabilizerNFT is
             }
 
             StabilizerPosition storage pos = positions[currentId];
+            console.log(currentId);
             address escrowAddress = stabilizerEscrows[currentId];
             require(escrowAddress != address(0), "Escrow not found for stabilizer"); // Should not happen
 
@@ -776,6 +777,10 @@ contract StabilizerNFT is
 
         while (currentId != 0 && remainingPoolShares > 0) {
             if (gasleft() < MIN_GAS) break;
+
+            console.log(currentId);
+            console.log(remainingPoolShares);
+            console.log(totalUserStEthReturned);
 
             StabilizerPosition storage pos = positions[currentId];
             IPositionEscrow positionEscrow = IPositionEscrow(positionEscrows[currentId]);
