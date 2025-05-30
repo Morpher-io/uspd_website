@@ -1026,9 +1026,9 @@ contract StabilizerNFT is
         // The calling function (unallocateStabilizerFunds) will handle this.
         stEthToRemove = (userStEthShare * currentRatio) / 10000;
 
-        if (userStEthShare > stEthToRemove) {
-            userStEthShare = stEthToRemove;
-        }
+        // userStEthShare should remain the par value in stETH.
+        // stEthToRemove is the actual collateral backing those shares at the current ratio.
+        // The reconciliation of these values happens in _handleUnallocationSlice.
     }
 
 
