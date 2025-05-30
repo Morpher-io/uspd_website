@@ -1863,11 +1863,11 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(s2_tokenId, 11000);
 
         // --- Minter mints shares (2 ETH worth at $1000/ETH) ---
-        uint256 initialPrice = 1000 ether;
-        IPriceOracle.PriceAttestationQuery memory priceQueryMint = createSignedPriceAttestation(initialPrice, block.timestamp);
+        // uint256 initialPrice = 1000 ether; // Inlined
+        // IPriceOracle.PriceAttestationQuery memory priceQueryMint = createSignedPriceAttestation(1000 ether, block.timestamp); // Inlined
         vm.deal(minterUser, 2 ether);
         vm.prank(minterUser);
-        cuspdToken.mintShares{value: 2 ether}(minterUser, priceQueryMint); // Shares go to minterUser
+        cuspdToken.mintShares{value: 2 ether}(minterUser, createSignedPriceAttestation(1000 ether, block.timestamp)); // Shares go to minterUser
 
         IPositionEscrow p1_escrow = IPositionEscrow(stabilizerNFT.positionEscrows(s1_tokenId));
         IPositionEscrow p2_escrow = IPositionEscrow(stabilizerNFT.positionEscrows(s2_tokenId));
@@ -1915,13 +1915,13 @@ contract StabilizerNFTTest is Test {
         // --- Assertions ---
         // P2 (s2_tokenId) unallocation (1000 shares, 144% ratio at $900):
         // User par value for 1000 shares at $900: (1000 shares * $1/share) / ($900/ETH) = 1.111111111111111111 ether
-        uint256 p2_userParStEth = (1000 ether * (10**18)) / liquidationPrice;
+        // uint256 p2_userParStEth = (1000 ether * (10**18)) / liquidationPrice; // Inlined
         // Collateral attributed to these shares at 144% ratio: p2_userParStEth * 1.44 = 1.6 ether (all of P2's collateral)
-        uint256 p2_collateralAtRatio = (p2_userParStEth * 14400) / 10000;
-        assertApproxEqAbs(p2_collateralAtRatio, 1.6 ether, 1e12, "P2 collateral at ratio calculation");
+        // uint256 p2_collateralAtRatio = (((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000; // Inlined
+        assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000, 1.6 ether, 1e12, "P2 collateral at ratio calculation");
         
-        uint256 p2_stEthReturnedToUser = p2_userParStEth;
-        uint256 p2_stEthReturnedToStabilizer = p2_collateralAtRatio - p2_userParStEth;
+        uint256 p2_stEthReturnedToUser = (1000 ether * (10**18)) / liquidationPrice; 
+        uint256 p2_stEthReturnedToStabilizer = ((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000) - ((1000 ether * (10**18)) / liquidationPrice); 
 
         assertEq(p2_escrow.backedPoolShares(), 0, "P2 shares after burn");
         assertApproxEqAbs(p2_escrow.getCurrentStEthBalance(), 0, 1e12, "P2 collateral after burn"); // Should be empty
@@ -1929,12 +1929,12 @@ contract StabilizerNFTTest is Test {
 
         // P1 (s1_tokenId) unallocation (1000 shares, 99% ratio at $900):
         // User par value for 1000 shares at $900: 1.111111111111111111 ether
-        uint256 p1_userParStEth = (1000 ether * (10**18)) / liquidationPrice;
+        // uint256 p1_userParStEth = (1000 ether * (10**18)) / liquidationPrice; // Inlined
         // Collateral attributed to these shares at 99% ratio: p1_userParStEth * 0.99 = 1.1 ether (all of P1's collateral)
-        uint256 p1_collateralAtRatio = (p1_userParStEth * 9900) / 10000;
-        assertApproxEqAbs(p1_collateralAtRatio, 1.1 ether, 1e12, "P1 collateral at ratio calculation");
+        // uint256 p1_collateralAtRatio = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // Inlined
+        assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000, 1.1 ether, 1e12, "P1 collateral at ratio calculation");
 
-        uint256 p1_stEthPaidToUserFromPosition = p1_collateralAtRatio; // User gets what's available from position
+        uint256 p1_stEthPaidToUserFromPosition = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // User gets what's available from position
         uint256 p1_stEthReturnedToStabilizer = 0; // Stabilizer gets nothing from undercollateralized
 
         assertEq(p1_escrow.backedPoolShares(), 0, "P1 shares after burn");
