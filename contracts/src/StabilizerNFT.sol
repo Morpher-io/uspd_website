@@ -773,6 +773,9 @@ contract StabilizerNFT is
         console.log("_handleUnallocationSlice - Input - stEthCollateralForSliceAtCurrentRatio:", stEthCollateralForSliceAtCurrentRatio);
         console.log("_handleUnallocationSlice - Input - userStEthParValueForSlice:", userStEthParValueForSlice);
 
+        // Modify allocation based on the shares for *this slice* before further calculations or collateral removal
+        positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate));
+
         uint256 amountWithdrawnFromInsuranceThisSlice = 0;
 
         if (stEthCollateralForSliceAtCurrentRatio >= userStEthParValueForSlice) {
@@ -865,9 +868,7 @@ contract StabilizerNFT is
                     : remainingPoolShares;
 
                 if (poolSharesSliceToUnallocate > 0) {
-                    // IMPORTANT: Modify allocation *before* calling the helper that might remove collateral
-                    // based on calculations using the *original* share amount for the slice.
-                    positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate));
+                    // Allocation is now modified inside _handleUnallocationSlice
 
                     UnallocationSliceResult memory sliceResult = _handleUnallocationSlice(
                         currentId,
