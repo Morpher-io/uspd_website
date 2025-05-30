@@ -1864,6 +1864,10 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(s2_tokenId);
         vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(s2_tokenId, 11000);
 
+
+        // Temporarily allow large price deviation for the burn operation if needed by oracle in cUSPDToken.burnShares
+        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
+
         // --- Minter mints shares (2 ETH worth at $1000/ETH) ---
         // uint256 initialPrice = 1000 ether; // Inlined
         // IPriceOracle.PriceAttestationQuery memory priceQueryMint = createSignedPriceAttestation(1000 ether, block.timestamp); // Inlined
@@ -1902,32 +1906,8 @@ contract StabilizerNFTTest is Test {
         uint256 s1_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH();
         uint256 s2_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH();
 
-
-        // Temporarily allow large price deviation for the burn operation if needed by oracle in cUSPDToken.burnShares
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
-
-        // --- Update Oracle Mocks to reflect liquidationPrice ($900) ---
-        // Mock Chainlink for $900
-        bytes memory mockChainlinkBurnReturn = abi.encode(uint80(1), int(liquidationPrice / (10**10)), uint256(block.timestamp), uint256(block.timestamp), uint80(1));
-        vm.mockCall(
-            CHAINLINK_ETH_USD,
-            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
-            mockChainlinkBurnReturn
-        );
-
-        // Mock Uniswap V3 for $900
-        // sqrtPrice for $900 (liquidationPrice)
-        uint160 sqrtPriceLiquidation = uint160(Math.sqrt(liquidationPrice / (10**12)) * (2**96));
-        bytes memory mockSlot0BurnReturn = abi.encode(sqrtPriceLiquidation, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
-        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640); // From setUp
-        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0BurnReturn);
-        // --- End Oracle Mock Update ---
-
         vm.prank(minterUser); // MinterUser owns the shares and initiates burn
         uint256 totalEthReturnedToMinter = cuspdToken.burnShares(2000 ether, payable(minterUser), createSignedPriceAttestation(liquidationPrice, block.timestamp)); // Inlined sharesToBurn
-
-        vm.clearMockedCalls(); // Clear mocks for subsequent tests
-
 
         // --- Assertions ---
         // P2 (s2_tokenId) unallocation (1000 shares, 144% ratio at $900):
