@@ -790,6 +790,9 @@ contract StabilizerNFT is
             console.log("Unallocate Loop - currentId:", currentId);
             console.log("Unallocate Loop - pos.prevAllocated:", pos.prevAllocated);
             console.log("Unallocate Loop - pos.nextAllocated:", pos.nextAllocated);
+            
+            uint256 nextIdToProcess = pos.prevAllocated; // Store prevAllocated *before* any list modification
+
             IPositionEscrow positionEscrow = IPositionEscrow(positionEscrows[currentId]);
             require(address(positionEscrow) != address(0), "PositionEscrow not found");
 
@@ -878,10 +881,8 @@ contract StabilizerNFT is
                 }
             }
             
-            uint256 nextIdToProcess = pos.prevAllocated; // Store before pos might be modified by _removeFromAllocatedList
-
             console.log("Unallocate Loop - End - remainingPoolShares:", remainingPoolShares);
-            console.log("Unallocate Loop - End - nextIdToProcess from pos.prevAllocated:", nextIdToProcess);
+            console.log("Unallocate Loop - End - nextIdToProcess from captured pos.prevAllocated:", nextIdToProcess);
             currentId = nextIdToProcess;
         }
         console.log("reached end");
