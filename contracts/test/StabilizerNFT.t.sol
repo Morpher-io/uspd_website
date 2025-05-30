@@ -1865,7 +1865,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(s2_tokenId, 11000);
 
 
-        // Temporarily allow large price deviation for the burn operation if needed by oracle in cUSPDToken.burnShares
+        // Temporarily allow large price deviation for the mint/burn operation if needed by oracle
         vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
 
         // --- Minter mints shares (2 ETH worth at $1000/ETH) ---
