@@ -1903,7 +1903,6 @@ contract StabilizerNFTTest is Test {
     function testUpgradeStabilizerNFT_Revert_NotUpgrader() public {
         StabilizerNFT v2Implementation = new StabilizerNFT();
         
-        vm.prank(user1); // user1 does not have UPGRADER_ROLE
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
@@ -1911,6 +1910,7 @@ contract StabilizerNFTTest is Test {
                 stabilizerNFT.UPGRADER_ROLE()
             )
         );
+        vm.prank(user1); // user1 does not have UPGRADER_ROLE
         stabilizerNFT.upgradeToAndCall(address(v2Implementation), "");
     }
 
