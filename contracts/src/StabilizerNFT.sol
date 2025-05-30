@@ -797,28 +797,28 @@ contract StabilizerNFT is
                         priceResponse
                     );
 
-                    uint256 stEthPaidToUserFromPosition = 0;
+                    uint256 stEthPaidToUserFromPosition; // This will be the total paid to user for this slice (position + insurance)
                     uint256 stEthReturnedToStabilizer = 0;
-                    uint256 stEthPaidToUserFromInsurance = 0;
+                    uint256 amountWithdrawnFromInsurance = 0; // Tracks only what's taken from insurance for this slice
 
                     if (stEthCollateralForSliceAtCurrentRatio >= userStEthParValueForSlice) {
                         // Position slice is sufficiently collateralized (or over) to cover user's par value.
                         stEthPaidToUserFromPosition = userStEthParValueForSlice;
                         stEthReturnedToStabilizer = stEthCollateralForSliceAtCurrentRatio - userStEthParValueForSlice;
                     } else {
-                        // Position slice is undercollateralized. User gets whatever collateral is attributed to the shares.
+                        // Position slice is undercollateralized. User initially gets what's available from the position.
                         stEthPaidToUserFromPosition = stEthCollateralForSliceAtCurrentRatio;
                         // Stabilizer gets nothing back from this undercollateralized slice's attributed collateral.
-                        stEthReturnedToStabilizer = 0;
+                        // stEthReturnedToStabilizer remains 0
 
                         // Check insurance for shortfall
-                        // Inlined shortfallForUser: (userStEthParValueForSlice - stEthPaidToUserFromPosition)
-                        if ((userStEthParValueForSlice - stEthPaidToUserFromPosition) > 0 && address(insuranceEscrow) != address(0)) {
+                        uint256 shortfall = userStEthParValueForSlice - stEthPaidToUserFromPosition; // Shortfall based on what position provided
+                        if (shortfall > 0 && address(insuranceEscrow) != address(0)) {
                             uint256 insuranceAvailable = insuranceEscrow.getStEthBalance();
-                            uint256 stEthToWithdrawFromInsurance = (userStEthParValueForSlice - stEthPaidToUserFromPosition) > insuranceAvailable ? insuranceAvailable : (userStEthParValueForSlice - stEthPaidToUserFromPosition);
-                            if (stEthToWithdrawFromInsurance > 0) {
-                                insuranceEscrow.withdrawStEth(address(cuspdToken), stEthToWithdrawFromInsurance);
-                                stEthPaidToUserFromInsurance = stEthToWithdrawFromInsurance;
+                            amountWithdrawnFromInsurance = shortfall > insuranceAvailable ? insuranceAvailable : shortfall;
+                            if (amountWithdrawnFromInsurance > 0) {
+                                insuranceEscrow.withdrawStEth(address(cuspdToken), amountWithdrawnFromInsurance);
+                                stEthPaidToUserFromPosition += amountWithdrawnFromInsurance; // Add insurance payout to user's total
                             }
                         }
                     }
@@ -835,8 +835,9 @@ contract StabilizerNFT is
                     }
 
                     // Distribute stETH now held by StabilizerNFT (from PositionEscrow)
+                    // stEthPaidToUserFromPosition now includes any insurance top-up.
                     if (stEthPaidToUserFromPosition > 0) {
-                        require(IERC20(stETH).transfer(address(cuspdToken), stEthPaidToUserFromPosition),"User stETH (from position) transfer to cUSPDToken failed");
+                        require(IERC20(stETH).transfer(address(cuspdToken), stEthPaidToUserFromPosition),"User stETH (from position + insurance) transfer to cUSPDToken failed");
                     }
                     if (stEthReturnedToStabilizer > 0) {
                         require(stabilizerEscrows[currentId] != address(0), "StabilizerEscrow not found");
@@ -844,8 +845,8 @@ contract StabilizerNFT is
                     }
 
                     // Accumulate totals
-                    totalUserStEthReturned += (stEthPaidToUserFromPosition + stEthPaidToUserFromInsurance);
-                    totalEthEquivalentRemovedAggregate += (stEthCollateralForSliceAtCurrentRatio + stEthPaidToUserFromInsurance);
+                    totalUserStEthReturned += stEthPaidToUserFromPosition; // This now includes insurance
+                    totalEthEquivalentRemovedAggregate += (stEthCollateralForSliceAtCurrentRatio + amountWithdrawnFromInsurance);
 
 
                     // If all shares from this position were unallocated, update lists
@@ -858,7 +859,7 @@ contract StabilizerNFT is
                     }
 
                     remainingPoolShares -= poolSharesSliceToUnallocate;
-                    emit FundsUnallocated(currentId, (stEthPaidToUserFromPosition + stEthPaidToUserFromInsurance), stEthReturnedToStabilizer);
+                    emit FundsUnallocated(currentId, stEthPaidToUserFromPosition, stEthReturnedToStabilizer);
                 }
             }
 
