@@ -778,9 +778,8 @@ contract StabilizerNFT is
             if (gasleft() < MIN_GAS) break;
 
             StabilizerPosition storage pos = positions[currentId];
-            address positionEscrowAddress = positionEscrows[currentId];
-            require(positionEscrowAddress != address(0), "PositionEscrow not found");
-            IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddress);
+            IPositionEscrow positionEscrow = IPositionEscrow(positionEscrows[currentId]);
+            require(address(positionEscrow) != address(0), "PositionEscrow not found");
 
             uint256 currentBackedShares = positionEscrow.backedPoolShares();
 
