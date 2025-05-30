@@ -1887,17 +1887,17 @@ contract StabilizerNFTTest is Test {
 
         // --- Simulate ETH price drop to $900/ETH ---
         uint256 liquidationPrice = 900 ether;
-        IPriceOracle.PriceResponse memory priceResponseBurn = IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000);
+        // IPriceOracle.PriceResponse memory priceResponseBurn = IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000); // Inlined
 
         // Verify ratios at new price
-        assertEq(p1_escrow.getCollateralizationRatio(priceResponseBurn), 9900, "P1 ratio at $900 should be 99%"); // (1.1 * 900) / 1000
-        assertEq(p2_escrow.getCollateralizationRatio(priceResponseBurn), 14400, "P2 ratio at $900 should be 144%"); // (1.6 * 900) / 1000
+        assertEq(p1_escrow.getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 9900, "P1 ratio at $900 should be 99%"); // (1.1 * 900) / 1000
+        assertEq(p2_escrow.getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 14400, "P2 ratio at $900 should be 144%"); // (1.6 * 900) / 1000
 
         // Ensure InsuranceEscrow is empty
         assertEq(insuranceEscrow.getStEthBalance(), 0, "InsuranceEscrow should be empty");
 
         // --- MinterUser burns all 2000 shares ---
-        uint256 sharesToBurn = 2000 ether;
+        // uint256 sharesToBurn = 2000 ether; // Inlined
         uint256 minterUserEthBeforeBurn = minterUser.balance;
         uint256 s1_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH();
         uint256 s2_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH();
@@ -1924,7 +1924,7 @@ contract StabilizerNFTTest is Test {
         // --- End Oracle Mock Update ---
 
         vm.prank(minterUser); // MinterUser owns the shares and initiates burn
-        uint256 totalEthReturnedToMinter = cuspdToken.burnShares(sharesToBurn, payable(minterUser), createSignedPriceAttestation(liquidationPrice, block.timestamp));
+        uint256 totalEthReturnedToMinter = cuspdToken.burnShares(2000 ether, payable(minterUser), createSignedPriceAttestation(liquidationPrice, block.timestamp)); // Inlined sharesToBurn
 
         vm.clearMockedCalls(); // Clear mocks for subsequent tests
 
