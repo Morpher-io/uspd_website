@@ -837,14 +837,11 @@ contract StabilizerNFT is
 
                     // Distribute stETH now held by StabilizerNFT (from PositionEscrow)
                     if (stEthPaidToUserFromPosition > 0) {
-                        bool successUser = IERC20(stETH).transfer(address(cuspdToken), stEthPaidToUserFromPosition);
-                        if (!successUser) revert("User stETH (from position) transfer to cUSPDToken failed");
+                        require(IERC20(stETH).transfer(address(cuspdToken), stEthPaidToUserFromPosition),"User stETH (from position) transfer to cUSPDToken failed");
                     }
                     if (stEthReturnedToStabilizer > 0) {
-                        address stabilizerEscrowAddress = stabilizerEscrows[currentId];
-                        require(stabilizerEscrowAddress != address(0), "StabilizerEscrow not found");
-                        bool successStabilizer = IERC20(stETH).transfer(stabilizerEscrowAddress, stEthReturnedToStabilizer);
-                        if (!successStabilizer) revert("Stabilizer stETH transfer to StabilizerEscrow failed");
+                        require(stabilizerEscrows[currentId] != address(0), "StabilizerEscrow not found");
+                        require(IERC20(stETH).transfer(stabilizerEscrows[currentId], stEthReturnedToStabilizer),"Stabilizer stETH transfer to StabilizerEscrow failed");
                     }
 
                     // Accumulate totals
