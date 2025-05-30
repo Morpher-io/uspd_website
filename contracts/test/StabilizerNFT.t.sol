@@ -15,6 +15,8 @@ import {IERC721Errors, IERC20Errors} from "../lib/openzeppelin-contracts/contrac
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+
 
 // Mocks & Interfaces
 import "./mocks/MockStETH.sol";
@@ -1902,7 +1904,6 @@ contract StabilizerNFTTest is Test {
 
 
         // Temporarily allow large price deviation for the burn operation if needed by oracle in cUSPDToken.burnShares
-        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
         vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
 
         // --- Update Oracle Mocks to reflect liquidationPrice ($900) ---
@@ -1925,7 +1926,6 @@ contract StabilizerNFTTest is Test {
         vm.prank(minterUser); // MinterUser owns the shares and initiates burn
         uint256 totalEthReturnedToMinter = cuspdToken.burnShares(sharesToBurn, payable(minterUser), createSignedPriceAttestation(liquidationPrice, block.timestamp));
 
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation); // Reset deviation
         vm.clearMockedCalls(); // Clear mocks for subsequent tests
 
 
