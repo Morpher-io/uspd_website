@@ -755,6 +755,63 @@ contract StabilizerNFT is
         pos.prevAllocated = 0;
     }
 
+    struct UnallocationSliceResult {
+        uint256 stEthPaidToUser;
+        uint256 stEthReturnedToStabilizer;
+        uint256 ethEquivalentRemoved; // Sum of stETH from position and insurance for this slice
+    }
+
+    function _handleUnallocationSlice(
+        uint256 currentId,
+        IPositionEscrow positionEscrow,
+        uint256 poolSharesSliceToUnallocate,
+        IPriceOracle.PriceResponse memory priceResponse
+    ) internal returns (UnallocationSliceResult memory sliceResult) {
+        (uint256 stEthCollateralForSliceAtCurrentRatio, uint256 userStEthParValueForSlice) =
+            _calculateUnallocationFromEscrow(positionEscrow, poolSharesSliceToUnallocate, priceResponse);
+
+        uint256 amountWithdrawnFromInsuranceThisSlice = 0;
+
+        if (stEthCollateralForSliceAtCurrentRatio >= userStEthParValueForSlice) {
+            // Position slice is sufficiently collateralized (or over) to cover user's par value.
+            sliceResult.stEthPaidToUser = userStEthParValueForSlice;
+            sliceResult.stEthReturnedToStabilizer = stEthCollateralForSliceAtCurrentRatio - userStEthParValueForSlice;
+            sliceResult.ethEquivalentRemoved = stEthCollateralForSliceAtCurrentRatio; 
+        } else {
+            // Position slice is undercollateralized. User initially gets what's available from the position.
+            sliceResult.stEthPaidToUser = stEthCollateralForSliceAtCurrentRatio;
+            // sliceResult.stEthReturnedToStabilizer remains 0 (default)
+
+            uint256 shortfall = userStEthParValueForSlice - sliceResult.stEthPaidToUser;
+            if (shortfall > 0 && address(insuranceEscrow) != address(0)) {
+                uint256 insuranceAvailable = insuranceEscrow.getStEthBalance();
+                amountWithdrawnFromInsuranceThisSlice = shortfall > insuranceAvailable ? insuranceAvailable : shortfall;
+                if (amountWithdrawnFromInsuranceThisSlice > 0) {
+                    insuranceEscrow.withdrawStEth(address(cuspdToken), amountWithdrawnFromInsuranceThisSlice);
+                    sliceResult.stEthPaidToUser += amountWithdrawnFromInsuranceThisSlice; // Add insurance payout to user's total
+                }
+            }
+            sliceResult.ethEquivalentRemoved = stEthCollateralForSliceAtCurrentRatio + amountWithdrawnFromInsuranceThisSlice;
+        }
+        
+        // Actual stETH to remove from PositionEscrow is stEthCollateralForSliceAtCurrentRatio
+        if (stEthCollateralForSliceAtCurrentRatio > 0) {
+            positionEscrow.removeCollateral(
+                stEthCollateralForSliceAtCurrentRatio,
+                address(this) // Recipient is this contract (StabilizerNFT)
+            );
+        }
+
+        // Distribute stETH now held by StabilizerNFT
+        if (sliceResult.stEthPaidToUser > 0) {
+            require(IERC20(stETH).transfer(address(cuspdToken), sliceResult.stEthPaidToUser),"User stETH transfer to cUSPDToken failed");
+        }
+        if (sliceResult.stEthReturnedToStabilizer > 0) {
+            require(stabilizerEscrows[currentId] != address(0), "StabilizerEscrow not found");
+            require(IERC20(stETH).transfer(stabilizerEscrows[currentId], sliceResult.stEthReturnedToStabilizer),"Stabilizer stETH transfer to StabilizerEscrow failed");
+        }
+    }
+
     function unallocateStabilizerFunds(
         uint256 poolSharesToUnallocate, // Changed parameter name
         IPriceOracle.PriceResponse memory priceResponse
@@ -805,71 +862,22 @@ contract StabilizerNFT is
                     : remainingPoolShares;
 
                 if (poolSharesSliceToUnallocate > 0) {
-                    // Calculate stETH collateral attributed to this slice at current ratio, and user's par value for this slice
-                    (uint256 stEthCollateralForSliceAtCurrentRatio, uint256 userStEthParValueForSlice) = _calculateUnallocationFromEscrow(
+                    // IMPORTANT: Modify allocation *before* calling the helper that might remove collateral
+                    // based on calculations using the *original* share amount for the slice.
+                    positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate));
+
+                    UnallocationSliceResult memory sliceResult = _handleUnallocationSlice(
+                        currentId,
                         positionEscrow,
                         poolSharesSliceToUnallocate,
                         priceResponse
                     );
 
-                    uint256 stEthPaidToUserFromPosition; // This will be the total paid to user for this slice (position + insurance)
-                    uint256 stEthReturnedToStabilizer = 0;
-                    // uint256 amountWithdrawnFromInsurance = 0; // Moved to be more tightly scoped
-
-                    if (stEthCollateralForSliceAtCurrentRatio >= userStEthParValueForSlice) {
-                        // Position slice is sufficiently collateralized (or over) to cover user's par value.
-                        stEthPaidToUserFromPosition = userStEthParValueForSlice;
-                        stEthReturnedToStabilizer = stEthCollateralForSliceAtCurrentRatio - userStEthParValueForSlice;
-                        // No insurance withdrawal in this path, so add 0 for amountWithdrawnFromInsurance to aggregate
-                        totalEthEquivalentRemovedAggregate += stEthCollateralForSliceAtCurrentRatio; 
-                    } else {
-                        // Position slice is undercollateralized. User initially gets what's available from the position.
-                        stEthPaidToUserFromPosition = stEthCollateralForSliceAtCurrentRatio;
-                        // Stabilizer gets nothing back from this undercollateralized slice's attributed collateral.
-                        // stEthReturnedToStabilizer remains 0
-
-                        uint256 amountWithdrawnFromInsuranceThisSlice = 0; // Tightly scoped variable
-                        uint256 shortfall = userStEthParValueForSlice - stEthPaidToUserFromPosition; // Shortfall based on what position provided
-                        if (shortfall > 0 && address(insuranceEscrow) != address(0)) {
-                            uint256 insuranceAvailable = insuranceEscrow.getStEthBalance();
-                            amountWithdrawnFromInsuranceThisSlice = shortfall > insuranceAvailable ? insuranceAvailable : shortfall;
-                            if (amountWithdrawnFromInsuranceThisSlice > 0) {
-                                insuranceEscrow.withdrawStEth(address(cuspdToken), amountWithdrawnFromInsuranceThisSlice);
-                                stEthPaidToUserFromPosition += amountWithdrawnFromInsuranceThisSlice; // Add insurance payout to user's total
-                            }
-                        }
-                        totalEthEquivalentRemovedAggregate += (stEthCollateralForSliceAtCurrentRatio + amountWithdrawnFromInsuranceThisSlice);
-                    }
-                    
-                    // Update PositionEscrow's backed shares *before* removing collateral
-                    positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate));
-
-                    // Actual stETH to remove from PositionEscrow is stEthCollateralForSliceAtCurrentRatio
-                    if (stEthCollateralForSliceAtCurrentRatio > 0) {
-                        positionEscrow.removeCollateral(
-                            stEthCollateralForSliceAtCurrentRatio,
-                            address(this) // Recipient is this contract (StabilizerNFT)
-                        );
-                    }
-
-                    // Distribute stETH now held by StabilizerNFT (from PositionEscrow)
-                    // stEthPaidToUserFromPosition now includes any insurance top-up.
-                    if (stEthPaidToUserFromPosition > 0) {
-                        require(IERC20(stETH).transfer(address(cuspdToken), stEthPaidToUserFromPosition),"User stETH (from position + insurance) transfer to cUSPDToken failed");
-                    }
-                    if (stEthReturnedToStabilizer > 0) {
-                        require(stabilizerEscrows[currentId] != address(0), "StabilizerEscrow not found");
-                        require(IERC20(stETH).transfer(stabilizerEscrows[currentId], stEthReturnedToStabilizer),"Stabilizer stETH transfer to StabilizerEscrow failed");
-                    }
-
-                    // Accumulate totals
-                    totalUserStEthReturned += stEthPaidToUserFromPosition; // This now includes insurance
-                    // totalEthEquivalentRemovedAggregate is now updated within each branch of the if/else above
-
+                    totalUserStEthReturned += sliceResult.stEthPaidToUser;
+                    totalEthEquivalentRemovedAggregate += sliceResult.ethEquivalentRemoved;
 
                     // If all shares from this position were unallocated, update lists
-                    // Inlined fullyUnallocated: (currentBackedShares == poolSharesSliceToUnallocate)
-                    if ((currentBackedShares == poolSharesSliceToUnallocate)) {
+                    if ((currentBackedShares == poolSharesSliceToUnallocate)) { // fullyUnallocated
                         _removeFromAllocatedList(currentId);
                         if (stabilizerEscrows[currentId] != address(0) && IStabilizerEscrow(stabilizerEscrows[currentId]).unallocatedStETH() > 0) {
                              _registerUnallocatedPosition(currentId);
@@ -877,7 +885,7 @@ contract StabilizerNFT is
                     }
 
                     remainingPoolShares -= poolSharesSliceToUnallocate;
-                    emit FundsUnallocated(currentId, stEthPaidToUserFromPosition, stEthReturnedToStabilizer);
+                    emit FundsUnallocated(currentId, sliceResult.stEthPaidToUser, sliceResult.stEthReturnedToStabilizer);
                 }
             }
             
