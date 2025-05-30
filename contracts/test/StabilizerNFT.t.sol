@@ -1832,58 +1832,121 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.unallocateStabilizerFunds(1, priceResp); // 1 wei of shares
     }
     
-    function testUnallocateStabilizerFunds_AllocatedPositionWithZeroShares() public {
-        // This test aims to cover the path where an allocated position has 0 shares.
-        // This scenario is unusual as positions are typically removed from allocated list when shares hit 0.
-        // We'll simulate it by allocating, then manually setting shares to 0 in PositionEscrow via a mock/direct storage write if possible,
-        // or by ensuring the loop in unallocateStabilizerFunds proceeds to the next if currentBackedShares is 0.
+    function testUnallocateStabilizerFunds_Undercollateralized_NoInsurance() public {
+        // Scenario:
+        // 1. Stabilizer S1 (user1): 0.1 ETH, 110% min ratio.
+        // 2. Stabilizer S2 (user2): 0.1 ETH, 110% min ratio.
+        // 3. Minter (user3) mints 2 ETH worth of cUSPD shares at $1000/ETH.
+        //    - Position P1 (backed by S1) gets 1 ETH user + 0.1 ETH stab = 1.1 ETH, backs 1000 shares.
+        //    - Position P2 (backed by S2) gets 1 ETH user + 0.1 ETH stab = 1.1 ETH, backs 1000 shares.
+        // 4. user2 adds 0.5 ETH directly to P2's PositionEscrow.
+        //    - P2 now has 1.6 ETH, ratio (1.6 * 1000) / 1000 = 160%.
+        // 5. ETH price drops to $900/ETH.
+        //    - P1 ratio: (1.1 ETH * $900) / $1000 = 99%. (Undercollateralized)
+        //    - P2 ratio: (1.6 ETH * $900) / $1000 = 144%.
+        // 6. Minter (user3) burns all 2000 shares. InsuranceEscrow is empty.
+        //    - Unallocation starts with P2 (higher ID, assuming it was allocated last or list order).
+        //      - P2 (144%): 1000 shares. User par = 1000/$900 = 1.111... ETH. Payout from P2 = 1.111... ETH. Stabilizer gets 1.6 - 1.111... ETH.
+        //    - Then P1 (99%): 1000 shares. User par = 1.111... ETH. P1 only has 1.1 ETH. User gets 1.1 ETH. Shortfall not covered.
 
-        uint256 tokenId1 = stabilizerNFT.mint(user1); // Will be allocated
-        uint256 tokenId2 = stabilizerNFT.mint(user2); // Will remain allocated but with shares later set to 0 (simulated)
-        uint256 tokenId3 = stabilizerNFT.mint(user1); // Will be allocated
+        address minterUser = makeAddr("minterUser"); // User who mints and burns shares
 
-        vm.deal(user1, 0.3 ether);
-        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId1);
-        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(tokenId1, 11000);
+        // --- Setup Stabilizers ---
+        uint256 s1_tokenId = stabilizerNFT.mint(user1); // Assume ID 1
+        vm.deal(user1, 0.1 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(s1_tokenId);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(s1_tokenId, 11000);
+
+        uint256 s2_tokenId = stabilizerNFT.mint(user2); // Assume ID 2
+        vm.deal(user2, 0.1 ether);
+        vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(s2_tokenId);
+        vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(s2_tokenId, 11000);
+
+        // --- Minter mints shares (2 ETH worth at $1000/ETH) ---
+        uint256 initialPrice = 1000 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQueryMint = createSignedPriceAttestation(initialPrice, block.timestamp);
+        vm.deal(minterUser, 2 ether);
+        vm.prank(minterUser);
+        cuspdToken.mintShares{value: 2 ether}(minterUser, priceQueryMint); // Shares go to minterUser
+
+        IPositionEscrow p1_escrow = IPositionEscrow(stabilizerNFT.positionEscrows(s1_tokenId));
+        IPositionEscrow p2_escrow = IPositionEscrow(stabilizerNFT.positionEscrows(s2_tokenId));
+
+        assertEq(p1_escrow.backedPoolShares(), 1000 ether, "P1 initial shares");
+        assertEq(p1_escrow.getCurrentStEthBalance(), 1.1 ether, "P1 initial collateral"); // 1 ETH user + 0.1 ETH stab
+        assertEq(p2_escrow.backedPoolShares(), 1000 ether, "P2 initial shares");
+        assertEq(p2_escrow.getCurrentStEthBalance(), 1.1 ether, "P2 initial collateral"); // 1 ETH user + 0.1 ETH stab
+
+        // --- User2 adds 0.5 ETH to P2's PositionEscrow ---
+        vm.deal(user2, 0.5 ether);
+        vm.prank(user2); // Owner of s2_tokenId, who has EXCESSCOLLATERALMANAGER_ROLE on p2_escrow
+        p2_escrow.addCollateralEth{value: 0.5 ether}();
+        assertEq(p2_escrow.getCurrentStEthBalance(), 1.6 ether, "P2 collateral after user2 adds funds"); // 1.1 + 0.5
+
+        // --- Simulate ETH price drop to $900/ETH ---
+        uint256 liquidationPrice = 900 ether;
+        IPriceOracle.PriceResponse memory priceResponseBurn = IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000);
+
+        // Verify ratios at new price
+        assertEq(p1_escrow.getCollateralizationRatio(priceResponseBurn), 9900, "P1 ratio at $900 should be 99%"); // (1.1 * 900) / 1000
+        assertEq(p2_escrow.getCollateralizationRatio(priceResponseBurn), 14400, "P2 ratio at $900 should be 144%"); // (1.6 * 900) / 1000
+
+        // Ensure InsuranceEscrow is empty
+        assertEq(insuranceEscrow.getStEthBalance(), 0, "InsuranceEscrow should be empty");
+
+        // --- MinterUser burns all 2000 shares ---
+        uint256 sharesToBurn = 2000 ether;
+        uint256 minterUserEthBeforeBurn = minterUser.balance;
+        uint256 s1_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH();
+        uint256 s2_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH();
+
+
+        // Temporarily allow large price deviation for the burn operation if needed by oracle in cUSPDToken.burnShares
+        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
+        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
+
+
+        vm.prank(minterUser); // MinterUser owns the shares and initiates burn
+        uint256 totalEthReturnedToMinter = cuspdToken.burnShares(sharesToBurn, payable(minterUser), createSignedPriceAttestation(liquidationPrice, block.timestamp));
+
+        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation); // Reset deviation
+
+
+        // --- Assertions ---
+        // P2 (s2_tokenId) unallocation (1000 shares, 144% ratio at $900):
+        // User par value for 1000 shares at $900: (1000 shares * $1/share) / ($900/ETH) = 1.111111111111111111 ether
+        uint256 p2_userParStEth = (1000 ether * (10**18)) / liquidationPrice;
+        // Collateral attributed to these shares at 144% ratio: p2_userParStEth * 1.44 = 1.6 ether (all of P2's collateral)
+        uint256 p2_collateralAtRatio = (p2_userParStEth * 14400) / 10000;
+        assertApproxEqAbs(p2_collateralAtRatio, 1.6 ether, 1e12, "P2 collateral at ratio calculation");
         
-        vm.deal(user2, 0.3 ether);
-        vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId2);
-        vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(tokenId2, 11000);
+        uint256 p2_stEthReturnedToUser = p2_userParStEth;
+        uint256 p2_stEthReturnedToStabilizer = p2_collateralAtRatio - p2_userParStEth;
 
-        vm.deal(user1, 0.3 ether); // Deal again for tokenId3
-        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId3);
-        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(tokenId3, 11000);
+        assertEq(p2_escrow.backedPoolShares(), 0, "P2 shares after burn");
+        assertApproxEqAbs(p2_escrow.getCurrentStEthBalance(), 0, 1e12, "P2 collateral after burn"); // Should be empty
+        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH(), s2_stabilizerEscrowBeforeBurn + p2_stEthReturnedToStabilizer, 1e12, "S2 StabilizerEscrow balance");
 
-        // Allocate to all three
-        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.deal(owner, 3 ether);
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, priceQuery); // Allocates to tokenId1
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user2, priceQuery); // Allocates to tokenId2
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, priceQuery); // Allocates to tokenId3
+        // P1 (s1_tokenId) unallocation (1000 shares, 99% ratio at $900):
+        // User par value for 1000 shares at $900: 1.111111111111111111 ether
+        uint256 p1_userParStEth = (1000 ether * (10**18)) / liquidationPrice;
+        // Collateral attributed to these shares at 99% ratio: p1_userParStEth * 0.99 = 1.1 ether (all of P1's collateral)
+        uint256 p1_collateralAtRatio = (p1_userParStEth * 9900) / 10000;
+        assertApproxEqAbs(p1_collateralAtRatio, 1.1 ether, 1e12, "P1 collateral at ratio calculation");
 
-        // Now, simulate tokenId2's PositionEscrow having 0 backed shares.
-        // The most direct way is to mock its backedPoolShares() call.
-        address posEscrow2Addr = stabilizerNFT.positionEscrows(tokenId2);
-        vm.mockCall(posEscrow2Addr, abi.encodeWithSelector(IPositionEscrow.backedPoolShares.selector), abi.encode(uint256(0)));
+        uint256 p1_stEthPaidToUserFromPosition = p1_collateralAtRatio; // User gets what's available from position
+        uint256 p1_stEthReturnedToStabilizer = 0; // Stabilizer gets nothing from undercollateralized
 
-        // Attempt to unallocate shares that would span across tokenId3, (skip tokenId2), and tokenId1
-        uint256 sharesToUnallocate = 2000 ether; // Enough to empty tokenId3 (1 ETH worth) and start on tokenId1
-        
-        IPriceOracle.PriceResponse memory priceResp = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
-        // uint256 user1EthBefore = user1.balance; // Not needed for this assertion
+        assertEq(p1_escrow.backedPoolShares(), 0, "P1 shares after burn");
+        assertApproxEqAbs(p1_escrow.getCurrentStEthBalance(), 0, 1e12, "P1 collateral after burn"); // Should be empty
+        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH(), s1_stabilizerEscrowBeforeBurn + p1_stEthReturnedToStabilizer, 1e12, "S1 StabilizerEscrow balance");
 
-        vm.prank(address(cuspdToken)); // Simulate call from cUSPDToken
-        uint256 returnedEth = stabilizerNFT.unallocateStabilizerFunds(sharesToUnallocate, priceResp);
-        
-        // We expect 2 ETH worth of shares to be unallocated (1 from tokenId3, 1 from tokenId1)
-        // User should get back 2 ETH.
-        assertApproxEqAbs(returnedEth, 2 ether, 1e12, "Incorrect ETH returned from unallocation"); // Allow some dust for yield factor calcs
+        // Total ETH returned to minterUser
+        uint256 expectedTotalEthToMinter = p2_stEthReturnedToUser + p1_stEthPaidToUserFromPosition;
+        assertApproxEqAbs(totalEthReturnedToMinter, expectedTotalEthToMinter, 2e12, "Total ETH returned to minterUser mismatch");
+        // Also check minterUser.balance change if gas is predictable or ignored.
 
-        // Check that tokenId2 was indeed skipped (its PositionEscrow should still have its original collateral)
-        IPositionEscrow posEscrow2 = IPositionEscrow(posEscrow2Addr);
-        assertEq(posEscrow2.getCurrentStEthBalance(), 1.1 ether, "TokenId2 PositionEscrow collateral should be untouched");
-        
-        vm.clearMockedCalls();
+        assertEq(insuranceEscrow.getStEthBalance(), 0, "InsuranceEscrow should remain empty");
     }
 
     function testUpgradeStabilizerNFT_Success() public {

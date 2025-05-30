@@ -791,58 +791,78 @@ contract StabilizerNFT is
                     : remainingPoolShares;
 
                 if (poolSharesSliceToUnallocate > 0) {
-                    // Calculate stETH to remove and user's share based on pool shares
-                    (uint256 stEthToRemove, uint256 userStEthShare) = _calculateUnallocationFromEscrow(
-                        positionEscrow, // Pass escrow instance
+                    // Calculate stETH collateral attributed to this slice at current ratio, and user's par value for this slice
+                    (uint256 stEthCollateralForSliceAtCurrentRatio, uint256 userStEthParValueForSlice) = _calculateUnallocationFromEscrow(
+                        positionEscrow,
                         poolSharesSliceToUnallocate,
                         priceResponse
                     );
 
-                    // Update PositionEscrow's backed shares
-                    positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate)); // Cast uint to int *then* negate
+                    uint256 stEthPaidToUserFromPosition = 0;
+                    uint256 stEthReturnedToStabilizer = 0;
+                    uint256 stEthPaidToUserFromInsurance = 0;
 
-                    // Remove the calculated stETH collateral - sends to this contract (StabilizerNFT)
-                    // The entire stEthToRemove is sent to StabilizerNFT.
-                    // userStEthShare is calculated for StabilizerNFT's internal logic to split.
-                    if (stEthToRemove > 0) {
+                    if (stEthCollateralForSliceAtCurrentRatio >= userStEthParValueForSlice) {
+                        // Position slice is sufficiently collateralized (or over) to cover user's par value.
+                        stEthPaidToUserFromPosition = userStEthParValueForSlice;
+                        stEthReturnedToStabilizer = stEthCollateralForSliceAtCurrentRatio - userStEthParValueForSlice;
+                    } else {
+                        // Position slice is undercollateralized. User gets whatever collateral is attributed to the shares.
+                        stEthPaidToUserFromPosition = stEthCollateralForSliceAtCurrentRatio;
+                        // Stabilizer gets nothing back from this undercollateralized slice's attributed collateral.
+                        stEthReturnedToStabilizer = 0;
+
+                        // Check insurance for shortfall
+                        uint256 shortfallForUser = userStEthParValueForSlice - stEthPaidToUserFromPosition;
+                        if (shortfallForUser > 0 && address(insuranceEscrow) != address(0)) {
+                            uint256 insuranceAvailable = insuranceEscrow.getStEthBalance();
+                            uint256 stEthToWithdrawFromInsurance = shortfallForUser > insuranceAvailable ? insuranceAvailable : shortfallForUser;
+                            if (stEthToWithdrawFromInsurance > 0) {
+                                insuranceEscrow.withdrawStEth(address(cuspdToken), stEthToWithdrawFromInsurance);
+                                stEthPaidToUserFromInsurance = stEthToWithdrawFromInsurance;
+                            }
+                        }
+                    }
+                    
+                    // Update PositionEscrow's backed shares *before* removing collateral
+                    positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate));
+
+                    // Actual stETH to remove from PositionEscrow is stEthCollateralForSliceAtCurrentRatio
+                    if (stEthCollateralForSliceAtCurrentRatio > 0) {
                         positionEscrow.removeCollateral(
-                            stEthToRemove,
-                            address(this) // Recipient is this contract
+                            stEthCollateralForSliceAtCurrentRatio,
+                            address(this) // Recipient is this contract (StabilizerNFT)
                         );
                     }
 
-                    // Distribute received stETH (which is now held by StabilizerNFT)
-                    uint256 stabilizerStEthShare = stEthToRemove - userStEthShare;
-
-                    // Send user's share to cUSPDToken
-                    if (userStEthShare > 0) {
-                        bool successUser = IERC20(stETH).transfer(address(cuspdToken), userStEthShare);
-                        if (!successUser) revert("User stETH transfer to cUSPDToken failed");
-                        totalUserStEthReturned += userStEthShare;
+                    // Distribute stETH now held by StabilizerNFT (from PositionEscrow)
+                    if (stEthPaidToUserFromPosition > 0) {
+                        bool successUser = IERC20(stETH).transfer(address(cuspdToken), stEthPaidToUserFromPosition);
+                        if (!successUser) revert("User stETH (from position) transfer to cUSPDToken failed");
                     }
-
-                    // Send stabilizer's share back to their StabilizerEscrow
-                    if (stabilizerStEthShare > 0) {
+                    if (stEthReturnedToStabilizer > 0) {
                         address stabilizerEscrowAddress = stabilizerEscrows[currentId];
                         require(stabilizerEscrowAddress != address(0), "StabilizerEscrow not found");
-                        bool successStabilizer = IERC20(stETH).transfer(stabilizerEscrowAddress, stabilizerStEthShare);
+                        bool successStabilizer = IERC20(stETH).transfer(stabilizerEscrowAddress, stEthReturnedToStabilizer);
                         if (!successStabilizer) revert("Stabilizer stETH transfer to StabilizerEscrow failed");
                     }
 
-                    // --- Accumulate ETH Equivalent Delta for Snapshot ---
-                    totalEthEquivalentRemovedAggregate += stEthToRemove;
+                    // Accumulate totals
+                    totalUserStEthReturned += (stEthPaidToUserFromPosition + stEthPaidToUserFromInsurance);
+                    totalEthEquivalentRemovedAggregate += (stEthCollateralForSliceAtCurrentRatio + stEthPaidToUserFromInsurance);
+
 
                     // If all shares from this position were unallocated, update lists
                     bool fullyUnallocated = (currentBackedShares == poolSharesSliceToUnallocate);
                     if (fullyUnallocated) {
                         _removeFromAllocatedList(currentId);
-                        if (IStabilizerEscrow(stabilizerEscrows[currentId]).unallocatedStETH() > 0) {
+                        if (stabilizerEscrows[currentId] != address(0) && IStabilizerEscrow(stabilizerEscrows[currentId]).unallocatedStETH() > 0) {
                              _registerUnallocatedPosition(currentId);
                         }
                     }
 
                     remainingPoolShares -= poolSharesSliceToUnallocate;
-                    emit FundsUnallocated(currentId, userStEthShare, stabilizerStEthShare);
+                    emit FundsUnallocated(currentId, (stEthPaidToUserFromPosition + stEthPaidToUserFromInsurance), stEthReturnedToStabilizer);
                 }
             }
 
@@ -975,9 +995,9 @@ contract StabilizerNFT is
         // Get the current ratio directly from the PositionEscrow
         uint256 currentRatio = positionEscrow.getCollateralizationRatio(priceResponse);
 
-        require(currentRatio >= 10000, "Cannot unallocate from undercollateralized position");
-
-        // Calculate total stETH to remove
+        // If currentRatio < 10000, it means the position is undercollateralized.
+        // stEthToRemove will be less than userStEthShare in such cases.
+        // The calling function (unallocateStabilizerFunds) will handle this.
         stEthToRemove = (userStEthShare * currentRatio) / 10000;
 
         if (userStEthShare > stEthToRemove) {
