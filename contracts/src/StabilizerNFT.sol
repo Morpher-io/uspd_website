@@ -873,6 +873,10 @@ contract StabilizerNFT is
                         priceResponse
                     );
 
+                    console.log("Unallocate Loop - Slice Result - stEthPaidToUser:", sliceResult.stEthPaidToUser);
+                    console.log("Unallocate Loop - Slice Result - stEthReturnedToStabilizer:", sliceResult.stEthReturnedToStabilizer);
+                    console.log("Unallocate Loop - Slice Result - ethEquivalentRemoved:", sliceResult.ethEquivalentRemoved);
+
                     totalUserStEthReturned += sliceResult.stEthPaidToUser;
                     totalEthEquivalentRemovedAggregate += sliceResult.ethEquivalentRemoved;
 
