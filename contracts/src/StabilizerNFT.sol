@@ -877,8 +877,12 @@ contract StabilizerNFT is
                     emit FundsUnallocated(currentId, stEthPaidToUserFromPosition, stEthReturnedToStabilizer);
                 }
             }
+            
+            uint256 nextIdToProcess = pos.prevAllocated; // Store before pos might be modified by _removeFromAllocatedList
+
             console.log("Unallocate Loop - End - remainingPoolShares:", remainingPoolShares);
-            currentId = pos.prevAllocated;
+            console.log("Unallocate Loop - End - nextIdToProcess from pos.prevAllocated:", nextIdToProcess);
+            currentId = nextIdToProcess;
         }
         console.log("reached end");
 
