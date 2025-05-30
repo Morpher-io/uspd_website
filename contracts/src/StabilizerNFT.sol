@@ -770,6 +770,9 @@ contract StabilizerNFT is
         (uint256 stEthCollateralForSliceAtCurrentRatio, uint256 userStEthParValueForSlice) =
             _calculateUnallocationFromEscrow(positionEscrow, poolSharesSliceToUnallocate, priceResponse);
 
+        console.log("_handleUnallocationSlice - Input - stEthCollateralForSliceAtCurrentRatio:", stEthCollateralForSliceAtCurrentRatio);
+        console.log("_handleUnallocationSlice - Input - userStEthParValueForSlice:", userStEthParValueForSlice);
+
         uint256 amountWithdrawnFromInsuranceThisSlice = 0;
 
         if (stEthCollateralForSliceAtCurrentRatio >= userStEthParValueForSlice) {
