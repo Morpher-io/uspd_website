@@ -799,28 +799,31 @@ contract StabilizerNFT is
 
                     uint256 stEthPaidToUserFromPosition; // This will be the total paid to user for this slice (position + insurance)
                     uint256 stEthReturnedToStabilizer = 0;
-                    uint256 amountWithdrawnFromInsurance = 0; // Tracks only what's taken from insurance for this slice
+                    // uint256 amountWithdrawnFromInsurance = 0; // Moved to be more tightly scoped
 
                     if (stEthCollateralForSliceAtCurrentRatio >= userStEthParValueForSlice) {
                         // Position slice is sufficiently collateralized (or over) to cover user's par value.
                         stEthPaidToUserFromPosition = userStEthParValueForSlice;
                         stEthReturnedToStabilizer = stEthCollateralForSliceAtCurrentRatio - userStEthParValueForSlice;
+                        // No insurance withdrawal in this path, so add 0 for amountWithdrawnFromInsurance to aggregate
+                        totalEthEquivalentRemovedAggregate += stEthCollateralForSliceAtCurrentRatio; 
                     } else {
                         // Position slice is undercollateralized. User initially gets what's available from the position.
                         stEthPaidToUserFromPosition = stEthCollateralForSliceAtCurrentRatio;
                         // Stabilizer gets nothing back from this undercollateralized slice's attributed collateral.
                         // stEthReturnedToStabilizer remains 0
 
-                        // Check insurance for shortfall
+                        uint256 amountWithdrawnFromInsuranceThisSlice = 0; // Tightly scoped variable
                         uint256 shortfall = userStEthParValueForSlice - stEthPaidToUserFromPosition; // Shortfall based on what position provided
                         if (shortfall > 0 && address(insuranceEscrow) != address(0)) {
                             uint256 insuranceAvailable = insuranceEscrow.getStEthBalance();
-                            amountWithdrawnFromInsurance = shortfall > insuranceAvailable ? insuranceAvailable : shortfall;
-                            if (amountWithdrawnFromInsurance > 0) {
-                                insuranceEscrow.withdrawStEth(address(cuspdToken), amountWithdrawnFromInsurance);
-                                stEthPaidToUserFromPosition += amountWithdrawnFromInsurance; // Add insurance payout to user's total
+                            amountWithdrawnFromInsuranceThisSlice = shortfall > insuranceAvailable ? insuranceAvailable : shortfall;
+                            if (amountWithdrawnFromInsuranceThisSlice > 0) {
+                                insuranceEscrow.withdrawStEth(address(cuspdToken), amountWithdrawnFromInsuranceThisSlice);
+                                stEthPaidToUserFromPosition += amountWithdrawnFromInsuranceThisSlice; // Add insurance payout to user's total
                             }
                         }
+                        totalEthEquivalentRemovedAggregate += (stEthCollateralForSliceAtCurrentRatio + amountWithdrawnFromInsuranceThisSlice);
                     }
                     
                     // Update PositionEscrow's backed shares *before* removing collateral
