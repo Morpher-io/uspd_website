@@ -1898,7 +1898,7 @@ contract StabilizerNFTTest is Test {
 
         // --- MinterUser burns all 2000 shares ---
         // uint256 sharesToBurn = 2000 ether; // Inlined
-        uint256 minterUserEthBeforeBurn = minterUser.balance;
+        // uint256 minterUserEthBeforeBurn = minterUser.balance; // Removed as unused in assertions for this test
         uint256 s1_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH();
         uint256 s2_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH();
 
@@ -1952,11 +1952,11 @@ contract StabilizerNFTTest is Test {
         assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000, 1.1 ether, 1e12, "P1 collateral at ratio calculation");
 
         // uint256 p1_stEthPaidToUserFromPosition = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // Inlined: User gets what's available from position
-        uint256 p1_stEthReturnedToStabilizer = 0; // Stabilizer gets nothing from undercollateralized
+        // uint256 p1_stEthReturnedToStabilizer = 0; // Inlined: Stabilizer gets nothing from undercollateralized
 
         assertEq(p1_escrow.backedPoolShares(), 0, "P1 shares after burn");
         assertApproxEqAbs(p1_escrow.getCurrentStEthBalance(), 0, 1e12, "P1 collateral after burn"); // Should be empty
-        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH(), s1_stabilizerEscrowBeforeBurn + p1_stEthReturnedToStabilizer, 1e12, "S1 StabilizerEscrow balance");
+        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH(), s1_stabilizerEscrowBeforeBurn + 0, 1e12, "S1 StabilizerEscrow balance"); // Inlined p1_stEthReturnedToStabilizer
 
         // Total ETH returned to minterUser
         // uint256 expectedTotalEthToMinter = ((1000 ether * (10**18)) / liquidationPrice) + ((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000); // Inlined
