@@ -491,10 +491,6 @@ contract StabilizerNFT is
             }
 
             StabilizerPosition storage pos = positions[currentId];
-            console.log("Allocate Loop - currentId:", currentId);
-            console.log("Allocate Loop - pos.prevAllocated:", pos.prevAllocated);
-            console.log("Allocate Loop - pos.nextAllocated:", pos.nextAllocated);
-            // console.log(currentId); // Original console.log for currentId
             address escrowAddress = stabilizerEscrows[currentId];
             require(escrowAddress != address(0), "Escrow not found for stabilizer"); // Should not happen
 
@@ -770,9 +766,6 @@ contract StabilizerNFT is
         (uint256 stEthCollateralForSliceAtCurrentRatio, uint256 userStEthParValueForSlice) =
             _calculateUnallocationFromEscrow(positionEscrow, poolSharesSliceToUnallocate, priceResponse);
 
-        console.log("_handleUnallocationSlice - Input - stEthCollateralForSliceAtCurrentRatio:", stEthCollateralForSliceAtCurrentRatio);
-        console.log("_handleUnallocationSlice - Input - userStEthParValueForSlice:", userStEthParValueForSlice);
-
         // Modify allocation based on the shares for *this slice* before further calculations or collateral removal
         positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate));
 
@@ -842,17 +835,9 @@ contract StabilizerNFT is
         uint256 totalEthEquivalentRemovedAggregate = 0;
 
         while (currentId != 0 && remainingPoolShares > 0) {
-            console.log("Unallocate Loop - Start - remainingPoolShares:", remainingPoolShares);
             if (gasleft() < MIN_GAS) break;
 
-            // console.log(currentId); // Original console.log
-            // console.log(remainingPoolShares); // Original console.log
-            // console.log(totalUserStEthReturned); // Original console.log
-
             StabilizerPosition storage pos = positions[currentId];
-            console.log("Unallocate Loop - currentId:", currentId);
-            console.log("Unallocate Loop - pos.prevAllocated:", pos.prevAllocated);
-            console.log("Unallocate Loop - pos.nextAllocated:", pos.nextAllocated);
             
             uint256 nextIdToProcess = pos.prevAllocated; // Store prevAllocated *before* any list modification
 
@@ -877,10 +862,6 @@ contract StabilizerNFT is
                         priceResponse
                     );
 
-                    console.log("Unallocate Loop - Slice Result - stEthPaidToUser:", sliceResult.stEthPaidToUser);
-                    console.log("Unallocate Loop - Slice Result - stEthReturnedToStabilizer:", sliceResult.stEthReturnedToStabilizer);
-                    console.log("Unallocate Loop - Slice Result - ethEquivalentRemoved:", sliceResult.ethEquivalentRemoved);
-
                     totalUserStEthReturned += sliceResult.stEthPaidToUser;
                     totalEthEquivalentRemovedAggregate += sliceResult.ethEquivalentRemoved;
 
@@ -897,11 +878,8 @@ contract StabilizerNFT is
                 }
             }
             
-            console.log("Unallocate Loop - End - remainingPoolShares:", remainingPoolShares);
-            console.log("Unallocate Loop - End - nextIdToProcess from captured pos.prevAllocated:", nextIdToProcess);
             currentId = nextIdToProcess;
         }
-        console.log("reached end");
 
         require(totalUserStEthReturned > 0, "No funds unallocated");
 
