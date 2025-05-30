@@ -1920,12 +1920,12 @@ contract StabilizerNFTTest is Test {
         // uint256 p2_collateralAtRatio = (((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000; // Inlined
         assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000, 1.6 ether, 1e12, "P2 collateral at ratio calculation");
         
-        uint256 p2_stEthReturnedToUser = (1000 ether * (10**18)) / liquidationPrice; 
-        uint256 p2_stEthReturnedToStabilizer = ((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000) - ((1000 ether * (10**18)) / liquidationPrice); 
+        // uint256 p2_stEthReturnedToUser = (1000 ether * (10**18)) / liquidationPrice; // Inlined
+        // uint256 p2_stEthReturnedToStabilizer = ((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000) - ((1000 ether * (10**18)) / liquidationPrice); // Inlined
 
         assertEq(p2_escrow.backedPoolShares(), 0, "P2 shares after burn");
         assertApproxEqAbs(p2_escrow.getCurrentStEthBalance(), 0, 1e12, "P2 collateral after burn"); // Should be empty
-        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH(), s2_stabilizerEscrowBeforeBurn + p2_stEthReturnedToStabilizer, 1e12, "S2 StabilizerEscrow balance");
+        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH(), s2_stabilizerEscrowBeforeBurn + ( ((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000) - ((1000 ether * (10**18)) / liquidationPrice) ), 1e12, "S2 StabilizerEscrow balance");
 
         // P1 (s1_tokenId) unallocation (1000 shares, 99% ratio at $900):
         // User par value for 1000 shares at $900: 1.111111111111111111 ether
@@ -1934,7 +1934,7 @@ contract StabilizerNFTTest is Test {
         // uint256 p1_collateralAtRatio = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // Inlined
         assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000, 1.1 ether, 1e12, "P1 collateral at ratio calculation");
 
-        uint256 p1_stEthPaidToUserFromPosition = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // User gets what's available from position
+        // uint256 p1_stEthPaidToUserFromPosition = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // Inlined: User gets what's available from position
         uint256 p1_stEthReturnedToStabilizer = 0; // Stabilizer gets nothing from undercollateralized
 
         assertEq(p1_escrow.backedPoolShares(), 0, "P1 shares after burn");
@@ -1942,8 +1942,8 @@ contract StabilizerNFTTest is Test {
         assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH(), s1_stabilizerEscrowBeforeBurn + p1_stEthReturnedToStabilizer, 1e12, "S1 StabilizerEscrow balance");
 
         // Total ETH returned to minterUser
-        uint256 expectedTotalEthToMinter = p2_stEthReturnedToUser + p1_stEthPaidToUserFromPosition;
-        assertApproxEqAbs(totalEthReturnedToMinter, expectedTotalEthToMinter, 2e12, "Total ETH returned to minterUser mismatch");
+        // uint256 expectedTotalEthToMinter = ((1000 ether * (10**18)) / liquidationPrice) + ((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000); // Inlined
+        assertApproxEqAbs(totalEthReturnedToMinter, ((1000 ether * (10**18)) / liquidationPrice) + ((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000), 2e12, "Total ETH returned to minterUser mismatch");
         // Also check minterUser.balance change if gas is predictable or ignored.
 
         assertEq(insuranceEscrow.getStEthBalance(), 0, "InsuranceEscrow should remain empty");
