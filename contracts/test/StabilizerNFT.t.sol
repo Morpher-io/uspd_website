@@ -1905,11 +1905,28 @@ contract StabilizerNFTTest is Test {
         uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
         vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
 
+        // --- Update Oracle Mocks to reflect liquidationPrice ($900) ---
+        // Mock Chainlink for $900
+        bytes memory mockChainlinkBurnReturn = abi.encode(uint80(1), int(liquidationPrice / (10**10)), uint256(block.timestamp), uint256(block.timestamp), uint80(1));
+        vm.mockCall(
+            CHAINLINK_ETH_USD,
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            mockChainlinkBurnReturn
+        );
+
+        // Mock Uniswap V3 for $900
+        // sqrtPrice for $900 (liquidationPrice)
+        uint160 sqrtPriceLiquidation = uint160(Math.sqrt(liquidationPrice / (10**12)) * (2**96));
+        bytes memory mockSlot0BurnReturn = abi.encode(sqrtPriceLiquidation, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
+        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640); // From setUp
+        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0BurnReturn);
+        // --- End Oracle Mock Update ---
 
         vm.prank(minterUser); // MinterUser owns the shares and initiates burn
         uint256 totalEthReturnedToMinter = cuspdToken.burnShares(sharesToBurn, payable(minterUser), createSignedPriceAttestation(liquidationPrice, block.timestamp));
 
         vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation); // Reset deviation
+        vm.clearMockedCalls(); // Clear mocks for subsequent tests
 
 
         // --- Assertions ---
