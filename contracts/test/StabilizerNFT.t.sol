@@ -1883,19 +1883,23 @@ contract StabilizerNFTTest is Test {
         assertEq(p2_escrow.backedPoolShares(), 1000 ether, "P2 initial shares");
         assertEq(p2_escrow.getCurrentStEthBalance(), 1.1 ether, "P2 initial collateral"); // 1 ETH user + 0.1 ETH stab
 
-        // --- User2 adds 0.5 ETH to P2's PositionEscrow ---
-        vm.deal(user2, 0.5 ether);
-        vm.prank(user2); // Owner of s2_tokenId, who has EXCESSCOLLATERALMANAGER_ROLE on p2_escrow
-        p2_escrow.addCollateralEth{value: 0.5 ether}();
-        assertEq(p2_escrow.getCurrentStEthBalance(), 1.6 ether, "P2 collateral after user2 adds funds"); // 1.1 + 0.5
+        // --- User1 adds 0.5 ETH to P1's PositionEscrow (associated with s1_tokenId) ---
+        vm.deal(user1, 0.5 ether);
+        vm.prank(user1); // Owner of s1_tokenId, who has EXCESSCOLLATERALMANAGER_ROLE on p1_escrow
+        p1_escrow.addCollateralEth{value: 0.5 ether}();
+        assertEq(p1_escrow.getCurrentStEthBalance(), 1.6 ether, "P1 collateral after user1 adds funds"); // 1.1 + 0.5
+        assertEq(p2_escrow.getCurrentStEthBalance(), 1.1 ether, "P2 collateral should remain 1.1 ETH");
+
 
         // --- Simulate ETH price drop to $900/ETH ---
         uint256 liquidationPrice = 900 ether;
         // IPriceOracle.PriceResponse memory priceResponseBurn = IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000); // Inlined
 
         // Verify ratios at new price
-        assertEq(p1_escrow.getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 9900, "P1 ratio at $900 should be 99%"); // (1.1 * 900) / 1000
-        assertEq(p2_escrow.getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 14400, "P2 ratio at $900 should be 144%"); // (1.6 * 900) / 1000
+        // P1 is now overcollateralized: (1.6 ETH * $900) / $1000 = 144%
+        assertEq(p1_escrow.getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 14400, "P1 ratio at $900 should be 144%");
+        // P2 is now undercollateralized: (1.1 ETH * $900) / $1000 = 99%
+        assertEq(p2_escrow.getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 9900, "P2 ratio at $900 should be 99%");
 
         // Ensure InsuranceEscrow is empty
         assertEq(insuranceEscrow.getStEthBalance(), 0, "InsuranceEscrow should be empty");
@@ -1910,37 +1914,38 @@ contract StabilizerNFTTest is Test {
         uint256 totalEthReturnedToMinter = cuspdToken.burnShares(2000 ether, payable(minterUser), createSignedPriceAttestation(liquidationPrice, block.timestamp)); // Inlined sharesToBurn
 
         // --- Assertions ---
-        // P2 (s2_tokenId) unallocation (1000 shares, 144% ratio at $900):
-        // User par value for 1000 shares at $900: (1000 shares * $1/share) / ($900/ETH) = 1.111111111111111111 ether
-        // uint256 p2_userParStEth = (1000 ether * (10**18)) / liquidationPrice; // Inlined
-        // Collateral attributed to these shares at 144% ratio: p2_userParStEth * 1.44 = 1.6 ether (all of P2's collateral)
-        // uint256 p2_collateralAtRatio = (((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000; // Inlined
-        assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000, 1.6 ether, 1e12, "P2 collateral at ratio calculation");
+        // Unallocation order: P2 (s2_tokenId, 99% ratio) then P1 (s1_tokenId, 144% ratio)
+
+        // P2 (s2_tokenId) unallocation (1000 shares, 99% ratio at $900):
+        // User par value for 1000 shares at $900: (1000 shares * $1/share) / ($900/ETH) = 1.111... ether
+        // Collateral attributed to these shares at 99% ratio: par * 0.99 = 1.1 ether (all of P2's collateral)
+        assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000, 1.1 ether, 1e12, "P2 collateral at ratio calculation (now undercollateralized)");
         
-        // uint256 p2_stEthReturnedToUser = (1000 ether * (10**18)) / liquidationPrice; // Inlined
-        // uint256 p2_stEthReturnedToStabilizer = ((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000) - ((1000 ether * (10**18)) / liquidationPrice); // Inlined
+        // uint256 p2_stEthPaidToUserFromPosition = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // P2 pays all it has
+        // uint256 p2_stEthReturnedToStabilizer = 0; // P2 is undercollateralized
 
         assertEq(p2_escrow.backedPoolShares(), 0, "P2 shares after burn");
-        assertApproxEqAbs(p2_escrow.getCurrentStEthBalance(), 0, 1e12, "P2 collateral after burn"); // Should be empty
-        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH(), s2_stabilizerEscrowBeforeBurn + ( ((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000) - ((1000 ether * (10**18)) / liquidationPrice) ), 1e12, "S2 StabilizerEscrow balance");
+        assertApproxEqAbs(p2_escrow.getCurrentStEthBalance(), 0, 1e12, "P2 collateral after burn (should be empty)");
+        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH(), s2_stabilizerEscrowBeforeBurn + 0, 1e12, "S2 StabilizerEscrow balance (no return from undercollateralized)");
 
-        // P1 (s1_tokenId) unallocation (1000 shares, 99% ratio at $900):
-        // User par value for 1000 shares at $900: 1.111111111111111111 ether
-        // uint256 p1_userParStEth = (1000 ether * (10**18)) / liquidationPrice; // Inlined
-        // Collateral attributed to these shares at 99% ratio: p1_userParStEth * 0.99 = 1.1 ether (all of P1's collateral)
-        // uint256 p1_collateralAtRatio = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // Inlined
-        assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000, 1.1 ether, 1e12, "P1 collateral at ratio calculation");
+        // P1 (s1_tokenId) unallocation (1000 shares, 144% ratio at $900):
+        // User par value for 1000 shares at $900: 1.111... ether
+        // Collateral attributed to these shares at 144% ratio: par * 1.44 = 1.6 ether (all of P1's collateral)
+        assertApproxEqAbs((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000, 1.6 ether, 1e12, "P1 collateral at ratio calculation (now overcollateralized)");
 
-        // uint256 p1_stEthPaidToUserFromPosition = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000; // Inlined: User gets what's available from position
-        // uint256 p1_stEthReturnedToStabilizer = 0; // Inlined: Stabilizer gets nothing from undercollateralized
+        // uint256 p1_stEthReturnedToUser = (1000 ether * (10**18)) / liquidationPrice; // P1 pays par to user
+        // uint256 p1_stEthReturnedToStabilizer = ((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000) - ((1000 ether * (10**18)) / liquidationPrice); // P1 returns excess
 
         assertEq(p1_escrow.backedPoolShares(), 0, "P1 shares after burn");
-        assertApproxEqAbs(p1_escrow.getCurrentStEthBalance(), 0, 1e12, "P1 collateral after burn"); // Should be empty
-        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH(), s1_stabilizerEscrowBeforeBurn + 0, 1e12, "S1 StabilizerEscrow balance"); // Inlined p1_stEthReturnedToStabilizer
+        assertApproxEqAbs(p1_escrow.getCurrentStEthBalance(), 0, 1e12, "P1 collateral after burn (should be empty)");
+        assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH(), s1_stabilizerEscrowBeforeBurn + ( ((((1000 ether * (10**18)) / liquidationPrice) * 14400) / 10000) - ((1000 ether * (10**18)) / liquidationPrice) ), 1e12, "S1 StabilizerEscrow balance (received excess)");
 
-        // Total ETH returned to minterUser
-        // uint256 expectedTotalEthToMinter = ((1000 ether * (10**18)) / liquidationPrice) + ((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000); // Inlined
-        assertApproxEqAbs(totalEthReturnedToMinter, ((1000 ether * (10**18)) / liquidationPrice) + ((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000), 2e12, "Total ETH returned to minterUser mismatch");
+        // Total ETH returned to minterUser:
+        // From P2 (undercollateralized): (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000  (approx 1.1 ETH)
+        // From P1 (overcollateralized, pays par): (1000 ether * (10**18)) / liquidationPrice (approx 1.111... ETH)
+        uint256 ethFromP2 = (((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000;
+        uint256 ethFromP1 = (1000 ether * (10**18)) / liquidationPrice;
+        assertApproxEqAbs(totalEthReturnedToMinter, ethFromP2 + ethFromP1, 2e12, "Total ETH returned to minterUser mismatch");
         // Also check minterUser.balance change if gas is predictable or ignored.
 
         assertEq(insuranceEscrow.getStEthBalance(), 0, "InsuranceEscrow should remain empty");
