@@ -880,6 +880,7 @@ contract StabilizerNFT is
             console.log("Unallocate Loop - End - remainingPoolShares:", remainingPoolShares);
             currentId = pos.prevAllocated;
         }
+        console.log("reached end");
 
         require(totalUserStEthReturned > 0, "No funds unallocated");
 
