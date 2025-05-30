@@ -846,7 +846,7 @@ contract StabilizerNFT is
 
                     // Accumulate totals
                     totalUserStEthReturned += stEthPaidToUserFromPosition; // This now includes insurance
-                    totalEthEquivalentRemovedAggregate += (stEthCollateralForSliceAtCurrentRatio + amountWithdrawnFromInsurance);
+                    // totalEthEquivalentRemovedAggregate is now updated within each branch of the if/else above
 
 
                     // If all shares from this position were unallocated, update lists
