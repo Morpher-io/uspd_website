@@ -491,7 +491,10 @@ contract StabilizerNFT is
             }
 
             StabilizerPosition storage pos = positions[currentId];
-            console.log(currentId);
+            console.log("Allocate Loop - currentId:", currentId);
+            console.log("Allocate Loop - pos.prevAllocated:", pos.prevAllocated);
+            console.log("Allocate Loop - pos.nextAllocated:", pos.nextAllocated);
+            // console.log(currentId); // Original console.log for currentId
             address escrowAddress = stabilizerEscrows[currentId];
             require(escrowAddress != address(0), "Escrow not found for stabilizer"); // Should not happen
 
@@ -778,11 +781,14 @@ contract StabilizerNFT is
         while (currentId != 0 && remainingPoolShares > 0) {
             if (gasleft() < MIN_GAS) break;
 
-            console.log(currentId);
-            console.log(remainingPoolShares);
-            console.log(totalUserStEthReturned);
+            // console.log(currentId); // Original console.log
+            // console.log(remainingPoolShares); // Original console.log
+            // console.log(totalUserStEthReturned); // Original console.log
 
             StabilizerPosition storage pos = positions[currentId];
+            console.log("Unallocate Loop - currentId:", currentId);
+            console.log("Unallocate Loop - pos.prevAllocated:", pos.prevAllocated);
+            console.log("Unallocate Loop - pos.nextAllocated:", pos.nextAllocated);
             IPositionEscrow positionEscrow = IPositionEscrow(positionEscrows[currentId]);
             require(address(positionEscrow) != address(0), "PositionEscrow not found");
 
