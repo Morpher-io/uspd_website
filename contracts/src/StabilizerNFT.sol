@@ -813,10 +813,10 @@ contract StabilizerNFT is
                         stEthReturnedToStabilizer = 0;
 
                         // Check insurance for shortfall
-                        uint256 shortfallForUser = userStEthParValueForSlice - stEthPaidToUserFromPosition;
-                        if (shortfallForUser > 0 && address(insuranceEscrow) != address(0)) {
+                        // Inlined shortfallForUser: (userStEthParValueForSlice - stEthPaidToUserFromPosition)
+                        if ((userStEthParValueForSlice - stEthPaidToUserFromPosition) > 0 && address(insuranceEscrow) != address(0)) {
                             uint256 insuranceAvailable = insuranceEscrow.getStEthBalance();
-                            uint256 stEthToWithdrawFromInsurance = shortfallForUser > insuranceAvailable ? insuranceAvailable : shortfallForUser;
+                            uint256 stEthToWithdrawFromInsurance = (userStEthParValueForSlice - stEthPaidToUserFromPosition) > insuranceAvailable ? insuranceAvailable : (userStEthParValueForSlice - stEthPaidToUserFromPosition);
                             if (stEthToWithdrawFromInsurance > 0) {
                                 insuranceEscrow.withdrawStEth(address(cuspdToken), stEthToWithdrawFromInsurance);
                                 stEthPaidToUserFromInsurance = stEthToWithdrawFromInsurance;
@@ -850,8 +850,8 @@ contract StabilizerNFT is
 
 
                     // If all shares from this position were unallocated, update lists
-                    bool fullyUnallocated = (currentBackedShares == poolSharesSliceToUnallocate);
-                    if (fullyUnallocated) {
+                    // Inlined fullyUnallocated: (currentBackedShares == poolSharesSliceToUnallocate)
+                    if ((currentBackedShares == poolSharesSliceToUnallocate)) {
                         _removeFromAllocatedList(currentId);
                         if (stabilizerEscrows[currentId] != address(0) && IStabilizerEscrow(stabilizerEscrows[currentId]).unallocatedStETH() > 0) {
                              _registerUnallocatedPosition(currentId);
