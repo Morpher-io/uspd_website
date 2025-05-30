@@ -779,6 +779,7 @@ contract StabilizerNFT is
         uint256 totalEthEquivalentRemovedAggregate = 0;
 
         while (currentId != 0 && remainingPoolShares > 0) {
+            console.log("Unallocate Loop - Start - remainingPoolShares:", remainingPoolShares);
             if (gasleft() < MIN_GAS) break;
 
             // console.log(currentId); // Original console.log
@@ -876,7 +877,7 @@ contract StabilizerNFT is
                     emit FundsUnallocated(currentId, stEthPaidToUserFromPosition, stEthReturnedToStabilizer);
                 }
             }
-
+            console.log("Unallocate Loop - End - remainingPoolShares:", remainingPoolShares);
             currentId = pos.prevAllocated;
         }
 
