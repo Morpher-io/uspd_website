@@ -1789,6 +1789,132 @@ contract StabilizerNFTTest is Test {
         assertApproxEqAbs(insuranceEscrow.getStEthBalance(), insuranceStEthBefore + expectedRemainderToInsurance, 1, "InsuranceEscrow balance mismatch"); // Allow 1 wei diff
     }
 
+    function testTokenURI_EmptyBaseURI() public {
+        // Set baseURI to empty string
+        vm.prank(owner);
+        stabilizerNFT.setBaseURI("");
+        assertEq(stabilizerNFT.baseURI(), "", "BaseURI should be empty");
+
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        assertEq(stabilizerNFT.tokenURI(tokenId), "", "tokenURI should be empty if baseURI is empty");
+    }
+
+    function testGetMinCollateralRatio_Revert_NonExistentToken() public {
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721NonexistentToken.selector, 999));
+        stabilizerNFT.getMinCollateralRatio(999);
+    }
+
+    function testUnallocateStabilizerFunds_Revert_NoFundsUnallocated_AmountTooSmall() public {
+        // Setup: Mint a position, allocate some funds
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        vm.deal(user1, 0.1 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId);
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000);
+
+        vm.deal(owner, 1 ether);
+        vm.prank(owner);
+        cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp));
+
+        // Attempt to unallocate a very small amount of shares that results in 0 stETH
+        // This requires manipulating the price or yield factor to make stEthToRemove zero.
+        // For simplicity, we'll try to unallocate 1 wei of pool shares.
+        // The _calculateUnallocationFromEscrow might return 0 for stEthToRemove if poolSharesToUnallocate is tiny.
+        
+        IPriceOracle.PriceResponse memory priceResp = IPriceOracle.PriceResponse(
+            2000 ether, 18, block.timestamp * 1000
+        );
+
+        // Mock cUSPDToken to call unallocateStabilizerFunds
+        vm.prank(address(cuspdToken));
+        vm.expectRevert("No funds unallocated");
+        stabilizerNFT.unallocateStabilizerFunds(1, priceResp); // 1 wei of shares
+    }
+    
+    function testUnallocateStabilizerFunds_AllocatedPositionWithZeroShares() public {
+        // This test aims to cover the path where an allocated position has 0 shares.
+        // This scenario is unusual as positions are typically removed from allocated list when shares hit 0.
+        // We'll simulate it by allocating, then manually setting shares to 0 in PositionEscrow via a mock/direct storage write if possible,
+        // or by ensuring the loop in unallocateStabilizerFunds proceeds to the next if currentBackedShares is 0.
+
+        uint256 tokenId1 = stabilizerNFT.mint(user1); // Will be allocated
+        uint256 tokenId2 = stabilizerNFT.mint(user2); // Will remain allocated but with shares later set to 0 (simulated)
+        uint256 tokenId3 = stabilizerNFT.mint(user1); // Will be allocated
+
+        vm.deal(user1, 0.3 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId1);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(tokenId1, 11000);
+        
+        vm.deal(user2, 0.3 ether);
+        vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId2);
+        vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(tokenId2, 11000);
+
+        vm.deal(user1, 0.3 ether); // Deal again for tokenId3
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId3);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(tokenId3, 11000);
+
+        // Allocate to all three
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, 3 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, priceQuery); // Allocates to tokenId1
+        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user2, priceQuery); // Allocates to tokenId2
+        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, priceQuery); // Allocates to tokenId3
+
+        // Now, simulate tokenId2's PositionEscrow having 0 backed shares.
+        // The most direct way is to mock its backedPoolShares() call.
+        address posEscrow2Addr = stabilizerNFT.positionEscrows(tokenId2);
+        vm.mockCall(posEscrow2Addr, abi.encodeWithSelector(IPositionEscrow.backedPoolShares.selector), abi.encode(uint256(0)));
+
+        // Attempt to unallocate shares that would span across tokenId3, (skip tokenId2), and tokenId1
+        uint256 sharesToUnallocate = 2000 ether; // Enough to empty tokenId3 (1 ETH worth) and start on tokenId1
+        
+        IPriceOracle.PriceResponse memory priceResp = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
+        // uint256 user1EthBefore = user1.balance; // Not needed for this assertion
+
+        vm.prank(address(cuspdToken)); // Simulate call from cUSPDToken
+        uint256 returnedEth = stabilizerNFT.unallocateStabilizerFunds(sharesToUnallocate, priceResp);
+        
+        // We expect 2 ETH worth of shares to be unallocated (1 from tokenId3, 1 from tokenId1)
+        // User should get back 2 ETH.
+        assertApproxEqAbs(returnedEth, 2 ether, 1e12, "Incorrect ETH returned from unallocation"); // Allow some dust for yield factor calcs
+
+        // Check that tokenId2 was indeed skipped (its PositionEscrow should still have its original collateral)
+        IPositionEscrow posEscrow2 = IPositionEscrow(posEscrow2Addr);
+        assertEq(posEscrow2.getCurrentStEthBalance(), 1.1 ether, "TokenId2 PositionEscrow collateral should be untouched");
+        
+        vm.clearMockedCalls();
+    }
+
+    function testUpgradeStabilizerNFT_Success() public {
+        StabilizerNFT v2Implementation = new StabilizerNFT();
+        
+        address initialImplementation = address(uint160(uint256(vm.load(address(stabilizerNFT), bytes32(uint256(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc))))));
+        assertNotEq(initialImplementation, address(v2Implementation), "Initial implementation should not be V2");
+
+        vm.prank(owner); // Owner has UPGRADER_ROLE
+        stabilizerNFT.upgradeToAndCall(address(v2Implementation), "");
+
+        address newImplementation = address(uint160(uint256(vm.load(address(stabilizerNFT), bytes32(uint256(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc))))));
+        assertEq(newImplementation, address(v2Implementation), "Implementation address did not update to V2");
+        assertTrue(stabilizerNFT.hasRole(stabilizerNFT.DEFAULT_ADMIN_ROLE(), owner), "Admin role lost after upgrade");
+    }
+
+    function testUpgradeStabilizerNFT_Revert_NotUpgrader() public {
+        StabilizerNFT v2Implementation = new StabilizerNFT();
+        
+        vm.prank(user1); // user1 does not have UPGRADER_ROLE
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                user1,
+                stabilizerNFT.UPGRADER_ROLE()
+            )
+        );
+        stabilizerNFT.upgradeToAndCall(address(v2Implementation), "");
+    }
+
+
     function testLiquidation_WithLiquidatorNFT_HighID_UsesMinThreshold() public {
         // --- Test Constants (Inlined) ---
         // uint256 positionToLiquidateTokenId = 1;
