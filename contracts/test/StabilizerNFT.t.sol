@@ -3258,4 +3258,107 @@ contract StabilizerNFTTest is Test {
         // For now, the LCOV report will be the primary indicator for DA:505,0 coverage.
     }
 
+    function testAllocateStabilizerFunds_Revert_NotCUSPDToken() public {
+        // Attempt to call allocateStabilizerFunds from an unauthorized address
+        address unauthorizedCaller = makeAddr("unauthorizedCaller");
+        vm.prank(unauthorizedCaller);
+        vm.expectRevert("Only cUSPD contract");
+        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
+            2000 ether, // ethUsdPrice
+            18          // priceDecimals
+        );
+    }
+
+    function testAllocateStabilizerFunds_Revert_NoEthSent() public {
+        // Setup: Need at least one unallocated stabilizer for the initial check to pass
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        vm.deal(user1, 0.1 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId);
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000);
+
+
+        // Attempt to call allocateStabilizerFunds with no ETH sent
+        vm.prank(address(cuspdToken)); // Call from the authorized cUSPDToken address
+        vm.expectRevert("No ETH sent");
+        stabilizerNFT.allocateStabilizerFunds{value: 0}(
+            2000 ether, // ethUsdPrice
+            18          // priceDecimals
+        );
+    }
+
+    function testAllocateStabilizerFunds_Revert_StabilizerEscrowZero() public {
+        // Setup: Mint and fund a stabilizer to get it into the unallocated list
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        vm.deal(user1, 0.1 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId);
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000);
+
+        // Manually set the stabilizerEscrows[tokenId] to address(0) using stdStore
+        uint256 slot = stdstore
+            .target(address(stabilizerNFT))
+            .sig(stabilizerNFT.stabilizerEscrows.selector)
+            .with_key(tokenId)
+            .find();
+        vm.store(address(stabilizerNFT), bytes32(slot), bytes32(uint256(0)));
+
+        assertEq(stabilizerNFT.stabilizerEscrows(tokenId), address(0), "Failed to zero out stabilizerEscrow address for test");
+
+        // Attempt to allocate funds; it should try to process tokenId and find its escrow is address(0)
+        vm.prank(address(cuspdToken));
+        vm.expectRevert("Escrow not found for stabilizer");
+        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
+            2000 ether, // ethUsdPrice
+            18          // priceDecimals
+        );
+    }
+
+    function testAllocateStabilizerFunds_LoopSkip_RemainingEthZero() public {
+        uint256 tokenId1 = stabilizerNFT.mint(user1); // Will be funded to take all user ETH
+        uint256 tokenId2 = stabilizerNFT.mint(user2); // Will be funded but skipped
+
+        // Fund S1 (can back 1 ETH from user at 110% ratio, needs 0.1 ETH stabilizer funds)
+        vm.deal(user1, 0.1 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId1);
+        vm.prank(user1);
+        stabilizerNFT.setMinCollateralizationRatio(tokenId1, 11000);
+
+        // Fund S2 (can also back 1 ETH from user, needs 0.1 ETH stabilizer funds)
+        vm.deal(user2, 0.1 ether);
+        vm.prank(user2);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId2);
+        vm.prank(user2);
+        stabilizerNFT.setMinCollateralizationRatio(tokenId2, 11000);
+
+        // User sends 1 ETH. S1 will take all of it.
+        uint256 userEthForAllocation = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+
+        vm.prank(address(cuspdToken));
+        IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
+            priceQuery.price,
+            priceQuery.decimals
+        );
+
+        // Assertions
+        // S1 should be allocated
+        assertEq(result.allocatedEth, userEthForAllocation, "All user ETH should be allocated to S1");
+        IPositionEscrow posEscrow1 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId1));
+        assertEq(posEscrow1.backedPoolShares(), 2000 ether, "PosEscrow1 shares mismatch (S1 allocated)"); // 1 ETH user * 2000 price
+        assertEq(posEscrow1.getCurrentStEthBalance(), 1.1 ether, "PosEscrow1 stETH mismatch"); // 1 ETH user + 0.1 ETH stabilizer
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId1)).unallocatedStETH(), 0, "StabilizerEscrow1 should be empty");
+
+        // S2 should NOT be allocated because remainingEth became 0 after S1
+        IPositionEscrow posEscrow2 = IPositionEscrow(stabilizerNFT.positionEscrows(tokenId2));
+        assertEq(posEscrow2.backedPoolShares(), 0, "PosEscrow2 shares mismatch (S2 should not be allocated)");
+        assertEq(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(tokenId2)).unallocatedStETH(), 0.1 ether, "StabilizerEscrow2 should still have its funds");
+
+        // Check that S2 is still in the unallocated list (or S1 was removed and S2 is now head)
+        assertTrue(stabilizerNFT.lowestUnallocatedId() == tokenId2 || stabilizerNFT.highestUnallocatedId() == tokenId2, "S2 should remain in unallocated list");
+    }
+
 } // Add closing brace for the contract here
