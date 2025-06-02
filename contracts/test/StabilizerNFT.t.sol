@@ -2049,7 +2049,7 @@ contract StabilizerNFTTest is Test {
         // IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp); // Inlined
         vm.deal(owner, 2 ether);
         vm.prank(owner);
-        cuspdToken.mintShares{value: 2 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp));
+        cuspdToken.mintShares{value: 2 ether}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionTokenId));
         uint256 initialTotalSharesInPosition = positionEscrow.backedPoolShares(); // Should be 4000e18
@@ -2065,8 +2065,8 @@ contract StabilizerNFTTest is Test {
         uint256 sharesToLiquidatePartially = 2000 ether; // Liquidate half of 4000
         require(sharesToLiquidatePartially < initialTotalSharesInPosition, "Partial shares must be less than total");
 
-        vm.prank(owner); // Admin mints shares to liquidator
-        cuspdToken.mint(user2, sharesToLiquidatePartially);
+        // vm.prank(owner); // Admin mints shares to liquidator
+        // cuspdToken.mint(user2, sharesToLiquidatePartially);
         vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), sharesToLiquidatePartially);
         vm.stopPrank();
@@ -2112,7 +2112,7 @@ contract StabilizerNFTTest is Test {
         // --- Assertions ---
         // Liquidator
         assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedPayoutToLiquidator, 1, "Liquidator stETH payout mismatch (partial)");
-        assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator cUSPD balance should be zero (partial)");
+        assertEq(cuspdToken.balanceOf(user2), initialTotalSharesInPosition - sharesToLiquidatePartially, "Liquidator cUSPD balance should be half the initial balance (partial)");
 
         // PositionEscrow
         assertEq(positionEscrow.backedPoolShares(), initialTotalSharesInPosition - sharesToLiquidatePartially, "PositionEscrow shares not reduced correctly (partial)");
