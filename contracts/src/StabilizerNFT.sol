@@ -398,9 +398,11 @@ contract StabilizerNFT is
             }
         } // End of payout logic scope
 
-        // 9. Snapshot Update: Report the actual amount removed from the PositionEscrow
-        if (stEthRemovedFromPosition > 0) {
-             reporter.updateSnapshot(-int256(stEthRemovedFromPosition));
+        // 9. Snapshot Update: Report the net change in system collateral.
+        // The total amount paid to the liquidator (from PositionEscrow and/or InsuranceEscrow)
+        // represents the stETH that has left the system's backing.
+        if (stEthPaidToLiquidator > 0) {
+            reporter.updateSnapshot(-int256(stEthPaidToLiquidator));
         }
 
         // 10. Update StabilizerNFT State (lists)
