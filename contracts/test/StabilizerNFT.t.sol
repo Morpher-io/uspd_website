@@ -2071,6 +2071,94 @@ contract StabilizerNFTTest is Test {
         assertApproxEqAbs(totalEthReturnedToMinter, ((1000 ether * (10**18)) / liquidationPrice) + p1_userParStEth, 2e12, "Total ETH returned to minterUser mismatch (with insurance)");
     }
 
+    function testLiquidation_PartialLiquidation_PositionRemainsAllocated() public {
+        // --- Setup Position (user1) ---
+        uint256 positionTokenId = stabilizerNFT.mint(user1);
+        // Fund StabilizerEscrow (e.g., 0.2 ETH for 110% on 2 ETH user funds)
+        vm.deal(user1, 0.2 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(positionTokenId);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 11000); // 110%
+
+        // Mint 2 ETH worth of shares (e.g., 2000 shares at $2000/ETH)
+        uint256 totalUserEthForMint = 2 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, totalUserEthForMint);
+        vm.prank(owner);
+        cuspdToken.mintShares{value: totalUserEthForMint}(user1, priceQueryOriginal);
+
+        IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionTokenId));
+        uint256 initialTotalSharesInPosition = positionEscrow.backedPoolShares(); // Should be 2000e18
+        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 2.2e18 (2 user + 0.2 stab)
+        assertEq(initialTotalSharesInPosition, 2000 ether, "Initial total shares mismatch");
+        assertEq(initialCollateralInPosition, 2.2 ether, "Initial total collateral mismatch");
+
+        // Ensure it's the only allocated position for easy list checking
+        assertEq(stabilizerNFT.lowestAllocatedId(), positionTokenId, "Position should be lowest allocated");
+        assertEq(stabilizerNFT.highestAllocatedId(), positionTokenId, "Position should be highest allocated");
+
+        // --- Setup Liquidator (user2) ---
+        uint256 sharesToLiquidatePartially = 1000 ether; // Liquidate half
+        require(sharesToLiquidatePartially < initialTotalSharesInPosition, "Partial shares must be less than total");
+
+        vm.prank(owner); // Admin mints shares to liquidator
+        cuspdToken.mint(user2, sharesToLiquidatePartially);
+        vm.startPrank(user2);
+        cuspdToken.approve(address(stabilizerNFT), sharesToLiquidatePartially);
+        vm.stopPrank();
+
+        // --- Simulate ETH Price Drop to 105% Ratio for the whole position ---
+        uint256 initialSharesUSDValue = (initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
+        uint256 priceForLiquidationTest = ((10500 * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
+        IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
+
+        // --- Calculate Expected Payout for the partial shares ---
+        // Par value of the *partial* shares at the liquidation price
+        uint256 partialSharesUSDValue = (sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
+        uint256 stEthParValueForPartialShares = (partialSharesUSDValue * (10**18)) / priceForLiquidationTest;
+        uint256 expectedPayoutToLiquidator = (stEthParValueForPartialShares * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+
+        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
+        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
+        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
+
+        // --- Action: Partial Liquidation ---
+        uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
+        uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
+        uint256 reporterSnapshotBefore = address(reporter) != address(0) ? reporter.totalEthEquivalentAtLastSnapshot() : 0;
+
+
+        vm.expectEmit(true, true, true, true, address(stabilizerNFT));
+        emit StabilizerNFT.PositionLiquidated(positionTokenId, user2, 0, sharesToLiquidatePartially, expectedPayoutToLiquidator, priceForLiquidationTest, 11000);
+
+        vm.prank(user2);
+        stabilizerNFT.liquidatePosition(0, positionTokenId, sharesToLiquidatePartially, priceQueryLiquidation);
+
+        // --- Reset maxPriceDeviation in PriceOracle ---
+        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
+
+        // --- Assertions ---
+        // Liquidator
+        assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedPayoutToLiquidator, 1, "Liquidator stETH payout mismatch (partial)");
+        assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator cUSPD balance should be zero (partial)");
+
+        // PositionEscrow
+        assertEq(positionEscrow.backedPoolShares(), initialTotalSharesInPosition - sharesToLiquidatePartially, "PositionEscrow shares not reduced correctly (partial)");
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - expectedPayoutToLiquidator, 1e12, "PositionEscrow stETH not reduced correctly (partial)");
+
+        // StabilizerNFT Lists (Position should still be allocated)
+        assertEq(stabilizerNFT.lowestAllocatedId(), positionTokenId, "Position should still be lowest allocated (partial)");
+        assertEq(stabilizerNFT.highestAllocatedId(), positionTokenId, "Position should still be highest allocated (partial)");
+        StabilizerNFT.StabilizerPosition memory pos = stabilizerNFT.positions(positionTokenId);
+        assertEq(pos.prevAllocated, 0, "Position prevAllocated link incorrect (partial)");
+        assertEq(pos.nextAllocated, 0, "Position nextAllocated link incorrect (partial)");
+
+        // Reporter
+        if (address(reporter) != address(0)) {
+            assertApproxEqAbs(reporter.totalEthEquivalentAtLastSnapshot(), reporterSnapshotBefore - expectedPayoutToLiquidator, 1, "Reporter snapshot incorrect (partial)");
+        }
+        vm.clearMockedCalls();
+    }
+
     function testLiquidation_NoReporterSet() public {
         // Setup similar to testLiquidation_Success_BelowThreshold_FullPayoutFromCollateral
         // but ensure reporter address is zeroed out.
