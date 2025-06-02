@@ -3216,7 +3216,7 @@ contract StabilizerNFTTest is Test {
 
         // Action: Mint shares, potentially hitting gas limit in allocateStabilizerFunds loop
         vm.prank(owner); // minter = owner
-        uint256 leftoverEth = cuspdToken.mintShares{value: 5 ether}(recipientForGasTest, priceQuery); // userEthToMint = 5 ether, recipient = recipientForGasTest
+        uint256 leftoverEth = cuspdToken.mintShares{value: 5 ether, gas: 500000}(recipientForGasTest, priceQuery); // userEthToMint = 5 ether, recipient = recipientForGasTest
 
         uint256 minterEthAfter = owner.balance; // minter = owner
         uint256 recipientSharesAfter = cuspdToken.balanceOf(recipientForGasTest); // recipient = recipientForGasTest
@@ -3232,15 +3232,15 @@ contract StabilizerNFTTest is Test {
         // If gas exhaustion occurred, ethAllocatedByUser will be < userEthToMint (5 ether)
         // and leftoverEth will be > 0.
         if (ethAllocatedByUser < 5 ether) { // userEthToMint = 5 ether
-            console.log("Partial allocation due to potential gas exhaustion:");
-            console.log("  User ETH sent: %s", 5 ether); // userEthToMint = 5 ether
-            console.log("  User ETH allocated: %s", ethAllocatedByUser);
-            console.log("  ETH Refunded: %s", leftoverEth);
+            // console.log("Partial allocation due to potential gas exhaustion:");
+            // console.log("  User ETH sent: %s", uint256(5 ether)); // userEthToMint = 5 ether
+            // console.log("  User ETH allocated: %s", ethAllocatedByUser);
+            // console.log("  ETH Refunded: %s", leftoverEth);
             assertTrue(leftoverEth > 0, "If partial allocation, leftover ETH should be > 0");
             assertTrue(minterEthAfter > minterEthBefore - (5 ether), "Minter ETH should reflect refund"); // userEthToMint = 5 ether
         } else {
-            console.log("Full allocation occurred (gas limit might not have been hit as expected):");
-            console.log("  User ETH sent and allocated: %s", 5 ether); // userEthToMint = 5 ether
+            // console.log("Full allocation occurred (gas limit might not have been hit as expected):");
+            // console.log("  User ETH sent and allocated: %s", uint256(5 ether)); // userEthToMint = 5 ether
             assertEq(leftoverEth, 0, "If full allocation, leftover ETH should be 0");
         }
 
