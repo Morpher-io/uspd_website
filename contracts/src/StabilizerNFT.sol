@@ -783,12 +783,18 @@ contract StabilizerNFT is
             // sliceResult.stEthReturnedToStabilizer remains 0 (default)
 
             uint256 shortfall = userStEthParValueForSlice - sliceResult.stEthPaidToUser;
+            console.log("_handleUnallocationSlice - Insurance - shortfall:", shortfall);
             if (shortfall > 0 && address(insuranceEscrow) != address(0)) {
                 uint256 insuranceAvailable = insuranceEscrow.getStEthBalance();
+                console.log("_handleUnallocationSlice - Insurance - insuranceAvailable:", insuranceAvailable);
                 amountWithdrawnFromInsuranceThisSlice = shortfall > insuranceAvailable ? insuranceAvailable : shortfall;
+                console.log("_handleUnallocationSlice - Insurance - amountWithdrawnFromInsuranceThisSlice (potential):", amountWithdrawnFromInsuranceThisSlice);
                 if (amountWithdrawnFromInsuranceThisSlice > 0) {
+                    console.log("_handleUnallocationSlice - Insurance - Before withdrawStEth - stEthPaidToUser:", sliceResult.stEthPaidToUser);
                     insuranceEscrow.withdrawStEth(address(cuspdToken), amountWithdrawnFromInsuranceThisSlice);
+                    
                     sliceResult.stEthPaidToUser += amountWithdrawnFromInsuranceThisSlice; // Add insurance payout to user's total
+                    console.log("_handleUnallocationSlice - Insurance - After withdrawStEth - stEthPaidToUser:", sliceResult.stEthPaidToUser);
                 }
             }
             sliceResult.ethEquivalentRemoved = stEthCollateralForSliceAtCurrentRatio + amountWithdrawnFromInsuranceThisSlice;
