@@ -2048,18 +2048,19 @@ contract StabilizerNFTTest is Test {
 
         // --- Test Unallocated List Middle Insertion ---
         // Fund in order 1, 3, then 2 to force middle insertion for ID 2
-        vm.deal(user1, 2 ether); // For ID1 and ID3
-        vm.deal(user2, 1 ether); // For ID2
+        // Use smaller, consistent funding amounts (0.1 ETH) for all stabilizers.
+        vm.deal(user1, 0.2 ether); // For ID1 and ID3 (0.1 ETH each)
+        vm.deal(user2, 0.1 ether); // For ID2 (0.1 ETH)
 
         // Fund ID 1
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(id1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id1);
         assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc: Lowest should be ID1 after funding ID1");
         assertEq(stabilizerNFT.highestUnallocatedId(), id1, "Unalloc: Highest should be ID1 after funding ID1");
 
         // Fund ID 3
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(id3);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id3);
         assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc: Lowest should be ID1 after funding ID3");
         assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc: Highest should be ID3 after funding ID3");
         // Intermediate checks for unallocated list links after ID3 fund removed to save stack space.
@@ -2067,7 +2068,7 @@ contract StabilizerNFTTest is Test {
 
         // Fund ID 2 (this should insert between ID 1 and ID 3)
         vm.prank(user2);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(id2);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id2);
         assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc: Lowest should be ID1 after funding ID2");
         assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc: Highest should be ID3 after funding ID2");
 
@@ -2095,33 +2096,41 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(id3, 11000);
 
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        uint256 userEthToDrainStabilizer = 1 ether; // User ETH needed to drain 0.1 ETH stabilizer at 110%
 
-        // Allocate to ID 1
-        vm.deal(owner, 0.1 ether);
-        vm.prank(owner); cuspdToken.mintShares{value: 0.1 ether}(user1, priceQuery); // Allocates to id1
-        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc: Lowest should be ID1 after allocating ID1");
-        assertEq(stabilizerNFT.highestAllocatedId(), id1, "Alloc: Highest should be ID1 after allocating ID1");
+        // Allocate to ID 1 (drains id1 from unallocated)
+        vm.deal(owner, userEthToDrainStabilizer);
+        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user1, priceQuery);
+        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Step 1: Lowest should be ID1");
+        assertEq(stabilizerNFT.highestAllocatedId(), id1, "Alloc Step 1: Highest should be ID1");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id2, "Unalloc Step 1: Lowest should be ID2");
+        assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc Step 1: Highest should be ID3");
 
-        // Allocate to ID 3
-        vm.deal(owner, 0.1 ether);
-        vm.prank(owner); cuspdToken.mintShares{value: 0.1 ether}(user1, priceQuery); // Allocates to id3 (next in unallocated list)
-        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc: Lowest should be ID1 after allocating ID3");
-        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc: Highest should be ID3 after allocating ID3");
-        // Intermediate checks for allocated list links after ID3 allocation removed to save stack space.
-        // The final check after ID2 allocation will verify the overall middle insertion.
-        
+
+        // Temporarily remove ID2's funds to make ID3 the lowest unallocated
+        vm.prank(user2); // user2 owns id2
+        stabilizerNFT.removeUnallocatedFunds(id2, 0.1 ether);
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id3, "Unalloc Step 2: Lowest should be ID3 after ID2 removal");
+
+        // Allocate to ID 3 (drains id3 from unallocated)
+        vm.deal(owner, userEthToDrainStabilizer);
+        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user1, priceQuery);
+        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Step 2: Lowest should be ID1");
+        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc Step 2: Highest should be ID3");
+        assertEq(stabilizerNFT.lowestUnallocatedId(), 0, "Unalloc Step 2: Should be empty (or id2 if re-added too soon)");
+
+        // Re-fund ID 2
+        vm.deal(user2, 0.1 ether);
+        vm.prank(user2);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id2);
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id2, "Unalloc Step 3: Lowest should be ID2 after re-funding");
+
         // Allocate to ID 2 (this should insert between ID 1 and ID 3 in allocated list)
-        // Note: cUSPDToken.mintShares allocates based on lowestUnallocatedId.
-        // To test middle insertion for *allocated* list, we need to ensure ID2 is the next one picked from unallocated.
-        // The unallocated list is currently: ID2 (lowest) because ID1 and ID3 were used for allocation.
-        // So, the next mintShares will allocate to ID2.
-        assertEq(stabilizerNFT.lowestUnallocatedId(), id2, "Unalloc: ID2 should be lowest before allocating to it");
+        vm.deal(owner, userEthToDrainStabilizer);
+        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user2, priceQuery);
 
-        vm.deal(owner, 0.1 ether);
-        vm.prank(owner); cuspdToken.mintShares{value: 0.1 ether}(user2, priceQuery); // Allocates to id2
-
-        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc: Lowest should be ID1 after allocating ID2");
-        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc: Highest should be ID3 after allocating ID2");
+        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Final: Lowest should be ID1");
+        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc Final: Highest should be ID3");
 
         // Verify links for middle insertion: 1 <-> 2 <-> 3
         {
