@@ -2064,6 +2064,79 @@ contract StabilizerNFTTest is Test {
         assertApproxEqAbs(totalEthReturnedToMinter, ((1000 ether * (10**18)) / liquidationPrice) + p1_userParStEth, 2e12, "Total ETH returned to minterUser mismatch (with insurance)");
     }
 
+    function testLiquidation_NoReporterSet() public {
+        // Setup similar to testLiquidation_Success_BelowThreshold_FullPayoutFromCollateral
+        // but ensure reporter address is zeroed out.
+
+        // --- Setup Position to be Liquidated (owned by user1) ---
+        uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
+        vm.deal(user1, 0.1 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(positionToLiquidateTokenId);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 11000);
+
+        IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, 1 ether);
+        vm.prank(owner);
+        cuspdToken.mintShares{value: 1 ether}(user1, priceQueryOriginal);
+
+        IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
+        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance();
+        uint256 initialSharesInPosition = positionEscrow.backedPoolShares();
+
+        // --- Setup Liquidator (user2) ---
+        vm.prank(owner); // Admin mints shares to liquidator
+        cuspdToken.mint(user2, initialSharesInPosition); // Liquidator gets enough shares
+        vm.startPrank(user2);
+        cuspdToken.approve(address(stabilizerNFT), initialSharesInPosition);
+        vm.stopPrank();
+
+        // --- Simulate ETH Price Drop to 105% Ratio ---
+        uint256 initialSharesUSDValue = (initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
+        uint256 calculatedPriceForLiquidationTest = ((10500 * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
+        IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(calculatedPriceForLiquidationTest, block.timestamp);
+        
+        uint256 calculatedExpectedPayout = ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / calculatedPriceForLiquidationTest * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+
+        // --- Manually set reporter address to zero using stdStorage ---
+        // Find the storage slot for the 'reporter' state variable.
+        // This assumes 'reporter' is the 5th state variable declared after UUPS, AccessControl, ERC721Enumerable, ERC721 components.
+        // Slot calculation can be fragile. A more robust way is to use `stdstore.target(...).sig(...)` if it were a simple public variable.
+        // For complex inheritance, direct slot manipulation is sometimes needed.
+        // Let's assume the slot for `reporter` (IOvercollateralizationReporter public reporter;)
+        // is found by inspecting layout or using `forge inspect <Contract> storage-layout`.
+        // For this example, we'll try to find it by name if `stdstore` supports it, or use a known slot if not.
+        // The variable `reporter` is declared after `cuspdToken` and before `insuranceEscrow`.
+        // Let's find its slot.
+        bytes32 reporterSlot = stdstore
+            .target(address(stabilizerNFT))
+            .sig(stabilizerNFT.reporter.selector) // This gets the selector for the getter
+            .find(); // This finds the slot for the public variable `reporter`
+
+        vm.store(address(stabilizerNFT), reporterSlot, bytes32(uint256(0)));
+        assertEq(address(stabilizerNFT.reporter()), address(0), "Reporter address not zeroed out");
+
+
+        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
+        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
+        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
+
+        // --- Action: Liquidate ---
+        uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
+        uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
+
+        vm.prank(user2);
+        stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
+
+        // --- Reset maxPriceDeviation in PriceOracle ---
+        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
+
+        // --- Assertions (should proceed without reporter calls) ---
+        assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + calculatedExpectedPayout, 1, "Liquidator stETH payout mismatch (no reporter)");
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - calculatedExpectedPayout, 1, "PositionEscrow balance mismatch (no reporter)");
+        assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow shares mismatch (no reporter)");
+        assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator cUSPD balance mismatch (no reporter)");
+    }
+
     function testUpgradeStabilizerNFT_Success() public {
         StabilizerNFT v2Implementation = new StabilizerNFT();
         
