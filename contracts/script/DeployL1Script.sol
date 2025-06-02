@@ -23,7 +23,7 @@ import "../test/mocks/MockStETH.sol";
 import "../test/mocks/MockLido.sol";
 import "../src/BridgeEscrow.sol"; // <-- Add BridgeEscrow import
 
-contract DeployL1Script is Script {
+contract DeployScript is Script {
     // Configuration
     uint256 internal constant MAINNET_CHAIN_ID = 1; // <-- Define MAINNET_CHAIN_ID
     address deployer;
@@ -33,8 +33,8 @@ contract DeployL1Script is Script {
     address oracleSignerAddress = 0x00051CeA64B7aA576421E2b5AC0852f1d7E14Fa5;
 
     function generateSalt(string memory identifier) internal pure returns (bytes32) {
-        // Salt is derived from a fixed prefix (USPD) and the identifier string.
-        return keccak256(abi.encodePacked(bytes4(0x55535044), identifier));
+        // Salt is now derived solely from the identifier string, making it deployer-independent.
+        return keccak256(abi.encodePacked(identifier));
     }
 
     // Define salts for each contract
@@ -136,7 +136,24 @@ contract DeployL1Script is Script {
             uniswapRouter = address(0x6); // Placeholder
             chainlinkAggregator = address(0x7); // Placeholder
         } else {
-            revert("Unsupported chain ID for L1 deployment script.");
+            // Other networks (e.g., Polygon) - Prepare for bridged token
+            console2.log("Deploying for bridged token scenario on chain ID:", chainId);
+            // Set addresses required by Oracle if it's deployed, otherwise 0x0
+            // Assuming Oracle might still be needed for some price info or bridged functionality
+            if (chainId == 137) { // Polygon specific example
+                 usdcAddress = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
+                 uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Check Polygon Uniswap Router
+                 chainlinkAggregator = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0; // Polygon ETH/USD
+            } else {
+                 // Default placeholders for other networks if Oracle is needed
+                 usdcAddress = address(0xdead); // Placeholder - replace if Oracle used
+                 uniswapRouter = address(0xbeef); // Placeholder - replace if Oracle used
+                 chainlinkAggregator = address(0xcafe); // Placeholder - replace if Oracle used
+            }
+            // Stabilizer system components are not deployed
+            lidoAddress = address(0);
+            stETHAddress = address(0);
+            initialRateContractDeposit = 0;
         }
 
         // Set Base URI based on chain
@@ -156,23 +173,43 @@ contract DeployL1Script is Script {
         deployOracleImplementation();
         deployOracleProxy(); // Needs ProxyAdmin, initializes Oracle
         // BridgeEscrow is deployed for both L1 and L2 scenarios, but configured/used differently.
-        // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first in bridged. // This comment might be less relevant for L1 only.
+        // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first in bridged.
 
-        // --- Deploy Full System for L1 ---
-        console2.log("Deploying Full System for L1...");
-        deployStabilizerNFTImplementation();
-        deployStabilizerEscrowImplementation(); // <-- Deploy StabilizerEscrow Impl
-        deployPositionEscrowImplementation(); // <-- Deploy PositionEscrow Impl
-        deployPoolSharesConversionRate();
-        deployReporterImplementation();
-        deployStabilizerNFTProxy_NoInit(); // Deploy StabilizerNFT proxy first to get its address
-        deployInsuranceEscrow(); // Deploy InsuranceEscrow, owned by StabilizerNFT proxy
-        deployCUSPDToken(); // Deploys cUSPD for L1
-        deployUspdToken();  // Deploys USPD for L1
-        deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // Deploy BridgeEscrow for L1
-        deployReporterProxy();
-        initializeStabilizerNFTProxy(); // Now initialize StabilizerNFT proxy, passing InsuranceEscrow address
-        setupRolesAndPermissions();
+
+        // --- Conditional Deployment ---
+        bool deployFullSystem = (chainId == MAINNET_CHAIN_ID || chainId == 11155111 || chainId == 31337 || chainId == 112233);
+
+        if (deployFullSystem) {
+            console2.log("Deploying Full System...");
+            deployStabilizerNFTImplementation();
+            deployStabilizerEscrowImplementation(); // <-- Deploy StabilizerEscrow Impl
+            deployPositionEscrowImplementation(); // <-- Deploy PositionEscrow Impl
+            deployPoolSharesConversionRate();
+            deployReporterImplementation();
+            deployStabilizerNFTProxy_NoInit(); // Deploy StabilizerNFT proxy first to get its address
+            deployInsuranceEscrow(); // Deploy InsuranceEscrow, owned by StabilizerNFT proxy
+            deployCUSPDToken(); // Deploys cUSPD for L1
+            deployUspdToken();  // Deploys USPD for L1
+            deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // Deploy BridgeEscrow for L1
+            deployReporterProxy();
+            initializeStabilizerNFTProxy(); // Now initialize StabilizerNFT proxy, passing InsuranceEscrow address
+            setupRolesAndPermissions();
+        } else {
+            console2.log("Deploying Bridged Token Only...");
+            insuranceEscrowAddress = address(0); // Set to zero for bridged
+            stabilizerImplAddress = address(0);
+            stabilizerProxyAddress = address(0);
+            rateContractAddress = address(0); // L2 might have its own rate contract, or sync from L1
+            reporterImplAddress = address(0);
+            reporterAddress = address(0);
+            stabilizerEscrowImplAddress = address(0); // <-- Set escrow impls to 0
+            positionEscrowImplAddress = address(0); // <-- Set escrow impls to 0
+            
+            deployCUSPDToken_Bridged(); // Deploys cUSPD for L2
+            deployUspdToken_Bridged();  // Deploys USPD for L2
+            deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // Deploy BridgeEscrow for L2
+            setupRolesAndPermissions_Bridged();
+        }
 
         saveDeploymentInfo();
 
@@ -353,8 +390,47 @@ contract DeployL1Script is Script {
         console2.log("USPDToken (view layer) deployed at:", uspdTokenAddress);
     }
 
-    // Removed: deployCUSPDToken_Bridged
-    // Removed: deployUspdToken_Bridged
+    // Deploy cUSPD token for bridged scenario
+    function deployCUSPDToken_Bridged() internal {
+        console2.log("Deploying cUSPDToken for bridged scenario...");
+        require(oracleProxyAddress != address(0), "Oracle proxy not deployed");
+        // Stabilizer and RateContract are address(0) in bridged mode
+
+        bytes memory bytecode = abi.encodePacked(
+            type(cUSPDToken).creationCode,
+            abi.encode(
+                "Core USPD Share",        // name
+                "cUSPD",                  // symbol
+                oracleProxyAddress,       // oracle
+                address(0),               // stabilizer (zero address)
+                address(0),               // rateContract (zero address)
+                deployer                 // admin
+                // deployer              // BURNER_ROLE removed
+            )
+        );
+        cuspdTokenAddress = createX.deployCreate2{value: 0}(CUSPD_TOKEN_SALT, bytecode);
+        console2.log("cUSPDToken (bridged) deployed at:", cuspdTokenAddress);
+    }
+
+    // Deploy USPD token (view layer) for bridged scenario
+    function deployUspdToken_Bridged() internal {
+        console2.log("Deploying USPDToken (view layer) for bridged scenario...");
+        require(cuspdTokenAddress != address(0), "cUSPD token not deployed");
+        // RateContract is address(0) in bridged mode
+
+        bytes memory bytecode = abi.encodePacked(
+            type(USPDToken).creationCode,
+            abi.encode(
+                "Unified Stable Passive Dollar", // name
+                "USPD",                          // symbol
+                cuspdTokenAddress,               // link to core token
+                address(0),                      // rateContract (zero address)
+                deployer                         // admin
+            )
+        );
+        uspdTokenAddress = createX.deployCreate2{value: 0}(USPD_TOKEN_SALT, bytecode);
+        console2.log("USPDToken (view layer, bridged) deployed at:", uspdTokenAddress);
+    }
 
     function deployReporterImplementation() internal {
         // Deploy Reporter implementation with regular CREATE
@@ -540,7 +616,55 @@ contract DeployL1Script is Script {
         console2.log("Roles setup complete.");
     }
 
-    // Removed: setupRolesAndPermissions_Bridged
+    // Setup minimal roles for the bridged token scenario
+    function setupRolesAndPermissions_Bridged() internal {
+        console2.log("Setting up roles for bridged token...");
+
+        // Grant roles to the PriceOracle (if needed for bridged functionality)
+        console2.log("Granting Oracle roles...");
+        PriceOracle oracle = PriceOracle(oracleProxyAddress);
+        oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
+        oracle.grantRole(oracle.SIGNER_ROLE(), oracleSignerAddress); // Assuming deployer is initial signer
+
+        // Grant roles to the cUSPDToken
+        console2.log("Granting cUSPDToken (bridged) roles...");
+        cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
+        // Deployer already has ADMIN, UPDATER roles from constructor
+        coreToken.grantRole(coreToken.USPD_CALLER_ROLE(), uspdTokenAddress);
+        // Grant MINTER_ROLE and BURNER_ROLE to BridgeEscrow on L2 cUSPDToken
+        if (bridgeEscrowAddress != address(0)) {
+            coreToken.grantRole(coreToken.MINTER_ROLE(), bridgeEscrowAddress);
+            coreToken.grantRole(coreToken.BURNER_ROLE(), bridgeEscrowAddress);
+            console2.log("MINTER_ROLE and BURNER_ROLE granted to BridgeEscrow on cUSPDToken (bridged):", bridgeEscrowAddress);
+        }
+
+        // Grant YIELD_FACTOR_UPDATER_ROLE on L2 PoolSharesConversionRate to BridgeEscrow
+        if (rateContractAddress != address(0) && bridgeEscrowAddress != address(0)) {
+            PoolSharesConversionRate l2RateContract = PoolSharesConversionRate(payable(rateContractAddress));
+            l2RateContract.grantRole(l2RateContract.YIELD_FACTOR_UPDATER_ROLE(), bridgeEscrowAddress);
+            console2.log("YIELD_FACTOR_UPDATER_ROLE granted to BridgeEscrow on PoolSharesConversionRate (bridged):", bridgeEscrowAddress);
+        }
+
+
+        // Grant roles to the USPDToken (View Layer) - Only admin needed
+        console2.log("Granting USPDToken (view, bridged) roles...");
+        USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
+        // Example: Grant RELAYER_ROLE for bridged scenarios if applicable
+        // address exampleBridgedRelayerOrAdapter = 0xYourBridgedRelayerOrAdapterAddressHere;
+        // if (exampleBridgedRelayerOrAdapter != address(0)) {
+        //     viewToken.grantRole(viewToken.RELAYER_ROLE(), exampleBridgedRelayerOrAdapter);
+        //     console2.log("RELAYER_ROLE (bridged) granted to:", exampleBridgedRelayerOrAdapter);
+        // }
+
+        // Grant USPDToken the CALLER_ROLE on BridgeEscrow for L2 - This is no longer needed.
+        // if (bridgeEscrowAddress != address(0) && uspdTokenAddress != address(0)) {
+        //     BridgeEscrow(bridgeEscrowAddress).grantRole(BridgeEscrow(bridgeEscrowAddress).CALLER_ROLE(), uspdTokenAddress);
+        //     console2.log("CALLER_ROLE granted to USPDToken on BridgeEscrow (bridged):", uspdTokenAddress);
+        // }
+
+        console2.log("Bridged roles setup complete.");
+    }
+
 
     function saveDeploymentInfo() internal {
         console2.log("Saving deployment info to:", deploymentPath);
