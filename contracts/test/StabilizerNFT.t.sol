@@ -2089,18 +2089,18 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(id2, 11000);
         vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(id3, 11000);
 
-        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        uint256 userEthToDrainStabilizer = 1 ether; // Drains 0.1 ETH stabilizer at 110%
+        // IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp); //inlined
+        // uint256 userEthToDrainStabilizer = 1 ether; // Drains 0.1 ETH stabilizer at 110% //inlined
 
         // Allocate to ID1, ID2, ID3 in order
-        vm.deal(owner, userEthToDrainStabilizer);
-        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user1, priceQuery); // Allocates to ID1
+        vm.deal(owner, 1 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID1
         
-        vm.deal(owner, userEthToDrainStabilizer);
-        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user2, priceQuery); // Allocates to ID2
+        vm.deal(owner, 1 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user2, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID2
         
-        vm.deal(owner, userEthToDrainStabilizer);
-        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user1, priceQuery); // Allocates to ID3
+        vm.deal(owner, 1 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID3
 
         // Verify initial allocated list: 1 <-> 2 <-> 3
         assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Initial: Lowest should be ID1");
