@@ -2072,18 +2072,18 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
 
         // --- Simulate ETH Price Drop to 105% Ratio for the whole position ---
-        // uint256 initialSharesUSDValue = (initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
-        // uint256 priceForLiquidationTest = ((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1; // Inlined
+        uint256 initialSharesUSDValue = (initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
+        uint256 priceForLiquidationTest = ((10500 * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(
-            ((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1,
+            priceForLiquidationTest,
             block.timestamp
         );
 
         // --- Calculate Expected Payout for the partial shares ---
         // Par value of the *partial* shares at the liquidation price
-        // uint256 partialSharesUSDValue = (sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
-        // uint256 stEthParValueForPartialShares = (((sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1); // Inlined
-        uint256 expectedPayoutToLiquidator = ( ((((sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1)) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+        uint256 partialSharesUSDValue = (sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
+        uint256 stEthParValueForPartialShares = (partialSharesUSDValue * (10**18)) / priceForLiquidationTest;
+        uint256 expectedPayoutToLiquidator = (stEthParValueForPartialShares * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // --- Action: Partial Liquidation ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
@@ -2098,7 +2098,7 @@ contract StabilizerNFTTest is Test {
             0,
             sharesToLiquidatePartially,
             expectedPayoutToLiquidator,
-            ((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1, // Inlined priceForLiquidationTest
+            priceForLiquidationTest, // Use re-introduced variable
             11000
         );
 
