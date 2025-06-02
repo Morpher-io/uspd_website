@@ -3185,4 +3185,78 @@ contract StabilizerNFTTest is Test {
         vm.clearMockedCalls();
     }
 
+    function testAllocateStabilizerFunds_GasExhaustionInLoop() public {
+        uint256 numStabilizers = 50;
+        uint256 fundingPerStabilizer = 0.01 ether;
+        uint256 userEthToMint = 5 ether; // This amount could theoretically be backed by 50 * 0.1 ETH user funds
+        uint256 minCollateralRatio = 11000; // 110%
+
+        address stabilizerOwner = user3; // Use a distinct owner for these NFTs
+        vm.deal(stabilizerOwner, numStabilizers * fundingPerStabilizer + 1 ether); // Fund for all deposits + gas
+
+        uint256[] memory tokenIds = new uint256[](numStabilizers);
+
+        for (uint256 i = 0; i < numStabilizers; i++) {
+            tokenIds[i] = stabilizerNFT.mint(stabilizerOwner);
+            vm.prank(stabilizerOwner);
+            stabilizerNFT.addUnallocatedFundsEth{value: fundingPerStabilizer}(tokenIds[i]);
+            vm.prank(stabilizerOwner);
+            stabilizerNFT.setMinCollateralizationRatio(tokenIds[i], minCollateralRatio);
+        }
+
+        // Verify all stabilizers are in the unallocated list
+        assertEq(stabilizerNFT.lowestUnallocatedId(), tokenIds[0], "Lowest unallocated ID mismatch before mint");
+        assertEq(stabilizerNFT.highestUnallocatedId(), tokenIds[numStabilizers - 1], "Highest unallocated ID mismatch before mint");
+
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        address minter = owner; // Test contract owner acts as minter
+        address recipient = makeAddr("recipientForGasTest");
+
+        vm.deal(minter, userEthToMint + 1 ether); // Fund minter
+        uint256 minterEthBefore = minter.balance;
+        uint256 recipientSharesBefore = cuspdToken.balanceOf(recipient);
+        uint256 reporterEthSnapshotBefore = reporter.totalEthEquivalentAtLastSnapshot();
+
+        // Action: Mint shares, potentially hitting gas limit in allocateStabilizerFunds loop
+        vm.prank(minter);
+        uint256 leftoverEth = cuspdToken.mintShares{value: userEthToMint}(recipient, priceQuery);
+
+        uint256 minterEthAfter = minter.balance;
+        uint256 recipientSharesAfter = cuspdToken.balanceOf(recipient);
+        uint256 reporterEthSnapshotAfter = reporter.totalEthEquivalentAtLastSnapshot();
+
+        uint256 ethAllocatedByUser = userEthToMint - leftoverEth;
+        uint256 sharesMinted = recipientSharesAfter - recipientSharesBefore;
+
+        // Assertions
+        assertTrue(ethAllocatedByUser > 0, "Some ETH should have been allocated");
+        assertTrue(sharesMinted > 0, "Some shares should have been minted");
+
+        // If gas exhaustion occurred, ethAllocatedByUser will be < userEthToMint
+        // and leftoverEth will be > 0.
+        if (ethAllocatedByUser < userEthToMint) {
+            console.log("Partial allocation due to potential gas exhaustion:");
+            console.log("  User ETH sent: %s", userEthToMint);
+            console.log("  User ETH allocated: %s", ethAllocatedByUser);
+            console.log("  ETH Refunded: %s", leftoverEth);
+            assertTrue(leftoverEth > 0, "If partial allocation, leftover ETH should be > 0");
+            assertTrue(minterEthAfter > minterEthBefore - userEthToMint, "Minter ETH should reflect refund");
+        } else {
+            console.log("Full allocation occurred (gas limit might not have been hit as expected):");
+            console.log("  User ETH sent and allocated: %s", userEthToMint);
+            assertEq(leftoverEth, 0, "If full allocation, leftover ETH should be 0");
+        }
+
+        // Check reporter update reflects the allocated amounts
+        // Stabilizer ETH per user ETH = (ratio - 10000) / 10000 = (11000 - 10000) / 10000 = 0.1
+        uint256 expectedStabilizerEthAllocated = (ethAllocatedByUser * (minCollateralRatio - 10000)) / 10000;
+        uint256 expectedTotalEthEquivalentAdded = ethAllocatedByUser + expectedStabilizerEthAllocated;
+
+        assertEq(reporterEthSnapshotAfter, reporterEthSnapshotBefore + expectedTotalEthEquivalentAdded, "Reporter snapshot update mismatch");
+
+        // Further checks could involve verifying how many stabilizers were actually processed.
+        // This would require iterating the allocated list or checking individual escrow balances.
+        // For now, the LCOV report will be the primary indicator for DA:505,0 coverage.
+    }
+
 } // Add closing brace for the contract here
