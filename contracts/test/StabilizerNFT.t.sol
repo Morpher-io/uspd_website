@@ -2072,16 +2072,21 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc: Highest should be ID3 after funding ID2");
 
         // Verify links for middle insertion: 1 <-> 2 <-> 3
-        (, uint256 id1_prevU, uint256 id1_nextU, , ) = stabilizerNFT.positions(id1);
-        (, uint256 id2_prevU, uint256 id2_nextU, , ) = stabilizerNFT.positions(id2);
-        (, uint256 id3_prevU, uint256 id3_nextU, , ) = stabilizerNFT.positions(id3);
-
-        assertEq(id1_prevU, 0, "Unalloc: ID1 prev should be 0");
-        assertEq(id1_nextU, id2, "Unalloc: ID1 next should be ID2");
-        assertEq(id2_prevU, id1, "Unalloc: ID2 prev should be ID1");
-        assertEq(id2_nextU, id3, "Unalloc: ID2 next should be ID3");
-        assertEq(id3_prevU, id2, "Unalloc: ID3 prev should be ID2");
-        assertEq(id3_nextU, 0, "Unalloc: ID3 next should be 0");
+        {
+            (, uint256 id1_prevU, uint256 id1_nextU, , ) = stabilizerNFT.positions(id1);
+            assertEq(id1_prevU, 0, "Unalloc: ID1 prev should be 0");
+            assertEq(id1_nextU, id2, "Unalloc: ID1 next should be ID2");
+        }
+        {
+            (, uint256 id2_prevU, uint256 id2_nextU, , ) = stabilizerNFT.positions(id2);
+            assertEq(id2_prevU, id1, "Unalloc: ID2 prev should be ID1");
+            assertEq(id2_nextU, id3, "Unalloc: ID2 next should be ID3");
+        }
+        {
+            (, uint256 id3_prevU, uint256 id3_nextU, , ) = stabilizerNFT.positions(id3);
+            assertEq(id3_prevU, id2, "Unalloc: ID3 prev should be ID2");
+            assertEq(id3_nextU, 0, "Unalloc: ID3 next should be 0");
+        }
 
         // --- Test Allocated List Middle Insertion ---
         // Set min collateral ratios (e.g., 110%)
@@ -2119,16 +2124,21 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc: Highest should be ID3 after allocating ID2");
 
         // Verify links for middle insertion: 1 <-> 2 <-> 3
-        (, , , uint256 id1_prevA, uint256 id1_nextA) = stabilizerNFT.positions(id1);
-        (, , , uint256 id2_prevA, uint256 id2_nextA) = stabilizerNFT.positions(id2);
-        (, , , uint256 id3_prevA, uint256 id3_nextA) = stabilizerNFT.positions(id3);
-
-        assertEq(id1_prevA, 0, "Alloc: ID1 prev should be 0");
-        assertEq(id1_nextA, id2, "Alloc: ID1 next should be ID2");
-        assertEq(id2_prevA, id1, "Alloc: ID2 prev should be ID1");
-        assertEq(id2_nextA, id3, "Alloc: ID2 next should be ID3");
-        assertEq(id3_prevA, id2, "Alloc: ID3 prev should be ID2");
-        assertEq(id3_nextA, 0, "Alloc: ID3 next should be 0");
+        {
+            (, , , uint256 id1_prevA, uint256 id1_nextA) = stabilizerNFT.positions(id1);
+            assertEq(id1_prevA, 0, "Alloc: ID1 prev should be 0");
+            assertEq(id1_nextA, id2, "Alloc: ID1 next should be ID2");
+        }
+        {
+            (, , , uint256 id2_prevA, uint256 id2_nextA) = stabilizerNFT.positions(id2);
+            assertEq(id2_prevA, id1, "Alloc: ID2 prev should be ID1");
+            assertEq(id2_nextA, id3, "Alloc: ID2 next should be ID3");
+        }
+        {
+            (, , , uint256 id3_prevA, uint256 id3_nextA) = stabilizerNFT.positions(id3);
+            assertEq(id3_prevA, id2, "Alloc: ID3 prev should be ID2");
+            assertEq(id3_nextA, 0, "Alloc: ID3 next should be 0");
+        }
     }
 
     function testLiquidation_PartialLiquidation_PositionRemainsAllocated() public {
