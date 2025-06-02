@@ -2036,6 +2036,103 @@ contract StabilizerNFTTest is Test {
         assertApproxEqAbs(totalEthReturnedToMinter, ((1000 ether * (10**18)) / liquidationPrice) + p1_userParStEth, 2e12, "Total ETH returned to minterUser mismatch (with insurance)");
     }
 
+    function testListManagement_MiddleRemoval() public {
+        // Mint NFTs: ID 1 (user1), ID 2 (user2), ID 3 (user1)
+        uint256 id1 = stabilizerNFT.mint(user1);
+        uint256 id2 = stabilizerNFT.mint(user2);
+        uint256 id3 = stabilizerNFT.mint(user1);
+
+        // --- Test Unallocated List Middle Removal ---
+        vm.deal(user1, 0.2 ether); // For ID1 and ID3
+        vm.deal(user2, 0.1 ether); // For ID2
+
+        // Fund all three: List will be 1 <-> 2 <-> 3
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id1);
+        vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id2);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id3);
+
+        // Verify initial unallocated list: 1 <-> 2 <-> 3
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc Initial: Lowest should be ID1");
+        assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc Initial: Highest should be ID3");
+        // Links for ID1: next=ID2
+        // Links for ID2: prev=ID1, next=ID3
+        // Links for ID3: prev=ID2
+
+        // Remove funds from ID2 (middle element)
+        vm.prank(user2); // user2 owns id2
+        stabilizerNFT.removeUnallocatedFunds(id2, 0.1 ether);
+
+        // Verify unallocated list is now: 1 <-> 3
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc After Middle Remove: Lowest should be ID1");
+        assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc After Middle Remove: Highest should be ID3");
+        
+        (, uint256 id1_prevU, uint256 id1_nextU, , ) = stabilizerNFT.positions(id1);
+        (, uint256 id2_prevU, uint256 id2_nextU, , ) = stabilizerNFT.positions(id2); // ID2's links should be cleared
+        (, uint256 id3_prevU, uint256 id3_nextU, , ) = stabilizerNFT.positions(id3);
+
+        assertEq(id1_prevU, 0, "Unalloc After Middle Remove: ID1 prev should be 0");
+        assertEq(id1_nextU, id3, "Unalloc After Middle Remove: ID1 next should be ID3");
+        assertEq(id2_prevU, 0, "Unalloc After Middle Remove: ID2 prev should be 0 (cleared)");
+        assertEq(id2_nextU, 0, "Unalloc After Middle Remove: ID2 next should be 0 (cleared)");
+        assertEq(id3_prevU, id1, "Unalloc After Middle Remove: ID3 prev should be ID1");
+        assertEq(id3_nextU, 0, "Unalloc After Middle Remove: ID3 next should be 0");
+
+
+        // --- Test Allocated List Middle Removal ---
+        // Re-fund all stabilizers to ensure they are in unallocated list for allocation
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id1); // ID1 is already there, this adds more
+        vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id2); // ID2 was removed, re-add
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id3); // ID3 is already there
+
+        // Set min collateral ratios
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(id1, 11000);
+        vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(id2, 11000);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(id3, 11000);
+
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        uint256 userEthToDrainStabilizer = 1 ether; // Drains 0.1 ETH stabilizer at 110%
+
+        // Allocate to ID1, ID2, ID3 in order
+        vm.deal(owner, userEthToDrainStabilizer);
+        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user1, priceQuery); // Allocates to ID1
+        
+        vm.deal(owner, userEthToDrainStabilizer);
+        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user2, priceQuery); // Allocates to ID2
+        
+        vm.deal(owner, userEthToDrainStabilizer);
+        vm.prank(owner); cuspdToken.mintShares{value: userEthToDrainStabilizer}(user1, priceQuery); // Allocates to ID3
+
+        // Verify initial allocated list: 1 <-> 2 <-> 3
+        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Initial: Lowest should be ID1");
+        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc Initial: Highest should be ID3");
+        // Links for ID1: next=ID2
+        // Links for ID2: prev=ID1, next=ID3
+        // Links for ID3: prev=ID2
+
+        // Unallocate/Liquidate shares from ID2 (middle element)
+        // To do this, user2 (owner of shares backed by ID2) burns their shares.
+        // Shares minted to user2 were 1 ETH worth = 2000 shares at $2000/ETH price.
+        uint256 sharesToBurnForId2 = 2000 ether; 
+        vm.prank(user2); // user2 owns the shares backed by ID2's position
+        cuspdToken.burnShares(sharesToBurnForId2, payable(user2), createSignedPriceAttestation(2000 ether, block.timestamp));
+
+        // Verify allocated list is now: 1 <-> 3
+        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc After Middle Remove: Lowest should be ID1");
+        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc After Middle Remove: Highest should be ID3");
+
+        (, , , uint256 id1_prevA, uint256 id1_nextA) = stabilizerNFT.positions(id1);
+        (, , , uint256 id2_prevA, uint256 id2_nextA) = stabilizerNFT.positions(id2); // ID2's links should be cleared
+        (, , , uint256 id3_prevA, uint256 id3_nextA) = stabilizerNFT.positions(id3);
+
+        assertEq(id1_prevA, 0, "Alloc After Middle Remove: ID1 prev should be 0");
+        assertEq(id1_nextA, id3, "Alloc After Middle Remove: ID1 next should be ID3");
+        assertEq(id2_prevA, 0, "Alloc After Middle Remove: ID2 prev should be 0 (cleared)");
+        assertEq(id2_nextA, 0, "Alloc After Middle Remove: ID2 next should be 0 (cleared)");
+        assertEq(id3_prevA, id1, "Alloc After Middle Remove: ID3 prev should be ID1");
+        assertEq(id3_nextA, 0, "Alloc After Middle Remove: ID3 next should be 0");
+    }
+
+
     // --- Initialization Revert Tests ---
 
     function testInitialize_Revert_ZeroInsuranceEscrow() public {
