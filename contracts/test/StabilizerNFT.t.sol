@@ -2112,9 +2112,9 @@ contract StabilizerNFTTest is Test {
         // Unallocate/Liquidate shares from ID2 (middle element)
         // To do this, user2 (owner of shares backed by ID2) burns their shares.
         // Shares minted to user2 were 1 ETH worth = 2000 shares at $2000/ETH price.
-        uint256 sharesToBurnForId2 = 2000 ether; 
+        // uint256 sharesToBurnForId2 = 2000 ether; // Inlined
         vm.prank(user2); // user2 owns the shares backed by ID2's position
-        cuspdToken.burnShares(sharesToBurnForId2, payable(user2), createSignedPriceAttestation(2000 ether, block.timestamp));
+        cuspdToken.burnShares(2000 ether, payable(user2), createSignedPriceAttestation(2000 ether, block.timestamp));
 
         // Verify allocated list is now: 1 <-> 3
         assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc After Middle Remove: Lowest should be ID1");
