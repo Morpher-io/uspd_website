@@ -132,6 +132,9 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         // 7. Calculate leftover ETH and return it
         leftoverEth = msg.value - result.allocatedEth;
         // Removed direct transfer: if (leftoverEth > 0) { payable(msg.sender).transfer(leftoverEth); }
+        if (leftoverEth > 0) { 
+            payable(msg.sender).transfer(leftoverEth); 
+        }
         // The caller (USPDToken) will handle the refund.
     }
 
@@ -252,6 +255,8 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
 
     // --- Fallback ---
     receive() external payable {
-        revert("cUSPD: Direct ETH transfers not allowed");
+        if (msg.sender != address(stabilizer)) {
+            revert("cUSPD: Direct ETH transfers not allowed");
+        }
     }
 }

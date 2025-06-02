@@ -3261,8 +3261,9 @@ contract StabilizerNFTTest is Test {
     function testAllocateStabilizerFunds_Revert_NotCUSPDToken() public {
         // Attempt to call allocateStabilizerFunds from an unauthorized address
         address unauthorizedCaller = makeAddr("unauthorizedCaller");
-        vm.prank(unauthorizedCaller);
         vm.expectRevert("Only cUSPD contract");
+        vm.deal(unauthorizedCaller, 1 ether);
+        vm.prank(unauthorizedCaller);
         stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
             2000 ether, // ethUsdPrice
             18          // priceDecimals
@@ -3308,12 +3309,14 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.stabilizerEscrows(tokenId), address(0), "Failed to zero out stabilizerEscrow address for test");
 
         // Attempt to allocate funds; it should try to process tokenId and find its escrow is address(0)
-        vm.prank(address(cuspdToken));
         vm.expectRevert("Escrow not found for stabilizer");
+        vm.deal(address(cuspdToken), 1 ether);
+        vm.startPrank(address(cuspdToken));
         stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
             2000 ether, // ethUsdPrice
             18          // priceDecimals
         );
+        vm.stopPrank();
     }
 
     function testAllocateStabilizerFunds_LoopSkip_RemainingEthZero() public {
@@ -3338,6 +3341,7 @@ contract StabilizerNFTTest is Test {
         uint256 userEthForAllocation = 1 ether;
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
 
+        vm.deal(address(cuspdToken), userEthForAllocation);
         vm.prank(address(cuspdToken));
         IStabilizerNFT.AllocationResult memory result = stabilizerNFT.allocateStabilizerFunds{value: userEthForAllocation}(
             priceQuery.price,

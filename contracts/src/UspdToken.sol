@@ -296,6 +296,8 @@ contract USPDToken is
     // --- Fallback ---
     // Prevent direct ETH transfers
     receive() external payable {
-        revert("USPD: Direct ETH transfers not allowed");
+        if(msg.sender != address(cuspdToken)) {
+            revert("USPD: Direct ETH transfers not allowed");
+        }
     }
 }

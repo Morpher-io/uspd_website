@@ -35,7 +35,7 @@ contract StabilizerNFT is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
-    uint256 public constant MIN_GAS = 100000;
+    uint256 public constant MIN_GAS = 250000;
     uint256 public constant MINIMUM_UNALLOCATE_COLLATERALIZATION_RATIO = 100; // e.g., 100 for 100%
 
     struct StabilizerPosition {
@@ -598,7 +598,7 @@ contract StabilizerNFT is
 
         // Return any unallocated ETH to cUSPD token
         if (remainingEth > 0) {
-            // Assuming cUSPD handles refund logic internally for now.
+            payable(msg.sender).transfer(remainingEth);
         }
 
         return result;
