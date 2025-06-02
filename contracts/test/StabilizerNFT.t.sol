@@ -1993,19 +1993,19 @@ contract StabilizerNFTTest is Test {
         cuspdToken.mintShares{value: 2 ether}(minterUser, createSignedPriceAttestation(1000 ether, block.timestamp));
 
         IPositionEscrow p1_escrow = IPositionEscrow(stabilizerNFT.positionEscrows(s1_tokenId));
-        IPositionEscrow p2_escrow = IPositionEscrow(stabilizerNFT.positionEscrows(s2_tokenId));
+        // IPositionEscrow p2_escrow = IPositionEscrow(stabilizerNFT.positionEscrows(s2_tokenId));
 
         // --- User1 adds 0.5 ETH to P1's PositionEscrow to make it overcollateralized ---
         vm.deal(user1, 0.5 ether);
         vm.prank(user1);
         p1_escrow.addCollateralEth{value: 0.5 ether}();
         assertEq(p1_escrow.getCurrentStEthBalance(), 1.6 ether, "P1 collateral after user1 adds funds"); // 1.1 + 0.5
-        assertEq(p2_escrow.getCurrentStEthBalance(), 1.1 ether, "P2 collateral should remain 1.1 ETH");
+        assertEq(IPositionEscrow(stabilizerNFT.positionEscrows(s2_tokenId)).getCurrentStEthBalance(), 1.1 ether, "P2 collateral should remain 1.1 ETH");
 
         // --- Simulate ETH price drop to $900/ETH ---
         uint256 liquidationPrice = 900 ether;
         assertEq(p1_escrow.getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 14400, "P1 ratio at $900 should be 144%");
-        assertEq(p2_escrow.getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 9900, "P2 ratio at $900 should be 99%");
+        assertEq(IPositionEscrow(stabilizerNFT.positionEscrows(s2_tokenId)).getCollateralizationRatio(IPriceOracle.PriceResponse(liquidationPrice, 18, block.timestamp * 1000)), 9900, "P2 ratio at $900 should be 99%");
 
         // --- Fund InsuranceEscrow ---
         // P2 (undercollateralized) par value for 1000 shares at $900: (1000e18 * 1e18) / 900e18 = 1.111... ether
@@ -2027,8 +2027,8 @@ contract StabilizerNFTTest is Test {
         uint256 s2_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH();
 
         // Update Oracle Mocks for $900 price
-        bytes memory mockChainlinkBurnReturn = abi.encode(uint80(1), int(liquidationPrice / (10**10)), uint256(block.timestamp), uint256(block.timestamp), uint80(1));
-        vm.mockCall(CHAINLINK_ETH_USD, abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector), mockChainlinkBurnReturn);
+        // bytes memory mockChainlinkBurnReturn = abi.encode(uint80(1), int(liquidationPrice / (10**10)), uint256(block.timestamp), uint256(block.timestamp), uint80(1)); //Inlined
+        vm.mockCall(CHAINLINK_ETH_USD, abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector), abi.encode(uint80(1), int(liquidationPrice / (10**10)), uint256(block.timestamp), uint256(block.timestamp), uint80(1)));
         uint160 sqrtPriceLiquidation = uint160(Math.sqrt(liquidationPrice / (10**12)) * (2**96));
         bytes memory mockSlot0BurnReturn = abi.encode(sqrtPriceLiquidation, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
         address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
@@ -2042,8 +2042,8 @@ contract StabilizerNFTTest is Test {
         // --- Assertions ---
         // P2 (s2_tokenId, 99% ratio) processed first.
         // User should get full par value (p2_userParStEth) because insurance covers shortfall.
-        assertEq(p2_escrow.backedPoolShares(), 0, "P2 shares after burn");
-        assertApproxEqAbs(p2_escrow.getCurrentStEthBalance(), 0, 1e12, "P2 collateral after burn (should be empty)");
+        assertEq(IPositionEscrow(stabilizerNFT.positionEscrows(s2_tokenId)).backedPoolShares(), 0, "P2 shares after burn");
+        assertApproxEqAbs(IPositionEscrow(stabilizerNFT.positionEscrows(s2_tokenId)).getCurrentStEthBalance(), 0, 1e12, "P2 collateral after burn (should be empty)");
         assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH(), s2_stabilizerEscrowBeforeBurn + 0, 1e12, "S2 StabilizerEscrow balance (no return from undercollateralized)");
         
         // Store the balance *before* the conceptual subtraction for clarity in assertion
@@ -2125,7 +2125,6 @@ contract StabilizerNFTTest is Test {
 
 
         // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
         vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
 
         // --- Action: Liquidate ---
@@ -2135,8 +2134,6 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
 
-        // --- Reset maxPriceDeviation in PriceOracle ---
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
 
         // --- Assertions (should proceed without reporter calls) ---
         assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + calculatedExpectedPayout, 1, "Liquidator stETH payout mismatch (no reporter)");
