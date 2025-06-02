@@ -2181,12 +2181,10 @@ contract StabilizerNFTTest is Test {
         vm.store(address(stabilizerNFT), reporterSlotBytes32, bytes32(uint256(0)));
         assertEq(address(stabilizerNFT.reporter()), address(0), "Reporter address not zeroed out");
 
-        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        // This is still needed because the oracle is called before the reporter check in liquidatePosition
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
-
         // --- Expect Revert ---
         // Liquidation should now revert because the reporter address is zero.
+        // The call to priceOracle.setMaxDeviationPercentage(100000) was removed 
+        // as it's now handled globally in setUp().
         vm.prank(user2);
         vm.expectRevert(StabilizerNFT.OvercollateralizationReporterZero.selector);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
