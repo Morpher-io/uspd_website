@@ -2074,10 +2074,7 @@ contract StabilizerNFTTest is Test {
         // --- Simulate ETH Price Drop to 105% Ratio for the whole position ---
         uint256 initialSharesUSDValue = (initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
         uint256 priceForLiquidationTest = ((10500 * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
-        IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(
-            priceForLiquidationTest,
-            block.timestamp
-        );
+        // IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(...) // Inlined below
 
         // --- Calculate Expected Payout for the partial shares ---
         // Par value of the *partial* shares at the liquidation price
@@ -2088,7 +2085,7 @@ contract StabilizerNFTTest is Test {
         // --- Action: Partial Liquidation ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
-        uint256 reporterSnapshotBefore = address(reporter) != address(0) ? reporter.totalEthEquivalentAtLastSnapshot() : 0;
+        // reporterSnapshotBefore will be declared after the liquidatePosition call
 
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
@@ -2103,7 +2100,14 @@ contract StabilizerNFTTest is Test {
         );
 
         vm.prank(user2);
-        stabilizerNFT.liquidatePosition(0, positionTokenId, sharesToLiquidatePartially, priceQueryLiquidation);
+        stabilizerNFT.liquidatePosition(
+            0,
+            positionTokenId,
+            sharesToLiquidatePartially,
+            createSignedPriceAttestation(priceForLiquidationTest, block.timestamp) // Inlined priceQueryLiquidation
+        );
+
+        uint256 reporterSnapshotBefore = address(reporter) != address(0) ? reporter.totalEthEquivalentAtLastSnapshot() : 0; // Declared after the call
 
         // --- Assertions ---
         // Liquidator
