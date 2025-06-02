@@ -777,24 +777,18 @@ contract StabilizerNFT is
             sliceResult.stEthReturnedToStabilizer = stEthCollateralForSliceAtCurrentRatio - userStEthParValueForSlice;
             sliceResult.ethEquivalentRemoved = stEthCollateralForSliceAtCurrentRatio; 
         } else {
-            console.log("Withdrawing from Insurance");
             // Position slice is undercollateralized. User initially gets what's available from the position.
             sliceResult.stEthPaidToUser = stEthCollateralForSliceAtCurrentRatio;
             // sliceResult.stEthReturnedToStabilizer remains 0 (default)
 
             uint256 shortfall = userStEthParValueForSlice - sliceResult.stEthPaidToUser;
-            console.log("_handleUnallocationSlice - Insurance - shortfall:", shortfall);
             if (shortfall > 0 && address(insuranceEscrow) != address(0)) {
                 uint256 insuranceAvailable = insuranceEscrow.getStEthBalance();
-                console.log("_handleUnallocationSlice - Insurance - insuranceAvailable:", insuranceAvailable);
                 amountWithdrawnFromInsuranceThisSlice = shortfall > insuranceAvailable ? insuranceAvailable : shortfall;
-                console.log("_handleUnallocationSlice - Insurance - amountWithdrawnFromInsuranceThisSlice (potential):", amountWithdrawnFromInsuranceThisSlice);
                 if (amountWithdrawnFromInsuranceThisSlice > 0) {
-                    console.log("_handleUnallocationSlice - Insurance - Before withdrawStEth - stEthPaidToUser:", sliceResult.stEthPaidToUser);
-                    insuranceEscrow.withdrawStEth(address(cuspdToken), amountWithdrawnFromInsuranceThisSlice);
+                    insuranceEscrow.withdrawStEth(address(this), amountWithdrawnFromInsuranceThisSlice);
                     
                     sliceResult.stEthPaidToUser += amountWithdrawnFromInsuranceThisSlice; // Add insurance payout to user's total
-                    console.log("_handleUnallocationSlice - Insurance - After withdrawStEth - stEthPaidToUser:", sliceResult.stEthPaidToUser);
                 }
             }
             sliceResult.ethEquivalentRemoved = stEthCollateralForSliceAtCurrentRatio + amountWithdrawnFromInsuranceThisSlice;
@@ -808,12 +802,6 @@ contract StabilizerNFT is
             );
         }
 
-        // Distribute stETH now held by StabilizerNFT
-        console.log("_handleUnallocationSlice - Before Transfer - stEthPaidToUser:", sliceResult.stEthPaidToUser);
-        console.log("_handleUnallocationSlice - Before Transfer - userStEthParValueForSlice:", userStEthParValueForSlice);
-        console.log("_handleUnallocationSlice - Before Transfer - stEthReturnedToStabilizer:", sliceResult.stEthReturnedToStabilizer);
-        console.log("_handleUnallocationSlice - Before Transfer - StabilizerNFT stETH Balance:", IERC20(stETH).balanceOf(address(this)));
-        console.log("_handleUnallocationSlice - Before Transfer - Expected stEthCollateralForSliceAtCurrentRatio received:", stEthCollateralForSliceAtCurrentRatio);
 
         if (sliceResult.stEthPaidToUser > 0) {
             require(IERC20(stETH).transfer(address(cuspdToken), sliceResult.stEthPaidToUser),"User stETH transfer to cUSPDToken failed");
