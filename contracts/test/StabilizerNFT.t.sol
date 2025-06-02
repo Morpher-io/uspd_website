@@ -2085,7 +2085,7 @@ contract StabilizerNFTTest is Test {
         // --- Action: Partial Liquidation ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
-        // reporterSnapshotBefore will be declared after the liquidatePosition call
+        uint256 reporterSnapshotBefore = address(reporter) != address(0) ? reporter.totalEthEquivalentAtLastSnapshot() : 0; // Capture snapshot BEFORE liquidation
 
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
@@ -2107,7 +2107,7 @@ contract StabilizerNFTTest is Test {
             createSignedPriceAttestation(priceForLiquidationTest, block.timestamp) // Inlined priceQueryLiquidation
         );
 
-        uint256 reporterSnapshotBefore = address(reporter) != address(0) ? reporter.totalEthEquivalentAtLastSnapshot() : 0; // Declared after the call
+        // reporterSnapshotBefore was declared before the liquidatePosition call
 
         // --- Assertions ---
         // Liquidator
