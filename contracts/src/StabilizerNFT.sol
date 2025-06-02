@@ -132,6 +132,7 @@ contract StabilizerNFT is
     // --- Errors ---
     error SystemUnstableUnallocationNotAllowed();
     error LiquidationNotBelowSystemRatio();
+    error OvercollateralizationReporterZero();
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -277,6 +278,7 @@ contract StabilizerNFT is
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external {
         // 1. Initial Validations
+        if (address(reporter) == address(0)) revert OvercollateralizationReporterZero();
         require(address(insuranceEscrow) != address(0), "InsuranceEscrow not set");
         require(cuspdSharesToLiquidate > 0, "No cUSPD shares to liquidate"); // Add check for shares amount
         require(ownerOf(positionTokenId) != address(0), "Position token does not exist"); // Check target position exists
