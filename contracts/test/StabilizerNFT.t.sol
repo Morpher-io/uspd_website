@@ -2104,11 +2104,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(id3);
 
         // Verify initial unallocated list: 1 <-> 2 <-> 3
-        assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc Initial: Lowest should be ID1");
-        assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc Initial: Highest should be ID3");
-        // Links for ID1: next=ID2
-        // Links for ID2: prev=ID1, next=ID3
-        // Links for ID3: prev=ID2
+        _verifyUnallocatedListState(id1, id2, id3, "Unalloc Initial");
 
         // Remove funds from ID2 (middle element)
         vm.prank(user2); // user2 owns id2
@@ -2155,11 +2151,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID3
 
         // Verify initial allocated list: 1 <-> 2 <-> 3
-        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Initial: Lowest should be ID1");
-        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc Initial: Highest should be ID3");
-        // Links for ID1: next=ID2
-        // Links for ID2: prev=ID1, next=ID3
-        // Links for ID3: prev=ID2
+        _verifyAllocatedListState(id1, id2, id3, "Alloc Initial");
 
         // Unallocate/Liquidate shares from ID2 (middle element)
         // To do this, user2 (owner of shares backed by ID2) burns their shares.
