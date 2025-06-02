@@ -3186,73 +3186,72 @@ contract StabilizerNFTTest is Test {
     }
 
     function testAllocateStabilizerFunds_GasExhaustionInLoop() public {
-        uint256 numStabilizers = 50;
-        uint256 fundingPerStabilizer = 0.01 ether;
-        uint256 userEthToMint = 5 ether; // This amount could theoretically be backed by 50 * 0.1 ETH user funds
-        uint256 minCollateralRatio = 11000; // 110%
+        // Inlined: numStabilizers, fundingPerStabilizer, userEthToMint, minCollateralRatio
+        // Inlined: stabilizerOwner
 
-        address stabilizerOwner = user3; // Use a distinct owner for these NFTs
-        vm.deal(stabilizerOwner, numStabilizers * fundingPerStabilizer + 1 ether); // Fund for all deposits + gas
+        vm.deal(user3, (50 * 0.01 ether) + 1 ether); // Fund user3 (stabilizerOwner)
 
-        uint256[] memory tokenIds = new uint256[](numStabilizers);
+        uint256[] memory tokenIds = new uint256[](50); // numStabilizers = 50
 
-        for (uint256 i = 0; i < numStabilizers; i++) {
-            tokenIds[i] = stabilizerNFT.mint(stabilizerOwner);
-            vm.prank(stabilizerOwner);
-            stabilizerNFT.addUnallocatedFundsEth{value: fundingPerStabilizer}(tokenIds[i]);
-            vm.prank(stabilizerOwner);
-            stabilizerNFT.setMinCollateralizationRatio(tokenIds[i], minCollateralRatio);
+        for (uint256 i = 0; i < 50; i++) { // numStabilizers = 50
+            tokenIds[i] = stabilizerNFT.mint(user3); // stabilizerOwner = user3
+            vm.prank(user3); // stabilizerOwner = user3
+            stabilizerNFT.addUnallocatedFundsEth{value: 0.01 ether}(tokenIds[i]); // fundingPerStabilizer = 0.01 ether
+            vm.prank(user3); // stabilizerOwner = user3
+            stabilizerNFT.setMinCollateralizationRatio(tokenIds[i], 11000); // minCollateralRatio = 11000
         }
 
         // Verify all stabilizers are in the unallocated list
         assertEq(stabilizerNFT.lowestUnallocatedId(), tokenIds[0], "Lowest unallocated ID mismatch before mint");
-        assertEq(stabilizerNFT.highestUnallocatedId(), tokenIds[numStabilizers - 1], "Highest unallocated ID mismatch before mint");
+        assertEq(stabilizerNFT.highestUnallocatedId(), tokenIds[50 - 1], "Highest unallocated ID mismatch before mint"); // numStabilizers = 50
 
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        address minter = owner; // Test contract owner acts as minter
-        address recipient = makeAddr("recipientForGasTest");
+        // Inlined: minter, recipient
+        address recipientForGasTest = makeAddr("recipientForGasTest");
 
-        vm.deal(minter, userEthToMint + 1 ether); // Fund minter
-        uint256 minterEthBefore = minter.balance;
-        uint256 recipientSharesBefore = cuspdToken.balanceOf(recipient);
+        vm.deal(owner, 5 ether + 1 ether); // Fund owner (minter), userEthToMint = 5 ether
+        uint256 minterEthBefore = owner.balance; // minter = owner
+        uint256 recipientSharesBefore = cuspdToken.balanceOf(recipientForGasTest); // recipient = recipientForGasTest
         uint256 reporterEthSnapshotBefore = reporter.totalEthEquivalentAtLastSnapshot();
 
         // Action: Mint shares, potentially hitting gas limit in allocateStabilizerFunds loop
-        vm.prank(minter);
-        uint256 leftoverEth = cuspdToken.mintShares{value: userEthToMint}(recipient, priceQuery);
+        vm.prank(owner); // minter = owner
+        uint256 leftoverEth = cuspdToken.mintShares{value: 5 ether}(recipientForGasTest, priceQuery); // userEthToMint = 5 ether, recipient = recipientForGasTest
 
-        uint256 minterEthAfter = minter.balance;
-        uint256 recipientSharesAfter = cuspdToken.balanceOf(recipient);
+        uint256 minterEthAfter = owner.balance; // minter = owner
+        uint256 recipientSharesAfter = cuspdToken.balanceOf(recipientForGasTest); // recipient = recipientForGasTest
         uint256 reporterEthSnapshotAfter = reporter.totalEthEquivalentAtLastSnapshot();
 
-        uint256 ethAllocatedByUser = userEthToMint - leftoverEth;
+        uint256 ethAllocatedByUser = 5 ether - leftoverEth; // userEthToMint = 5 ether
         uint256 sharesMinted = recipientSharesAfter - recipientSharesBefore;
 
         // Assertions
         assertTrue(ethAllocatedByUser > 0, "Some ETH should have been allocated");
         assertTrue(sharesMinted > 0, "Some shares should have been minted");
 
-        // If gas exhaustion occurred, ethAllocatedByUser will be < userEthToMint
+        // If gas exhaustion occurred, ethAllocatedByUser will be < userEthToMint (5 ether)
         // and leftoverEth will be > 0.
-        if (ethAllocatedByUser < userEthToMint) {
+        if (ethAllocatedByUser < 5 ether) { // userEthToMint = 5 ether
             console.log("Partial allocation due to potential gas exhaustion:");
-            console.log("  User ETH sent: %s", userEthToMint);
+            console.log("  User ETH sent: %s", 5 ether); // userEthToMint = 5 ether
             console.log("  User ETH allocated: %s", ethAllocatedByUser);
             console.log("  ETH Refunded: %s", leftoverEth);
             assertTrue(leftoverEth > 0, "If partial allocation, leftover ETH should be > 0");
-            assertTrue(minterEthAfter > minterEthBefore - userEthToMint, "Minter ETH should reflect refund");
+            assertTrue(minterEthAfter > minterEthBefore - (5 ether), "Minter ETH should reflect refund"); // userEthToMint = 5 ether
         } else {
             console.log("Full allocation occurred (gas limit might not have been hit as expected):");
-            console.log("  User ETH sent and allocated: %s", userEthToMint);
+            console.log("  User ETH sent and allocated: %s", 5 ether); // userEthToMint = 5 ether
             assertEq(leftoverEth, 0, "If full allocation, leftover ETH should be 0");
         }
 
         // Check reporter update reflects the allocated amounts
         // Stabilizer ETH per user ETH = (ratio - 10000) / 10000 = (11000 - 10000) / 10000 = 0.1
-        uint256 expectedStabilizerEthAllocated = (ethAllocatedByUser * (minCollateralRatio - 10000)) / 10000;
-        uint256 expectedTotalEthEquivalentAdded = ethAllocatedByUser + expectedStabilizerEthAllocated;
-
-        assertEq(reporterEthSnapshotAfter, reporterEthSnapshotBefore + expectedTotalEthEquivalentAdded, "Reporter snapshot update mismatch");
+        // Inlined: expectedStabilizerEthAllocated, expectedTotalEthEquivalentAdded
+        assertEq(
+            reporterEthSnapshotAfter,
+            reporterEthSnapshotBefore + (ethAllocatedByUser + ((ethAllocatedByUser * (11000 - 10000)) / 10000)), // minCollateralRatio = 11000
+            "Reporter snapshot update mismatch"
+        );
 
         // Further checks could involve verifying how many stabilizers were actually processed.
         // This would require iterating the allocated list or checking individual escrow balances.
