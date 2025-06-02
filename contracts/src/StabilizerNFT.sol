@@ -802,6 +802,11 @@ contract StabilizerNFT is
         }
 
         // Distribute stETH now held by StabilizerNFT
+        console.log("_handleUnallocationSlice - Before Transfer - stEthPaidToUser:", sliceResult.stEthPaidToUser);
+        console.log("_handleUnallocationSlice - Before Transfer - stEthReturnedToStabilizer:", sliceResult.stEthReturnedToStabilizer);
+        console.log("_handleUnallocationSlice - Before Transfer - StabilizerNFT stETH Balance:", IERC20(stETH).balanceOf(address(this)));
+        console.log("_handleUnallocationSlice - Before Transfer - Expected stEthCollateralForSliceAtCurrentRatio received:", stEthCollateralForSliceAtCurrentRatio);
+
         if (sliceResult.stEthPaidToUser > 0) {
             require(IERC20(stETH).transfer(address(cuspdToken), sliceResult.stEthPaidToUser),"User stETH transfer to cUSPDToken failed");
         }
