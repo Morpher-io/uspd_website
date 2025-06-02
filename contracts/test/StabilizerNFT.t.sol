@@ -2012,6 +2012,10 @@ contract StabilizerNFTTest is Test {
         // uint256 p2_shortfall = ((1000 ether * (10**18)) / liquidationPrice) - ((( (1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000); // Inlined
         
         mockStETH.mint(address(insuranceEscrow), (((1000 ether * (10**18)) / liquidationPrice) - ((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000)) + 0.1 ether); // Fund slightly more than exact shortfall
+
+        // IMPORTANT: Update reporter for funds added directly to InsuranceEscrow
+        vm.prank(address(stabilizerNFT)); // StabilizerNFT has UPDATER_ROLE on reporter
+        reporter.updateSnapshot(int256((((1000 ether * (10**18)) / liquidationPrice) - ((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000)) + 0.1 ether));
         // uint256 insuranceEscrowInitialBalance = insuranceEscrow.getStEthBalance(); // Inlined
         assertTrue(insuranceEscrow.getStEthBalance() >= (((1000 ether * (10**18)) / liquidationPrice) - ((((1000 ether * (10**18)) / liquidationPrice) * 9900) / 10000)), "Insurance not funded enough");
 
