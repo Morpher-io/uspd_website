@@ -2080,11 +2080,11 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 11000); // 110%
 
         // Mint 2 ETH worth of shares (e.g., 2000 shares at $2000/ETH)
-        uint256 totalUserEthForMint = 2 ether;
-        IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp);
-        vm.deal(owner, totalUserEthForMint);
+        // uint256 totalUserEthForMint = 2 ether; // Inlined
+        // IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp); // Inlined
+        vm.deal(owner, 2 ether);
         vm.prank(owner);
-        cuspdToken.mintShares{value: totalUserEthForMint}(user1, priceQueryOriginal);
+        cuspdToken.mintShares{value: 2 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionTokenId));
         uint256 initialTotalSharesInPosition = positionEscrow.backedPoolShares(); // Should be 2000e18
@@ -2107,15 +2107,18 @@ contract StabilizerNFTTest is Test {
         vm.stopPrank();
 
         // --- Simulate ETH Price Drop to 105% Ratio for the whole position ---
-        uint256 initialSharesUSDValue = (initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
-        uint256 priceForLiquidationTest = ((10500 * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
-        IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(priceForLiquidationTest, block.timestamp);
+        // uint256 initialSharesUSDValue = (initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
+        // uint256 priceForLiquidationTest = ((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1; // Inlined
+        IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(
+            ((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1,
+            block.timestamp
+        );
 
         // --- Calculate Expected Payout for the partial shares ---
         // Par value of the *partial* shares at the liquidation price
-        uint256 partialSharesUSDValue = (sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION();
-        uint256 stEthParValueForPartialShares = (partialSharesUSDValue * (10**18)) / priceForLiquidationTest;
-        uint256 expectedPayoutToLiquidator = (stEthParValueForPartialShares * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+        // uint256 partialSharesUSDValue = (sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Inlined
+        // uint256 stEthParValueForPartialShares = (((sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1); // Inlined
+        uint256 expectedPayoutToLiquidator = ( ((((sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1)) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // --- Temporarily increase maxPriceDeviation in PriceOracle ---
         uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
@@ -2128,7 +2131,15 @@ contract StabilizerNFTTest is Test {
 
 
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
-        emit StabilizerNFT.PositionLiquidated(positionTokenId, user2, 0, sharesToLiquidatePartially, expectedPayoutToLiquidator, priceForLiquidationTest, 11000);
+        emit StabilizerNFT.PositionLiquidated(
+            positionTokenId,
+            user2,
+            0,
+            sharesToLiquidatePartially,
+            expectedPayoutToLiquidator,
+            ((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1, // Inlined priceForLiquidationTest
+            11000
+        );
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, positionTokenId, sharesToLiquidatePartially, priceQueryLiquidation);
