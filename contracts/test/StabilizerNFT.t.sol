@@ -2102,7 +2102,7 @@ contract StabilizerNFTTest is Test {
         uint256 calculatedPriceForLiquidationTest = ((10500 * initialSharesUSDValue * (10**18)) / (initialCollateralInPosition * 10000)) + 1;
         IPriceOracle.PriceAttestationQuery memory priceQueryLiquidation = createSignedPriceAttestation(calculatedPriceForLiquidationTest, block.timestamp);
         
-        uint256 calculatedExpectedPayout = ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / calculatedPriceForLiquidationTest * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
+        // uint256 calculatedExpectedPayout = ((((initialSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / calculatedPriceForLiquidationTest * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
         // --- Manually set reporter address to zero using stdStorage ---
         // Find the storage slot for the 'reporter' state variable.
@@ -2125,7 +2125,6 @@ contract StabilizerNFTTest is Test {
 
         // --- Temporarily increase maxPriceDeviation in PriceOracle ---
         // This is still needed because the oracle is called before the reporter check in liquidatePosition
-        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
         vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
 
         // --- Expect Revert ---
@@ -2134,8 +2133,6 @@ contract StabilizerNFTTest is Test {
         vm.expectRevert(StabilizerNFT.OvercollateralizationReporterZero.selector);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
 
-        // Reset maxPriceDeviation in PriceOracle
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
         // No further actions or assertions are needed as the function should have reverted.
     }
 
