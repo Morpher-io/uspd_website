@@ -2122,6 +2122,7 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.lowestAllocatedId(), positionTokenId, "Position should still be lowest allocated (partial)");
         assertEq(stabilizerNFT.highestAllocatedId(), positionTokenId, "Position should still be highest allocated (partial)");
         // Destructure the returned tuple from the public getter for the mapping
+        
         (/*minCollateralRatio*/, /*prevUnallocated*/, /*nextUnallocated*/, uint256 prevAllocated, uint256 nextAllocated) = stabilizerNFT.positions(positionTokenId);
         assertEq(prevAllocated, 0, "Position prevAllocated link incorrect (partial)");
         assertEq(nextAllocated, 0, "Position nextAllocated link incorrect (partial)");
