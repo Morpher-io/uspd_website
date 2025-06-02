@@ -2114,12 +2114,13 @@ contract StabilizerNFTTest is Test {
         // For this example, we'll try to find it by name if `stdstore` supports it, or use a known slot if not.
         // The variable `reporter` is declared after `cuspdToken` and before `insuranceEscrow`.
         // Let's find its slot.
-        bytes32 reporterSlot = stdstore
+        uint256 reporterSlotUint = stdstore
             .target(address(stabilizerNFT))
             .sig(stabilizerNFT.reporter.selector) // This gets the selector for the getter
             .find(); // This finds the slot for the public variable `reporter`
+        bytes32 reporterSlotBytes32 = bytes32(reporterSlotUint);
 
-        vm.store(address(stabilizerNFT), reporterSlot, bytes32(uint256(0)));
+        vm.store(address(stabilizerNFT), reporterSlotBytes32, bytes32(uint256(0)));
         assertEq(address(stabilizerNFT.reporter()), address(0), "Reporter address not zeroed out");
 
 
