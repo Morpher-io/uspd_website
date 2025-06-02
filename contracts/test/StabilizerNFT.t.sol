@@ -2036,6 +2036,105 @@ contract StabilizerNFTTest is Test {
         assertApproxEqAbs(totalEthReturnedToMinter, ((1000 ether * (10**18)) / liquidationPrice) + p1_userParStEth, 2e12, "Total ETH returned to minterUser mismatch (with insurance)");
     }
 
+    function testListManagement_MiddleInsertion() public {
+        // Mint NFTs: ID 1 (for user1), ID 2 (for user2), ID 3 (for user1)
+        uint256 id1 = stabilizerNFT.mint(user1); // Expected: 1
+        uint256 id2 = stabilizerNFT.mint(user2); // Expected: 2
+        uint256 id3 = stabilizerNFT.mint(user1); // Expected: 3
+
+        assertEq(id1, 1, "ID1 mismatch");
+        assertEq(id2, 2, "ID2 mismatch");
+        assertEq(id3, 3, "ID3 mismatch");
+
+        // --- Test Unallocated List Middle Insertion ---
+        // Fund in order 1, 3, then 2 to force middle insertion for ID 2
+        vm.deal(user1, 2 ether); // For ID1 and ID3
+        vm.deal(user2, 1 ether); // For ID2
+
+        // Fund ID 1
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(id1);
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc: Lowest should be ID1 after funding ID1");
+        assertEq(stabilizerNFT.highestUnallocatedId(), id1, "Unalloc: Highest should be ID1 after funding ID1");
+
+        // Fund ID 3
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(id3);
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc: Lowest should be ID1 after funding ID3");
+        assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc: Highest should be ID3 after funding ID3");
+        (, uint256 id1_prevU, uint256 id1_nextU, , ) = stabilizerNFT.positions(id1);
+        (, uint256 id3_prevU, uint256 id3_nextU, , ) = stabilizerNFT.positions(id3);
+        assertEq(id1_nextU, id3, "Unalloc: ID1 next should be ID3");
+        assertEq(id3_prevU, id1, "Unalloc: ID3 prev should be ID1");
+
+        // Fund ID 2 (this should insert between ID 1 and ID 3)
+        vm.prank(user2);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(id2);
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id1, "Unalloc: Lowest should be ID1 after funding ID2");
+        assertEq(stabilizerNFT.highestUnallocatedId(), id3, "Unalloc: Highest should be ID3 after funding ID2");
+
+        // Verify links for middle insertion: 1 <-> 2 <-> 3
+        (, id1_prevU, id1_nextU, , ) = stabilizerNFT.positions(id1);
+        (, uint256 id2_prevU, uint256 id2_nextU, , ) = stabilizerNFT.positions(id2);
+        (, id3_prevU, id3_nextU, , ) = stabilizerNFT.positions(id3);
+
+        assertEq(id1_prevU, 0, "Unalloc: ID1 prev should be 0");
+        assertEq(id1_nextU, id2, "Unalloc: ID1 next should be ID2");
+        assertEq(id2_prevU, id1, "Unalloc: ID2 prev should be ID1");
+        assertEq(id2_nextU, id3, "Unalloc: ID2 next should be ID3");
+        assertEq(id3_prevU, id2, "Unalloc: ID3 prev should be ID2");
+        assertEq(id3_nextU, 0, "Unalloc: ID3 next should be 0");
+
+        // --- Test Allocated List Middle Insertion ---
+        // Set min collateral ratios (e.g., 110%)
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(id1, 11000);
+        vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(id2, 11000);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(id3, 11000);
+
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+
+        // Allocate to ID 1
+        vm.deal(owner, 0.1 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 0.1 ether}(user1, priceQuery); // Allocates to id1
+        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc: Lowest should be ID1 after allocating ID1");
+        assertEq(stabilizerNFT.highestAllocatedId(), id1, "Alloc: Highest should be ID1 after allocating ID1");
+
+        // Allocate to ID 3
+        vm.deal(owner, 0.1 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 0.1 ether}(user1, priceQuery); // Allocates to id3 (next in unallocated list)
+        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc: Lowest should be ID1 after allocating ID3");
+        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc: Highest should be ID3 after allocating ID3");
+        (, , , uint256 id1_prevA, uint256 id1_nextA) = stabilizerNFT.positions(id1);
+        (, , , uint256 id3_prevA, uint256 id3_nextA) = stabilizerNFT.positions(id3);
+        assertEq(id1_nextA, id3, "Alloc: ID1 next should be ID3");
+        assertEq(id3_prevA, id1, "Alloc: ID3 prev should be ID1");
+        
+        // Allocate to ID 2 (this should insert between ID 1 and ID 3 in allocated list)
+        // Note: cUSPDToken.mintShares allocates based on lowestUnallocatedId.
+        // To test middle insertion for *allocated* list, we need to ensure ID2 is the next one picked from unallocated.
+        // The unallocated list is currently: ID2 (lowest) because ID1 and ID3 were used for allocation.
+        // So, the next mintShares will allocate to ID2.
+        assertEq(stabilizerNFT.lowestUnallocatedId(), id2, "Unalloc: ID2 should be lowest before allocating to it");
+
+        vm.deal(owner, 0.1 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 0.1 ether}(user2, priceQuery); // Allocates to id2
+
+        assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc: Lowest should be ID1 after allocating ID2");
+        assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc: Highest should be ID3 after allocating ID2");
+
+        // Verify links for middle insertion: 1 <-> 2 <-> 3
+        (, , , id1_prevA, id1_nextA) = stabilizerNFT.positions(id1);
+        (, , , uint256 id2_prevA, uint256 id2_nextA) = stabilizerNFT.positions(id2);
+        (, , , id3_prevA, id3_nextA) = stabilizerNFT.positions(id3);
+
+        assertEq(id1_prevA, 0, "Alloc: ID1 prev should be 0");
+        assertEq(id1_nextA, id2, "Alloc: ID1 next should be ID2");
+        assertEq(id2_prevA, id1, "Alloc: ID2 prev should be ID1");
+        assertEq(id2_nextA, id3, "Alloc: ID2 next should be ID3");
+        assertEq(id3_prevA, id2, "Alloc: ID3 prev should be ID2");
+        assertEq(id3_nextA, 0, "Alloc: ID3 next should be 0");
+    }
+
     function testLiquidation_PartialLiquidation_PositionRemainsAllocated() public {
         // --- Setup Position (user1) ---
         uint256 positionTokenId = stabilizerNFT.mint(user1);
