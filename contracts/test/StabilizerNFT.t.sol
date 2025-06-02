@@ -2123,23 +2123,20 @@ contract StabilizerNFTTest is Test {
         vm.store(address(stabilizerNFT), reporterSlotBytes32, bytes32(uint256(0)));
         assertEq(address(stabilizerNFT.reporter()), address(0), "Reporter address not zeroed out");
 
-
         // --- Temporarily increase maxPriceDeviation in PriceOracle ---
+        // This is still needed because the oracle is called before the reporter check in liquidatePosition
+        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
         vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
 
-        // --- Action: Liquidate ---
-        uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
-        uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
-
+        // --- Expect Revert ---
+        // Liquidation should now revert because the reporter address is zero.
         vm.prank(user2);
+        vm.expectRevert(StabilizerNFT.OvercollateralizationReporterZero.selector);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
 
-
-        // --- Assertions (should proceed without reporter calls) ---
-        assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + calculatedExpectedPayout, 1, "Liquidator stETH payout mismatch (no reporter)");
-        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), positionEscrowStEthBefore - calculatedExpectedPayout, 1, "PositionEscrow balance mismatch (no reporter)");
-        assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow shares mismatch (no reporter)");
-        assertEq(cuspdToken.balanceOf(user2), 0, "Liquidator cUSPD balance mismatch (no reporter)");
+        // Reset maxPriceDeviation in PriceOracle
+        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
+        // No further actions or assertions are needed as the function should have reverted.
     }
 
     function testUpgradeStabilizerNFT_Success() public {
