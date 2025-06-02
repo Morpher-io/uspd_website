@@ -777,6 +777,7 @@ contract StabilizerNFT is
             sliceResult.stEthReturnedToStabilizer = stEthCollateralForSliceAtCurrentRatio - userStEthParValueForSlice;
             sliceResult.ethEquivalentRemoved = stEthCollateralForSliceAtCurrentRatio; 
         } else {
+            console.log("Withdrawing from Insurance");
             // Position slice is undercollateralized. User initially gets what's available from the position.
             sliceResult.stEthPaidToUser = stEthCollateralForSliceAtCurrentRatio;
             // sliceResult.stEthReturnedToStabilizer remains 0 (default)
@@ -803,6 +804,7 @@ contract StabilizerNFT is
 
         // Distribute stETH now held by StabilizerNFT
         console.log("_handleUnallocationSlice - Before Transfer - stEthPaidToUser:", sliceResult.stEthPaidToUser);
+        console.log("_handleUnallocationSlice - Before Transfer - userStEthParValueForSlice:", userStEthParValueForSlice);
         console.log("_handleUnallocationSlice - Before Transfer - stEthReturnedToStabilizer:", sliceResult.stEthReturnedToStabilizer);
         console.log("_handleUnallocationSlice - Before Transfer - StabilizerNFT stETH Balance:", IERC20(stETH).balanceOf(address(this)));
         console.log("_handleUnallocationSlice - Before Transfer - Expected stEthCollateralForSliceAtCurrentRatio received:", stEthCollateralForSliceAtCurrentRatio);
