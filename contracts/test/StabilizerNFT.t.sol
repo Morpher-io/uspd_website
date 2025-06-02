@@ -185,6 +185,10 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
         cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), address(stabilizerNFT));
 
+        // Set a high price deviation percentage for the oracle globally for tests
+        vm.prank(owner);
+        priceOracle.setMaxDeviationPercentage(100000); // 1000%
+
         vm.warp(1745837835); //warp for the price attestation service to a meaningful timestamp
     }
 
@@ -1150,12 +1154,6 @@ contract StabilizerNFTTest is Test {
         require(initialCollateralInPosition >= calculatedExpectedPayout - 1 && initialCollateralInPosition <= calculatedExpectedPayout + 1, "Test setup: initialCollateralInPosition should be approx equal to expectedPayoutToLiquidator");
 
 
-        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
-        vm.prank(owner);
-        priceOracle.setMaxDeviationPercentage(100000); // Set to 1000%
-
-
         // --- Action: Liquidate ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
@@ -1168,10 +1166,6 @@ contract StabilizerNFTTest is Test {
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
-
-        // --- Reset maxPriceDeviation in PriceOracle ---
-        vm.prank(owner);
-        priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
 
         // --- Assertions ---
         assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + calculatedExpectedPayout, 1, "Liquidator stETH payout mismatch");
@@ -1249,11 +1243,6 @@ contract StabilizerNFTTest is Test {
         // uint256 expectedRemainderToInsurance = initialCollateralInPosition - expectedPayoutToLiquidator; // Inlined
         require((initialCollateralInPosition - expectedPayoutToLiquidator) > 0, "Test setup: expectedRemainderToInsurance must be > 0");
 
-        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
-        vm.prank(owner);
-        priceOracle.setMaxDeviationPercentage(100000); // Set to 1000%
-
         // --- Action: Liquidate ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
@@ -1271,10 +1260,6 @@ contract StabilizerNFTTest is Test {
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
-
-        // --- Reset maxPriceDeviation in PriceOracle ---
-        vm.prank(owner);
-        priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
 
         // --- Assertions ---
         assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + expectedPayoutToLiquidator, 1, "Liquidator stETH payout mismatch");
@@ -1351,10 +1336,6 @@ contract StabilizerNFTTest is Test {
         uint256 expectedShortfall = targetTotalPayoutToLiquidator - 0.8 ether; // Inlined expectedStEthFromPosition
         require(0.5 ether >= expectedShortfall, "Test setup: Insurance not funded enough for the calculated shortfall"); // Inlined insuranceFundAmount
         // uint256 expectedStEthFromInsurance = expectedShortfall; // Inlined: Insurance covers the full shortfall, use expectedShortfall directly
-
-        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        vm.prank(owner); 
-        priceOracle.setMaxDeviationPercentage(100000);
 
         // --- Action: Liquidate ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
@@ -1434,10 +1415,6 @@ contract StabilizerNFTTest is Test {
         require(actualStEthFromInsurance == 0.1 ether, "Test setup: Insurance should be fully drained for partial coverage");
         require(actualTotalPayoutToLiquidator < targetTotalPayoutToLiquidator, "Test setup: Liquidator should receive less than target due to partial insurance");
 
-        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
-
         // --- Action: Liquidate ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance(); // Should be 0.1 ether
@@ -1445,9 +1422,6 @@ contract StabilizerNFTTest is Test {
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
-
-        // --- Reset maxPriceDeviation in PriceOracle ---
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
 
         // --- Assertions ---
         assertApproxEqAbs(mockStETH.balanceOf(user2), liquidatorStEthBefore + actualTotalPayoutToLiquidator, 1, "Liquidator total stETH payout mismatch (partial insurance)");
@@ -1778,9 +1752,6 @@ contract StabilizerNFTTest is Test {
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
-        vm.prank(owner); // Admin sets max deviation
-        priceOracle.setMaxDeviationPercentage(100000); // High deviation to allow test price
-
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
         // Expected threshold for NFT ID 2: 12500 - (2-1)*50 = 12450
         emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, initialShares, expectedStEthPaid, priceForLiquidationTest, 12450);
@@ -1867,9 +1838,6 @@ contract StabilizerNFTTest is Test {
         vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(s2_tokenId);
         vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(s2_tokenId, 11000);
 
-
-        // Temporarily allow large price deviation for the mint/burn operation if needed by oracle
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
 
         // --- Minter mints shares (2 ETH worth at $1000/ETH) ---
         // uint256 initialPrice = 1000 ether; // Inlined
@@ -1983,9 +1951,6 @@ contract StabilizerNFTTest is Test {
         vm.deal(user2, 0.1 ether);
         vm.prank(user2); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(s2_tokenId);
         vm.prank(user2); stabilizerNFT.setMinCollateralizationRatio(s2_tokenId, 11000);
-
-        // Temporarily allow large price deviation for the mint/burn operation
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
 
         // --- Minter mints shares (2 ETH worth at $1000/ETH) ---
         vm.deal(minterUser, 2 ether);
@@ -2120,10 +2085,6 @@ contract StabilizerNFTTest is Test {
         // uint256 stEthParValueForPartialShares = (((sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1); // Inlined
         uint256 expectedPayoutToLiquidator = ( ((((sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (((10500 * ((initialTotalSharesInPosition * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION()) * (10**18)) / (initialCollateralInPosition * 10000)) + 1)) * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100;
 
-        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        uint256 originalMaxDeviation = priceOracle.maxDeviationPercentage();
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(100000);
-
         // --- Action: Partial Liquidation ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 positionEscrowStEthBefore = positionEscrow.getCurrentStEthBalance();
@@ -2143,9 +2104,6 @@ contract StabilizerNFTTest is Test {
 
         vm.prank(user2);
         stabilizerNFT.liquidatePosition(0, positionTokenId, sharesToLiquidatePartially, priceQueryLiquidation);
-
-        // --- Reset maxPriceDeviation in PriceOracle ---
-        vm.prank(owner); priceOracle.setMaxDeviationPercentage(originalMaxDeviation);
 
         // --- Assertions ---
         // Liquidator
@@ -2349,9 +2307,6 @@ contract StabilizerNFTTest is Test {
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
         uint256 insuranceStEthBefore = insuranceEscrow.getStEthBalance();
 
-        vm.prank(owner);
-        priceOracle.setMaxDeviationPercentage(10000);
-
         vm.expectEmit(true, true, true, true, address(stabilizerNFT));
         // Expect 11000 as thresholdUsed due to high liquidatorsNFTId
         emit StabilizerNFT.PositionLiquidated(positionToLiquidateTokenId, user2, liquidatorsNFTId, initialShares, expectedStEthPaid, 1800 ether, 11000); 
@@ -2437,10 +2392,6 @@ contract StabilizerNFTTest is Test {
 
         // Recalculate stEthParValue based on the new priceForLiquidationTest for payout calculations
         uint256 stEthParValueForPayout = (initialSharesUSDValue * (10**18)) / priceForLiquidationTest;
-
-        // --- Temporarily increase maxPriceDeviation in PriceOracle ---
-        vm.prank(owner); // Assuming 'owner' has DEFAULT_ADMIN_ROLE on PriceOracle
-        priceOracle.setMaxDeviationPercentage(100000); // Set to 1000% (a very large value)
 
 
         // --- Attempt 1: Liquidate with liquidatorTokenId = 0 (Default 110% threshold) ---
