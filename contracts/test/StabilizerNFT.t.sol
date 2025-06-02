@@ -29,6 +29,9 @@ import "../src/interfaces/IStabilizerEscrow.sol"; // Import Escrow interface
 import "../src/interfaces/IPositionEscrow.sol"; // Import PositionEscrow interface
 
 contract StabilizerNFTTest is Test {
+
+    using stdStorage for StdStorage;
+
     // --- Mocks ---
     MockStETH internal mockStETH;
     MockLido internal mockLido;
