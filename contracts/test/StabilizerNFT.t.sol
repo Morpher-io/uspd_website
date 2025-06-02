@@ -2009,11 +2009,11 @@ contract StabilizerNFTTest is Test {
         uint256 p2_userParStEth = (1000 ether * (10**18)) / liquidationPrice;
         // P2 collateral at 99% ratio: p2_userParStEth * 0.99 = 1.1 ether
         // uint256 p2_collateralAtRatio = (p2_userParStEth * 9900) / 10000; // Inlined
-        uint256 p2_shortfall = p2_userParStEth - ((p2_userParStEth * 9900) / 10000);
+        // uint256 p2_shortfall = p2_userParStEth - ((p2_userParStEth * 9900) / 10000); // Inlined
         
-        mockStETH.mint(address(insuranceEscrow), p2_shortfall + 0.1 ether); // Fund slightly more than exact shortfall
+        mockStETH.mint(address(insuranceEscrow), (p2_userParStEth - ((p2_userParStEth * 9900) / 10000)) + 0.1 ether); // Fund slightly more than exact shortfall
         uint256 insuranceEscrowInitialBalance = insuranceEscrow.getStEthBalance();
-        assertTrue(insuranceEscrowInitialBalance >= p2_shortfall, "Insurance not funded enough");
+        assertTrue(insuranceEscrowInitialBalance >= (p2_userParStEth - ((p2_userParStEth * 9900) / 10000)), "Insurance not funded enough");
 
         // --- MinterUser burns all 2000 shares ---
         uint256 s1_stabilizerEscrowBeforeBurn = IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s1_tokenId)).unallocatedStETH();
@@ -2038,7 +2038,7 @@ contract StabilizerNFTTest is Test {
         assertEq(p2_escrow.backedPoolShares(), 0, "P2 shares after burn");
         assertApproxEqAbs(p2_escrow.getCurrentStEthBalance(), 0, 1e12, "P2 collateral after burn (should be empty)");
         assertApproxEqAbs(IStabilizerEscrow(stabilizerNFT.stabilizerEscrows(s2_tokenId)).unallocatedStETH(), s2_stabilizerEscrowBeforeBurn + 0, 1e12, "S2 StabilizerEscrow balance (no return from undercollateralized)");
-        assertApproxEqAbs(insuranceEscrow.getStEthBalance(), insuranceEscrowInitialBalance - p2_shortfall, 1e12, "InsuranceEscrow balance after covering P2 shortfall");
+        assertApproxEqAbs(insuranceEscrow.getStEthBalance(), insuranceEscrowInitialBalance - (p2_userParStEth - ((p2_userParStEth * 9900) / 10000)), 1e12, "InsuranceEscrow balance after covering P2 shortfall");
 
         // P1 (s1_tokenId, 144% ratio) processed second.
         // User par value for 1000 shares at $900: (1000e18 * 1e18) / 900e18 = 1.111... ether
