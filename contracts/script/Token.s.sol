@@ -4,11 +4,11 @@ pragma solidity ^0.8.20;
 import {Script, console2} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol"; // Keep for other proxies
-import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol"; // <-- Add ERC1967Proxy
-import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ICreateX} from "../lib/createx/src/ICreateX.sol";
+import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol"; // Already in base
+// import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol"; // Already in base
+// import {ICreateX} from "../lib/createx/src/ICreateX.sol"; // Already in base
 
-import "../src/PriceOracle.sol";
+// import "../src/PriceOracle.sol"; // Already in base
 import "../src/StabilizerNFT.sol";
 import "../src/UspdToken.sol"; // View layer token
 import "../src/cUSPDToken.sol";
@@ -291,12 +291,8 @@ contract DeployL2Script is Script {
         console2.log("USPDToken (view layer, bridged) deployed at:", uspdTokenAddress);
     }
 
-    // Removed: deployReporterImplementation
-    // Removed: deployReporterProxy
-    // Removed: deployStabilizerNFTProxy_NoInit
-    // Removed: initializeStabilizerNFTProxy
-    // Removed: deployPoolSharesConversionRate
-    // Removed: setupRolesAndPermissions (L1 version)
+    // Removed L1 specific functions. L2 specific functions deployCUSPDToken_Bridged, deployUspdToken_Bridged remain.
+    // Removed common functions as they are in base.
 
     // Setup minimal roles for the bridged token scenario
     function setupRolesAndPermissions_Bridged() internal {
@@ -347,86 +343,5 @@ contract DeployL2Script is Script {
         console2.log("Bridged roles setup complete.");
     }
 
-
-    function saveDeploymentInfo() internal {
-        console2.log("Saving deployment info to:", deploymentPath);
-        // Create a JSON object structure if file doesn't exist
-        string memory initialJson = '{'
-            '"contracts": {'
-                '"proxyAdmin": "0x0000000000000000000000000000000000000000",'
-                '"oracleImpl": "0x0000000000000000000000000000000000000000",'
-                '"oracle": "0x0000000000000000000000000000000000000000",'
-                '"stabilizerImpl": "0x0000000000000000000000000000000000000000",'
-                '"stabilizer": "0x0000000000000000000000000000000000000000",'
-                '"cuspdToken": "0x0000000000000000000000000000000000000000",'
-                '"uspdToken": "0x0000000000000000000000000000000000000000",'
-                '"rateContract": "0x0000000000000000000000000000000000000000",'
-                '"reporterImpl": "0x0000000000000000000000000000000000000000",'
-                '"reporter": "0x0000000000000000000000000000000000000000",'
-                '"insuranceEscrow": "0x0000000000000000000000000000000000000000",'
-                '"bridgeEscrow": "0x0000000000000000000000000000000000000000",'
-                '"stabilizerEscrowImpl": "0x0000000000000000000000000000000000000000",'
-                '"positionEscrowImpl": "0x0000000000000000000000000000000000000000"'
-            '},'
-            '"config": {'
-                '"usdcAddress": "0x0000000000000000000000000000000000000000",'
-                '"uniswapRouter": "0x0000000000000000000000000000000000000000",'
-                '"chainlinkAggregator": "0x0000000000000000000000000000000000000000",'
-                '"lidoAddress": "0x0000000000000000000000000000000000000000",'
-                '"stETHAddress": "0x0000000000000000000000000000000000000000"'
-            '},'
-            '"metadata": {'
-                '"usdcAddress": "0x0",'
-                '"uniswapRouter": "0x0",'
-                '"chainlinkAggregator": "0x0",'
-                '"lidoAddress": "0x0",'
-                '"stETHAddress": "0x0",'
-                '"stabilizerBaseURI": ""' // <-- Add baseURI field
-            '},'
-            '"metadata": {'
-                '"chainId": 0,'
-                '"deploymentTimestamp": 0,'
-                '"deployer": "0x0"'
-            '}'
-        '}';
-
-        if (!vm.isFile(deploymentPath)) {
-            vm.writeFile(deploymentPath, initialJson);
-        }
-
-        // Save always deployed contracts
-        vm.writeJson(vm.toString(proxyAdminAddress), deploymentPath, ".contracts.proxyAdmin");
-        vm.writeJson(vm.toString(oracleImplAddress), deploymentPath, ".contracts.oracleImpl");
-        vm.writeJson(vm.toString(oracleProxyAddress), deploymentPath, ".contracts.oracle");
-        vm.writeJson(vm.toString(cuspdTokenAddress), deploymentPath, ".contracts.cuspdToken");
-        vm.writeJson(vm.toString(uspdTokenAddress), deploymentPath, ".contracts.uspdToken");
-        vm.writeJson(vm.toString(bridgeEscrowAddress), deploymentPath, ".contracts.bridgeEscrow");
-
-
-        // Conditionally save full system contracts
-        vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
-        vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
-        vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
-        vm.writeJson(vm.toString(reporterImplAddress), deploymentPath, ".contracts.reporterImpl");
-        vm.writeJson(vm.toString(reporterAddress), deploymentPath, ".contracts.reporter");
-        vm.writeJson(vm.toString(insuranceEscrowAddress), deploymentPath, ".contracts.insuranceEscrow"); // <-- Save InsuranceEscrow
-        vm.writeJson(vm.toString(stabilizerEscrowImplAddress), deploymentPath, ".contracts.stabilizerEscrowImpl"); // <-- Save StabilizerEscrow impl
-        vm.writeJson(vm.toString(positionEscrowImplAddress), deploymentPath, ".contracts.positionEscrowImpl"); // <-- Save PositionEscrow impl
-
-        // Save configuration
-        vm.writeJson(vm.toString(usdcAddress), deploymentPath, ".config.usdcAddress");
-        vm.writeJson(vm.toString(uniswapRouter), deploymentPath, ".config.uniswapRouter");
-        vm.writeJson(vm.toString(chainlinkAggregator), deploymentPath, ".config.chainlinkAggregator");
-        vm.writeJson(vm.toString(lidoAddress), deploymentPath, ".config.lidoAddress");
-        vm.writeJson(vm.toString(stETHAddress), deploymentPath, ".config.stETHAddress");
-        vm.writeJson(baseURI, deploymentPath, ".config.stabilizerBaseURI"); // <-- Save baseURI
-
-        // Add metadata
-        vm.writeJson(vm.toString(chainId), deploymentPath, ".metadata.chainId");
-        vm.writeJson(vm.toString(block.timestamp), deploymentPath, ".metadata.deploymentTimestamp");
-        vm.writeJson(vm.toString(deployer), deploymentPath, ".metadata.deployer");
-
-        // Write to file
-        console2.log("Deployment information saved to:", deploymentPath);
-    }
+    // Removed: saveDeploymentInfo (moved to base)
 }

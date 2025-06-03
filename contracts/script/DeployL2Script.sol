@@ -16,136 +16,42 @@ import "../src/PoolSharesConversionRate.sol";
 import "../src/OvercollateralizationReporter.sol";
 import "../src/interfaces/IOvercollateralizationReporter.sol";
 import "../src/InsuranceEscrow.sol"; // <-- Add InsuranceEscrow
-import "../src/StabilizerEscrow.sol"; // <-- Add StabilizerEscrow implementation
-import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow implementation
-import "../src/interfaces/ILido.sol";
-import "../test/mocks/MockStETH.sol";
-import "../test/mocks/MockLido.sol";
-import "../src/BridgeEscrow.sol"; // <-- Add BridgeEscrow import
+// import "../src/StabilizerEscrow.sol"; // Not used by L2
+// import "../src/PositionEscrow.sol"; // Not used by L2
+// import "../src/interfaces/ILido.sol"; // Not used by L2
+// import "../test/mocks/MockStETH.sol"; // Not used by L2
+// import "../test/mocks/MockLido.sol"; // Not used by L2
+// import "../src/BridgeEscrow.sol"; // Already in base
 
-contract DeployL1Script is Script {
-    // Configuration
-    uint256 internal constant MAINNET_CHAIN_ID = 1; // <-- Define MAINNET_CHAIN_ID
-    address deployer;
-    uint256 chainId;
-    string deploymentPath;
+import "./DeployScript.sol"; // Import the base script
 
-    address oracleSignerAddress = 0x00051CeA64B7aA576421E2b5AC0852f1d7E14Fa5;
+contract DeployL2Script is DeployScript { // Changed from DeployL1Script to DeployL2Script
+    // Common state variables and functions are inherited from DeployScript.
+    // L2-specific deployment functions and run() logic will remain here.
 
-    function generateSalt(string memory identifier) internal pure returns (bytes32) {
-        // Salt is derived from a fixed prefix (USPD) and the identifier string.
-        return keccak256(abi.encodePacked(bytes4(0x55535044), identifier));
-    }
+    function setUp() public override {
+        super.setUp(); // Call base setUp for common initializations
 
-    // Define salts for each contract
-    bytes32 PROXY_ADMIN_SALT;
-    bytes32 ORACLE_PROXY_SALT;
-    bytes32 STABILIZER_PROXY_SALT;
-    bytes32 CUSPD_TOKEN_SALT;
-    bytes32 USPD_TOKEN_SALT;
-    bytes32 RATE_CONTRACT_SALT;
-    bytes32 REPORTER_SALT; // <-- Add Reporter salt
-    bytes32 INSURANCE_ESCROW_SALT; // <-- Add InsuranceEscrow salt
-    bytes32 BRIDGE_ESCROW_SALT;
-
-    // CreateX contract address - this should be the deployed CreateX contract on the target network
-    address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
-    ICreateX createX;
-
-    // Deployed contract addresses
-    address proxyAdminAddress;
-    address oracleImplAddress;
-    address oracleProxyAddress;
-    // address positionNFTImplAddress; // Removed
-    // address positionNFTProxyAddress; // Removed
-    address stabilizerImplAddress;
-    address stabilizerProxyAddress;
-    address cuspdTokenAddress;
-    address uspdTokenAddress;
-    address rateContractAddress;
-    address reporterImplAddress;
-    address reporterAddress;
-    address insuranceEscrowAddress; // <-- Add InsuranceEscrow address
-    address bridgeEscrowAddress; // For L1 and L2
-    address stabilizerEscrowImplAddress; // <-- Add StabilizerEscrow implementation address
-    address positionEscrowImplAddress; // <-- Add PositionEscrow implementation address
-
-    // Configuration for PriceOracle
-    uint256 maxPriceDeviation = 500; // 5%
-    uint256 priceStalenessPeriod = 3600; // 1 hour
-    address usdcAddress;
-    address uniswapRouter;
-    address chainlinkAggregator;
-    address lidoAddress; // Lido staking pool address
-    address stETHAddress; // stETH token address
-    uint256 initialRateContractDeposit = 0.001 ether; // ETH to deposit into rate contract
-    string baseURI;
-
-    function setUp() public {
-        // Get the deployer address and chain ID
-        deployer = msg.sender;
-        chainId = block.chainid;
-        
-        // Initialize CreateX interface
-        createX = ICreateX(CREATE_X_ADDRESS);
-
-        // Set the deployment path
-        deploymentPath = string.concat(
-            "deployments/",
-            vm.toString(chainId),
-            ".json"
-        );
-
-        // Initialize salts with proper format for CreateX
-        PROXY_ADMIN_SALT = generateSalt("USPD_PROXY_ADMIN_v1");
-        ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
-        STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
-        CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1");
-        USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
-        RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1");
-        REPORTER_SALT = generateSalt("USPD_REPORTER_v1"); // <-- Initialize Reporter salt
-        INSURANCE_ESCROW_SALT = generateSalt("USPD_INSURANCE_ESCROW_v1"); // <-- Initialize InsuranceEscrow salt
-        BRIDGE_ESCROW_SALT = generateSalt("USPD_BRIDGE_ESCROW_v1");
-
-        console2.log("Deploying to chain ID:", chainId);
-        console2.log("Deployer address:", deployer);
-        console2.log("Using CreateX at:", CREATE_X_ADDRESS);
-
-        // Set network-specific configuration
-        if (chainId == 1) { // Ethereum Mainnet
-            usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-            chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
-            lidoAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-            stETHAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-        } else if (chainId == 11155111 || chainId == 112233) { // Sepolia or sepolia via anvil forking with --chain-id 112233
-            usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-            chainlinkAggregator = 0x694AA1769357215DE4FAC081bf1f309aDC325306;
-            lidoAddress = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af;
-            stETHAddress = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af;
-        } else if (chainId == 31337) { // Local development (Anvil/Hardhat) - Deploy Mocks
-            console2.log("Local development detected (chainId 31337), deploying mocks...");
-            MockStETH mockStETH = new MockStETH();
-            stETHAddress = address(mockStETH);
-            // Deploy MockLido
-            MockLido mockLido = new MockLido(stETHAddress);
-            lidoAddress = address(mockLido);
-            // Use placeholder addresses for others
-            usdcAddress = address(0x5);
-            uniswapRouter = address(0x6); // Placeholder
-            chainlinkAggregator = address(0x7); // Placeholder
-        } else {
-            revert("Unsupported chain ID for L1 deployment script.");
+        // Set L2 network-specific configuration
+        console2.log("Deploying for bridged token scenario on chain ID:", chainId);
+        if (chainId == 137) { // Polygon specific example
+             usdcAddress = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
+             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; 
+             chainlinkAggregator = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0;
+        } else if (chainId == MAINNET_CHAIN_ID || chainId == 11155111 || chainId == 31337 || chainId == 112233) {
+            revert("L2 script used on L1 chain ID. Use DeployL1Script instead.");
         }
-
-        // Set Base URI based on chain
-        if (chainId == 1) { // Mainnet
-            baseURI = "https://uspd.io/api/stabilizer/metadata/";
-        } else { // Sepolia, Local, Others
-            baseURI = "http://localhost:3000/api/stabilizer/metadata/"; // Default to localhost for others
+        else { // Default placeholders for other L2 networks
+             usdcAddress = address(0xdead); 
+             uniswapRouter = address(0xbeef); 
+             chainlinkAggregator = address(0xcafe); 
         }
-        console2.log("StabilizerNFT Base URI set to:", baseURI);
+        // Stabilizer system components are not deployed on L2
+        lidoAddress = address(0);
+        stETHAddress = address(0);
+        initialRateContractDeposit = 0; // No deposit for L2 rate contract from here
+        baseURI = "http://localhost:3000/api/stabilizer/metadata/"; // Default, not strictly used by L2 contracts
+        console2.log("StabilizerNFT Base URI set to (not applicable for L2):", baseURI);
     }
 
     function run() public {
@@ -156,25 +62,25 @@ contract DeployL1Script is Script {
         deployOracleImplementation();
         deployOracleProxy(); // Needs ProxyAdmin, initializes Oracle
         // BridgeEscrow is deployed for both L1 and L2 scenarios, but configured/used differently.
-        // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first in bridged. // This comment might be less relevant for L1 only.
+        // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first.
 
-        // --- Deploy Full System for L1 ---
-        console2.log("Deploying Full System for L1...");
-        deployStabilizerNFTImplementation();
-        deployStabilizerEscrowImplementation(); // <-- Deploy StabilizerEscrow Impl
-        deployPositionEscrowImplementation(); // <-- Deploy PositionEscrow Impl
-        deployPoolSharesConversionRate();
-        deployReporterImplementation();
-        deployStabilizerNFTProxy_NoInit(); // Deploy StabilizerNFT proxy first to get its address
-        deployInsuranceEscrow(); // Deploy InsuranceEscrow, owned by StabilizerNFT proxy
-        deployCUSPDToken(); // Deploys cUSPD for L1
-        deployUspdToken();  // Deploys USPD for L1
-        deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // Deploy BridgeEscrow for L1
-        deployReporterProxy();
-        initializeStabilizerNFTProxy(); // Now initialize StabilizerNFT proxy, passing InsuranceEscrow address
-        setupRolesAndPermissions();
+        console2.log("Deploying Bridged Token Only for L2...");
+        // Explicitly set L1 contract addresses to 0 for clarity in L2 deployment JSON
+        insuranceEscrowAddress = address(0); 
+        stabilizerImplAddress = address(0);
+        stabilizerProxyAddress = address(0);
+        // rateContractAddress is already address(0) by default or set by L2 specific logic if any
+        reporterImplAddress = address(0);
+        reporterAddress = address(0);
+        stabilizerEscrowImplAddress = address(0); 
+        positionEscrowImplAddress = address(0); 
+        
+        deployCUSPDToken_Bridged(); 
+        deployUspdToken_Bridged();  
+        deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); 
+        setupRolesAndPermissions_Bridged();
 
-        saveDeploymentInfo();
+        saveDeploymentInfo(); // Call from base
 
         vm.stopBroadcast();
     }
