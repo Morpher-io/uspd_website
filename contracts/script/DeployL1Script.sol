@@ -31,6 +31,7 @@ contract DeployL1Script is DeployScript {
 
     function setUp() public override {
         super.setUp(); // Call base setUp for common initializations
+        initialRateContractDeposit = 0.001 ether; // Default for L1 chains
         baseURI = "https://testnet.uspd.io/api/stabilizer/metadata/";
         // Set L1 network-specific configuration
         if (chainId == 1) { // Ethereum Mainnet
@@ -322,8 +323,8 @@ contract DeployL1Script is DeployScript {
             abi.encode(stETHAddress, lidoAddress, deployer) // Added deployer as admin
         );
 
-        // Deploy using CREATE2, sending initial ETH value to the constructor (only if on L1)
-        uint256 depositValue = (chainId == MAINNET_CHAIN_ID) ? initialRateContractDeposit : 0;
+        // Deploy using CREATE2, sending initial ETH value to the constructor
+        uint256 depositValue = initialRateContractDeposit; // Directly use the value set in setUp for L1
         rateContractAddress = createX.deployCreate2{value: depositValue}(
             RATE_CONTRACT_SALT,
             bytecode
