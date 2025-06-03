@@ -21,97 +21,18 @@ import "../src/PositionEscrow.sol"; // <-- Add PositionEscrow implementation
 import "../src/interfaces/ILido.sol";
 import "../test/mocks/MockStETH.sol";
 import "../test/mocks/MockLido.sol";
-import "../src/BridgeEscrow.sol"; // <-- Add BridgeEscrow import
+import "../src/BridgeEscrow.sol"; // For type()
 
-contract DeployL2Script is Script {
-    // Configuration
-    uint256 internal constant MAINNET_CHAIN_ID = 1; // <-- Define MAINNET_CHAIN_ID
-    address deployer;
-    uint256 chainId;
-    string deploymentPath;
+import "./DeployScript.sol"; // Import the base script
 
-    address oracleSignerAddress = 0x00051CeA64B7aA576421E2b5AC0852f1d7E14Fa5;
+contract DeployL2Script is DeployScript {
+    // L2-specific state variables (if any) would go here.
+    // Common state variables are inherited from DeployScript.
 
-    function generateSalt(string memory identifier) internal pure returns (bytes32) {
-        // Salt is derived from a fixed prefix (USPD) and the identifier string.
-        return keccak256(abi.encodePacked(bytes4(0x55535044), identifier));
-    }
+    function setUp() public override {
+        super.setUp(); // Call base setUp for common initializations
 
-    // Define salts for each contract
-    bytes32 PROXY_ADMIN_SALT;
-    bytes32 ORACLE_PROXY_SALT;
-    bytes32 STABILIZER_PROXY_SALT;
-    bytes32 CUSPD_TOKEN_SALT;
-    bytes32 USPD_TOKEN_SALT;
-    bytes32 RATE_CONTRACT_SALT;
-    bytes32 REPORTER_SALT; // <-- Add Reporter salt
-    bytes32 INSURANCE_ESCROW_SALT; // <-- Add InsuranceEscrow salt
-    bytes32 BRIDGE_ESCROW_SALT;
-
-    // CreateX contract address - this should be the deployed CreateX contract on the target network
-    address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
-    ICreateX createX;
-
-    // Deployed contract addresses
-    address proxyAdminAddress;
-    address oracleImplAddress;
-    address oracleProxyAddress;
-    // address positionNFTImplAddress; // Removed
-    // address positionNFTProxyAddress; // Removed
-    address stabilizerImplAddress;
-    address stabilizerProxyAddress;
-    address cuspdTokenAddress;
-    address uspdTokenAddress;
-    address rateContractAddress;
-    address reporterImplAddress;
-    address reporterAddress;
-    address insuranceEscrowAddress; // <-- Add InsuranceEscrow address
-    address bridgeEscrowAddress; // For L1 and L2
-    address stabilizerEscrowImplAddress; // <-- Add StabilizerEscrow implementation address
-    address positionEscrowImplAddress; // <-- Add PositionEscrow implementation address
-
-    // Configuration for PriceOracle
-    uint256 maxPriceDeviation = 500; // 5%
-    uint256 priceStalenessPeriod = 3600; // 1 hour
-    address usdcAddress;
-    address uniswapRouter;
-    address chainlinkAggregator;
-    address lidoAddress; // Lido staking pool address
-    address stETHAddress; // stETH token address
-    uint256 initialRateContractDeposit = 0.001 ether; // ETH to deposit into rate contract
-    string baseURI;
-
-    function setUp() public {
-        // Get the deployer address and chain ID
-        deployer = msg.sender;
-        chainId = block.chainid;
-        
-        // Initialize CreateX interface
-        createX = ICreateX(CREATE_X_ADDRESS);
-
-        // Set the deployment path
-        deploymentPath = string.concat(
-            "deployments/",
-            vm.toString(chainId),
-            ".json"
-        );
-
-        // Initialize salts with proper format for CreateX
-        PROXY_ADMIN_SALT = generateSalt("USPD_PROXY_ADMIN_v1");
-        ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
-        STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
-        CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1");
-        USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
-        RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1");
-        REPORTER_SALT = generateSalt("USPD_REPORTER_v1"); // <-- Initialize Reporter salt
-        INSURANCE_ESCROW_SALT = generateSalt("USPD_INSURANCE_ESCROW_v1"); // <-- Initialize InsuranceEscrow salt
-        BRIDGE_ESCROW_SALT = generateSalt("USPD_BRIDGE_ESCROW_v1");
-
-        console2.log("Deploying to chain ID:", chainId);
-        console2.log("Deployer address:", deployer);
-        console2.log("Using CreateX at:", CREATE_X_ADDRESS);
-
-        // Set network-specific configuration for L2
+        // Set L2 network-specific configuration
         console2.log("Deploying for bridged token scenario on chain ID:", chainId);
         // Set addresses required by Oracle if it's deployed, otherwise 0x0
         // Assuming Oracle might still be needed for some price info or bridged functionality
@@ -209,10 +130,11 @@ contract DeployL2Script is Script {
         console2.log("USPDToken (view layer, bridged) deployed at:", uspdTokenAddress);
     }
 
-    // Removed L1 specific functions. L2 specific functions deployCUSPDToken_Bridged, deployUspdToken_Bridged remain.
-    // Removed common functions as they are in base.
+    // Removed L1 specific functions.
+    // Common functions like generateSalt, deployOracleImplementation, deployOracleProxy, 
+    // deployBridgeEscrow, deployUUPSProxy_NoInit, saveDeploymentInfo are inherited from DeployScript.
 
-    // Setup minimal roles for the bridged token scenario
+    // --- L2 Specific Role Setup ---
     function setupRolesAndPermissions_Bridged() internal {
         console2.log("Setting up roles for bridged token...");
 
@@ -261,5 +183,5 @@ contract DeployL2Script is Script {
         console2.log("Bridged roles setup complete.");
     }
 
-    // Removed: saveDeploymentInfo (moved to base)
+    // saveDeploymentInfo is inherited from DeployScript.
 }
