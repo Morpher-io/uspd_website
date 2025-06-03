@@ -137,9 +137,8 @@ contract DeployL2Script is Script {
         vm.startBroadcast();
 
         // --- Always Deployed on L2 ---
-        deployProxyAdmin();
         deployOracleImplementation();
-        deployOracleProxy(); // Needs ProxyAdmin, initializes Oracle
+        deployOracleProxy(); 
         // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first.
 
         console2.log("Deploying Bridged Token Only for L2...");

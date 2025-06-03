@@ -71,9 +71,8 @@ contract DeployL1Script is DeployScript {
         vm.startBroadcast();
 
         // --- Always Deployed ---
-        deployProxyAdmin();
         deployOracleImplementation();
-        deployOracleProxy(); // Needs ProxyAdmin, initializes Oracle
+        deployOracleProxy(); 
         // BridgeEscrow is deployed for both L1 and L2 scenarios, but configured/used differently.
         // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first in bridged. // Comment less relevant for L1
 
@@ -254,7 +253,7 @@ contract DeployL1Script is DeployScript {
         console2.log("Deploying StabilizerNFT UUPS proxy (no init)...");
         require(stabilizerImplAddress != address(0), "StabilizerNFT implementation not deployed");
         // Deploy as UUPS proxy
-        stabilizerProxyAddress = deployProxy_NoInit(STABILIZER_PROXY_SALT, stabilizerImplAddress, true);
+        stabilizerProxyAddress = deployUUPSProxy_NoInit(STABILIZER_PROXY_SALT, stabilizerImplAddress);
         console2.log(
             "StabilizerNFT UUPS proxy (uninitialized) deployed at:",
             stabilizerProxyAddress

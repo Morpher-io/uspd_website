@@ -21,7 +21,6 @@ contract DeployScript is Script {
     address public oracleSignerAddress = 0x00051CeA64B7aA576421E2b5AC0852f1d7E14Fa5;
 
     // Define salts for each contract
-    bytes32 public PROXY_ADMIN_SALT;
     bytes32 public ORACLE_PROXY_SALT;
     bytes32 public STABILIZER_PROXY_SALT;
     bytes32 public CUSPD_TOKEN_SALT;
@@ -36,7 +35,6 @@ contract DeployScript is Script {
     ICreateX public createX;
 
     // Deployed contract addresses
-    address public proxyAdminAddress;
     address public oracleImplAddress;
     address public oracleProxyAddress;
     address public stabilizerImplAddress;
@@ -81,7 +79,6 @@ contract DeployScript is Script {
             ".json"
         );
 
-        PROXY_ADMIN_SALT = generateSalt("USPD_PROXY_ADMIN_v1");
         ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
         STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
         CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1");
@@ -96,12 +93,6 @@ contract DeployScript is Script {
         console2.log("Using CreateX at:", CREATE_X_ADDRESS);
     }
 
-    function deployProxyAdmin() internal {
-        bytes memory bytecode = type(ProxyAdmin).creationCode;
-        proxyAdminAddress = createX.deployCreate2(PROXY_ADMIN_SALT, abi.encodePacked(bytecode, abi.encode(deployer)));
-        console2.log("ProxyAdmin deployed at:", proxyAdminAddress);
-    }
-
     function deployOracleImplementation() internal {
         PriceOracle oracleImpl = new PriceOracle();
         oracleImplAddress = address(oracleImpl);
@@ -110,7 +101,6 @@ contract DeployScript is Script {
 
     function deployOracleProxy() internal {
         require(oracleImplAddress != address(0), "Oracle implementation not deployed");
-        require(proxyAdminAddress != address(0), "ProxyAdmin not deployed for Transparent Proxy, or this is UUPS"); // UUPS doesn't strictly need ProxyAdmin for deployment itself but for admin tasks.
         require(usdcAddress != address(0), "USDC address not set");
         // uniswapRouter and chainlinkAggregator can be address(0) if not applicable for the chain/oracle config
 
@@ -148,20 +138,11 @@ contract DeployScript is Script {
         console2.log("BridgeEscrow deployed at:", bridgeEscrowAddress);
     }
 
-    function deployProxy_NoInit(bytes32 salt, address implementationAddress, bool isUUPS) internal returns (address proxyAddress) {
-        bytes memory bytecode;
-        if (isUUPS) {
-            bytecode = abi.encodePacked(
-                type(ERC1967Proxy).creationCode,
-                abi.encode(implementationAddress, bytes("")) // Empty init data for UUPS
-            );
-        } else { // TransparentUpgradeableProxy
-            require(proxyAdminAddress != address(0), "ProxyAdmin not deployed for TransparentUpgradeableProxy");
-            bytecode = abi.encodePacked(
-                type(TransparentUpgradeableProxy).creationCode,
-                abi.encode(implementationAddress, proxyAdminAddress, bytes("")) // Empty init data
-            );
-        }
+    function deployUUPSProxy_NoInit(bytes32 salt, address implementationAddress) internal returns (address proxyAddress) {
+        bytes memory bytecode = abi.encodePacked(
+            type(ERC1967Proxy).creationCode,
+            abi.encode(implementationAddress, bytes("")) // Empty init data for UUPS
+        );
         proxyAddress = createX.deployCreate2{value: 0}(salt, bytecode);
     }
 
@@ -169,7 +150,6 @@ contract DeployScript is Script {
         console2.log("Saving deployment info to:", deploymentPath);
         string memory initialJson = '{'
             '"contracts": {'
-                '"proxyAdmin": "0x0000000000000000000000000000000000000000",'
                 '"oracleImpl": "0x0000000000000000000000000000000000000000",'
                 '"oracle": "0x0000000000000000000000000000000000000000",'
                 '"stabilizerImpl": "0x0000000000000000000000000000000000000000",'
@@ -203,7 +183,6 @@ contract DeployScript is Script {
             vm.writeFile(deploymentPath, initialJson);
         }
 
-        vm.writeJson(vm.toString(proxyAdminAddress), deploymentPath, ".contracts.proxyAdmin");
         vm.writeJson(vm.toString(oracleImplAddress), deploymentPath, ".contracts.oracleImpl");
         vm.writeJson(vm.toString(oracleProxyAddress), deploymentPath, ".contracts.oracle");
         vm.writeJson(vm.toString(cuspdTokenAddress), deploymentPath, ".contracts.cuspdToken");
