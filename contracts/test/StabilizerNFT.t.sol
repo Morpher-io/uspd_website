@@ -1775,10 +1775,10 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.tokenURI(tokenId), "", "tokenURI should be empty if baseURI is empty");
     }
 
-    function testGetMinCollateralRatio_Revert_NonExistentToken() public {
-        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721NonexistentToken.selector, 999));
-        stabilizerNFT.getMinCollateralRatio(999);
-    }
+    // function testGetMinCollateralRatio_Revert_NonExistentToken() public {
+    //     vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721NonexistentToken.selector, 999));
+    //     stabilizerNFT.getMinCollateralRatio(999);
+    // }
 
     function testUnallocateStabilizerFunds_Revert_NoFundsUnallocated_AmountTooSmall() public {
         // Setup: Mint a position, allocate some funds

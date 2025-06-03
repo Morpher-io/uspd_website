@@ -77,7 +77,6 @@ contract DeployL2Script is DeployScript {
         reporterAddress = address(0);
         stabilizerEscrowImplAddress = address(0); 
         positionEscrowImplAddress = address(0); 
-        stabilizerLogicLibAddress = address(0); // L1 specific library
         
         deployCUSPDToken_Bridged(); 
         deployUspdToken_Bridged();  
