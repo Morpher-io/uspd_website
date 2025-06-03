@@ -2,33 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
-import {Vm} from "forge-std/Vm.sol";
-import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol"; // Keep for other proxies
-import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol"; // <-- Add ERC1967Proxy
-import {ProxyAdmin} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ICreateX} from "../lib/createx/src/ICreateX.sol";
-
-import "../src/PriceOracle.sol";
-import "../src/StabilizerNFT.sol";
-import "../src/UspdToken.sol"; // View layer token
-import "../src/cUSPDToken.sol";
-import "../src/PoolSharesConversionRate.sol";
-import "../src/OvercollateralizationReporter.sol";
-import "../src/interfaces/IOvercollateralizationReporter.sol";
-import "../src/InsuranceEscrow.sol"; // <-- Add InsuranceEscrow
-// import "../src/StabilizerEscrow.sol"; // Not used by L2
-// import "../src/PositionEscrow.sol"; // Not used by L2
-// import "../src/interfaces/ILido.sol"; // Not used by L2
-// import "../test/mocks/MockStETH.sol"; // Not used by L2
-// import "../test/mocks/MockLido.sol"; // Not used by L2
-// import "../src/BridgeEscrow.sol"; // Already in base
-
-import "./DeployScript.sol"; // Import the base script
-
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-import {Script, console2} from "forge-std/Script.sol";
 // import {Vm} from "forge-std/Vm.sol"; // Not directly used in L2 script after refactor
 // import {TransparentUpgradeableProxy} from "../lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol"; // Not used by L2 script
 // import {ERC1967Proxy} from "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol"; // In base
