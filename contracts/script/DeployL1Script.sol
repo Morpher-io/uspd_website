@@ -31,7 +31,7 @@ contract DeployL1Script is DeployScript {
 
     function setUp() public override {
         super.setUp(); // Call base setUp for common initializations
-
+        baseURI = "https://testnet.uspd.io/api/stabilizer/metadata/";
         // Set L1 network-specific configuration
         if (chainId == 1) { // Ethereum Mainnet
             usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -39,7 +39,8 @@ contract DeployL1Script is DeployScript {
             chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
             lidoAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
             stETHAddress = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-        } else if (chainId == 11155111 || chainId == 112233) { // Sepolia or sepolia via anvil forking with --chain-id 112233
+            baseURI = "https://uspd.io/api/stabilizer/metadata/";
+        } else if (chainId == 11155111) { // Sepolia
             usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F;
             uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
             chainlinkAggregator = 0x694AA1769357215DE4FAC081bf1f309aDC325306;
@@ -56,16 +57,13 @@ contract DeployL1Script is DeployScript {
             usdcAddress = address(0x5);
             uniswapRouter = address(0x6); // Placeholder
             chainlinkAggregator = address(0x7); // Placeholder
+            baseURI = "http://localhost:3000/api/stabilizer/metadata/"; // Default to localhost for others
+
         } else {
             revert("Unsupported chain ID for L1 deployment script.");
         }
 
-        // Set Base URI based on chain (L1 specific)
-        if (chainId == 1) { // Mainnet
-            baseURI = "https://uspd.io/api/stabilizer/metadata/";
-        } else { // Sepolia, Local, Others
-            baseURI = "http://localhost:3000/api/stabilizer/metadata/"; // Default to localhost for others
-        }
+
         console2.log("StabilizerNFT Base URI set to:", baseURI);
     }
 
