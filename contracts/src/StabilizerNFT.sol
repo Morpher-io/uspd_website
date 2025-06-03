@@ -111,7 +111,7 @@ contract StabilizerNFT is
     event UnallocatedFundsAdded(uint256 indexed tokenId, address asset, uint256 amount);
     event MinCollateralRatioUpdated(
         uint256 indexed tokenId,
-        uint256 oldRatio,
+        // uint256 oldRatio, // Removed oldRatio
         uint256 newRatio
     );
     event UnallocatedFundsRemoved(uint256 indexed tokenId, uint256 amount, address indexed recipient);
@@ -928,10 +928,10 @@ contract StabilizerNFT is
         require(newRatio <= 100000, "Ratio cannot exceed 1000.00%"); // Updated check
 
         StabilizerPosition storage pos = positions[tokenId];
-        uint256 oldRatio = pos.minCollateralRatio;
+        // uint256 oldRatio = pos.minCollateralRatio; // Removed oldRatio storage
         pos.minCollateralRatio = newRatio;
 
-        emit MinCollateralRatioUpdated(tokenId, oldRatio, newRatio);
+        emit MinCollateralRatioUpdated(tokenId, newRatio); // Emit only newRatio
     }
 
     // --- PositionEscrow Callback Handlers ---
