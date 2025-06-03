@@ -221,7 +221,6 @@ contract DeployL1Script is DeployScript {
         // Deploy Reporter Proxy and Initialize
         console2.log("Deploying OvercollateralizationReporter proxy...");
         require(reporterImplAddress != address(0), "Reporter implementation not deployed");
-        require(proxyAdminAddress != address(0), "ProxyAdmin not deployed");
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
         require(rateContractAddress != address(0), "Rate contract not deployed");
         require(cuspdTokenAddress != address(0), "cUSPD token not deployed");
