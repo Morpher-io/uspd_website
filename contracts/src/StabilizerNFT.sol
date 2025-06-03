@@ -289,7 +289,7 @@ contract StabilizerNFT is
 
         // Inlined positionEscrowAddress
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrows[positionTokenId]);
-        require(address(positionEscrow) != address(0), "PositionEscrow not found for token");
+        // require(address(positionEscrow) != address(0), "PositionEscrow not found for token"); // Removed: Invariant from mint
 
         // Inlined currentOracle
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle(cuspdToken.oracle()).attestationService(priceQuery);
@@ -411,7 +411,8 @@ contract StabilizerNFT is
         if (positionEscrow.backedPoolShares() == 0) {
             _removeFromAllocatedList(positionTokenId);
             // If the associated StabilizerEscrow has funds, move NFT to unallocated list
-            if (stabilizerEscrows[positionTokenId] != address(0) && IStabilizerEscrow(stabilizerEscrows[positionTokenId]).unallocatedStETH() > 0) {
+            // stabilizerEscrows[positionTokenId] != address(0) check removed as it's an invariant from mint
+            if (IStabilizerEscrow(stabilizerEscrows[positionTokenId]).unallocatedStETH() > 0) {
                 _registerUnallocatedPosition(positionTokenId);
             }
         }
@@ -495,7 +496,7 @@ contract StabilizerNFT is
 
             StabilizerPosition storage pos = positions[currentId];
             address escrowAddress = stabilizerEscrows[currentId];
-            require(escrowAddress != address(0), "Escrow not found for stabilizer"); // Should not happen
+            // require(escrowAddress != address(0), "Escrow not found for stabilizer"); // Removed: Invariant from mint
 
             // Get available stETH balance from the escrow
             uint256 escrowBalance = IStabilizerEscrow(escrowAddress).unallocatedStETH();
@@ -533,7 +534,7 @@ contract StabilizerNFT is
             // --- Interact with PositionEscrow ---
             // PositionNFT interaction removed
             address positionEscrowAddress = positionEscrows[currentId];
-            require(positionEscrowAddress != address(0), "PositionEscrow not found");
+            // require(positionEscrowAddress != address(0), "PositionEscrow not found"); // Removed: Invariant from mint
 
             // 1. Transfer Stabilizer's stETH from StabilizerEscrow to PositionEscrow
             // Approve this contract to pull from StabilizerEscrow
@@ -613,7 +614,7 @@ contract StabilizerNFT is
         require(msg.value > 0, "No ETH sent");
 
         address escrowAddress = stabilizerEscrows[tokenId];
-        require(escrowAddress != address(0), "Escrow not found");
+        // require(escrowAddress != address(0), "Escrow not found"); // Removed: Invariant from mint
 
         // Forward ETH to Escrow's deposit function
         IStabilizerEscrow(escrowAddress).deposit{value: msg.value}();
@@ -635,7 +636,7 @@ contract StabilizerNFT is
         require(stETHAmount > 0, "Amount must be positive");
 
         address escrowAddress = stabilizerEscrows[tokenId];
-        require(escrowAddress != address(0), "Escrow not found");
+        // require(escrowAddress != address(0), "Escrow not found"); // Removed: Invariant from mint
 
         // Transfer stETH from owner to Escrow
         IERC20(stETH).transferFrom(msg.sender, escrowAddress, stETHAmount);
@@ -657,7 +658,7 @@ contract StabilizerNFT is
         require(stETHAmount > 0, "Amount must be positive");
 
         address escrowAddress = stabilizerEscrows[tokenId];
-        require(escrowAddress != address(0), "Escrow not found");
+        // require(escrowAddress != address(0), "Escrow not found"); // Removed: Invariant from mint
 
         // Call the escrow's withdraw function (tokenId is no longer needed as argument)
         IStabilizerEscrow(escrowAddress).withdrawUnallocated(/* tokenId removed */ stETHAmount);
@@ -810,7 +811,7 @@ contract StabilizerNFT is
             require(IERC20(stETH).transfer(address(cuspdToken), sliceResult.stEthPaidToUser),"User stETH transfer to cUSPDToken failed");
         }
         if (sliceResult.stEthReturnedToStabilizer > 0) {
-            require(stabilizerEscrows[currentId] != address(0), "StabilizerEscrow not found");
+            // require(stabilizerEscrows[currentId] != address(0), "StabilizerEscrow not found"); // Removed: Invariant from mint
             require(IERC20(stETH).transfer(stabilizerEscrows[currentId], sliceResult.stEthReturnedToStabilizer),"Stabilizer stETH transfer to StabilizerEscrow failed");
         }
     }
@@ -846,7 +847,7 @@ contract StabilizerNFT is
             uint256 nextIdToProcess = pos.prevAllocated; // Store prevAllocated *before* any list modification
 
             IPositionEscrow positionEscrow = IPositionEscrow(positionEscrows[currentId]);
-            require(address(positionEscrow) != address(0), "PositionEscrow not found");
+            // require(address(positionEscrow) != address(0), "PositionEscrow not found"); // Removed: Invariant from mint
 
             uint256 currentBackedShares = positionEscrow.backedPoolShares();
 
@@ -872,7 +873,8 @@ contract StabilizerNFT is
                     // If all shares from this position were unallocated, update lists
                     if ((currentBackedShares == poolSharesSliceToUnallocate)) { // fullyUnallocated
                         _removeFromAllocatedList(currentId);
-                        if (stabilizerEscrows[currentId] != address(0) && IStabilizerEscrow(stabilizerEscrows[currentId]).unallocatedStETH() > 0) {
+                        // stabilizerEscrows[currentId] != address(0) check removed as it's an invariant from mint
+                        if (IStabilizerEscrow(stabilizerEscrows[currentId]).unallocatedStETH() > 0) {
                              _registerUnallocatedPosition(currentId);
                         }
                     }
