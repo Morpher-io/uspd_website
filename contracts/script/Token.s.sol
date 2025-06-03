@@ -165,90 +165,9 @@ contract DeployL2Script is Script {
         vm.stopBroadcast();
     }
 
-    // --- Deployment Functions ---
+    // --- Deployment Functions --- (Common ones moved to DeployScript.sol)
 
-    function deployBridgeEscrow(address _cuspdToken, address _uspdToken) internal {
-        console2.log("Deploying BridgeEscrow...");
-        require(_cuspdToken != address(0), "cUSPD token not deployed for BridgeEscrow");
-        require(_uspdToken != address(0), "USPD token not deployed for BridgeEscrow");
-
-        bytes memory bytecode = abi.encodePacked(
-            type(BridgeEscrow).creationCode,
-            abi.encode(_cuspdToken, _uspdToken, rateContractAddress) // cUSPD, USPDToken, RateContract
-        );
-        bridgeEscrowAddress = createX.deployCreate2{value: 0}(BRIDGE_ESCROW_SALT, bytecode);
-        console2.log("BridgeEscrow deployed at:", bridgeEscrowAddress);
-    }
-
-    // --- Helper: Deploy Proxy without Init Data ---
-    function deployProxy_NoInit(bytes32 salt, address implementationAddress, bool isUUPS) internal returns (address proxyAddress) {
-        bytes memory bytecode;
-        if (isUUPS) {
-            bytecode = abi.encodePacked(
-                type(ERC1967Proxy).creationCode,
-                abi.encode(implementationAddress, bytes("")) // Empty init data for UUPS, init called separately
-            );
-        } else {
-            bytecode = abi.encodePacked(
-                type(TransparentUpgradeableProxy).creationCode,
-                abi.encode(implementationAddress, proxyAdminAddress, bytes("")) // Empty init data
-            );
-        }
-        proxyAddress = createX.deployCreate2{value: 0}(salt, bytecode);
-    }
-
-    function deployProxyAdmin() internal {
-        // Deploy ProxyAdmin with CREATE2 using CreateX
-        bytes memory bytecode = type(ProxyAdmin).creationCode;
-        proxyAdminAddress = createX.deployCreate2(PROXY_ADMIN_SALT, abi.encodePacked(bytecode, abi.encode(deployer)));
-
-        console2.log("ProxyAdmin deployed at:", proxyAdminAddress);
-    }
-
-    function deployOracleImplementation() internal {
-        // Deploy PriceOracle implementation with regular CREATE
-        PriceOracle oracleImpl = new PriceOracle();
-        oracleImplAddress = address(oracleImpl);
-
-        console2.log(
-            "PriceOracle implementation deployed at:",
-            oracleImplAddress
-        );
-    }
-
-    // Removed: deployStabilizerEscrowImplementation
-    // Removed: deployPositionEscrowImplementation
-    // Removed: deployInsuranceEscrow
-
-    function deployOracleProxy() internal {
-        // Prepare initialization data
-        bytes memory initData = abi.encodeCall(
-            PriceOracle.initialize,
-            (
-                maxPriceDeviation,
-                priceStalenessPeriod,
-                usdcAddress,
-                uniswapRouter,
-                chainlinkAggregator,
-                deployer
-            )
-        );
-
-        // Deploy ERC1967Proxy (UUPS) with CREATE2 using CreateX
-        bytes memory bytecode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(oracleImplAddress, initData) // Pass implementation and init data to ERC1967Proxy constructor
-        );
-
-        oracleProxyAddress = createX.deployCreate2{value: 0}(ORACLE_PROXY_SALT, bytecode);
-
-        console2.log("PriceOracle proxy deployed at:", oracleProxyAddress);
-    }
-
-    // Removed: deployStabilizerNFTImplementation
-    // Removed: deployCUSPDToken (L1 version)
-    // Removed: deployUspdToken (L1 version)
-
+    // L2 Specific deployment functions:
     // Deploy cUSPD token for bridged scenario
     function deployCUSPDToken_Bridged() internal {
         console2.log("Deploying cUSPDToken for bridged scenario...");
