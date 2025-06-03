@@ -57,9 +57,10 @@ contract DeployL2Script is DeployScript {
     function run() public {
         vm.startBroadcast();
 
-        // --- Always Deployed on L2 ---
-        deployOracleImplementation();
-        deployOracleProxy(); 
+        // --- Deploy common L2 infrastructure (Oracle) ---
+        deployOracleImplementation(); // From base
+        deployOracleProxy();          // From base
+        
         // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first.
 
         console2.log("Deploying Bridged Token Only for L2...");
@@ -77,18 +78,15 @@ contract DeployL2Script is DeployScript {
         // Note: BridgeEscrow for L2 might need a specific L2 rate contract if one is deployed.
         // For now, it uses the global rateContractAddress which is address(0) for L2 setup.
         // If an L2-specific PoolSharesConversionRate is deployed, pass its address to deployBridgeEscrow.
-        deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // Deploy BridgeEscrow for L2
+        deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // From base, uses rateContractAddress (0 for L2 here)
         setupRolesAndPermissions_Bridged();
 
-        saveDeploymentInfo();
+        saveDeploymentInfo(); // Call from base
 
         vm.stopBroadcast();
     }
 
-    // --- Deployment Functions --- (Common ones moved to DeployScript.sol)
-
-    // L2 Specific deployment functions:
-    // Deploy cUSPD token for bridged scenario
+    // --- L2 Specific Deployment Functions ---
     function deployCUSPDToken_Bridged() internal {
         console2.log("Deploying cUSPDToken for bridged scenario...");
         require(oracleProxyAddress != address(0), "Oracle proxy not deployed");
