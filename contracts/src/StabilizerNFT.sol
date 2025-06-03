@@ -20,7 +20,6 @@ import "./StabilizerEscrow.sol";
 import "./PositionEscrow.sol";
 import {Clones} from "../lib/openzeppelin-contracts/contracts/proxy/Clones.sol"; // <-- Import Clones library
 
-import {console} from "forge-std/console.sol";
 
 contract StabilizerNFT is
     IStabilizerNFT,
@@ -945,8 +944,9 @@ contract StabilizerNFT is
     function reportCollateralAddition(uint256 stEthAmount) external override onlyRole(POSITION_ESCROW_ROLE) {
         if (stEthAmount == 0) return; // Nothing to report
 
-        uint256 currentYieldFactor = rateContract.getYieldFactor();
-        require(currentYieldFactor > 0, "Yield factor zero during report add");
+        // this is checked in the reporter already, saving the gas cost
+        // uint256 currentYieldFactor = rateContract.getYieldFactor();
+        // require(currentYieldFactor > 0, "Yield factor zero during report add");
 
         // The stETH amount *is* the ETH equivalent delta for this moment
         reporter.updateSnapshot(int256(stEthAmount)); // Call reporter
@@ -960,8 +960,9 @@ contract StabilizerNFT is
     function reportCollateralRemoval(uint256 stEthAmount) external override onlyRole(POSITION_ESCROW_ROLE) {
         if (stEthAmount == 0) return; // Nothing to report
 
-        uint256 currentYieldFactor = rateContract.getYieldFactor();
-        require(currentYieldFactor > 0, "Yield factor zero during report remove");
+        // this is checked in the reporter already, saving the gas cost
+        // uint256 currentYieldFactor = rateContract.getYieldFactor();
+        // require(currentYieldFactor > 0, "Yield factor zero during report remove");
 
         // The stETH amount *is* the ETH equivalent delta for this moment
         reporter.updateSnapshot(-int256(stEthAmount)); // Call reporter
@@ -975,13 +976,13 @@ contract StabilizerNFT is
     // --- End Internal Collateral Tracking Logic ---
 
 
-    /**
-     * @notice Returns the minimum collateralization ratio for a given stabilizer token ID.
-     */
-    function getMinCollateralRatio(uint256 tokenId) external view returns (uint256) {
-        require(ownerOf(tokenId) != address(0), "Token does not exist");
-        return positions[tokenId].minCollateralRatio;
-    }
+    // /**
+    //  * @notice Returns the minimum collateralization ratio for a given stabilizer token ID.
+    //  */
+    // function getMinCollateralRatio(uint256 tokenId) external view returns (uint256) {
+    //     require(ownerOf(tokenId) != address(0), "Token does not exist");
+    //     return positions[tokenId].minCollateralRatio;
+    // }
 
 
     /**
@@ -1023,7 +1024,7 @@ contract StabilizerNFT is
     }
 
 
-    receive() external payable {}
+    // receive() external payable {}
 
     // /**
     //  * @dev Base function for converting unsigned integers to strings. It's purely internal.
@@ -1047,6 +1048,7 @@ contract StabilizerNFT is
     //     }
     //     return string(buffer);
     // }
+    
 
     // --- Collateral Ratio View Function (REMOVED - Moved to Reporter) ---
     // function getSystemCollateralizationRatio(...) external view returns (uint256 ratio) { ... }
