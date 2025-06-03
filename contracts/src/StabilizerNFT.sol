@@ -924,8 +924,8 @@ contract StabilizerNFT is
         uint256 newRatio
     ) external {
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
-        require(newRatio >= 11000, "Ratio must be at least 110.00%"); // Updated check
-        require(newRatio <= 100000, "Ratio cannot exceed 1000.00%"); // Updated check
+        require(newRatio >= 11000 && newRatio <= 100000, "Ratio must be at between 110.00% and 1000%"); // Updated check
+        // require(, "Ratio cannot exceed 1000.00%"); // Updated check
 
         StabilizerPosition storage pos = positions[tokenId];
         // uint256 oldRatio = pos.minCollateralRatio; // Removed oldRatio storage
