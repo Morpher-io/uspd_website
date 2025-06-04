@@ -15,10 +15,19 @@ contract DeployScript is Script {
     // Configuration
     // Chain ID constants
     uint256 internal constant ETH_MAINNET_CHAIN_ID = 1;
-    // uint256 internal constant SEPOLIA_CHAIN_ID = 11155111; // Moved to DeployScriptTestnet
-    uint256 internal constant POLYGON_MAINNET_CHAIN_ID = 137;
-    // uint256 internal constant POLYGON_MUMBAI_CHAIN_ID = 80001; // Moved to DeployScriptTestnet
-    // Add other mainnet L2 chain IDs as needed
+    uint256 internal constant OP_MAINNET_CHAIN_ID = 10;
+    uint256 internal constant BNB_MAINNET_CHAIN_ID = 56;
+    uint256 internal constant POLYGON_MAINNET_CHAIN_ID = 137; // Already exists
+    uint256 internal constant ZKSYNC_ERA_MAINNET_CHAIN_ID = 324;
+    uint256 internal constant ARBITRUM_ONE_CHAIN_ID = 42161;
+    uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;
+    uint256 internal constant LINEA_MAINNET_CHAIN_ID = 59144;
+    uint256 internal constant MANTLE_MAINNET_CHAIN_ID = 5000;
+    uint256 internal constant SCROLL_MAINNET_CHAIN_ID = 534352;
+    uint256 internal constant POLYGON_ZKEVM_MAINNET_CHAIN_ID = 1101;
+    // Add other mainnet L2 chain IDs as needed, e.g.:
+    // uint256 internal constant AVAX_MAINNET_CHAIN_ID = 43114;
+    // uint256 internal constant FANTOM_MAINNET_CHAIN_ID = 250;
 
     // Mainnet Configuration Addresses
     address internal constant MAINNET_USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;

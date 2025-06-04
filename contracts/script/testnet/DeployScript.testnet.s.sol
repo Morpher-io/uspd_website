@@ -7,8 +7,18 @@ import "../DeployScript.sol"; // Import the main base script
 contract DeployScriptTestnet is DeployScript {
 
     // Testnet Chain ID constants
-    uint256 internal constant SEPOLIA_CHAIN_ID = 11155111;
-    uint256 internal constant POLYGON_MUMBAI_CHAIN_ID = 80001;
+    uint256 internal constant SEPOLIA_CHAIN_ID = 11155111; // Ethereum Testnet
+    uint256 internal constant OP_SEPOLIA_CHAIN_ID = 11155420;
+    uint256 internal constant BNB_TESTNET_CHAIN_ID = 97;
+    uint256 internal constant POLYGON_AMOY_CHAIN_ID = 80002; // Replaces Mumbai
+    uint256 internal constant ZKSYNC_ERA_SEPOLIA_CHAIN_ID = 300;
+    uint256 internal constant ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
+    uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84532;
+    uint256 internal constant LINEA_SEPOLIA_CHAIN_ID = 59141;
+    uint256 internal constant MANTLE_SEPOLIA_CHAIN_ID = 5003;
+    uint256 internal constant SCROLL_SEPOLIA_CHAIN_ID = 534351;
+    uint256 internal constant POLYGON_ZKEVM_TESTNET_CHAIN_ID = 1442;
+    uint256 internal constant HOLESKY_CHAIN_ID = 17000; // General ETH Testnet
     // Add other relevant testnet L2 chain IDs as needed
 
     // Testnet (Sepolia-based) Configuration Addresses
@@ -30,8 +40,18 @@ contract DeployScriptTestnet is DeployScript {
         // If on mainnet (chainId 1), super.setUp() already set mainnet values, which is fine (this script wouldn't typically be run on mainnet).
         // This script is primarily for chains like Sepolia, Mumbai, etc.
 
-        bool isTestnetEnvironment = (chainId == SEPOLIA_CHAIN_ID || 
-                                     chainId == POLYGON_MUMBAI_CHAIN_ID /* Add other L2 testnet IDs */);
+        bool isTestnetEnvironment = (chainId == SEPOLIA_CHAIN_ID ||
+                                     chainId == OP_SEPOLIA_CHAIN_ID ||
+                                     chainId == BNB_TESTNET_CHAIN_ID ||
+                                     chainId == POLYGON_AMOY_CHAIN_ID ||
+                                     chainId == ZKSYNC_ERA_SEPOLIA_CHAIN_ID ||
+                                     chainId == ARBITRUM_SEPOLIA_CHAIN_ID ||
+                                     chainId == BASE_SEPOLIA_CHAIN_ID ||
+                                     chainId == LINEA_SEPOLIA_CHAIN_ID ||
+                                     chainId == MANTLE_SEPOLIA_CHAIN_ID ||
+                                     chainId == SCROLL_SEPOLIA_CHAIN_ID ||
+                                     chainId == POLYGON_ZKEVM_TESTNET_CHAIN_ID ||
+                                     chainId == HOLESKY_CHAIN_ID);
 
         if (isTestnetEnvironment) {
             console2.log("Overriding with Testnet Environment configuration for chain ID:", chainId);
