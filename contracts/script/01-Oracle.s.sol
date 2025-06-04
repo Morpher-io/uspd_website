@@ -8,38 +8,27 @@ import "../test/mocks/MockLido.sol";  // For local mock deployment
 
 contract DeployOracleScript is DeployScript {
     function setUp() public override {
-        super.setUp(); // Call base setUp for common initializations
+        super.setUp(); // Call base setUp. It now handles setting usdcAddress, uniswapRouter, chainlinkAggregator, etc.
+                       // based on whether the chainId is mainnet-like, testnet-like, or local.
 
-        // Set L1 network-specific configuration for Oracle
-        // These are needed by deployOracleProxy in the base DeployScript
-        if (chainId == MAINNET_CHAIN_ID) { // Ethereum Mainnet (MAINNET_CHAIN_ID is 1 from DeployScript)
-            usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Uniswap V2 for PriceOracle example
-            chainlinkAggregator = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // ETH/USD
-        } else if (chainId == 11155111) { // Sepolia
-            usdcAddress = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Example Sepolia USDC
-            uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Uniswap V2 Router (Sepolia has one, or use a placeholder)
-            chainlinkAggregator = 0x694AA1769357215DE4FAC081bf1f309aDC325306; // ETH/USD on Sepolia
-        } else if (chainId == 31337) { // Local development (Anvil/Hardhat)
-            console2.log("Local development detected (chainId 31337), setting up Oracle with placeholders/mocks...");
-            // For local testing, you might deploy mocks or use placeholders if external calls are not mocked in tests.
-            // If PriceOracle is tested with actual external calls mocked, these can be real addresses.
-            // For a self-contained deployment script for local, you might deploy mock dependencies here.
-            // However, for simplicity in this step, we'll use placeholders.
-            // Actual mock deployment for stETH/Lido is handled in DeployL1Script for full system.
-            // This script focuses only on Oracle.
-            usdcAddress = address(0x5); // Placeholder USDC
-            uniswapRouter = address(0x6); // Placeholder Uniswap Router
-            chainlinkAggregator = address(0x7); // Placeholder Chainlink Aggregator
-        } else {
-            // Revert if this script is run on an unexpected L2 or other chain
-            // Or, configure L2 specific addresses if this Oracle deployment is also intended for L2s
-            // For now, assuming this is primarily for L1 or local L1-like setup.
-            revert("Unsupported chain ID for Oracle L1 deployment script.");
+        // For local development, if this script needs to deploy its own mocks for stETH/Lido
+        // (because PriceOracle doesn't directly use them, but other future scripts might need them configured by DeployScript)
+        // you could add local mock deployment here.
+        // However, PriceOracle itself only needs usdcAddress, uniswapRouter, chainlinkAggregator which are set by super.setUp().
+        if (chainId == 31337) {
+            // If stETHAddress and lidoAddress were not set by a more specific local setup
+            // and are needed by contracts deployed by this script (not the case for Oracle),
+            // you might deploy/set them here.
+            // For Oracle, this is not strictly necessary as it doesn't use stETH/Lido directly.
+            // If DeployScript.sol's local setup for stETH/Lido is address(0), that's fine for Oracle.
+            console2.log("Oracle-specific local setup (if any)...");
         }
-        console2.log("Oracle USDC Address set to:", usdcAddress);
-        console2.log("Oracle Uniswap Router Address set to:", uniswapRouter);
-        console2.log("Oracle Chainlink Aggregator Address set to:", chainlinkAggregator);
+        
+        // The necessary addresses (usdcAddress, uniswapRouter, chainlinkAggregator) are now populated by super.setUp().
+        // The revert for unsupported chain ID is also handled in super.setUp().
+        console2.log("Oracle USDC Address (from DeployScript):", usdcAddress);
+        console2.log("Oracle Uniswap Router Address (from DeployScript):", uniswapRouter);
+        console2.log("Oracle Chainlink Aggregator Address (from DeployScript):", chainlinkAggregator);
     }
 
     function deployOracleImplementation() internal {
