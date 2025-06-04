@@ -169,7 +169,46 @@ contract DeploySystemCoreScript is DeployScript {
     function setupSystemRoles() internal {
         console2.log("Setting up System Core roles...");
 
-        StabilizerNFT stabilizer = StabilizerNFT(payable(stabilizerProxyAddress));
+        // L1 Chain IDs for L1 specific roles
+        bool isL1 = (chainId == ETH_MAINNET_CHAIN_ID || chainId == SEPOLIA_CHAIN_ID);
+
+        if (isL1) {
+            console2.log("Applying L1 specific roles...");
+            StabilizerNFT stabilizer = StabilizerNFT(payable(stabilizerProxyAddress));
+            cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
+            OvercollateralizationReporter oReporter = OvercollateralizationReporter(payable(reporterAddress));
+
+            // Grant StabilizerNFT the BURNER_ROLE on cUSPDToken
+            coreToken.grantRole(coreToken.BURNER_ROLE(), stabilizerProxyAddress);
+            console2.log("BURNER_ROLE granted to StabilizerNFT on cUSPDToken");
+
+            // Grant USPDToken the USPD_CALLER_ROLE on cUSPDToken
+            coreToken.grantRole(coreToken.USPD_CALLER_ROLE(), uspdTokenAddress);
+            console2.log("USPD_CALLER_ROLE granted to USPDToken on cUSPDToken");
+            
+            // Grant StabilizerNFT the UPDATER_ROLE on OvercollateralizationReporter
+            oReporter.grantRole(oReporter.UPDATER_ROLE(), stabilizerProxyAddress);
+            console2.log("UPDATER_ROLE granted to StabilizerNFT on OvercollateralizationReporter");
+
+            // Other roles (like admin roles on individual contracts) are typically set to deployer
+            // during construction or initialization.
+            console2.log("L1 System Core roles setup complete.");
+        } else {
+            console2.log("Skipping L1 specific roles for non-L1 chain ID:", chainId);
+            // Potentially L2 specific roles for these core contracts could be added here if any.
+            // For now, cUSPDToken.USPD_CALLER_ROLE for USPDToken is common for L1/L2.
+            // Let's ensure USPD_CALLER_ROLE is set for L2 as well if not covered by L1 block.
+            if (uspdTokenAddress != address(0) && cuspdTokenAddress != address(0)) {
+                 cUSPDToken coreTokenL2 = cUSPDToken(payable(cuspdTokenAddress));
+                 coreTokenL2.grantRole(coreTokenL2.USPD_CALLER_ROLE(), uspdTokenAddress);
+                 console2.log("USPD_CALLER_ROLE granted to USPDToken on cUSPDToken (L2 context)");
+            }
+        }
+        // Roles common to L1 and L2 or roles for contracts not deployed by this script
+        // are handled in their respective scripts or a dedicated global role script.
+    }
+
+    function run() public {
         cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
         OvercollateralizationReporter oReporter = OvercollateralizationReporter(payable(reporterAddress));
 

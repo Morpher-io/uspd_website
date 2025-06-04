@@ -41,13 +41,50 @@ contract DeployBridgeEscrowScript is DeployScript {
 
         deployBridgeEscrow();
 
-        // Grant initial roles for BridgeEscrow (optional, can be a separate script/step)
-        // e.g., if BridgeEscrow needs to call cUSPDToken.mint/burn, those roles are set on cUSPDToken
-        // by the DeploySystemCore script or a dedicated role setup script.
-        // BridgeEscrow itself might have roles to grant to relayers or other bridge components.
-        // BridgeEscrow bridge = BridgeEscrow(bridgeEscrowAddress);
-        // console2.log("Granting BridgeEscrow roles (if any)...");
-        // e.g., bridge.grantRole(bridge.RELAYER_ROLE(), someRelayerAddress);
+        // L1 Chain IDs for L1 specific roles
+        bool isL1 = (chainId == ETH_MAINNET_CHAIN_ID || chainId == SEPOLIA_CHAIN_ID);
+
+        if (!isL1) {
+            console2.log("Applying L2 specific roles related to BridgeEscrow for chain ID:", chainId);
+            require(bridgeEscrowAddress != address(0), "BridgeEscrow not deployed, cannot set L2 roles");
+            
+            if (cuspdTokenAddress != address(0)) {
+                cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
+                coreToken.grantRole(coreToken.MINTER_ROLE(), bridgeEscrowAddress);
+                coreToken.grantRole(coreToken.BURNER_ROLE(), bridgeEscrowAddress);
+                console2.log("MINTER_ROLE and BURNER_ROLE granted to BridgeEscrow on cUSPDToken (L2)");
+            } else {
+                console2.log("Warning: cUSPDToken address is zero, skipping role grant for BridgeEscrow on cUSPDToken.");
+            }
+
+            if (rateContractAddress != address(0)) {
+                // Ensure PoolSharesConversionRate is castable and grant role
+                // Note: The PoolSharesConversionRate constructor already grants YIELD_FACTOR_UPDATER_ROLE
+                // to the admin on L2. If BridgeEscrow is a different entity than admin and needs this role,
+                // it should be granted here. Assuming admin (deployer) is sufficient for now or BridgeEscrow is admin.
+                // If BridgeEscrow needs to be explicitly granted this role and it's not the admin:
+                PoolSharesConversionRate l2RateContract = PoolSharesConversionRate(payable(rateContractAddress));
+                // Check if deployer (admin of rateContract) is different from bridgeEscrowAddress if bridge needs to update
+                // For now, let's assume the bridge might need it if it's not the admin.
+                // This role is critical for the bridge to update yield factor on L2.
+                // The admin of PoolSharesConversionRate (deployer) can grant this.
+                // If BridgeEscrow is deployed by 'deployer', it might not need explicit grant if it calls as admin.
+                // However, explicit grant is safer if BridgeEscrow is intended to be the designated updater.
+                address rateContractAdmin = l2RateContract.getRoleAdmin(l2RateContract.YIELD_FACTOR_UPDATER_ROLE());
+                if (l2RateContract.hasRole(l2RateContract.DEFAULT_ADMIN_ROLE(), deployer)) { // Check if deployer is admin
+                     l2RateContract.grantRole(l2RateContract.YIELD_FACTOR_UPDATER_ROLE(), bridgeEscrowAddress);
+                     console2.log("YIELD_FACTOR_UPDATER_ROLE granted to BridgeEscrow on PoolSharesConversionRate (L2)");
+                } else {
+                    console2.log("Warning: Deployer is not admin of L2 RateContract, cannot grant YIELD_FACTOR_UPDATER_ROLE to BridgeEscrow.");
+                }
+
+            } else {
+                console2.log("Warning: RateContract address is zero, skipping YIELD_FACTOR_UPDATER_ROLE grant for BridgeEscrow.");
+            }
+        } else {
+            console2.log("Skipping L2 specific roles for BridgeEscrow on L1 chain ID:", chainId);
+            // L1 BridgeEscrow might have different roles or no specific roles set in this script.
+        }
 
         saveDeploymentInfo(); // Inherited from DeployScript
 
