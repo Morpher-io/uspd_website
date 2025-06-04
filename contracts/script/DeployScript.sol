@@ -222,20 +222,48 @@ contract DeployScript is Script {
             vm.writeFile(deploymentPath, initialJson);
         }
 
-        vm.writeJson(vm.toString(oracleImplAddress), deploymentPath, ".contracts.oracleImpl");
-        vm.writeJson(vm.toString(oracleProxyAddress), deploymentPath, ".contracts.oracle");
-        vm.writeJson(vm.toString(cuspdTokenAddress), deploymentPath, ".contracts.cuspdToken");
-        vm.writeJson(vm.toString(uspdTokenAddress), deploymentPath, ".contracts.uspdToken");
-        vm.writeJson(vm.toString(bridgeEscrowAddress), deploymentPath, ".contracts.bridgeEscrow");
-        vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
-        vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
-        vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
-        vm.writeJson(vm.toString(reporterImplAddress), deploymentPath, ".contracts.reporterImpl");
-        vm.writeJson(vm.toString(reporterAddress), deploymentPath, ".contracts.reporter");
-        vm.writeJson(vm.toString(insuranceEscrowAddress), deploymentPath, ".contracts.insuranceEscrow");
-        vm.writeJson(vm.toString(stabilizerEscrowImplAddress), deploymentPath, ".contracts.stabilizerEscrowImpl");
-        vm.writeJson(vm.toString(positionEscrowImplAddress), deploymentPath, ".contracts.positionEscrowImpl");
+        // Only write contract addresses if they are set (i.e., not address(0))
+        if (oracleImplAddress != address(0)) {
+            vm.writeJson(vm.toString(oracleImplAddress), deploymentPath, ".contracts.oracleImpl");
+        }
+        if (oracleProxyAddress != address(0)) {
+            vm.writeJson(vm.toString(oracleProxyAddress), deploymentPath, ".contracts.oracle");
+        }
+        if (cuspdTokenAddress != address(0)) {
+            vm.writeJson(vm.toString(cuspdTokenAddress), deploymentPath, ".contracts.cuspdToken");
+        }
+        if (uspdTokenAddress != address(0)) {
+            vm.writeJson(vm.toString(uspdTokenAddress), deploymentPath, ".contracts.uspdToken");
+        }
+        if (bridgeEscrowAddress != address(0)) {
+            vm.writeJson(vm.toString(bridgeEscrowAddress), deploymentPath, ".contracts.bridgeEscrow");
+        }
+        if (stabilizerImplAddress != address(0)) {
+            vm.writeJson(vm.toString(stabilizerImplAddress), deploymentPath, ".contracts.stabilizerImpl");
+        }
+        if (stabilizerProxyAddress != address(0)) {
+            vm.writeJson(vm.toString(stabilizerProxyAddress), deploymentPath, ".contracts.stabilizer");
+        }
+        if (rateContractAddress != address(0)) {
+            vm.writeJson(vm.toString(rateContractAddress), deploymentPath, ".contracts.rateContract");
+        }
+        if (reporterImplAddress != address(0)) {
+            vm.writeJson(vm.toString(reporterImplAddress), deploymentPath, ".contracts.reporterImpl");
+        }
+        if (reporterAddress != address(0)) {
+            vm.writeJson(vm.toString(reporterAddress), deploymentPath, ".contracts.reporter");
+        }
+        if (insuranceEscrowAddress != address(0)) {
+            vm.writeJson(vm.toString(insuranceEscrowAddress), deploymentPath, ".contracts.insuranceEscrow");
+        }
+        if (stabilizerEscrowImplAddress != address(0)) {
+            vm.writeJson(vm.toString(stabilizerEscrowImplAddress), deploymentPath, ".contracts.stabilizerEscrowImpl");
+        }
+        if (positionEscrowImplAddress != address(0)) {
+            vm.writeJson(vm.toString(positionEscrowImplAddress), deploymentPath, ".contracts.positionEscrowImpl");
+        }
 
+        // Config and metadata are generally fine to be updated by the latest script run
         vm.writeJson(vm.toString(usdcAddress), deploymentPath, ".config.usdcAddress");
         vm.writeJson(vm.toString(uniswapRouter), deploymentPath, ".config.uniswapRouter");
         vm.writeJson(vm.toString(chainlinkAggregator), deploymentPath, ".config.chainlinkAggregator");
