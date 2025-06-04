@@ -713,10 +713,10 @@ contract StabilizerNFTTest is Test {
 
         // Try to set invalid ratios as owner
         vm.startPrank(user1);
-        vm.expectRevert("Ratio must be at least 110.00%"); // Updated message and value
+        vm.expectRevert("Ratio must be at between 110.00% and 1000%"); // Updated message and value
         stabilizerNFT.setMinCollateralizationRatio(tokenId, 10999); // Updated value
 
-        vm.expectRevert("Ratio cannot exceed 1000.00%"); // Updated message and value
+        vm.expectRevert("Ratio must be at between 110.00% and 1000%"); // Updated message and value
         stabilizerNFT.setMinCollateralizationRatio(tokenId, 100001); // Updated value
 
         // Set valid ratio
@@ -3173,12 +3173,12 @@ contract StabilizerNFTTest is Test {
         );
 
         vm.prank(positionEscrowAddr);
-        vm.expectRevert("Yield factor zero during report add");
+        vm.expectRevert("Reporter: Current yield factor is zero");
         stabilizerNFT.reportCollateralAddition(stEthAmount);
 
         // Reset mock for the next call if needed, or assume it persists for removal test too
         vm.prank(positionEscrowAddr);
-        vm.expectRevert("Yield factor zero during report remove");
+        vm.expectRevert("Reporter: Current yield factor is zero");
         stabilizerNFT.reportCollateralRemoval(stEthAmount);
 
         // Clear the mock call for subsequent tests if necessary
@@ -3289,35 +3289,36 @@ contract StabilizerNFTTest is Test {
         );
     }
 
-    function testAllocateStabilizerFunds_Revert_StabilizerEscrowZero() public {
-        // Setup: Mint and fund a stabilizer to get it into the unallocated list
-        uint256 tokenId = stabilizerNFT.mint(user1);
-        vm.deal(user1, 0.1 ether);
-        vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId);
-        vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000);
+    // this is an invariant and will never happen, removed the require in the stabilizerNFT therefore removing the test case as well
+    // function testAllocateStabilizerFunds_Revert_StabilizerEscrowZero() public {
+    //     // Setup: Mint and fund a stabilizer to get it into the unallocated list
+    //     uint256 tokenId = stabilizerNFT.mint(user1);
+    //     vm.deal(user1, 0.1 ether);
+    //     vm.prank(user1);
+    //     stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId);
+    //     vm.prank(user1);
+    //     stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000);
 
-        // Manually set the stabilizerEscrows[tokenId] to address(0) using stdStore
-        uint256 slot = stdstore
-            .target(address(stabilizerNFT))
-            .sig(stabilizerNFT.stabilizerEscrows.selector)
-            .with_key(tokenId)
-            .find();
-        vm.store(address(stabilizerNFT), bytes32(slot), bytes32(uint256(0)));
+    //     // Manually set the stabilizerEscrows[tokenId] to address(0) using stdStore
+    //     uint256 slot = stdstore
+    //         .target(address(stabilizerNFT))
+    //         .sig(stabilizerNFT.stabilizerEscrows.selector)
+    //         .with_key(tokenId)
+    //         .find();
+    //     vm.store(address(stabilizerNFT), bytes32(slot), bytes32(uint256(0)));
 
-        assertEq(stabilizerNFT.stabilizerEscrows(tokenId), address(0), "Failed to zero out stabilizerEscrow address for test");
+    //     assertEq(stabilizerNFT.stabilizerEscrows(tokenId), address(0), "Failed to zero out stabilizerEscrow address for test");
 
-        // Attempt to allocate funds; it should try to process tokenId and find its escrow is address(0)
-        vm.expectRevert("Escrow not found for stabilizer");
-        vm.deal(address(cuspdToken), 1 ether);
-        vm.startPrank(address(cuspdToken));
-        stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
-            2000 ether, // ethUsdPrice
-            18          // priceDecimals
-        );
-        vm.stopPrank();
-    }
+    //     // Attempt to allocate funds; it should try to process tokenId and find its escrow is address(0)
+    //     vm.expectRevert("Escrow not found for stabilizer");
+    //     vm.deal(address(cuspdToken), 1 ether);
+    //     vm.startPrank(address(cuspdToken));
+    //     stabilizerNFT.allocateStabilizerFunds{value: 1 ether}(
+    //         2000 ether, // ethUsdPrice
+    //         18          // priceDecimals
+    //     );
+    //     vm.stopPrank();
+    // }
 
     function testAllocateStabilizerFunds_LoopSkip_RemainingEthZero() public {
         uint256 tokenId1 = stabilizerNFT.mint(user1); // Will be funded to take all user ETH

@@ -908,7 +908,7 @@ contract StabilizerNFT is
         require(ownerOf(tokenId) != address(0), "ERC721: invalid token ID");
         string memory currentBaseURI = baseURI;
         return bytes(currentBaseURI).length > 0
-            ? string(abi.encodePacked(currentBaseURI, tokenId))
+            ? string.concat(currentBaseURI, _toString(tokenId))
             : "";
     }
 
@@ -1028,28 +1028,29 @@ contract StabilizerNFT is
 
     // receive() external payable {}
 
-    // /**
-    //  * @dev Base function for converting unsigned integers to strings. It's purely internal.
-    //  *      Needed for tokenURI construction.
-    //  */
-    // function _toString(uint256 value) internal pure returns (string memory) {
-    //      if (value == 0) {
-    //         return "0";
-    //     }
-    //     uint256 temp = value;
-    //     uint256 digits;
-    //     while (temp != 0) {
-    //         digits++;
-    //         temp /= 10;
-    //     }
-    //     bytes memory buffer = new bytes(digits);
-    //     while (value != 0) {
-    //         digits -= 1;
-    //         buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
-    //         value /= 10;
-    //     }
-    //     return string(buffer);
-    // }
+    /**
+     * @dev Base function for converting unsigned integers to strings. It's purely internal.
+     *      Needed for tokenURI construction. Avoiding openzeppelin String utils to save some
+     *      bytecode since the contract is already close to the 24kb contract limit
+     */
+    function _toString(uint256 value) internal pure returns (string memory) {
+         if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }
     
 
     // --- Collateral Ratio View Function (REMOVED - Moved to Reporter) ---
