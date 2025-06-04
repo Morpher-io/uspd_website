@@ -104,266 +104,167 @@ contract DeployL1Script is DeployScript {
     // --- Deployment Functions --- (Common ones moved to DeployScript.sol)
 
     // L1 Specific deployment functions:
-    function deployStabilizerEscrowImplementation() internal {
-        // Deploy StabilizerEscrow implementation with regular CREATE
-        console2.log("Deploying StabilizerEscrow implementation...");
-        StabilizerEscrow impl = new StabilizerEscrow(); // Constructor takes no args now
+    // deployStabilizerEscrowImplementation, deployPositionEscrowImplementation moved to 03-EscrowImplementations.s.sol
+    // deployInsuranceEscrow, deployStabilizerNFTImplementation, deployCUSPDToken, deployUspdToken,
+    // deployReporterImplementation, deployReporterProxy, deployStabilizerNFTProxy_NoInit,
+    // initializeStabilizerNFTProxy, setupRolesAndPermissions moved to 04-DeploySystemCore.s.sol
+
+    // The run() function in this script will eventually be simplified or removed
+    // once all individual deployment scripts are created and tested.
+    // For now, it calls the old monolithic deployment flow.
+    // To use the new scripts, they must be run individually.
+
+    // Example of how the run function might look if it were to call the individual scripts (conceptual)
+    /*
+    function run() public {
+        // This is conceptual and would require each script to be callable as a library
+        // or for this script to execute them externally, which is not standard for Forge scripts.
+        // Typically, you run each script file separately.
+
+        // vm.startBroadcast();
+        // new DeployOracleScript().run();
+        // new DeployPoolSharesConversionRateScript().run();
+        // new DeployEscrowImplementationsScript().run();
+        // new DeploySystemCoreScript().run();
+        // new DeployBridgeEscrowScript().run(); // Assuming a 05-DeployBridge.s.sol
+        // saveDeploymentInfo(); // Final save, though each script saves its part
+        // vm.stopBroadcast();
+    }
+    */
+
+    // Keeping the old run() for now to ensure the file still compiles and runs the old way if called directly.
+    // This will be cleaned up as the refactor progresses.
+    function run() public {
+        vm.startBroadcast();
+
+        // --- Always Deployed ---
+        // deployOracleImplementation(); // Now in 01-Oracle.s.sol
+        // deployOracleProxy();          // Now in 01-Oracle.s.sol
+        
+        // --- Deploy Full System for L1 ---
+        console2.log("Deploying Full System for L1 (using old monolithic flow in DeployL1Script)...");
+        _deployStabilizerNFTImplementation_old();
+        _deployStabilizerEscrowImplementation_old(); 
+        _deployPositionEscrowImplementation_old(); 
+        _deployPoolSharesConversionRate_old();
+        _deployReporterImplementation_old();
+        _deployStabilizerNFTProxy_NoInit_old(); 
+        _deployInsuranceEscrow_old(); 
+        _deployCUSPDToken_old(); 
+        _deployUspdToken_old();  
+        deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // BridgeEscrow still uses base
+        _deployReporterProxy_old();
+        _initializeStabilizerNFTProxy_old(); 
+        _setupRolesAndPermissions_old();
+
+        saveDeploymentInfo(); 
+
+        vm.stopBroadcast();
+    }
+
+    // Renamed old functions to avoid conflict if this script is run directly
+    // These will be removed once the refactor to individual scripts is complete.
+    function _deployStabilizerEscrowImplementation_old() internal {
+        console2.log("Deploying StabilizerEscrow implementation (old)...");
+        StabilizerEscrow impl = new StabilizerEscrow();
         stabilizerEscrowImplAddress = address(impl);
-        console2.log(
-            "StabilizerEscrow implementation deployed at:",
-            stabilizerEscrowImplAddress
-        );
+        console2.log("StabilizerEscrow implementation deployed at (old):", stabilizerEscrowImplAddress);
     }
 
-    function deployPositionEscrowImplementation() internal {
-        // Deploy PositionEscrow implementation with regular CREATE
-        console2.log("Deploying PositionEscrow implementation...");
-        PositionEscrow impl = new PositionEscrow(); // Constructor takes no args now
+    function _deployPositionEscrowImplementation_old() internal {
+        console2.log("Deploying PositionEscrow implementation (old)...");
+        PositionEscrow impl = new PositionEscrow();
         positionEscrowImplAddress = address(impl);
-        console.log("PositionEscrow implementation deployed at: %s",
-            positionEscrowImplAddress
-        );
+        console2.log("PositionEscrow implementation deployed at (old): %s", positionEscrowImplAddress);
     }
 
-    function deployInsuranceEscrow() internal {
-        console2.log("Deploying InsuranceEscrow...");
-        require(stETHAddress != address(0), "stETH address not set for InsuranceEscrow");
-        require(stabilizerProxyAddress != address(0), "StabilizerNFT proxy not deployed (owner for InsuranceEscrow)");
-
-        // Get the bytecode of InsuranceEscrow with constructor arguments
-        bytes memory bytecode = abi.encodePacked(
-            type(InsuranceEscrow).creationCode,
-            abi.encode(stETHAddress, stabilizerProxyAddress) // stETH, owner (StabilizerNFT proxy)
-        );
-
-        // Deploy using CREATE2 for deterministic address using CreateX
-        insuranceEscrowAddress = createX.deployCreate2{value: 0}(INSURANCE_ESCROW_SALT, bytecode);
-        console2.log("InsuranceEscrow deployed at:", insuranceEscrowAddress);
-    }
-
-    // deployOracleProxy is in base
-
-    function deployStabilizerNFTImplementation() internal {
-        // Deploy StabilizerNFT implementation with regular CREATE
-        console2.log("Deploying StabilizerNFT implementation...");
-        StabilizerNFT stabilizerImpl = new StabilizerNFT();
-        stabilizerImplAddress = address(stabilizerImpl);
-
-        console2.log(
-            "StabilizerNFT implementation deployed at:",
-            stabilizerImplAddress
-        );
-    }
-
-    // Deploy cUSPD token for full system
-    function deployCUSPDToken() internal {
-        console2.log("Deploying cUSPDToken for full system...");
-        require(oracleProxyAddress != address(0), "Oracle proxy not deployed");
-        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
-        require(rateContractAddress != address(0), "Rate contract not deployed");
-
-        // Get the bytecode of cUSPDToken with constructor arguments
-        bytes memory bytecode = abi.encodePacked(
-            type(cUSPDToken).creationCode,
-            abi.encode(
-                "Core USPD Share",        // name
-                "cUSPD",                  // symbol
-                oracleProxyAddress,       // oracle
-                stabilizerProxyAddress,   // stabilizer
-                rateContractAddress,      // rateContract
-                deployer                 // admin
-                // deployer              // BURNER_ROLE removed
-            )
-        );
-
-        // Deploy using CREATE2 for deterministic address using CreateX
-        cuspdTokenAddress = createX.deployCreate2{value: 0}(CUSPD_TOKEN_SALT, bytecode);
-        console2.log("cUSPDToken deployed at:", cuspdTokenAddress);
-    }
-
-    // Deploy USPD token (view layer) for full system
-    function deployUspdToken() internal {
-        console2.log("Deploying USPDToken (view layer) for full system...");
-        require(cuspdTokenAddress != address(0), "cUSPD token not deployed");
-        require(rateContractAddress != address(0), "Rate contract not deployed");
-
-        // Get the bytecode of USPDToken with constructor arguments
-        bytes memory bytecode = abi.encodePacked(
-            type(USPDToken).creationCode,
-            abi.encode(
-                "Unified Stable Passive Dollar", // name
-                "USPD",                          // symbol
-                cuspdTokenAddress,               // link to core token
-                rateContractAddress,             // rateContract
-                deployer                         // admin
-            )
-        );
-
-        // Deploy using CREATE2 for deterministic address using CreateX
-        uspdTokenAddress = createX.deployCreate2{value: 0}(USPD_TOKEN_SALT, bytecode);
-        console2.log("USPDToken (view layer) deployed at:", uspdTokenAddress);
-    }
-
-    // Removed L2 specific: deployCUSPDToken_Bridged
-    // Removed L2 specific: deployUspdToken_Bridged
-
-    function deployReporterImplementation() internal {
-        // Deploy Reporter implementation with regular CREATE
-        console2.log("Deploying OvercollateralizationReporter implementation...");
-        OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
-        reporterImplAddress = address(reporterImpl);
-        console2.log(
-            "OvercollateralizationReporter implementation deployed at:",
-            reporterImplAddress
-        );
-    }
-
-    function deployReporterProxy() internal {
-        // Deploy Reporter Proxy and Initialize
-        console2.log("Deploying OvercollateralizationReporter proxy...");
-        require(reporterImplAddress != address(0), "Reporter implementation not deployed");
-        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
-        require(rateContractAddress != address(0), "Rate contract not deployed");
-        require(cuspdTokenAddress != address(0), "cUSPD token not deployed");
-
-        // Prepare initialization data
-        bytes memory initData = abi.encodeCall(
-            OvercollateralizationReporter.initialize,
-            (
-                deployer,               // admin
-                stabilizerProxyAddress, // stabilizerNFTContract (granted UPDATER_ROLE)
-                rateContractAddress,    // rateContract
-                cuspdTokenAddress       // cuspdToken
-            )
-        );
-
-        // Deploy ERC1967Proxy (UUPS) with CREATE2 using CreateX
-        bytes memory bytecode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(reporterImplAddress, initData) // Pass implementation and init data to ERC1967Proxy constructor
-        );
-
-        reporterAddress = createX.deployCreate2{value: 0}(REPORTER_SALT, bytecode);
-        console2.log("OvercollateralizationReporter proxy deployed at:", reporterAddress);
-    }
-
-
-    // Deploy StabilizerNFT Proxy without initializing
-    function deployStabilizerNFTProxy_NoInit() internal {
-        console2.log("Deploying StabilizerNFT UUPS proxy (no init)...");
-        require(stabilizerImplAddress != address(0), "StabilizerNFT implementation not deployed");
-        // Deploy as UUPS proxy
-        stabilizerProxyAddress = deployUUPSProxy_NoInit(STABILIZER_PROXY_SALT, stabilizerImplAddress);
-        console2.log(
-            "StabilizerNFT UUPS proxy (uninitialized) deployed at:",
-            stabilizerProxyAddress
-        );
-    }
-
-    // Initialize StabilizerNFT Proxy
-    function initializeStabilizerNFTProxy() internal {
-        console2.log("Initializing StabilizerNFT proxy at:", stabilizerProxyAddress);
-        require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
-        require(cuspdTokenAddress != address(0), "cUSPD Token not deployed");
+    function _deployInsuranceEscrow_old() internal {
+        console2.log("Deploying InsuranceEscrow (old)...");
         require(stETHAddress != address(0), "stETH address not set");
-        require(lidoAddress != address(0), "Lido address not set");
-        require(rateContractAddress != address(0), "Rate contract not deployed yet");
-        require(reporterAddress != address(0), "Reporter not deployed yet");
-        require(insuranceEscrowAddress != address(0), "InsuranceEscrow not deployed yet"); // <-- Check InsuranceEscrow
-        require(stabilizerEscrowImplAddress != address(0), "StabilizerEscrow impl not deployed"); // <-- Check impl
-        require(positionEscrowImplAddress != address(0), "PositionEscrow impl not deployed"); // <-- Check impl
+        require(stabilizerProxyAddress != address(0), "StabilizerNFT proxy not deployed");
+        bytes memory bytecode = abi.encodePacked(type(InsuranceEscrow).creationCode, abi.encode(stETHAddress, stabilizerProxyAddress));
+        insuranceEscrowAddress = createX.deployCreate2{value: 0}(INSURANCE_ESCROW_SALT, bytecode);
+        console2.log("InsuranceEscrow deployed at (old):", insuranceEscrowAddress);
+    }
 
-        // Prepare initialization data
-        // StabilizerNFT.initialize(address _cuspdToken, address _stETH, address _lido, address _rateContract, address _reporterAddress, address _insuranceEscrowAddress, string memory _baseURI, address _stabilizerEscrowImpl, address _positionEscrowImpl, address _admin)
-        bytes memory initData = abi.encodeCall(
-            StabilizerNFT.initialize,
-            (
-                cuspdTokenAddress,
-                stETHAddress,
-                lidoAddress,
-                rateContractAddress,
-                reporterAddress,
-                insuranceEscrowAddress, // <-- Pass InsuranceEscrow address
-                baseURI,
-                stabilizerEscrowImplAddress, // <-- Pass StabilizerEscrow impl
-                positionEscrowImplAddress, // <-- Pass PositionEscrow impl
-                deployer
-            )
-        );
+    function _deployStabilizerNFTImplementation_old() internal {
+        console2.log("Deploying StabilizerNFT implementation (old)...");
+        StabilizerNFT impl = new StabilizerNFT();
+        stabilizerImplAddress = address(impl);
+        console2.log("StabilizerNFT implementation deployed at (old):", stabilizerImplAddress);
+    }
 
-         // Call initialize via the proxy
+    function _deployCUSPDToken_old() internal {
+        console2.log("Deploying cUSPDToken (old)...");
+        require(oracleProxyAddress != address(0) && stabilizerProxyAddress != address(0) && rateContractAddress != address(0), "Dependencies not set for cUSPD");
+        bytes memory bytecode = abi.encodePacked(type(cUSPDToken).creationCode, abi.encode("Core USPD Share", "cUSPD", oracleProxyAddress, stabilizerProxyAddress, rateContractAddress, deployer));
+        cuspdTokenAddress = createX.deployCreate2{value: 0}(CUSPD_TOKEN_SALT, bytecode);
+        console2.log("cUSPDToken deployed at (old):", cuspdTokenAddress);
+    }
+
+    function _deployUspdToken_old() internal {
+        console2.log("Deploying USPDToken (old)...");
+        require(cuspdTokenAddress != address(0) && rateContractAddress != address(0), "Dependencies not set for USPD");
+        bytes memory bytecode = abi.encodePacked(type(USPDToken).creationCode, abi.encode("Unified Stable Passive Dollar", "USPD", cuspdTokenAddress, rateContractAddress, deployer));
+        uspdTokenAddress = createX.deployCreate2{value: 0}(USPD_TOKEN_SALT, bytecode);
+        console2.log("USPDToken deployed at (old):", uspdTokenAddress);
+    }
+
+    function _deployReporterImplementation_old() internal {
+        console2.log("Deploying OvercollateralizationReporter implementation (old)...");
+        OvercollateralizationReporter impl = new OvercollateralizationReporter();
+        reporterImplAddress = address(impl);
+        console2.log("OvercollateralizationReporter implementation deployed at (old):", reporterImplAddress);
+    }
+
+    function _deployReporterProxy_old() internal {
+        console2.log("Deploying OvercollateralizationReporter proxy (old)...");
+        require(reporterImplAddress != address(0) && stabilizerProxyAddress != address(0) && rateContractAddress != address(0) && cuspdTokenAddress != address(0), "Dependencies not set for Reporter proxy");
+        bytes memory initData = abi.encodeCall(OvercollateralizationReporter.initialize, (deployer, stabilizerProxyAddress, rateContractAddress, cuspdTokenAddress));
+        bytes memory bytecode = abi.encodePacked(type(ERC1967Proxy).creationCode, abi.encode(reporterImplAddress, initData));
+        reporterAddress = createX.deployCreate2{value: 0}(REPORTER_SALT, bytecode);
+        console2.log("OvercollateralizationReporter proxy deployed at (old):", reporterAddress);
+    }
+
+    function _deployStabilizerNFTProxy_NoInit_old() internal {
+        console2.log("Deploying StabilizerNFT UUPS proxy (no init) (old)...");
+        require(stabilizerImplAddress != address(0), "StabilizerNFT impl not deployed");
+        stabilizerProxyAddress = deployUUPSProxy_NoInit(STABILIZER_PROXY_SALT, stabilizerImplAddress);
+        console2.log("StabilizerNFT UUPS proxy (uninitialized) deployed at (old):", stabilizerProxyAddress);
+    }
+
+    function _initializeStabilizerNFTProxy_old() internal {
+        console2.log("Initializing StabilizerNFT proxy (old) at:", stabilizerProxyAddress);
+        require(stabilizerProxyAddress != address(0) && cuspdTokenAddress != address(0) && stETHAddress != address(0) && lidoAddress != address(0) && rateContractAddress != address(0) && reporterAddress != address(0) && insuranceEscrowAddress != address(0) && stabilizerEscrowImplAddress != address(0) && positionEscrowImplAddress != address(0), "Dependencies not set for StabilizerNFT init");
+        bytes memory initData = abi.encodeCall(StabilizerNFT.initialize, (cuspdTokenAddress, stETHAddress, lidoAddress, rateContractAddress, reporterAddress, insuranceEscrowAddress, baseURI, stabilizerEscrowImplAddress, positionEscrowImplAddress, deployer));
         (bool success, bytes memory result) = stabilizerProxyAddress.call(initData);
         if (!success) {
-             // Try to decode revert reason
-            if (result.length < 68) { // Not a standard error signature (Error(string) selector + offset + length)
-                revert("StabilizerNFT Proxy initialization failed with unknown reason");
-            }
-            // Copy the slice into a new bytes memory variable
+            if (result.length < 68) { revert("StabilizerNFT Proxy init failed (old) - unknown reason"); }
             bytes memory reasonBytes = new bytes(result.length - 4);
-            for (uint i = 0; i < reasonBytes.length; i++) {
-                reasonBytes[i] = result[i + 4];
-            }
-            // Decode the copied bytes
-            string memory reason = abi.decode(reasonBytes, (string));
-            revert(string(abi.encodePacked("StabilizerNFT Proxy initialization failed: ", reason)));
-       }
-       console2.log("StabilizerNFT proxy initialized.");
+            for (uint i = 0; i < reasonBytes.length; i++) { reasonBytes[i] = result[i + 4]; }
+            revert(string(abi.encodePacked("StabilizerNFT Proxy init failed (old): ", abi.decode(reasonBytes, (string)))));
+        }
+        console2.log("StabilizerNFT proxy initialized (old).");
     }
 
-    // Setup roles for the full system deployment
-    function setupRolesAndPermissions() internal {
-        console2.log("Setting up roles for full system...");
-
-        // Grant roles to the PriceOracle
-        console2.log("Granting Oracle roles...");
-        PriceOracle oracle = PriceOracle(oracleProxyAddress);
-        oracle.grantRole(oracle.PAUSER_ROLE(), deployer);
-        // oracle.grantRole(oracle.SIGNER_ROLE(), deployer); // Assuming deployer is initial signer
-        oracle.grantRole(oracle.SIGNER_ROLE(), oracleSignerAddress); // Oracle Signer Role
-
-        // Grant roles to the StabilizerNFT
-        console2.log("Granting StabilizerNFT roles...");
-        StabilizerNFT stabilizer = StabilizerNFT(payable(stabilizerProxyAddress));
-        // MINTER_ROLE is typically granted to specific contracts/addresses that need to mint NFTs,
-        // not necessarily the deployer by default unless the deployer performs initial mints.
-        // The UPGRADER_ROLE is granted to the deployer (admin) during StabilizerNFT.initialize().
-        // If deployer needs to mint directly post-deployment for setup, grant MINTER_ROLE here:
-        // stabilizer.grantRole(stabilizer.MINTER_ROLE(), deployer);
-
-
-        // Grant roles to the cUSPDToken
-        console2.log("Granting cUSPDToken roles...");
-        cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
-        // Deployer already has ADMIN, UPDATER roles from constructor
-        coreToken.grantRole(coreToken.USPD_CALLER_ROLE(), uspdTokenAddress);
-
-        // Grant roles to the USPDToken (View Layer) - Only admin needed
-        console2.log("Granting USPDToken (view) roles...");
-        USPDToken viewToken = USPDToken(payable(uspdTokenAddress));
-        // Example: Grant RELAYER_ROLE to a placeholder address for a Token Adapter or Bridge Relayer
-        // address exampleRelayerOrAdapter = 0xYourRelayerOrAdapterAddressHere;
-        // if (exampleRelayerOrAdapter != address(0)) {
-        //     viewToken.grantRole(viewToken.RELAYER_ROLE(), exampleRelayerOrAdapter);
-        //     console2.log("RELAYER_ROLE granted to:", exampleRelayerOrAdapter);
-        // }
-
-        // Grant USPDToken the CALLER_ROLE on BridgeEscrow - This is no longer needed as USPDToken is the hardcoded caller.
-        // if (bridgeEscrowAddress != address(0) && uspdTokenAddress != address(0)) {
-        //     BridgeEscrow(bridgeEscrowAddress).grantRole(BridgeEscrow(bridgeEscrowAddress).CALLER_ROLE(), uspdTokenAddress);
-        //     console2.log("CALLER_ROLE granted to USPDToken on BridgeEscrow:", uspdTokenAddress);
-        // }
-
-
-        // Grant roles to the Reporter
-        console2.log("Granting Reporter roles...");
-        OvercollateralizationReporter reporter = OvercollateralizationReporter(payable(reporterAddress)); // Cast to implementation type
-        // Deployer already has DEFAULT_ADMIN_ROLE from initialization
-        // Grant UPDATER_ROLE to StabilizerNFT proxy
-        reporter.grantRole(reporter.UPDATER_ROLE(), stabilizerProxyAddress); // Now UPDATER_ROLE is accessible
-
-        console2.log("Roles setup complete.");
+    function _setupRolesAndPermissions_old() internal {
+        console2.log("Setting up roles for full system (old)...");
+        PriceOracle(oracleProxyAddress).grantRole(PriceOracle(oracleProxyAddress).PAUSER_ROLE(), deployer);
+        PriceOracle(oracleProxyAddress).grantRole(PriceOracle(oracleProxyAddress).SIGNER_ROLE(), oracleSignerAddress);
+        cUSPDToken(payable(cuspdTokenAddress)).grantRole(cUSPDToken(payable(cuspdTokenAddress)).USPD_CALLER_ROLE(), uspdTokenAddress);
+        OvercollateralizationReporter(payable(reporterAddress)).grantRole(OvercollateralizationReporter(payable(reporterAddress)).UPDATER_ROLE(), stabilizerProxyAddress);
+        console2.log("Roles setup complete (old).");
     }
-
-    // Removed L2 specific: setupRolesAndPermissions_Bridged
-    // Removed: saveDeploymentInfo (moved to base)
-}
+    
+    function _deployPoolSharesConversionRate_old() internal { // Added this missing old function
+        console2.log("Deploying PoolSharesConversionRate (old)...");
+        require(stETHAddress != address(0), "stETH address not set for RateContract");
+        require(lidoAddress != address(0), "Lido address not set for RateContract");
+        require(initialRateContractDeposit > 0, "Initial rate contract deposit must be > 0");
+        bytes memory bytecode = abi.encodePacked(type(PoolSharesConversionRate).creationCode, abi.encode(stETHAddress, lidoAddress, deployer));
+        rateContractAddress = createX.deployCreate2{value: initialRateContractDeposit}(RATE_CONTRACT_SALT, bytecode);
+        console2.log("PoolSharesConversionRate deployed at (old):", rateContractAddress);
+        if (initialRateContractDeposit > 0) {
+            console2.log("Initial ETH deposit (old):", initialRateContractDeposit);
+        }
+    }
