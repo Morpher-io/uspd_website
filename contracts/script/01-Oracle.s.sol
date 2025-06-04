@@ -7,7 +7,7 @@ import "../test/mocks/MockStETH.sol"; // For local mock deployment
 import "../test/mocks/MockLido.sol";  // For local mock deployment
 
 contract DeployOracleScript is DeployScript {
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp(); // Call base setUp. It now handles setting usdcAddress, uniswapRouter, chainlinkAggregator, etc.
                        // based on whether the chainId is mainnet-like, testnet-like, or local.
 

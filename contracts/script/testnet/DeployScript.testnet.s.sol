@@ -31,7 +31,7 @@ contract DeployScriptTestnet is DeployScript {
     string internal constant TESTNET_BASE_URI = "https://testnet.uspd.io/api/stabilizer/metadata/";
     // address internal constant TESTNET_ORACLE_SIGNER_ADDRESS = 0xYourTestnetOracleSignerAddress; // Example if needed
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp(); // Calls DeployScript.setUp(), which defaults to MAINNET values initially,
                        // and handles local dev overrides.
 

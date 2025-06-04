@@ -50,8 +50,6 @@ contract PriceOracle is
 
     PriceConfig public config;
 
-    bytes32 public constant PRICE_FEED_ETH_USD = keccak256("MORPHER:ETH_USD");
-
     // Mappings
     mapping(bytes32 => PriceResponse) public lastPrices;
 
@@ -132,15 +130,6 @@ contract PriceOracle is
         }
         return 0;
     }
-
-    // function getUniswapV2WethUSDPrice(
-    //     uint ethAmountIn
-    // ) public view returns (uint) {
-    //     address[] memory path = new address[](2);
-    //     path[0] = uniswapRouter.WETH();
-    //     path[1] = usdcAddress;
-    //     return 1e18 * (uniswapRouter.getAmountsOut(ethAmountIn, path)[1] / 1e6); //usdc converted into 18 digits
-    // }
 
     /**
      * Returns the latest answer.
