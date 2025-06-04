@@ -93,37 +93,6 @@ contract DeployScript is Script {
         console2.log("Using CreateX at:", CREATE_X_ADDRESS);
     }
 
-    function deployOracleImplementation() internal {
-        PriceOracle oracleImpl = new PriceOracle();
-        oracleImplAddress = address(oracleImpl);
-        console2.log("PriceOracle implementation deployed at:", oracleImplAddress);
-    }
-
-    function deployOracleProxy() internal {
-        require(oracleImplAddress != address(0), "Oracle implementation not deployed");
-        require(usdcAddress != address(0), "USDC address not set");
-        // uniswapRouter and chainlinkAggregator can be address(0) if not applicable for the chain/oracle config
-
-        bytes memory initData = abi.encodeCall(
-            PriceOracle.initialize,
-            (
-                maxPriceDeviation,
-                priceStalenessPeriod,
-                usdcAddress,
-                uniswapRouter, // Can be 0x0 for chains without Uniswap v2/v3 source
-                chainlinkAggregator, // Can be 0x0 for chains without Chainlink source
-                deployer // admin for PriceOracle
-            )
-        );
-
-        bytes memory bytecode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(oracleImplAddress, initData)
-        );
-        oracleProxyAddress = createX.deployCreate2{value: 0}(ORACLE_PROXY_SALT, bytecode);
-        console2.log("PriceOracle proxy deployed at:", oracleProxyAddress);
-    }
-
     function deployBridgeEscrow(address _cuspdToken, address _uspdToken) internal {
         console2.log("Deploying BridgeEscrow...");
         require(_cuspdToken != address(0), "cUSPD token not deployed for BridgeEscrow");

@@ -42,14 +42,45 @@ contract DeployOracleScript is DeployScript {
         console2.log("Oracle Chainlink Aggregator Address set to:", chainlinkAggregator);
     }
 
+    function deployOracleImplementation() internal {
+        PriceOracle oracleImpl = new PriceOracle();
+        oracleImplAddress = address(oracleImpl);
+        console2.log("PriceOracle implementation deployed at:", oracleImplAddress);
+    }
+
+    function deployOracleProxy() internal {
+        require(oracleImplAddress != address(0), "Oracle implementation not deployed");
+        require(usdcAddress != address(0), "USDC address not set");
+        // uniswapRouter and chainlinkAggregator can be address(0) if not applicable for the chain/oracle config
+
+        bytes memory initData = abi.encodeCall(
+            PriceOracle.initialize,
+            (
+                maxPriceDeviation,
+                priceStalenessPeriod,
+                usdcAddress,
+                uniswapRouter, // Can be 0x0 for chains without Uniswap v2/v3 source
+                chainlinkAggregator, // Can be 0x0 for chains without Chainlink source
+                deployer // admin for PriceOracle
+            )
+        );
+
+        bytes memory bytecode = abi.encodePacked(
+            type(ERC1967Proxy).creationCode,
+            abi.encode(oracleImplAddress, initData)
+        );
+        oracleProxyAddress = createX.deployCreate2{value: 0}(ORACLE_PROXY_SALT, bytecode);
+        console2.log("PriceOracle proxy deployed at:", oracleProxyAddress);
+    }
+
     function run() public {
         vm.startBroadcast();
 
         // Deploy Oracle Implementation
-        deployOracleImplementation(); // Inherited from DeployScript
+        deployOracleImplementation(); // Now local to this script
 
         // Deploy Oracle Proxy and Initialize it
-        deployOracleProxy(); // Inherited from DeployScript
+        deployOracleProxy(); // Now local to this script
 
         // Grant initial roles for the Oracle (optional, can be a separate script/step)
         PriceOracle oracle = PriceOracle(oracleProxyAddress);
