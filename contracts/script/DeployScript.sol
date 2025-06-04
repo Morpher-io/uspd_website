@@ -192,9 +192,10 @@ contract DeployScript is Script {
         console2.log("Using CreateX at:", CREATE_X_ADDRESS);
     }
 
-    function deployBridgeEscrow(address _cuspdToken, address _uspdToken) internal {
-        console2.log("Deploying BridgeEscrow...");
-        require(_cuspdToken != address(0), "cUSPD token not deployed for BridgeEscrow");
+    // Renamed to avoid conflict with new dedicated script, allows old scripts to still call it.
+    function _deployBridgeEscrow_old(address _cuspdToken, address _uspdToken) internal {
+        console2.log("Deploying BridgeEscrow (old flow)...");
+        require(_cuspdToken != address(0), "cUSPD token not deployed for BridgeEscrow (old flow)");
         require(_uspdToken != address(0), "USPD token not deployed for BridgeEscrow");
         // rateContractAddress can be address(0) for L2 if it's not used or synced differently
 

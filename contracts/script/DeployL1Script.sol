@@ -152,7 +152,7 @@ contract DeployL1Script is DeployScript {
         _deployInsuranceEscrow_old(); 
         _deployCUSPDToken_old(); 
         _deployUspdToken_old();  
-        deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // BridgeEscrow still uses base
+        _deployBridgeEscrow_old(cuspdTokenAddress, uspdTokenAddress); // Call renamed function
         _deployReporterProxy_old();
         _initializeStabilizerNFTProxy_old(); 
         _setupRolesAndPermissions_old();

@@ -80,7 +80,7 @@ contract DeployL2Script is DeployScript {
         
         deployCUSPDToken_Bridged(); 
         deployUspdToken_Bridged();  
-        deployBridgeEscrow(cuspdTokenAddress, uspdTokenAddress); // From base, uses rateContractAddress (0 for L2 here if not set)
+        _deployBridgeEscrow_old(cuspdTokenAddress, uspdTokenAddress); // Call renamed function
         setupRolesAndPermissions_Bridged();
 
         saveDeploymentInfo(); // Call from base
