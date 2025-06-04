@@ -30,6 +30,8 @@ contract StabilizerNFT is
     UUPSUpgradeable // <-- Add UUPSUpgradeable inheritance
 {
     // --- Constants ---
+    uint256 public constant L1_MAINNET_CHAIN_ID = 1;
+    uint256 public constant L1_SEPOLIA_CHAIN_ID = 11155111;
     uint256 public constant FACTOR_PRECISION = 1e18;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE");
@@ -132,6 +134,7 @@ contract StabilizerNFT is
     error SystemUnstableUnallocationNotAllowed();
     error LiquidationNotBelowSystemRatio();
     error OvercollateralizationReporterZero();
+    error UnsupportedChainId();
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -209,6 +212,9 @@ contract StabilizerNFT is
 
 
     function mint(address to) external returns (uint256) {
+        if (block.chainid != L1_MAINNET_CHAIN_ID && block.chainid != L1_SEPOLIA_CHAIN_ID) {
+            revert UnsupportedChainId();
+        }
         uint256 tokenId = _nextTokenId++;
         require(tokenId != 0, "Token ID cannot be zero"); // Should not happen with _nextTokenId starting at 1
 

@@ -2266,6 +2266,22 @@ contract StabilizerNFTTest is Test {
         assertTrue(true, "Initialize should pass even with zero StabilizerEscrow impl, check is in mint");
     }
 
+    function testMint_Revert_NonL1ChainId() public {
+        // Switch to a non-L1 chain ID (e.g., Polygon's chain ID)
+        uint256 l2ChainId = 137;
+        vm.chainId(l2ChainId);
+
+        // Ensure the current chain ID in the test environment is indeed the L2 chain ID
+        assertEq(block.chainid, l2ChainId, "Chain ID not switched for test");
+
+        // Expect the custom error
+        vm.expectRevert(StabilizerNFT.UnsupportedChainId.selector);
+        stabilizerNFT.mint(user1);
+
+        // Switch back to L1 chain ID for subsequent tests if necessary (setUp usually handles this)
+        vm.chainId(1); // Or whatever the default test chain ID is
+    }
+
     function testInitialize_Revert_ZeroPositionEscrowImpl() public {
         StabilizerNFT newStabilizerNFTImpl = new StabilizerNFT();
         ERC1967Proxy newStabilizerProxy = new ERC1967Proxy(address(newStabilizerNFTImpl), bytes(""));
@@ -2295,6 +2311,12 @@ contract StabilizerNFTTest is Test {
 
 
     // --- End Initialization Revert Tests ---
+
+
+    // --- Mint Revert Tests (continued) ---
+    // (testMint_Revert_NonL1ChainId added above)
+    // --- End Mint Revert Tests ---
+
 
     function testListManagement_MiddleInsertion() public {
         // Mint NFTs: ID 1 (for user1), ID 2 (for user2), ID 3 (for user1)
