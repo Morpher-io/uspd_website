@@ -310,32 +310,6 @@ contract DeployL1Script is DeployScript {
        console2.log("StabilizerNFT proxy initialized.");
     }
 
-
-    function deployPoolSharesConversionRate() internal {
-        console2.log("Deploying PoolSharesConversionRate...");
-        require(stETHAddress != address(0), "stETH address not set for RateContract");
-        require(lidoAddress != address(0), "Lido address not set for RateContract");
-        require(initialRateContractDeposit > 0, "Initial rate contract deposit must be > 0");
-
-        // Get the bytecode of PoolSharesConversionRate with constructor arguments
-        bytes memory bytecode = abi.encodePacked(
-            type(PoolSharesConversionRate).creationCode,
-            abi.encode(stETHAddress, lidoAddress, deployer) // Added deployer as admin
-        );
-
-        // Deploy using CREATE2, sending initial ETH value to the constructor
-        uint256 depositValue = initialRateContractDeposit; // Directly use the value set in setUp for L1
-        rateContractAddress = createX.deployCreate2{value: depositValue}(
-            RATE_CONTRACT_SALT,
-            bytecode
-        );
-
-        console2.log("PoolSharesConversionRate deployed at:", rateContractAddress);
-        if (depositValue > 0) {
-            console2.log("Initial ETH deposit:", depositValue);
-        }
-    }
-
     // Setup roles for the full system deployment
     function setupRolesAndPermissions() internal {
         console2.log("Setting up roles for full system...");
