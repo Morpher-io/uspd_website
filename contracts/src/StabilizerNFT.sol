@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+// #################################################################################################
+// #                                                                                               #
+// #   WARNING: CONTRACT SIZE LIMIT                                                                #
+// #                                                                                               #
+// #   This contract is very close to the maximum bytecode size limit (24.576 KB).                 #
+// #   Any changes, especially additions of new functions or complex logic, must be              #
+// #   very carefully considered and tested for their impact on the contract size.                 #
+// #   Consider refactoring existing logic or moving functionality to external libraries/contracts #
+// #   if further significant additions are required.                                              #
+// #                                                                                               #
+// #################################################################################################
+
 import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
 import {ERC721EnumerableUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol"; // <-- Add UUPSUpgradeable import
