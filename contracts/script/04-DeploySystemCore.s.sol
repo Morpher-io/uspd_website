@@ -209,27 +209,6 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function run() public {
-        cUSPDToken coreToken = cUSPDToken(payable(cuspdTokenAddress));
-        OvercollateralizationReporter oReporter = OvercollateralizationReporter(payable(reporterAddress));
-
-        // Grant StabilizerNFT the BURNER_ROLE on cUSPDToken
-        coreToken.grantRole(coreToken.BURNER_ROLE(), stabilizerProxyAddress);
-        console2.log("BURNER_ROLE granted to StabilizerNFT on cUSPDToken");
-
-        // Grant USPDToken the USPD_CALLER_ROLE on cUSPDToken
-        coreToken.grantRole(coreToken.USPD_CALLER_ROLE(), uspdTokenAddress);
-        console2.log("USPD_CALLER_ROLE granted to USPDToken on cUSPDToken");
-        
-        // Grant StabilizerNFT the UPDATER_ROLE on OvercollateralizationReporter
-        oReporter.grantRole(oReporter.UPDATER_ROLE(), stabilizerProxyAddress);
-        console2.log("UPDATER_ROLE granted to StabilizerNFT on OvercollateralizationReporter");
-
-        // Other roles (like admin roles on individual contracts) are typically set to deployer
-        // during construction or initialization.
-        console2.log("System Core roles setup complete.");
-    }
-
-    function run() public {
         vm.startBroadcast();
 
         deployStabilizerNFTImplementation();

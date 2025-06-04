@@ -72,8 +72,9 @@ contract DeployBridgeEscrowScript is DeployScript {
                 // The admin of PoolSharesConversionRate (deployer) can grant this.
                 // If BridgeEscrow is deployed by 'deployer', it might not need explicit grant if it calls as admin.
                 // However, explicit grant is safer if BridgeEscrow is intended to be the designated updater.
-                address rateContractAdmin = l2RateContract.getRoleAdmin(l2RateContract.YIELD_FACTOR_UPDATER_ROLE());
-                if (l2RateContract.hasRole(l2RateContract.DEFAULT_ADMIN_ROLE(), deployer)) { // Check if deployer is admin
+                bytes32 yieldFactorUpdaterAdminRole = l2RateContract.getRoleAdmin(l2RateContract.YIELD_FACTOR_UPDATER_ROLE());
+                // The DEFAULT_ADMIN_ROLE is typically the admin of other roles.
+                if (l2RateContract.hasRole(l2RateContract.DEFAULT_ADMIN_ROLE(), deployer) && yieldFactorUpdaterAdminRole == l2RateContract.DEFAULT_ADMIN_ROLE()) { // Check if deployer is admin of the YIELD_FACTOR_UPDATER_ROLE
                      l2RateContract.grantRole(l2RateContract.YIELD_FACTOR_UPDATER_ROLE(), bridgeEscrowAddress);
                      console2.log("YIELD_FACTOR_UPDATER_ROLE granted to BridgeEscrow on PoolSharesConversionRate (L2)");
                 } else {

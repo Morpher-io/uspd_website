@@ -7,7 +7,7 @@ import "../DeployScript.sol"; // Import the main base script
 contract DeployScriptTestnet is DeployScript {
 
     // Testnet Chain ID constants
-    uint256 internal constant SEPOLIA_CHAIN_ID = 11155111; // Ethereum Testnet
+    // uint256 internal constant SEPOLIA_CHAIN_ID = 11155111; // Defined in base DeployScript.sol
     uint256 internal constant OP_SEPOLIA_CHAIN_ID = 11155420;
     uint256 internal constant BNB_TESTNET_CHAIN_ID = 97;
     uint256 internal constant POLYGON_AMOY_CHAIN_ID = 80002; // Replaces Mumbai
