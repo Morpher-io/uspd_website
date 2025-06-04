@@ -28,12 +28,13 @@ contract DeploySystemCoreScript is DeployScript {
         require(positionEscrowImplAddress != address(0), "PositionEscrow impl not found in deployment file");
 
         console2.log("DeploySystemCoreScript: setUp complete. Loaded dependencies.");
+        console2.log("CreateX: ", address(createX));
     }
 
     function deployStabilizerNFTImplementation() internal {
         console2.log("Deploying StabilizerNFT implementation...");
         bytes memory bytecode = type(StabilizerNFT).creationCode;
-        stabilizerImplAddress = createX.deployCreate2{value: 0}(STABILIZER_IMPL_SALT, bytecode);
+        stabilizerImplAddress = createX.deployCreate2(STABILIZER_IMPL_SALT, bytecode);
         console2.log("StabilizerNFT implementation deployed via CREATE2 at:", stabilizerImplAddress);
     }
 
