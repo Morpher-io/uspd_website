@@ -5,6 +5,22 @@ import {console2} from "forge-std/Script.sol";
 import "../DeployScript.sol"; // Import the main base script
 
 contract DeployScriptTestnet is DeployScript {
+
+    // Testnet Chain ID constants
+    uint256 internal constant SEPOLIA_CHAIN_ID = 11155111;
+    uint256 internal constant POLYGON_MUMBAI_CHAIN_ID = 80001;
+    // Add other relevant testnet L2 chain IDs as needed
+
+    // Testnet (Sepolia-based) Configuration Addresses
+    address internal constant TESTNET_USDC_ADDRESS = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Sepolia USDC
+    address internal constant TESTNET_UNISWAP_ROUTER_ADDRESS = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Placeholder or actual Sepolia V2
+    address internal constant TESTNET_CHAINLINK_AGGREGATOR_ADDRESS = 0x694AA1769357215DE4FAC081bf1f309aDC325306; // ETH/USD on Sepolia
+    address internal constant TESTNET_LIDO_ADDRESS = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Example Sepolia Lido/stETH
+    address internal constant TESTNET_STETH_ADDRESS = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Example Sepolia Lido/stETH
+    uint256 internal constant TESTNET_INITIAL_RATE_CONTRACT_DEPOSIT = 0.001 ether;
+    string internal constant TESTNET_BASE_URI = "https://testnet.uspd.io/api/stabilizer/metadata/";
+    // address internal constant TESTNET_ORACLE_SIGNER_ADDRESS = 0xYourTestnetOracleSignerAddress; // Example if needed
+
     function setUp() public override {
         super.setUp(); // Calls DeployScript.setUp(), which defaults to MAINNET values initially,
                        // and handles local dev overrides.
