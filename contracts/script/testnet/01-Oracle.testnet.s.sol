@@ -10,6 +10,13 @@ import "../01-Oracle.s.sol"; // Import the main Oracle deployment script
 // this will call DeployScriptTestnet.setUp(), which calls DeployScript.setUp()
 // and then overrides with testnet values. This achieves the desired effect.
 contract DeployOracleTestnetScript is DeployScriptTestnet, DeployOracleScript {
+    function setUp() public override(DeployScriptTestnet, DeployOracleScript) {
+        // By calling DeployOracleScript.setUp(), we ensure its logic runs.
+        // Its internal super.setUp() will correctly call DeployScriptTestnet.setUp()
+        // due to the C3 linearization order.
+        DeployOracleScript.setUp();
+    }
+
     // The setUp() chain:
     // 1. DeployOracleScript.setUp() (from 01-Oracle.s.sol) calls super.setUp().
     // 2. This super.setUp() resolves to DeployScriptTestnet.setUp().
