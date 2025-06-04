@@ -59,6 +59,8 @@ contract DeployScript is Script {
     // Define salts for each contract
     bytes32 public ORACLE_IMPL_SALT;
     bytes32 public ORACLE_PROXY_SALT;
+    bytes32 public STABILIZER_ESCROW_IMPL_SALT;
+    bytes32 public POSITION_ESCROW_IMPL_SALT;
     bytes32 public STABILIZER_PROXY_SALT;
     bytes32 public CUSPD_TOKEN_SALT;
     bytes32 public USPD_TOKEN_SALT;
@@ -146,6 +148,8 @@ contract DeployScript is Script {
 
         ORACLE_IMPL_SALT = generateSalt("USPD_ORACLE_IMPL_v1");
         ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
+        STABILIZER_ESCROW_IMPL_SALT = generateSalt("USPD_STABILIZER_ESCROW_IMPL_v1");
+        POSITION_ESCROW_IMPL_SALT = generateSalt("USPD_POSITION_ESCROW_IMPL_v1");
         STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
         CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1");
         USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
