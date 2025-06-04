@@ -108,47 +108,33 @@ contract DeployScript is Script {
         
         createX = ICreateX(CREATE_X_ADDRESS);
 
-        // Determine if current chain is a mainnet-like or testnet-like environment
-        // This list needs to be maintained for all supported L1s and L2s.
-        bool isMainnetEnvironment = (chainId == ETH_MAINNET_CHAIN_ID || 
-                                     chainId == POLYGON_MAINNET_CHAIN_ID /* Add other L2 mainnet IDs */);
-        
-        bool isTestnetEnvironment = (chainId == SEPOLIA_CHAIN_ID || 
-                                     chainId == POLYGON_MUMBAI_CHAIN_ID /* Add other L2 testnet IDs */);
+        // Default to Mainnet configuration
+        console2.log("Defaulting to Mainnet Environment configuration...");
+        usdcAddress = MAINNET_USDC_ADDRESS;
+        uniswapRouter = MAINNET_UNISWAP_ROUTER_ADDRESS;
+        chainlinkAggregator = MAINNET_CHAINLINK_AGGREGATOR_ADDRESS;
+        lidoAddress = MAINNET_LIDO_ADDRESS;
+        stETHAddress = MAINNET_STETH_ADDRESS;
+        initialRateContractDeposit = MAINNET_INITIAL_RATE_CONTRACT_DEPOSIT;
+        baseURI = MAINNET_BASE_URI;
+        // oracleSignerAddress is already set to a default, can be overridden by testnet scripts
 
-        if (isMainnetEnvironment) {
-            console2.log("Configuring for Mainnet Environment...");
-            usdcAddress = MAINNET_USDC_ADDRESS;
-            uniswapRouter = MAINNET_UNISWAP_ROUTER_ADDRESS;
-            chainlinkAggregator = MAINNET_CHAINLINK_AGGREGATOR_ADDRESS;
-            lidoAddress = MAINNET_LIDO_ADDRESS;
-            stETHAddress = MAINNET_STETH_ADDRESS;
-            initialRateContractDeposit = MAINNET_INITIAL_RATE_CONTRACT_DEPOSIT;
-            baseURI = MAINNET_BASE_URI;
-        } else if (isTestnetEnvironment) {
-            console2.log("Configuring for Testnet Environment...");
-            usdcAddress = TESTNET_USDC_ADDRESS;
-            uniswapRouter = TESTNET_UNISWAP_ROUTER_ADDRESS;
-            chainlinkAggregator = TESTNET_CHAINLINK_AGGREGATOR_ADDRESS;
-            lidoAddress = TESTNET_LIDO_ADDRESS;
-            stETHAddress = TESTNET_STETH_ADDRESS;
-            initialRateContractDeposit = TESTNET_INITIAL_RATE_CONTRACT_DEPOSIT;
-            baseURI = TESTNET_BASE_URI;
-        } else if (chainId == 31337) { // Local development (Anvil/Hardhat)
-            console2.log("Configuring for Local Development Environment (chainId 31337)...");
+        // Special handling for local development (Anvil/Hardhat)
+        if (chainId == 31337) {
+            console2.log("Overriding with Local Development Environment (chainId 31337) configuration...");
             usdcAddress = LOCAL_USDC_ADDRESS;
             uniswapRouter = LOCAL_UNISWAP_ROUTER_ADDRESS;
             chainlinkAggregator = LOCAL_CHAINLINK_AGGREGATOR_ADDRESS;
-            // For local stETH/Lido, individual scripts might deploy mocks and set these.
-            // If not set by a derived script, they'll be address(0) or need placeholders here.
-            // For now, let them be potentially overridden by derived local setup.
-            // lidoAddress = address(0); // Or mock
-            // stETHAddress = address(0); // Or mock
+            // For local stETH/Lido, individual scripts (like a full system local deployer)
+            // would deploy mocks and set lidoAddress and stETHAddress.
+            // If not set by a derived script, they'll use mainnet defaults or be address(0) if mainnet defaults are not suitable.
+            // We can set them to placeholders here if no mock deployment is assumed at this base level.
+            lidoAddress = address(0); // Placeholder for local if not deploying mocks here
+            stETHAddress = address(0); // Placeholder for local if not deploying mocks here
             initialRateContractDeposit = LOCAL_INITIAL_RATE_CONTRACT_DEPOSIT;
             baseURI = LOCAL_BASE_URI;
-        } else {
-            revert("Unsupported chain ID: No Mainnet/Testnet/Local configuration available.");
         }
+        // Testnet configurations will be handled by overriding these values in derived testnet scripts.
 
         deploymentPath = string.concat(
             "deployments/",
