@@ -39,7 +39,7 @@ contract DeployL2Script is DeployScript {
              usdcAddress = 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359;
              uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; 
              chainlinkAggregator = 0xAB594600376Ec9fD91F8e885dADF0CE036862dE0;
-        } else if (chainId == MAINNET_CHAIN_ID || chainId == 11155111 || chainId == 31337) { // Added 112233 to L1 check
+        } else if (chainId == 1 || chainId == 11155111 || chainId == 31337) { // Added 112233 to L1 check
             revert("L2 script used on an L1 chain ID. Use DeployL1Script instead.");
         }
         else { // Default placeholders for other L2 networks
@@ -59,8 +59,8 @@ contract DeployL2Script is DeployScript {
         vm.startBroadcast();
 
         // --- Deploy common L2 infrastructure (Oracle) ---
-        deployOracleImplementation(); // From base
-        deployOracleProxy();          // From base
+        // deployOracleImplementation(); // From base
+        // deployOracleProxy();          // From base
         
         // --- Deploy L2 specific contracts ---
         console2.log("Deploying L2 Bridged Token System...");
