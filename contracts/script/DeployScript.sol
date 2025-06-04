@@ -61,7 +61,9 @@ contract DeployScript is Script {
     bytes32 public ORACLE_PROXY_SALT;
     bytes32 public STABILIZER_ESCROW_IMPL_SALT;
     bytes32 public POSITION_ESCROW_IMPL_SALT;
+    bytes32 public STABILIZER_IMPL_SALT;
     bytes32 public STABILIZER_PROXY_SALT;
+    bytes32 public REPORTER_IMPL_SALT;
     bytes32 public CUSPD_TOKEN_SALT;
     bytes32 public USPD_TOKEN_SALT;
     bytes32 public RATE_CONTRACT_SALT;
@@ -72,6 +74,15 @@ contract DeployScript is Script {
     // CreateX contract address
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
     ICreateX public createX;
+
+    // Helper to read address from deployment JSON
+    function _readAddressFromDeployment(string memory contractPath) internal view returns (address) {
+        if (vm.isFile(deploymentPath)) {
+            bytes memory data = vm.readFile(deploymentPath);
+            return Vm.Address(abi.decode(vm.parseJson(string(data), contractPath), (bytes)));
+        }
+        return address(0);
+    }
 
     // Deployed contract addresses
     address public oracleImplAddress;
@@ -150,7 +161,9 @@ contract DeployScript is Script {
         ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
         STABILIZER_ESCROW_IMPL_SALT = generateSalt("USPD_STABILIZER_ESCROW_IMPL_v1");
         POSITION_ESCROW_IMPL_SALT = generateSalt("USPD_POSITION_ESCROW_IMPL_v1");
+        STABILIZER_IMPL_SALT = generateSalt("USPD_STABILIZER_IMPL_v1");
         STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
+        REPORTER_IMPL_SALT = generateSalt("USPD_REPORTER_IMPL_v1");
         CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1");
         USPD_TOKEN_SALT = generateSalt("USPD_TOKEN_v1");
         RATE_CONTRACT_SALT = generateSalt("USPD_RATE_CONTRACT_v1");
