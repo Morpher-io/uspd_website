@@ -72,8 +72,8 @@ contract DeployL1Script is DeployScript {
         vm.startBroadcast();
 
         // --- Always Deployed ---
-        deployOracleImplementation();
-        deployOracleProxy(); 
+        // deployOracleImplementation();
+        // deployOracleProxy(); 
         // BridgeEscrow is deployed for both L1 and L2 scenarios, but configured/used differently.
         // cUSPDToken is needed by BridgeEscrow constructor for L2, so deploy cUSPD first in bridged. // Comment less relevant for L1
 
