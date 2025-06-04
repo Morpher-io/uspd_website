@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import {console2} from "forge-std/Script.sol";
 import "./DeployScript.sol"; // Import the base script
 import "../src/BridgeEscrow.sol"; // For type(BridgeEscrow)
+import "../src/cUSPDToken.sol"; 
+import "../src/PoolSharesConversionRate.sol"; 
 
 contract DeployBridgeEscrowScript is DeployScript {
     function setUp() public virtual override {
