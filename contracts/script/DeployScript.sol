@@ -21,6 +21,7 @@ contract DeployScript is Script {
     address public oracleSignerAddress = 0x00051CeA64B7aA576421E2b5AC0852f1d7E14Fa5;
 
     // Define salts for each contract
+    bytes32 public ORACLE_IMPL_SALT;
     bytes32 public ORACLE_PROXY_SALT;
     bytes32 public STABILIZER_PROXY_SALT;
     bytes32 public CUSPD_TOKEN_SALT;
@@ -79,6 +80,7 @@ contract DeployScript is Script {
             ".json"
         );
 
+        ORACLE_IMPL_SALT = generateSalt("USPD_ORACLE_IMPL_v1");
         ORACLE_PROXY_SALT = generateSalt("USPD_ORACLE_PROXY_v1");
         STABILIZER_PROXY_SALT = generateSalt("USPD_STABILIZER_PROXY_v1");
         CUSPD_TOKEN_SALT = generateSalt("CUSPD_TOKEN_v1");

@@ -43,9 +43,10 @@ contract DeployOracleScript is DeployScript {
     }
 
     function deployOracleImplementation() internal {
-        PriceOracle oracleImpl = new PriceOracle();
-        oracleImplAddress = address(oracleImpl);
-        console2.log("PriceOracle implementation deployed at:", oracleImplAddress);
+        // PriceOracle constructor has no arguments
+        bytes memory bytecode = type(PriceOracle).creationCode;
+        oracleImplAddress = createX.deployCreate2{value: 0}(ORACLE_IMPL_SALT, bytecode);
+        console2.log("PriceOracle implementation deployed via CREATE2 at:", oracleImplAddress);
     }
 
     function deployOracleProxy() internal {
