@@ -15,6 +15,7 @@ contract DeployScript is Script {
     // Configuration
     // Chain ID constants
     uint256 internal constant ETH_MAINNET_CHAIN_ID = 1;
+    uint256 internal constant SEPOLIA_CHAIN_ID = 11155111; // For L1 check
     uint256 internal constant OP_MAINNET_CHAIN_ID = 10;
     uint256 internal constant BNB_MAINNET_CHAIN_ID = 56;
     uint256 internal constant POLYGON_MAINNET_CHAIN_ID = 137; // Already exists
