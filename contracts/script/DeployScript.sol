@@ -76,12 +76,28 @@ contract DeployScript is Script {
     ICreateX public createX;
 
     // Helper to read address from deployment JSON
-    function _readAddressFromDeployment(string memory contractPath) internal view returns (address) {
-        if (vm.isFile(deploymentPath)) {
-            bytes memory data = vm.readFile(deploymentPath);
-            return Vm.Address(abi.decode(vm.parseJson(string(data), contractPath), (bytes)));
+    function _readAddressFromDeployment(string memory jsonPath) internal view returns (address) {
+        if (!vm.isFile(deploymentPath)) {
+            // If the file doesn't exist, we can't read from it.
+            // This shouldn't happen if saveDeploymentInfo was called by a prior script,
+            // as it creates the file. But as a safeguard:
+            console2.log("Warning: Deployment file not found at", deploymentPath, "when trying to read path", jsonPath);
+            return address(0);
         }
-        return address(0);
+        string memory json = vm.readFile(deploymentPath);
+        
+        // Check if the key exists to avoid revert on parseJsonAddress if key is missing
+        // vm.parseJson returns empty bytes if the key is not found or value is null
+        bytes memory valueBytes = vm.parseJson(json, jsonPath);
+        if (valueBytes.length == 0) {
+            console2.log("Warning: Key not found or null in JSON:", jsonPath);
+            return address(0); 
+        }
+
+        // Attempt to parse the address. This will revert if the value is not a valid address string.
+        // Ensure that saveDeploymentInfo writes valid address strings.
+        address addr = vm.parseJsonAddress(json, jsonPath);
+        return addr;
     }
 
     // Deployed contract addresses
