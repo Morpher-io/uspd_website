@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/***
+ *     /$$   /$$  /$$$$$$  /$$$$$$$  /$$$$$$$ 
+ *    | $$  | $$ /$$__  $$| $$__  $$| $$__  $$
+ *    | $$  | $$| $$  \__/| $$  \ $$| $$  \ $$
+ *    | $$  | $$|  $$$$$$ | $$$$$$$/| $$  | $$
+ *    | $$  | $$ \____  $$| $$____/ | $$  | $$
+ *    | $$  | $$ /$$  \ $$| $$      | $$  | $$
+ *    |  $$$$$$/|  $$$$$$/| $$      | $$$$$$$/
+ *     \______/  \______/ |__/      |_______/ 
+ *                                            
+ *    https://uspd.io
+ *                                               
+ *    This contract increases the yield in lockstep with stETH by depositing 
+ *    a small amount of stETH and calculating the yield factor
+ */
+
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";

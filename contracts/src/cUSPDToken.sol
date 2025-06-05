@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/***
+ *     /$$   /$$  /$$$$$$  /$$$$$$$  /$$$$$$$ 
+ *    | $$  | $$ /$$__  $$| $$__  $$| $$__  $$
+ *    | $$  | $$| $$  \__/| $$  \ $$| $$  \ $$
+ *    | $$  | $$|  $$$$$$ | $$$$$$$/| $$  | $$
+ *    | $$  | $$ \____  $$| $$____/ | $$  | $$
+ *    | $$  | $$ /$$  \ $$| $$      | $$  | $$
+ *    |  $$$$$$/|  $$$$$$/| $$      | $$$$$$$/
+ *     \______/  \______/ |__/      |_______/ 
+ *                                            
+ *    https://uspd.io
+ *                                               
+ *    This is the cUSPD Token which gives out shares increasing in value                             
+ */
+
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";

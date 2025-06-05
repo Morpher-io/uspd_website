@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/***
+ *     /$$   /$$  /$$$$$$  /$$$$$$$  /$$$$$$$ 
+ *    | $$  | $$ /$$__  $$| $$__  $$| $$__  $$
+ *    | $$  | $$| $$  \__/| $$  \ $$| $$  \ $$
+ *    | $$  | $$|  $$$$$$ | $$$$$$$/| $$  | $$
+ *    | $$  | $$ \____  $$| $$____/ | $$  | $$
+ *    | $$  | $$ /$$  \ $$| $$      | $$  | $$
+ *    |  $$$$$$/|  $$$$$$/| $$      | $$$$$$$/
+ *     \______/  \______/ |__/      |_______/ 
+ *                                            
+ *    https://uspd.io
+ *                                               
+ *    This is the yielding USPD Token                                        
+ */
+
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";

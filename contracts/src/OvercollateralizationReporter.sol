@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/***
+ *     /$$   /$$  /$$$$$$  /$$$$$$$  /$$$$$$$ 
+ *    | $$  | $$ /$$__  $$| $$__  $$| $$__  $$
+ *    | $$  | $$| $$  \__/| $$  \ $$| $$  \ $$
+ *    | $$  | $$|  $$$$$$ | $$$$$$$/| $$  | $$
+ *    | $$  | $$ \____  $$| $$____/ | $$  | $$
+ *    | $$  | $$ /$$  \ $$| $$      | $$  | $$
+ *    |  $$$$$$/|  $$$$$$/| $$      | $$$$$$$/
+ *     \______/  \______/ |__/      |_______/ 
+ *                                            
+ *    https://uspd.io
+ *                                               
+ *    This is the Overcollateralization Reporter showing how much we're overcollateralized in total                             
+ */
+
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol"; // <-- Add UUPSUpgradeable
