@@ -3,7 +3,7 @@
 'use client'
 
 import { useState } from 'react' // Import useState
-import { useAccount } from 'wagmi'
+import { useAccount, useWalletClient } from 'wagmi'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs" // Import Tabs components
@@ -15,7 +15,39 @@ import tokenJson from '@/contracts/out/UspdToken.sol/USPDToken.json' // Keep USP
 // This component wraps the logic previously in the page.tsx file
 export default function UspdMintBurn() {
     const { isConnected } = useAccount()
+    const { data: walletClient } = useWalletClient();
     const [activeTab, setActiveTab] = useState('mint') // Manage active tab state
+    const [addTokenMessage, setAddTokenMessage] = useState<string | null>(null);
+
+    const handleAddTokenToWallet = async (tokenAddress: `0x${string}`) => {
+        setAddTokenMessage(null);
+        if (!walletClient) {
+            setAddTokenMessage("Wallet client is not available. Ensure your wallet is connected properly.");
+            return;
+        }
+        try {
+            const success = await walletClient.request({
+                method: 'wallet_watchAsset',
+                params: {
+                    type: 'ERC20',
+                    options: {
+                        address: tokenAddress,
+                        symbol: 'USPD', // Standard symbol for USPD
+                        decimals: 18,   // Standard decimals for USPD
+                        // image: 'URL_TO_USPD_LOGO.png', // Optional: Add a URL to the token logo if available
+                    },
+                },
+            });
+            if (success) {
+                setAddTokenMessage('USPD token added to your wallet successfully!');
+            } else {
+                setAddTokenMessage('Could not add USPD token. User may have rejected the request.');
+            }
+        } catch (error) {
+            console.error('Failed to add token to wallet:', error);
+            setAddTokenMessage(`Error adding token: ${(error as Error).message}`);
+        }
+    };
 
     if (!isConnected) {
         return (
@@ -69,6 +101,26 @@ export default function UspdMintBurn() {
                             )}
                         </ContractLoader>
                     </Tabs>
+
+                    <ContractLoader contractKey="uspdToken">
+                        {(uspdTokenAddress) => (
+                            <div className="mt-6 flex flex-col items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handleAddTokenToWallet(uspdTokenAddress)}
+                                    disabled={!walletClient || !uspdTokenAddress}
+                                    className="w-full max-w-xs"
+                                >
+                                    Add USPD to Wallet
+                                </Button>
+                                {addTokenMessage && (
+                                    <p className={`text-sm ${addTokenMessage.startsWith('Error') || addTokenMessage.startsWith('Could not') ? 'text-red-500' : 'text-green-500'}`}>
+                                        {addTokenMessage}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </ContractLoader>
                 </CardContent>
             </Card>
         </div>
