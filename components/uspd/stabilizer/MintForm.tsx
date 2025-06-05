@@ -14,9 +14,10 @@ interface MintFormProps {
 
 export function MintForm({ stabilizerAddress, stabilizerAbi }: MintFormProps) {
   const [recipientAddress, setRecipientAddress] = useState<string>('')
-  const [tokenId, setTokenId] = useState<string>('')
+  // const [tokenId, setTokenId] = useState<string>('') // TokenId is no longer an input
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [mintedTokenId, setMintedTokenId] = useState<string | null>(null); // To display the minted token ID
   
   const { writeContractAsync } = useWriteContract()
 
@@ -24,10 +25,11 @@ export function MintForm({ stabilizerAddress, stabilizerAbi }: MintFormProps) {
     try {
       setError(null)
       setSuccess(null)
+      setMintedTokenId(null);
 
       // Validate inputs
-      if (!recipientAddress || !tokenId) {
-        setError('Please provide both recipient address and token ID')
+      if (!recipientAddress) {
+        setError('Please provide a recipient address')
         return
       }
       
@@ -37,23 +39,33 @@ export function MintForm({ stabilizerAddress, stabilizerAbi }: MintFormProps) {
         return
       }
       
-      // Validate token ID is a number
-      if (isNaN(Number(tokenId))) {
-        setError('Token ID must be a number')
-        return
-      }
+      // Token ID validation removed
 
-      await writeContractAsync({
+      // The `mint` function in the contract now likely returns the tokenId.
+      // We need to capture this if `writeContractAsync` supports it, or listen to an event.
+      // For now, we'll assume the success message needs to be generic or we'd need to listen to the `StabilizerPositionCreated` event.
+      const txResponse = await writeContractAsync({ // Assuming writeContractAsync might return transaction details or we listen to an event for tokenId
         address: stabilizerAddress,
         abi: stabilizerAbi,
         functionName: 'mint',
-        args: [recipientAddress as `0x${string}`, BigInt(tokenId)],
+        args: [recipientAddress as `0x${string}`], // Only recipient address
       })
 
       // Clear form after successful mint
       setRecipientAddress('')
-      setTokenId('')
-      setSuccess(`Successfully minted NFT #${tokenId} to ${recipientAddress}`)
+      // setTokenId('') // TokenId state removed
+      // A more robust way to get the tokenId would be to parse logs from txResponse or use a contract event listener.
+      // For simplicity, we'll update the success message. If the contract emits an event with the tokenId,
+      // that would be the ideal way to retrieve and display it.
+      // For now, we'll set a generic success message.
+      // If the mint function returns the ID, or if we can get it from the transaction receipt, we can update this.
+      // Let's assume for now we can't easily get the tokenId back directly from writeContractAsync for this example.
+      // We will update the success message to be more generic.
+      // A better approach would be to listen to the `StabilizerPositionCreated` event.
+      setSuccess(`Successfully initiated minting of a new NFT to ${recipientAddress}. Check transaction status for token ID.`)
+      // If you have a way to get the tokenId (e.g., from event logs), you can set it:
+      // setMintedTokenId(theMintedTokenId);
+      // setSuccess(`Successfully minted NFT #${theMintedTokenId} to ${recipientAddress}`)
     } catch (err: any) {
       setError(err.message || 'Failed to mint NFT')
       console.error(err)
@@ -75,15 +87,7 @@ export function MintForm({ stabilizerAddress, stabilizerAbi }: MintFormProps) {
             onChange={(e) => setRecipientAddress(e.target.value)}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="tokenId">Token ID</Label>
-          <Input 
-            id="tokenId" 
-            placeholder="1" 
-            value={tokenId}
-            onChange={(e) => setTokenId(e.target.value)}
-          />
-        </div>
+        {/* Token ID input removed */}
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>

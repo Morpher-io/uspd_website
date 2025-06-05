@@ -5,7 +5,7 @@ import { useReadContracts } from 'wagmi'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { StabilizerNFTList } from './StabilizerNFTList'
-import { StabilizerAdminCard } from './StabilizerAdminCard'
+// import { StabilizerAdminCard } from './StabilizerAdminCard' // StabilizerAdminCard removed
 
 interface StabilizerDataProps {
   stabilizerAddress: `0x${string}`
@@ -58,10 +58,11 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
         />
       )}
 
-      <StabilizerAdminCard
+      {/* StabilizerAdminCard removed as minting is now public */}
+      {/* <StabilizerAdminCard
         stabilizerAddress={stabilizerAddress}
         stabilizerAbi={stabilizerAbi}
-      />
+      /> */}
     </div>
   )
 }
