@@ -270,7 +270,18 @@ export function StabilizerEscrowManager({
                 </div>
             </div>
             <div className="pt-2">
-                <Label htmlFor={`withdraw-unallocated-${tokenId}`}>Withdraw Unallocated Funds (stETH)</Label>
+                <div className="flex justify-between items-center">
+                    <Label htmlFor={`withdraw-unallocated-${tokenId}`}>Withdraw Unallocated Funds (stETH)</Label>
+                    <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => setWithdrawAmount(formatEther(unallocatedStEthBalance))}
+                        disabled={unallocatedStEthBalance === BigInt(0)}
+                    >
+                        Max
+                    </Button>
+                </div>
                 <div className="flex gap-2 mt-1">
                     <Input
                         id={`withdraw-unallocated-${tokenId}`}
