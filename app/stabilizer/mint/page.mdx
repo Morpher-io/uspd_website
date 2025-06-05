@@ -6,17 +6,22 @@ import MintStabilizerNFT from '@/components/uspd/stabilizer/MintStabilizerNFT'
 
 # Mint Stabilizer NFT
 
-This page allows authorized administrators (accounts with the `MINTER_ROLE` on the `StabilizerNFT` contract) to mint new Stabilizer NFTs.
+This page allows anyone to mint a new Stabilizer NFT. Each NFT grants its owner unique privileges within the USPD ecosystem, including the ability to participate in liquidations based on the NFT's specific ID.
 
 <MintStabilizerNFT />
+
+## Understanding Liquidation Privileges
+
+Each Stabilizer NFT has an ID. This ID determines the collateralization ratio threshold at which its owner can liquidate an undercollateralized user position.
+Generally, NFTs with lower IDs can liquidate positions at higher collateralization ratios, offering a potential advantage. The specific threshold for the next NFT to be minted is displayed above the minting form.
 
 ## Process
 
 1.  **Connect Wallet:** Ensure your wallet is connected and you are on the correct network where the `StabilizerNFT` contract is deployed.
-2.  **Permissions Check:** The application will automatically verify if your connected account holds the necessary `MINTER_ROLE`. If you do not have the role, you will be redirected back to the main Stabilizer page.
-3.  **Enter Details:** Provide the Ethereum address that will own the new NFT (the Recipient Address) and a unique Token ID for the new NFT.
+2.  **Review Next NFT ID & Liquidation Info:** The page will display the Token ID of the next Stabilizer NFT that will be minted and the liquidation threshold associated with it.
+3.  **Enter Recipient Address:** Provide the Ethereum address that will own the new NFT.
 4.  **Mint:** Click the "Mint NFT" button and confirm the transaction in your wallet.
 
-Upon successful minting, the specified recipient address will receive the Stabilizer NFT with the chosen Token ID. This NFT represents a new, independent stabilizer position within the USPD system. The owner can then proceed to add collateral to its associated `StabilizerEscrow`.
+Upon successful minting, the specified recipient address will receive the new Stabilizer NFT. This NFT represents a new, independent stabilizer position. The owner can then proceed to add collateral to its associated `StabilizerEscrow` to begin earning rewards or use its liquidation privileges.
 
 
