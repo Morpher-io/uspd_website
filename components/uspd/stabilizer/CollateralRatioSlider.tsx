@@ -20,7 +20,7 @@ export default function CollateralRatioSlider({
   stabilizerAddress,
   stabilizerAbi
 }: CollateralRatioSliderProps) {
-  const [ratio, setRatio] = useState<number>(110) // Default to min possible
+  const [ratio, setRatio] = useState<number>(11000) // Default to min possible (110.00% = 11000)
   const [fetchedRatio, setFetchedRatio] = useState<number | null>(null) // Store the fetched ratio
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,10 +62,10 @@ export default function CollateralRatioSlider({
         address: stabilizerAddress,
         abi: stabilizerAbi,
         functionName: 'setMinCollateralizationRatio',
-        args: [BigInt(tokenId), BigInt(ratio)]
+        args: [BigInt(tokenId), BigInt(ratio)] // ratio state is already scaled
       })
       
-      setSuccess(`Successfully updated collateralization ratio to ${ratio}%`)
+      setSuccess(`Successfully updated collateralization ratio to ${(ratio / 100).toFixed(2)}%`)
       // onSuccess call removed
     } catch (err: any) {
       setError(err.message || 'Failed to update ratio')
@@ -101,11 +101,11 @@ export default function CollateralRatioSlider({
         <div className="flex items-center gap-2">
           <span className={cn(
             "px-2 py-1 rounded text-xs font-medium text-white",
-            getColorClass(ratio)
+            getColorClass(ratio / 100) // Pass display value to util
           )}>
-            {getRiskLevel(ratio)}
+            {getRiskLevel(ratio / 100)} {/* Pass display value to util */}
           </span>
-          <span className="font-semibold">{ratio}%</span>
+          <span className="font-semibold">{(ratio / 100).toFixed(2)}%</span> {/* Display formatted ratio */}
         </div>
       </div>
       
@@ -116,19 +116,19 @@ export default function CollateralRatioSlider({
           <div className={cn("bg-green-500 h-full", colorBarWidths.green)}></div>
         </div>
         <Slider
-          value={[ratio]}
-          min={110}
-          max={200}
-          step={1}
-          onValueChange={(value) => setRatio(value[0])}
+          value={[ratio]} // ratio state is scaled
+          min={11000}     // 110.00% scaled
+          max={20000}     // 200.00% scaled (contract allows up to 100000)
+          step={100}      // 1% step (100 for scaled value)
+          onValueChange={(value) => setRatio(value[0])} // value[0] will be scaled
           className="z-10"
         />
       </div>
       
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>110% (Min)</span>
+        <span>110.00% (Min)</span> {/* Updated label */}
         
-        <span>200%</span>
+        <span>200.00%</span> {/* Updated label */}
       </div>
       
       <div className="flex justify-end">
