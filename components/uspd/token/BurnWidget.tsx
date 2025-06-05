@@ -12,6 +12,7 @@ import useDebounce from '@/components/utils/debounce'
 // Import necessary ABIs (assuming paths are correct)
 import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
 import poolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json'
+import erc20Abi from '@/contracts/out/ERC20.sol/ERC20.json' // For stETH balance
 
 interface BurnWidgetProps {
     tokenAddress: `0x${string}` // USPDToken address (for balance display)
@@ -26,7 +27,7 @@ export function BurnWidget({
     cuspdTokenAddress,
     cuspdTokenAbi
 }: BurnWidgetProps) {
-    const [ethAmount, setEthAmount] = useState('') // Estimated ETH return
+    const [stEthAmount, setStEthAmount] = useState('') // Estimated stETH return
     const [uspdAmount, setUspdAmount] = useState('') // User input USPD amount
     const [sharesToBurn, setSharesToBurn] = useState<bigint>(BigInt(0)) // Calculated cUSPD shares
     const [error, setError] = useState<string | null>(null)
@@ -36,15 +37,13 @@ export function BurnWidget({
     const [priceData, setPriceData] = useState<any>(null)
     const [isLoadingPrice, setIsLoadingPrice] = useState(false)
     const [rateContractAddress, setRateContractAddress] = useState<Address | null>(null)
+    const [stEthTokenAddress, setStEthTokenAddress] = useState<Address | null>(null);
     const [yieldFactor, setYieldFactor] = useState<bigint>(BigInt(1e18)) // Default 1e18
 
     const debouncedUspdAmount = useDebounce(uspdAmount, 500)
 
     const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
-
-    // Get ETH balance (for display)
-    const { data: ethBalance } = useBalance({ address })
 
     // Get USPD balance
     const { data: uspdBalance, refetch: refetchUspdBalance } = useReadContract({
@@ -68,6 +67,26 @@ export function BurnWidget({
     useEffect(() => {
         setRateContractAddress(fetchedRateContractAddress as Address | null);
     }, [fetchedRateContractAddress]);
+
+    // Fetch stETH address from Rate Contract
+    const { data: fetchedStEthAddress, isLoading: isLoadingStEthAddr } = useReadContract({
+        address: rateContractAddress!,
+        abi: poolSharesConversionRateAbi.abi,
+        functionName: 'stETH',
+        args: [],
+        query: { enabled: !!rateContractAddress }
+    });
+
+    useEffect(() => {
+        setStEthTokenAddress(fetchedStEthAddress as Address | null);
+    }, [fetchedStEthAddress]);
+
+    // Get stETH balance (for display)
+    const { data: stEthBalance, refetch: refetchStEthBalance } = useBalance({
+        address: address,
+        token: stEthTokenAddress!,
+        query: { enabled: !!address && !!stEthTokenAddress }
+    });
 
     // Fetch Yield Factor from Rate Contract
     const { data: fetchedYieldFactor, isLoading: isLoadingYieldFactor } = useReadContract({
@@ -119,13 +138,13 @@ export function BurnWidget({
             const uspdValue = parseFloat(debouncedUspdAmount)
             if (!isNaN(uspdValue) && uspdValue > 0) {
                 const priceInUsd = parseFloat(priceData.price) / (10 ** priceData.decimals)
-                const ethValue = uspdValue / priceInUsd
-                setEthAmount(ethValue.toFixed(6))
+                const stEthValue = uspdValue / priceInUsd // Assuming 1 stETH ~ 1 ETH for price estimation
+                setStEthAmount(stEthValue.toFixed(6))
             } else {
-                setEthAmount('') // Clear if input is invalid
+                setStEthAmount('') // Clear if input is invalid
             }
         } else {
-            setEthAmount('') // Clear if no price or input
+            setStEthAmount('') // Clear if no price or input
         }
     }, [debouncedUspdAmount, priceData])
 
@@ -214,10 +233,12 @@ export function BurnWidget({
                 args: [sharesToBurn, address, priceQuery] // Pass calculated shares, recipient, priceQuery
             })
 
-            setSuccess(`Successfully initiated burn of ${uspdAmount} USPD (approx. ${formatUnits(sharesToBurn, 18)} shares) for estimated ${ethAmount} ETH`)
-            setEthAmount('')
+            setSuccess(`Successfully initiated burn of ${uspdAmount} USPD (approx. ${formatUnits(sharesToBurn, 18)} shares) for estimated ${stEthAmount} stETH`)
+            setStEthAmount('')
             setUspdAmount('')
             refetchUspdBalance()
+            if (refetchStEthBalance) refetchStEthBalance();
+
 
         } catch (err: any) {
             setError(err.message || 'Failed to burn USPD')
@@ -251,16 +272,16 @@ export function BurnWidget({
 
             <TokenDisplay
                 label="To (estimated)"
-                symbol="ETH"
-                amount={ethAmount}
-                setAmount={setEthAmount} // Should not be settable here
-                balance={ethBalance ? ethBalance.formatted : '0'}
+                symbol="stETH"
+                amount={stEthAmount}
+                setAmount={setStEthAmount} // Should not be settable here
+                balance={stEthBalance ? stEthBalance.formatted : '0'}
                 readOnly={true}
             />
 
             {priceData && (
                 <div className="text-xs text-muted-foreground text-right">
-                    Rate: 1 USPD ≈ {(1 / (parseFloat(priceData.price) / (10 ** priceData.decimals))).toFixed(6)} ETH
+                    Rate: 1 USPD ≈ {(1 / (parseFloat(priceData.price) / (10 ** priceData.decimals))).toFixed(6)} stETH
                 </div>
             )}
 
