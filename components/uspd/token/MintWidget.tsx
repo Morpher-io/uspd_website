@@ -4,18 +4,21 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi'
-import { formatEther, parseEther, formatUnits } from 'viem'
-import { IPriceOracle } from '@/types/contracts'
+import { formatEther, parseEther, formatUnits, Address } from 'viem' // Add Address
+import { IPriceOracle } from '@/types/contracts' // This type might need adjustment for PriceAttestationQuery
 import { TokenDisplay } from './TokenDisplay'
 import { ArrowDown } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
+import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json' // Import cUSPD ABI
 
 interface MintWidgetProps {
-    tokenAddress: `0x${string}`
+    tokenAddress: `0x${string}` // USPDToken address (for balance display)
     tokenAbi: any
+    cuspdTokenAddress: `0x${string}` // cUSPDToken address (for minting)
+    cuspdTokenAbi: any
 }
 
-export function MintWidget({ tokenAddress, tokenAbi }: MintWidgetProps) {
+export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTokenAbi }: MintWidgetProps) {
     const [ethAmount, setEthAmount] = useState('')
     const [uspdAmount, setUspdAmount] = useState('') // Estimated amount
     const [error, setError] = useState<string | null>(null)
@@ -113,27 +116,28 @@ export function MintWidget({ tokenAddress, tokenAbi }: MintWidgetProps) {
                 return
             }
 
-            const priceQuery: IPriceOracle.PriceAttestationQueryStruct = {
-                assetPair: freshPriceData.assetPair as `0x${string}`,
+            // Construct priceQuery according to IPriceOracle.PriceAttestationQuery
+            // Ensure freshPriceData provides all these fields correctly typed.
+            const priceQuery = { // Type will be inferred by Viem/Wagmi from ABI
                 price: BigInt(freshPriceData.price),
-                decimals: freshPriceData.decimals,
+                decimals: Number(freshPriceData.decimals), // uint8 in Solidity
                 dataTimestamp: BigInt(freshPriceData.dataTimestamp),
-                requestTimestamp: BigInt(freshPriceData.requestTimestamp),
-                signature: freshPriceData.signature as `0x${string}`
-            }
+                assetPair: freshPriceData.assetPair as `0x${string}`, // bytes32 in Solidity
+                signature: freshPriceData.signature as `0x${string}` // bytes in Solidity
+            };
 
             const ethValue = parseEther(ethAmount)
 
-            // Call the mint function on the USPDToken contract
+            // Call the mintShares function on the cUSPDToken contract
             await writeContractAsync({
-                address: tokenAddress, // Use the USPDToken address passed in props
-                abi: tokenAbi, // Use the USPDToken ABI passed in props
-                functionName: 'mint', // Call the mint function on USPDToken
+                address: cuspdTokenAddress, // Use the cUSPDToken address
+                abi: cuspdTokenAbi,         // Use the cUSPDToken ABI
+                functionName: 'mintShares',
                 args: [address, priceQuery], // Pass recipient (self) and price query
                 value: ethValue
             })
 
-            setSuccess(`Successfully initiated mint for approximately ${uspdAmount} USPD`)
+            setSuccess(`Successfully initiated mint for approximately ${uspdAmount} USPD (shares)`)
             setEthAmount('')
             setUspdAmount('')
             refetchUspdBalance()
