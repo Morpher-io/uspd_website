@@ -90,11 +90,11 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         timestamp: BigInt(priceData.dataTimestamp), // Corresponds to PriceResponse.timestamp
     } : undefined;
 
-    const { 
-        data: systemRatioData, 
-        isLoading: isLoadingRatio, 
-        error: errorRatio, 
-        refetch: refetchRatio 
+    const {
+        data: systemRatioData,
+        isLoading: isLoadingRatio,
+        error: errorRatio,
+        refetch: refetchRatio
     } = useReadContract({
         address: reporterAddress,
         abi: reporterAbiJson.abi,
@@ -105,11 +105,11 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         }
     })
 
-    const { 
-        data: totalEthEquivalentData, 
-        isLoading: isLoadingEthEquivalent, 
-        error: errorEthEquivalent, 
-        refetch: refetchEthEquivalent 
+    const {
+        data: totalEthEquivalentData,
+        isLoading: isLoadingEthEquivalent,
+        error: errorEthEquivalent,
+        refetch: refetchEthEquivalent
     } = useReadContract({
         address: reporterAddress,
         abi: reporterAbiJson.abi,
@@ -120,11 +120,11 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         }
     })
 
-    const { 
-        data: yieldFactorSnapshotData, 
-        isLoading: isLoadingYieldFactor, 
-        error: errorYieldFactor, 
-        refetch: refetchYieldFactor 
+    const {
+        data: yieldFactorSnapshotData,
+        isLoading: isLoadingYieldFactor,
+        error: errorYieldFactor,
+        refetch: refetchYieldFactor
     } = useReadContract({
         address: reporterAddress,
         abi: reporterAbiJson.abi,
@@ -139,7 +139,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         if (priceResponseForContract) {
             refetchRatio();
             // These don't directly depend on price for their args, but refetching ensures data consistency
-            refetchEthEquivalent(); 
+            refetchEthEquivalent();
             refetchYieldFactor();
         }
     }, [priceData, refetchRatio, refetchEthEquivalent, refetchYieldFactor]); // priceData is the key trigger
@@ -188,7 +188,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
 
     const displayEthEquivalent = totalEthEquivalent !== undefined ? formatUnits(totalEthEquivalent, 18) : "N/A";
     const displayYieldFactor = yieldFactorSnapshot !== undefined ? (Number(yieldFactorSnapshot) / 1e18).toFixed(4) : "N/A";
-    
+
     let displaySystemRatio: string;
     if (systemRatio === undefined) {
         displaySystemRatio = "N/A";
@@ -197,7 +197,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     } else {
         displaySystemRatio = `${(Number(systemRatio) / 100).toFixed(2)}%`;
     }
-    
+
     const currentEthPrice = priceData ? `$${(Number(priceData.price) / (10 ** Number(priceData.decimals))).toFixed(2)}` : "N/A";
 
     const anyError = errorRatio || errorEthEquivalent || errorYieldFactor || priceError;
@@ -308,7 +308,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                                 <TableCell className="font-medium text-muted-foreground">USPD Token Address</TableCell>
                                 <TableCell className="text-right">{renderAddressCell(uspdTokenAddress, "USPD Token")}</TableCell>
                             </TableRow>
-                             <TableRow>
+                            <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">USPD Total Supply</TableCell>
                                 <TableCell className="text-right">
                                     {isLoadingUspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{uspdTotalSupply !== undefined ? formatUnits(uspdTotalSupply, 18) : "N/A"} USPD</span>}
@@ -332,7 +332,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                                     {isLoadingCuspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{cuspdTotalSupply !== undefined ? formatUnits(cuspdTotalSupply, 18) : "N/A"} cUSPD</span>}
                                 </TableCell>
                             </TableRow>
-                             {userAddress && (
+                            {userAddress && (
                                 <TableRow>
                                     <TableCell className="font-medium text-muted-foreground">Your cUSPD Balance</TableCell>
                                     <TableCell className="text-right">
@@ -358,7 +358,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     )}
                 </div>
 
-                 { anyError &&
+                {anyError &&
                     <Alert variant="destructive" className="mt-4">
                         <AlertDescription>
                             {priceError && <div>Price Error: {priceError}</div>}
@@ -375,8 +375,8 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
 
 export default function SystemCollateralizationDisplay() {
     return (
-        <div className="w-full flex flex-col items-center">
-            <div className="w-full max-w-2xl"> {/* Constrain width similar to other components */}
+        <div className="w-full flex flex-col items-center mt-4">
+            <div className="w-full"> {/* Constrain width similar to other components */}
                 <ContractLoader contractKey="reporter" backLink="/uspd">
                     {(reporterAddress) => (
                         <ContractLoader contractKey="uspdToken" backLink="/uspd">
