@@ -223,13 +223,19 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     abi: stabilizerNftAbiJson.abi,
                     functionName: 'positions',
                     args: [currentTokenId],
-                }) as { minCollateralRatio: bigint; nextUnallocated: bigint; /* other fields */ };
+                }) as [bigint, bigint, bigint, bigint, bigint]; // Array of 5 bigints
 
-                console.log(position);
+                // position[0] is minCollateralRatio
+                // position[1] is prevUnallocated
+                // position[2] is nextUnallocated
+                // position[3] is prevAllocated
+                // position[4] is nextAllocated
                 const minCollateralRatio = position[0];
+                const nextUnallocatedTokenId = position[2];
+
 
                 if (minCollateralRatio <= FACTOR_10000) { // Ratio must be > 100%
-                    currentTokenId = position.nextUnallocated;
+                    currentTokenId = nextUnallocatedTokenId;
                     continue;
                 }
 
@@ -268,7 +274,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                         currentTotalEthCanBeBacked += userEthForStabilizer;
                     }
                 }
-                currentTokenId = position.nextUnallocated;
+                currentTokenId = nextUnallocatedTokenId; // Use the correctly accessed nextUnallocatedTokenId
             }
 
             setTotalMintableEth(currentTotalEthCanBeBacked);
