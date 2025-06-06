@@ -507,30 +507,38 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
 }
 
 export default function SystemCollateralizationDisplay() {
+    const contractKeysToLoad = ["reporter", "uspdToken", "cuspdToken", "stabilizer"]; // "stabilizer" as requested
+
     return (
         <div className="w-full flex flex-col items-center mt-4">
             <div className="w-full"> {/* Constrain width similar to other components */}
-                <ContractLoader contractKey="reporter" backLink="/uspd">
-                    {(reporterAddress) => (
-                        <ContractLoader contractKey="uspdToken" backLink="/uspd">
-                            {(uspdTokenAddress) => (
-                                <ContractLoader contractKey="cuspdToken" backLink="/uspd">
-                                    {(cuspdTokenAddress) => (
-                                        <ContractLoader contractKey="stabilizerNFT" backLink="/uspd">
-                                            {(stabilizerNftAddress) => (
-                                                <SystemDataDisplay
-                                                    reporterAddress={reporterAddress}
-                                                    uspdTokenAddress={uspdTokenAddress}
-                                                    cuspdTokenAddress={cuspdTokenAddress}
-                                                    stabilizerNftAddress={stabilizerNftAddress}
-                                                />
-                                            )}
-                                        </ContractLoader>
-                                    )}
-                                </ContractLoader>
-                            )}
-                        </ContractLoader>
-                    )}
+                <ContractLoader contractKeys={contractKeysToLoad} backLink="/uspd">
+                    {(loadedAddresses) => {
+                        const reporterAddress = loadedAddresses["reporter"];
+                        const uspdTokenAddress = loadedAddresses["uspdToken"];
+                        const cuspdTokenAddress = loadedAddresses["cuspdToken"];
+                        const stabilizerNftAddress = loadedAddresses["stabilizer"];
+
+                        // Basic check to ensure all expected addresses are loaded before rendering SystemDataDisplay
+                        if (!reporterAddress || !uspdTokenAddress || !cuspdTokenAddress || !stabilizerNftAddress) {
+                            return (
+                                <Alert variant="destructive">
+                                    <AlertDescription className='text-center'>
+                                        One or more critical contract addresses failed to load.
+                                    </AlertDescription>
+                                </Alert>
+                            );
+                        }
+                        
+                        return (
+                            <SystemDataDisplay
+                                reporterAddress={reporterAddress}
+                                uspdTokenAddress={uspdTokenAddress}
+                                cuspdTokenAddress={cuspdTokenAddress}
+                                stabilizerNftAddress={stabilizerNftAddress}
+                            />
+                        );
+                    }}
                 </ContractLoader>
             </div>
         </div>

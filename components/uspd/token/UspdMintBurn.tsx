@@ -45,36 +45,45 @@ export default function UspdMintBurn() {
                             <TabsTrigger value="burn">Burn USPD</TabsTrigger>
                         </TabsList>
 
-                        {/* Load USPDToken address (for balances) and cUSPDToken address (for mint/burn) */}
-                        <ContractLoader contractKey="uspdToken">
-                            {(uspdTokenAddress) => (
-                                <ContractLoader contractKey="cuspdToken">
-                                    {(cuspdTokenAddress) => (
-                                        <>
-                                            <TabsContent value="mint">
-                                                <MintWidget
-                                                    tokenAddress={uspdTokenAddress} // USPD address for balance display
-                                                    tokenAbi={tokenJson.abi}
-                                                    cuspdTokenAddress={cuspdTokenAddress} // cUSPD address for minting
-                                                    cuspdTokenAbi={cuspdTokenJson.abi}
-                                                />
-                                            </TabsContent>
-                                            <TabsContent value="burn">
-                                                {/* BurnWidget already expects cuspdTokenAddress and cuspdTokenAbi */}
-                                                <BurnWidget
-                                                    tokenAddress={uspdTokenAddress} // USPD address for balance display
-                                                    tokenAbi={tokenJson.abi}
-                                                    cuspdTokenAddress={cuspdTokenAddress} // cUSPD address for burning
-                                                    cuspdTokenAbi={cuspdTokenJson.abi}
-                                                />
-                                            </TabsContent>
-                                        </>
-                                    )}
-                                </ContractLoader>
-                            )}
+                        {/* Load USPDToken and cUSPDToken addresses */}
+                        <ContractLoader contractKeys={["uspdToken", "cuspdToken"]}>
+                            {(loadedAddresses) => {
+                                const uspdTokenAddress = loadedAddresses["uspdToken"];
+                                const cuspdTokenAddress = loadedAddresses["cuspdToken"];
+
+                                if (!uspdTokenAddress || !cuspdTokenAddress) {
+                                    return (
+                                        <Alert variant="destructive">
+                                            <AlertDescription className='text-center'>
+                                                Failed to load token contract addresses.
+                                            </AlertDescription>
+                                        </Alert>
+                                    );
+                                }
+
+                                return (
+                                    <>
+                                        <TabsContent value="mint">
+                                            <MintWidget
+                                                tokenAddress={uspdTokenAddress} // USPD address for balance display
+                                                tokenAbi={tokenJson.abi}
+                                                cuspdTokenAddress={cuspdTokenAddress} // cUSPD address for minting
+                                                cuspdTokenAbi={cuspdTokenJson.abi}
+                                            />
+                                        </TabsContent>
+                                        <TabsContent value="burn">
+                                            <BurnWidget
+                                                tokenAddress={uspdTokenAddress} // USPD address for balance display
+                                                tokenAbi={tokenJson.abi}
+                                                cuspdTokenAddress={cuspdTokenAddress} // cUSPD address for burning
+                                                cuspdTokenAbi={cuspdTokenJson.abi}
+                                            />
+                                        </TabsContent>
+                                    </>
+                                );
+                            }}
                         </ContractLoader>
                     </Tabs>
-                    {/* "Add USPD to Wallet" button and its ContractLoader removed from here */}
                 </CardContent>
             </Card>
         </div>
