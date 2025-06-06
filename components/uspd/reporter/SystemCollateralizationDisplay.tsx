@@ -16,14 +16,21 @@ import { toast } from 'sonner'
 import reporterAbiJson from '@/contracts/out/OvercollateralizationReporter.sol/OvercollateralizationReporter.json'
 import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
+import stabilizerNftAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
+import stabilizerEscrowAbiJson from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json' // For StabilizerEscrow interactions
+import { readContract as viewReadContract } from 'wagmi/actions' // Renamed to avoid conflict
+import { config as wagmiConfig } from '@/wagmi' // Assuming your wagmi config is exported
 
 // Solidity's type(uint256).max
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
+const FACTOR_10000 = BigInt(10000);
+const MAX_STABILIZERS_TO_CHECK = 10; // Limit for iterating unallocated stabilizers
 
 interface SystemDataDisplayProps {
     reporterAddress: Address;
     uspdTokenAddress: Address;
     cuspdTokenAddress: Address;
+    stabilizerNftAddress: Address; // Added StabilizerNFT address
 }
 
 function getBlockExplorerUrl(chainId: number, address: Address): string {
@@ -52,11 +59,19 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     const { data: walletClient } = useWalletClient();
     const chainId = useChainId();
 
+    // Price and general stats state
     const [priceData, setPriceData] = useState<any>(null)
     const [isLoadingPrice, setIsLoadingPrice] = useState(true)
     const [priceError, setPriceError] = useState<string | null>(null)
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [addTokenMessage, setAddTokenMessage] = useState<string | null>(null);
+
+    // State for mintable capacity
+    const [totalMintableEth, setTotalMintableEth] = useState<bigint | null>(null);
+    const [mintableUspdValue, setMintableUspdValue] = useState<bigint | null>(null);
+    const [isLoadingMintableCapacity, setIsLoadingMintableCapacity] = useState(false);
+    const [mintableCapacityError, setMintableCapacityError] = useState<string | null>(null);
+
 
     const fetchPriceData = useCallback(async () => {
         setIsLoadingPrice(true)
@@ -182,6 +197,101 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
 
     const isLoadingAnyContractData = isLoadingRatio || isLoadingEthEquivalent || isLoadingYieldFactor || isLoadingUspdTotalSupply || isLoadingUserUspdBalance || isLoadingCuspdTotalSupply || isLoadingUserCuspdBalance;
 
+    // --- Calculate Mintable Capacity ---
+    const calculateMintableCapacity = useCallback(async () => {
+        if (!stabilizerNftAddress || !priceData) {
+            return;
+        }
+        setIsLoadingMintableCapacity(true);
+        setMintableCapacityError(null);
+        setTotalMintableEth(null);
+        setMintableUspdValue(null);
+
+        let currentTotalEthCanBeBacked = BigInt(0);
+
+        try {
+            let currentTokenId = await viewReadContract(wagmiConfig, {
+                address: stabilizerNftAddress,
+                abi: stabilizerNftAbiJson.abi,
+                functionName: 'lowestUnallocatedId',
+            }) as bigint;
+
+            for (let i = 0; i < MAX_STABILIZERS_TO_CHECK && currentTokenId !== BigInt(0); i++) {
+                const position = await viewReadContract(wagmiConfig, {
+                    address: stabilizerNftAddress,
+                    abi: stabilizerNftAbiJson.abi,
+                    functionName: 'positions',
+                    args: [currentTokenId],
+                }) as { minCollateralRatio: bigint; nextUnallocated: bigint; /* other fields */ };
+
+                const minCollateralRatio = position.minCollateralRatio;
+
+                if (minCollateralRatio <= FACTOR_10000) { // Ratio must be > 100%
+                    currentTokenId = position.nextUnallocated;
+                    continue;
+                }
+
+                const stabilizerEscrowAddress = await viewReadContract(wagmiConfig, {
+                    address: stabilizerNftAddress,
+                    abi: stabilizerNftAbiJson.abi,
+                    functionName: 'stabilizerEscrows',
+                    args: [currentTokenId],
+                }) as Address;
+
+                if (stabilizerEscrowAddress === '0x0000000000000000000000000000000000000000') {
+                    currentTokenId = position.nextUnallocated;
+                    continue;
+                }
+                
+                const stabilizerStEthAvailable = await viewReadContract(wagmiConfig, {
+                    address: stabilizerEscrowAddress,
+                    abi: stabilizerEscrowAbiJson.abi,
+                    functionName: 'unallocatedStETH',
+                }) as bigint;
+
+                if (stabilizerStEthAvailable > BigInt(0)) {
+                    // user_eth = stabilizer_steth * 10000 / (ratio - 10000)
+                    const userEthForStabilizer = (stabilizerStEthAvailable * FACTOR_10000) / (minCollateralRatio - FACTOR_10000);
+                    currentTotalEthCanBeBacked += userEthForStabilizer;
+                }
+                currentTokenId = position.nextUnallocated;
+            }
+
+            setTotalMintableEth(currentTotalEthCanBeBacked);
+
+            if (currentTotalEthCanBeBacked > BigInt(0) && priceData.price && priceData.decimals !== undefined) {
+                const ethPriceBigInt = BigInt(priceData.price);
+                const priceDecimalsFactor = BigInt(10) ** BigInt(priceData.decimals);
+                // mintableUSPD_wei = (totalETH_wei * ethPrice_scaled) / 10^priceDecimals
+                // Assuming totalMintableEth is in wei, and USPD has 18 decimals
+                // To keep precision, if ethPrice is for 1 ETH (e.g., 3000 USD with 8 decimals for price, means 3000 * 10^8)
+                // And USPD has 18 decimals.
+                // USPD value = (ETH_amount_wei / 10^18) * (ETH_price_usd_scaled / 10^price_decimals) * 10^18_uspd_decimals
+                // USPD value = ETH_amount_wei * ETH_price_usd_scaled / 10^price_decimals
+                const uspdVal = (currentTotalEthCanBeBacked * ethPriceBigInt) / priceDecimalsFactor;
+                setMintableUspdValue(uspdVal);
+            } else {
+                setMintableUspdValue(BigInt(0));
+            }
+
+        } catch (err) {
+            console.error('Error calculating mintable capacity:', err);
+            setMintableCapacityError((err as Error).message || 'Failed to calculate mintable capacity');
+        } finally {
+            setIsLoadingMintableCapacity(false);
+        }
+    }, [stabilizerNftAddress, priceData]);
+
+    useEffect(() => {
+        if (stabilizerNftAddress && priceData) {
+            calculateMintableCapacity();
+            // Optionally, set up an interval to refresh this calculation
+            // const intervalId = setInterval(calculateMintableCapacity, 60000); // e.g., every 60 seconds
+            // return () => clearInterval(intervalId);
+        }
+    }, [calculateMintableCapacity, stabilizerNftAddress, priceData]);
+    // --- End Calculate Mintable Capacity ---
+
     const systemRatio = systemRatioData as bigint | undefined;
     const totalEthEquivalent = totalEthEquivalentData as bigint | undefined;
     const yieldFactorSnapshot = yieldFactorSnapshotData as bigint | undefined;
@@ -296,8 +406,31 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                                     {isLoadingPrice ? <Skeleton className="h-5 w-28 float-right" /> : <span>{currentEthPrice}</span>}
                                 </TableCell>
                             </TableRow>
+                            <TableRow>
+                                <TableCell className="font-medium text-muted-foreground">
+                                    Est. Mintable ETH Capacity
+                                    <p className="text-xs text-muted-foreground font-normal">(Based on first {MAX_STABILIZERS_TO_CHECK} unallocated stabilizers)</p>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    {isLoadingMintableCapacity ? <Skeleton className="h-5 w-32 float-right" /> :
+                                        totalMintableEth !== null ? <span>{formatUnits(totalMintableEth, 18)} ETH</span> : <span>N/A</span>
+                                    }
+                                </TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell className="font-medium text-muted-foreground">
+                                    Est. Mintable USPD Capacity
+                                     <p className="text-xs text-muted-foreground font-normal">(Based on first {MAX_STABILIZERS_TO_CHECK} unallocated stabilizers)</p>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    {isLoadingMintableCapacity || isLoadingPrice ? <Skeleton className="h-5 w-36 float-right" /> :
+                                        mintableUspdValue !== null ? <span>{formatUnits(mintableUspdValue, 18)} USPD</span> : <span>N/A</span>
+                                    }
+                                </TableCell>
+                            </TableRow>
                         </TableBody>
                     </Table>
+                     {mintableCapacityError && <Alert variant="destructive" className="mt-2 text-xs"><AlertDescription>{mintableCapacityError}</AlertDescription></Alert>}
                 </div>
 
                 <div>
@@ -383,11 +516,16 @@ export default function SystemCollateralizationDisplay() {
                             {(uspdTokenAddress) => (
                                 <ContractLoader contractKey="cuspdToken" backLink="/uspd">
                                     {(cuspdTokenAddress) => (
-                                        <SystemDataDisplay
-                                            reporterAddress={reporterAddress}
-                                            uspdTokenAddress={uspdTokenAddress}
-                                            cuspdTokenAddress={cuspdTokenAddress}
-                                        />
+                                        <ContractLoader contractKey="stabilizerNFT" backLink="/uspd">
+                                            {(stabilizerNftAddress) => (
+                                                <SystemDataDisplay
+                                                    reporterAddress={reporterAddress}
+                                                    uspdTokenAddress={uspdTokenAddress}
+                                                    cuspdTokenAddress={cuspdTokenAddress}
+                                                    stabilizerNftAddress={stabilizerNftAddress}
+                                                />
+                                            )}
+                                        </ContractLoader>
                                     )}
                                 </ContractLoader>
                             )}
