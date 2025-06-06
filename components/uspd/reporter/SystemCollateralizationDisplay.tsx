@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useReadContract, useChainId, useAccount, useWalletClient, useBalance } from 'wagmi'
+import { useReadContract, useChainId, useAccount, useWalletClient, useBalance, useConfig } from 'wagmi' // Added useConfig
 import { formatUnits, Address } from 'viem'
 import Link from 'next/link'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
@@ -58,6 +58,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     const { address: userAddress } = useAccount();
     const { data: walletClient } = useWalletClient();
     const chainId = useChainId();
+    const config = useConfig(); // Get config from WagmiProvider context
 
     // Price and general stats state
     const [priceData, setPriceData] = useState<any>(null)
@@ -210,14 +211,14 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         let currentTotalEthCanBeBacked = BigInt(0);
 
         try {
-            let currentTokenId = await viewReadContract({
+            let currentTokenId = await viewReadContract(config, {
                 address: stabilizerNftAddress,
                 abi: stabilizerNftAbiJson.abi,
                 functionName: 'lowestUnallocatedId',
             }) as bigint;
 
             for (let i = 0; i < MAX_STABILIZERS_TO_CHECK && currentTokenId !== BigInt(0); i++) {
-                const position = await viewReadContract({
+                const position = await viewReadContract(config, {
                     address: stabilizerNftAddress,
                     abi: stabilizerNftAbiJson.abi,
                     functionName: 'positions',
@@ -231,7 +232,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     continue;
                 }
 
-                const stabilizerEscrowAddress = await viewReadContract({
+                const stabilizerEscrowAddress = await viewReadContract(config, {
                     address: stabilizerNftAddress,
                     abi: stabilizerNftAbiJson.abi,
                     functionName: 'stabilizerEscrows',
@@ -243,7 +244,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     continue;
                 }
                 
-                const stabilizerStEthAvailable = await viewReadContract({
+                const stabilizerStEthAvailable = await viewReadContract(config, {
                     address: stabilizerEscrowAddress,
                     abi: stabilizerEscrowAbiJson.abi,
                     functionName: 'unallocatedStETH',
@@ -280,10 +281,10 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         } finally {
             setIsLoadingMintableCapacity(false);
         }
-    }, [stabilizerNftAddress, priceData]); // Ensuring stabilizerNftAddress is correctly listed as a dependency
+    }, [config, stabilizerNftAddress, priceData]); // Added config to dependency array
 
     useEffect(() => {
-        if (stabilizerNftAddress && priceData) {
+        if (config && stabilizerNftAddress && priceData) { // Ensure config is also available
             calculateMintableCapacity();
             // Optionally, set up an interval to refresh this calculation
             // const intervalId = setInterval(calculateMintableCapacity, 60000); // e.g., every 60 seconds
