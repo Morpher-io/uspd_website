@@ -280,7 +280,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         } finally {
             setIsLoadingMintableCapacity(false);
         }
-    }, [stabilizerNftAddress, priceData]);
+    }, [stabilizerNftAddress, priceData]); // Ensuring stabilizerNftAddress is correctly listed as a dependency
 
     useEffect(() => {
         if (stabilizerNftAddress && priceData) {
