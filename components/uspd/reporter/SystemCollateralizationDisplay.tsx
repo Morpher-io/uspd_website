@@ -54,7 +54,7 @@ function getCollateralizationColor(ratio: bigint | undefined): string {
 }
 
 
-function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddress }: SystemDataDisplayProps) {
+function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddress, stabilizerNftAddress }: SystemDataDisplayProps) {
     const { address: userAddress } = useAccount();
     const { data: walletClient } = useWalletClient();
     const chainId = useChainId();
