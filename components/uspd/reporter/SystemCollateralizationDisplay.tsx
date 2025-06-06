@@ -260,18 +260,37 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
 
             setTotalMintableEth(currentTotalEthCanBeBacked);
 
-            if (currentTotalEthCanBeBacked > BigInt(0) && priceData.price && priceData.decimals !== undefined) {
+            // More robust check for priceData and its properties
+            if (currentTotalEthCanBeBacked > BigInt(0) && 
+                priceData && 
+                typeof priceData.price === 'string' && // Ensure price is a string
+                typeof priceData.decimals === 'number' && // Ensure decimals is a number
+                !isNaN(priceData.decimals)) { // Ensure decimals is not NaN
+
                 const ethPriceBigInt = BigInt(priceData.price);
-                const priceDecimalsFactor = BigInt(10) ** BigInt(priceData.decimals);
-                // mintableUSPD_wei = (totalETH_wei * ethPrice_scaled) / 10^priceDecimals
-                // Assuming totalMintableEth is in wei, and USPD has 18 decimals
-                // To keep precision, if ethPrice is for 1 ETH (e.g., 3000 USD with 8 decimals for price, means 3000 * 10^8)
-                // And USPD has 18 decimals.
-                // USPD value = (ETH_amount_wei / 10^18) * (ETH_price_usd_scaled / 10^price_decimals) * 10^18_uspd_decimals
-                // USPD value = ETH_amount_wei * ETH_price_usd_scaled / 10^price_decimals
-                const uspdVal = (currentTotalEthCanBeBacked * ethPriceBigInt) / priceDecimalsFactor;
-                setMintableUspdValue(uspdVal);
+                
+                // Explicitly convert priceData.decimals to a whole number then to BigInt for the exponent
+                const decimalsValueAsNumber = Math.floor(priceData.decimals);
+                const decimalsForExponent = BigInt(decimalsValueAsNumber);
+                
+                const priceDecimalsFactor = BigInt(10) ** decimalsForExponent;
+
+                if (priceDecimalsFactor === BigInt(0)) { // Avoid division by zero if decimals was unexpectedly huge
+                    console.error("priceDecimalsFactor is zero, cannot calculate uspdVal");
+                    setMintableUspdValue(BigInt(0));
+                } else {
+                    const uspdVal = (currentTotalEthCanBeBacked * ethPriceBigInt) / priceDecimalsFactor;
+                    setMintableUspdValue(uspdVal);
+                }
             } else {
+                // Log why the calculation for uspdVal might be skipped
+                // console.log('Skipping uspdVal calculation due to unmet conditions:', {
+                //     currentTotalEthCanBeBacked: currentTotalEthCanBeBacked.toString(),
+                //     priceDataExists: !!priceData,
+                //     priceIsString: priceData && typeof priceData.price === 'string',
+                //     decimalsIsNumber: priceData && typeof priceData.decimals === 'number',
+                //     decimalsIsNotNaN: priceData && typeof priceData.decimals === 'number' && !isNaN(priceData.decimals),
+                // });
                 setMintableUspdValue(BigInt(0));
             }
 
