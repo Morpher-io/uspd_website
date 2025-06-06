@@ -19,7 +19,7 @@ import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
 import stabilizerNftAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 import stabilizerEscrowAbiJson from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json' // For StabilizerEscrow interactions
 import { readContract as viewReadContract } from 'wagmi/actions' // Renamed to avoid conflict
-import { config as wagmiConfig } from '@/wagmi' // Assuming your wagmi config is exported
+// Removed: import { config as wagmiConfig } from '@/wagmi' 
 
 // Solidity's type(uint256).max
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
@@ -210,14 +210,14 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         let currentTotalEthCanBeBacked = BigInt(0);
 
         try {
-            let currentTokenId = await viewReadContract(wagmiConfig, {
+            let currentTokenId = await viewReadContract({
                 address: stabilizerNftAddress,
                 abi: stabilizerNftAbiJson.abi,
                 functionName: 'lowestUnallocatedId',
             }) as bigint;
 
             for (let i = 0; i < MAX_STABILIZERS_TO_CHECK && currentTokenId !== BigInt(0); i++) {
-                const position = await viewReadContract(wagmiConfig, {
+                const position = await viewReadContract({
                     address: stabilizerNftAddress,
                     abi: stabilizerNftAbiJson.abi,
                     functionName: 'positions',
@@ -231,7 +231,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     continue;
                 }
 
-                const stabilizerEscrowAddress = await viewReadContract(wagmiConfig, {
+                const stabilizerEscrowAddress = await viewReadContract({
                     address: stabilizerNftAddress,
                     abi: stabilizerNftAbiJson.abi,
                     functionName: 'stabilizerEscrows',
@@ -243,7 +243,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     continue;
                 }
                 
-                const stabilizerStEthAvailable = await viewReadContract(wagmiConfig, {
+                const stabilizerStEthAvailable = await viewReadContract({
                     address: stabilizerEscrowAddress,
                     abi: stabilizerEscrowAbiJson.abi,
                     functionName: 'unallocatedStETH',
