@@ -251,9 +251,21 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                 }) as bigint;
 
                 if (stabilizerStEthAvailable > BigInt(0)) {
-                    // user_eth = stabilizer_steth * 10000 / (ratio - 10000)
-                    const userEthForStabilizer = (stabilizerStEthAvailable * FACTOR_10000) / (minCollateralRatio - FACTOR_10000);
-                    currentTotalEthCanBeBacked += userEthForStabilizer;
+                    // Explicitly ensure all operands are BigInts before arithmetic
+                    const ssaAsBigInt = BigInt(stabilizerStEthAvailable);
+                    const mcrAsBigInt = BigInt(minCollateralRatio);
+
+                    // The check `if (minCollateralRatio <= FACTOR_10000)` ensures mcrAsBigInt - FACTOR_10000 is positive.
+                    const denominator = mcrAsBigInt - FACTOR_10000;
+                    
+                    if (denominator === BigInt(0)) {
+                        // This case should ideally be caught by `minCollateralRatio <= FACTOR_10000`,
+                        // but as an extra safeguard or if logic changes, handle division by zero.
+                        console.warn(`Denominator is zero for mintable ETH calculation (tokenId: ${currentTokenId}). Skipping this stabilizer.`);
+                    } else {
+                        const userEthForStabilizer = (ssaAsBigInt * FACTOR_10000) / denominator;
+                        currentTotalEthCanBeBacked += userEthForStabilizer;
+                    }
                 }
                 currentTokenId = position.nextUnallocated;
             }
