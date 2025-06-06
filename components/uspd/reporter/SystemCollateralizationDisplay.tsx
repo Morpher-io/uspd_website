@@ -225,7 +225,8 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     args: [currentTokenId],
                 }) as { minCollateralRatio: bigint; nextUnallocated: bigint; /* other fields */ };
 
-                const minCollateralRatio = position.minCollateralRatio;
+                console.log(position);
+                const minCollateralRatio = position[0];
 
                 if (minCollateralRatio <= FACTOR_10000) { // Ratio must be > 100%
                     currentTokenId = position.nextUnallocated;
