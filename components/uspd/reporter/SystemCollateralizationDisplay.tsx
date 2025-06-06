@@ -54,8 +54,8 @@ function getCollateralizationColor(ratio: bigint | undefined): string {
 }
 
 // Helper function for formatting BigInt to a string with fixed decimal places
-function formatBigIntToFixed(value: bigint | undefined, decimals: number, fixedPlaces: number): string {
-    if (value === undefined) return "N/A";
+function formatBigIntToFixed(value: bigint | undefined | null, decimals: number, fixedPlaces: number): string {
+    if (value === undefined || value === null) return "N/A"; // Check for both undefined and null
     const formatted = formatUnits(value, decimals);
     return parseFloat(formatted).toFixed(fixedPlaces);
 }
