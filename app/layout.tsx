@@ -4,13 +4,14 @@ import { Footer as NextraFooter, Layout, Navbar } from 'nextra-theme-docs'
 import { Footer } from '@/components/Footer';
 import { Banner, Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
+import { Toaster } from "@/components/ui/sonner" // if you re-export from ui                                                      
 
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from './providers';
 import { Inter } from 'next/font/google'
 import { Barlow } from 'next/font/google';
 import type { Metadata } from 'next'
-import { Toaster } from "react-hot-toast";
+// import { Toaster } from "react-hot-toast";
 import "./globals.css"
 import Image from 'next/image'
 
@@ -86,8 +87,7 @@ export default async function RootLayout({
           </Layout>
         </Providers>
 
-        <Toaster position="bottom-center" />
-
+      <Toaster richColors /> 
       </body>
     </html>
   )

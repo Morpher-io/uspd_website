@@ -644,11 +644,11 @@ contract StabilizerNFT is
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
         require(msg.value > 0, "No ETH sent");
 
-        address escrowAddress = stabilizerEscrows[tokenId];
+        // address escrowAddress = stabilizerEscrows[tokenId]; //inlined
         // require(escrowAddress != address(0), "Escrow not found"); // Removed: Invariant from mint
 
         // Forward ETH to Escrow's deposit function
-        IStabilizerEscrow(escrowAddress).deposit{value: msg.value}();
+        IStabilizerEscrow(stabilizerEscrows[tokenId]).deposit{value: msg.value}();
 
         // Register position if it now has funds (Escrow handles staking)
         _registerUnallocatedPosition(tokenId);

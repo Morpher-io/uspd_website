@@ -6,6 +6,7 @@ import becomeAStabilizerImage from "@/public/images/ic_stabilizer.svg";
 
 import { Button } from "@/components/ui/button";
 import { InteractiveHoverButton } from "../magicui/interactive-hover-button";
+import Link from "next/link";
 
 export function BecomeAUserStabilizerSection() {
   return (
@@ -23,7 +24,7 @@ export function BecomeAUserStabilizerSection() {
             seized.
           </p>
           <div>
-            <InteractiveHoverButton className="border-morpher-secondary">Mint USPD (Demo)</InteractiveHoverButton>
+            <Link href="/uspd"><InteractiveHoverButton className="border-morpher-secondary">Mint USPD (Demo)</InteractiveHoverButton></Link>
           </div>
         </div>
         <div className="flex  text-center md:text-left items-center md:items-left flex-col md:p-6">

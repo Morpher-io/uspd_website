@@ -6,13 +6,14 @@ import '@rainbow-me/rainbowkit/styles.css';
 import {
   darkTheme,
   getDefaultConfig,
-  lightTheme,
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit';
-import { WagmiConfig, WagmiProvider } from 'wagmi';
+import {  WagmiProvider } from 'wagmi';
 import {
   mainnet,
   polygon,
+  sepolia,
+  baseSepolia,
   Chain
 } from 'wagmi/chains';
 import {
@@ -41,7 +42,7 @@ const anvilChain: Chain = {
 
 // Determine which chains to use based on environment
 const chains = process.env.NODE_ENV === 'development' 
-  ? [anvilChain, mainnet, polygon]
+  ? [sepolia, baseSepolia]
   : [mainnet, polygon];
 
 const config = getDefaultConfig({
