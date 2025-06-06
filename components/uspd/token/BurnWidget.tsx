@@ -139,7 +139,7 @@ export function BurnWidget({
             if (!isNaN(uspdValue) && uspdValue > 0) {
                 const priceInUsd = parseFloat(priceData.price) / (10 ** priceData.decimals)
                 const stEthValue = uspdValue / priceInUsd // Assuming 1 stETH ~ 1 ETH for price estimation
-                setStEthAmount(stEthValue.toFixed(6))
+                setStEthAmount(stEthValue.toFixed(4)) // Changed to 4 decimal places
             } else {
                 setStEthAmount('') // Clear if input is invalid
             }
@@ -260,7 +260,7 @@ export function BurnWidget({
             />
              {sharesToBurn > 0 && (
                 <div className="text-xs text-muted-foreground text-right -mt-2">
-                    ≈ {formatUnits(sharesToBurn, 18)} cUSPD Shares
+                    ≈ {parseFloat(formatUnits(sharesToBurn, 18)).toFixed(4)} cUSPD Shares
                 </div>
             )}
 
@@ -281,7 +281,7 @@ export function BurnWidget({
 
             {priceData && (
                 <div className="text-xs text-muted-foreground text-right">
-                    Rate: 1 USPD ≈ {(1 / (parseFloat(priceData.price) / (10 ** priceData.decimals))).toFixed(6)} stETH
+                    Rate: 1 USPD ≈ {(1 / (parseFloat(priceData.price) / (10 ** priceData.decimals))).toFixed(4)} stETH
                 </div>
             )}
 

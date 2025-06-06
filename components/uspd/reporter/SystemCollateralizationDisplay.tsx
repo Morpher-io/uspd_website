@@ -53,6 +53,13 @@ function getCollateralizationColor(ratio: bigint | undefined): string {
     return "text-red-500";
 }
 
+// Helper function for formatting BigInt to a string with fixed decimal places
+function formatBigIntToFixed(value: bigint | undefined, decimals: number, fixedPlaces: number): string {
+    if (value === undefined) return "N/A";
+    const formatted = formatUnits(value, decimals);
+    return parseFloat(formatted).toFixed(fixedPlaces);
+}
+
 
 function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddress, stabilizerNftAddress }: SystemDataDisplayProps) {
     const { address: userAddress } = useAccount();
@@ -452,7 +459,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                                 </TableCell>
                                 <TableCell className="text-right">
                                     {isLoadingMintableCapacity ? <Skeleton className="h-5 w-32 float-right" /> :
-                                        totalMintableEth !== null ? <span>{formatUnits(totalMintableEth, 18)} ETH</span> : <span>N/A</span>
+                                        <span>{formatBigIntToFixed(totalMintableEth, 18, 4)} ETH</span>
                                     }
                                 </TableCell>
                             </TableRow>
@@ -463,7 +470,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                                 </TableCell>
                                 <TableCell className="text-right">
                                     {isLoadingMintableCapacity || isLoadingPrice ? <Skeleton className="h-5 w-36 float-right" /> :
-                                        mintableUspdValue !== null ? <span>{formatUnits(mintableUspdValue, 18)} USPD</span> : <span>N/A</span>
+                                        <span>{formatBigIntToFixed(mintableUspdValue, 18, 4)} USPD</span>
                                     }
                                 </TableCell>
                             </TableRow>
@@ -483,14 +490,14 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">USPD Total Supply</TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingUspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{uspdTotalSupply !== undefined ? formatUnits(uspdTotalSupply, 18) : "N/A"} USPD</span>}
+                                    {isLoadingUspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(uspdTotalSupply, 18, 4)} USPD</span>}
                                 </TableCell>
                             </TableRow>
                             {userAddress && (
                                 <TableRow>
                                     <TableCell className="font-medium text-muted-foreground">Your USPD Balance</TableCell>
                                     <TableCell className="text-right">
-                                        {isLoadingUserUspdBalance ? <Skeleton className="h-5 w-20 float-right" /> : <span>{userUspdBalance !== undefined ? formatUnits(userUspdBalance, 18) : "N/A"} USPD</span>}
+                                        {isLoadingUserUspdBalance ? <Skeleton className="h-5 w-20 float-right" /> : <span>{formatBigIntToFixed(userUspdBalance, 18, 4)} USPD</span>}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -501,14 +508,14 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">cUSPD Total Supply</TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingCuspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{cuspdTotalSupply !== undefined ? formatUnits(cuspdTotalSupply, 18) : "N/A"} cUSPD</span>}
+                                    {isLoadingCuspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(cuspdTotalSupply, 18, 4)} cUSPD</span>}
                                 </TableCell>
                             </TableRow>
                             {userAddress && (
                                 <TableRow>
                                     <TableCell className="font-medium text-muted-foreground">Your cUSPD Balance</TableCell>
                                     <TableCell className="text-right">
-                                        {isLoadingUserCuspdBalance ? <Skeleton className="h-5 w-20 float-right" /> : <span>{userCuspdBalance !== undefined ? formatUnits(userCuspdBalance, 18) : "N/A"} cUSPD</span>}
+                                        {isLoadingUserCuspdBalance ? <Skeleton className="h-5 w-20 float-right" /> : <span>{formatBigIntToFixed(userCuspdBalance, 18, 4)} cUSPD</span>}
                                     </TableCell>
                                 </TableRow>
                             )}

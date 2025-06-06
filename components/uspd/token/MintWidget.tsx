@@ -76,7 +76,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
             if (!isNaN(ethValue) && ethValue > 0) {
                 const priceInUsd = parseFloat(priceData.price) / (10 ** priceData.decimals)
                 const uspdValue = ethValue * priceInUsd
-                setUspdAmount(uspdValue.toFixed(6))
+                setUspdAmount(uspdValue.toFixed(4)) // Changed to 4 decimal places
             } else {
                 setUspdAmount('') // Clear if input is invalid
             }
@@ -178,7 +178,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
 
             {priceData && (
                 <div className="text-xs text-muted-foreground text-right">
-                    Rate: 1 ETH ≈ {(parseFloat(priceData.price) / (10 ** priceData.decimals)).toFixed(2)} USPD
+                    Rate: 1 ETH ≈ {(parseFloat(priceData.price) / (10 ** priceData.decimals)).toFixed(4)} USPD 
                 </div>
             )}
 

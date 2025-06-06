@@ -21,7 +21,7 @@ export function TokenDisplay({
   onMax,
   readOnly = false
 }: TokenDisplayProps) {
-  const formattedBalance = parseFloat(balance).toFixed(6)
+  const formattedBalance = parseFloat(balance).toFixed(4) // Changed to 4 decimal places
   
   return (
     <div className="rounded-lg border p-4 space-y-2">
