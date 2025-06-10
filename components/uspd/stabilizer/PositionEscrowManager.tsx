@@ -363,31 +363,43 @@ export function PositionEscrowManager({
 
     return (
         <div className="space-y-4 p-4 border rounded-lg">
-            <h4 className="font-semibold text-lg">Allocated Position</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <h4 className="font-semibold text-lg">Allocated Position Details</h4>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                    <Label>Total Collateral</Label>
-                    <p className="text-lg font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? 'Fetching...' : `${formatEther(allocatedStEthBalance)} stETH`}
+                    <Label>Collateral (stETH)</Label>
+                    <p className="text-md font-semibold">
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-24" /> : `${formatEther(allocatedStEthBalance)} stETH`}
                     </p>
                 </div>
                 <div>
-                    <Label>Backed Liability</Label>
-                    <p className="text-lg font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? 'Fetching...' : `${formatUnits(backedPoolShares, 18)} cUSPD`}
-                    </p>
-                </div>
-                <div>
-                    <Label>Current Ratio</Label>
-                    <p className="text-lg font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? 'Fetching...' :
-                         currentCollateralRatio === Infinity ? 'Infinity' :
+                    <Label>Current Ratio (Escrow)</Label>
+                    <p className="text-md font-semibold">
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-20" /> :
+                         currentCollateralRatio === Infinity ? 'Infinite' :
                          currentCollateralRatio > 0 ? `${currentCollateralRatio.toFixed(2)}%` : 'N/A'}
+                    </p>
+                </div>
+                <div>
+                    <Label>Liability (cUSPD Shares)</Label>
+                    <p className="text-md font-semibold">
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-24" /> : `${formatUnits(backedPoolShares, 18)} cUSPD`}
+                    </p>
+                </div>
+                <div>
+                    <Label>Yield Factor</Label>
+                    <p className="text-md font-semibold">
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-20" /> : formatUnits(yieldFactor, 18, 5)}
+                    </p>
+                </div>
+                <div className="col-span-2">
+                    <Label>Liability (USPD Equivalent from Shares)</Label>
+                    <p className="text-md font-semibold">
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-28" /> : `${formatUnits((backedPoolShares * yieldFactor) / BigInt(1e18), 18)} USPD`}
                     </p>
                 </div>
                 
                 <div className="col-span-2">
-                    <Label>Escrow Address</Label>
+                    <Label>Position Escrow Address</Label>
                     <p className="text-xs truncate">{positionEscrowAddress ?? 'Loading...'}</p>
                 </div>
             </div>
