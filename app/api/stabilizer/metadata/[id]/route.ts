@@ -7,18 +7,20 @@ import {
     zeroAddress, 
     parseEther, 
     maxUint256 as MAX_UINT256_VIEM,
-    Address
+    Address,
+    Chain
 } from 'viem';
-import { sepolia } from 'viem/chains'; // Assuming Sepolia based on RPC_URL
+import { sepolia, mainnet } from 'viem/chains';
+import { getContractAddresses } from '@/lib/contracts';
 
-// --- IMPORTANT: CONFIGURE THESE VALUES ---
-// Replace with your actual RPC URL (e.g., from environment variables)
-const RPC_URL = process.env.SEPOLIA_RPC_URL || 'https://rpc.sepolia.org'; // Example for Sepolia
+// --- CONFIGURATION ---
+const DEFAULT_CHAIN_ID = 11155111; // Sepolia
 
-// Replace with your deployed contract addresses (e.g., from environment variables)
-const STABILIZER_NFT_ADDRESS = process.env.STABILIZER_NFT_ADDRESS || '0xYourStabilizerNFTAddress';
-const STETH_ADDRESS = process.env.STETH_ADDRESS || '0xYourStEthAddress'; // e.g., stETH on Sepolia or Mainnet
-const INSURANCE_ESCROW_ADDRESS = process.env.INSURANCE_ESCROW_ADDRESS || '0xYourInsuranceEscrowAddress'; // Main Insurance Escrow
+// STETH_ADDRESS and INSURANCE_ESCROW_ADDRESS will still be sourced from environment variables or defaults.
+// If you want to load these from deployment JSON files in the future, ensure they exist in your
+// [chainId].json files and adjust lib/contracts.ts if necessary.
+const STETH_ADDRESS_ENV = process.env.STETH_ADDRESS || '0xYourStEthAddress'; // e.g., stETH on Sepolia or Mainnet
+const INSURANCE_ESCROW_ADDRESS_ENV = process.env.INSURANCE_ESCROW_ADDRESS || '0xYourInsuranceEscrowAddress'; // Main Insurance Escrow
 
 // --- ABI IMPORTS (ensure these paths are correct for your project) ---
 import StabilizerNFTAbi from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json';
@@ -28,10 +30,7 @@ import Erc20Abi from '@/contracts/out/ERC20.sol/ERC20.json'; // A standard ERC20
 // import InsuranceEscrowAbi from '@/contracts/out/InsuranceEscrow.sol/InsuranceEscrow.json';
 // import PositionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json';
 
-const publicClient = createPublicClient({
-  chain: sepolia, // Or dynamically determine based on RPC_URL if needed
-  transport: http(RPC_URL),
-});
+// publicClient will be initialized within the GET handler based on TARGET_CHAIN_ID
 
 const MAX_UINT256 = MAX_UINT256_VIEM;
 const ONE_ETHER = parseEther("1"); // 10^18
@@ -173,54 +172,88 @@ export async function GET(
   }
 
   try {
+    // --- Determine Chain & RPC ---
+    const targetChainIdStr = process.env.METADATA_CHAIN_ID;
+    const targetChainId = targetChainIdStr ? parseInt(targetChainIdStr, 10) : DEFAULT_CHAIN_ID;
+
+    let viemChain: Chain;
+    let rpcUrl: string | undefined;
+
+    if (targetChainId === sepolia.id) {
+      viemChain = sepolia;
+      rpcUrl = process.env.SEPOLIA_RPC_URL || 'https://rpc.sepolia.org';
+    } else if (targetChainId === mainnet.id) {
+      viemChain = mainnet;
+      rpcUrl = process.env.MAINNET_RPC_URL; // User must set this
+    } else {
+      return NextResponse.json({ error: `Unsupported chain ID: ${targetChainId}` }, { status: 500 });
+    }
+
+    if (!rpcUrl) {
+      return NextResponse.json({ error: `RPC URL not configured for chain ID ${targetChainId}` }, { status: 500 });
+    }
+
+    const publicClient = createPublicClient({
+      chain: viemChain,
+      transport: http(rpcUrl),
+    });
+
+    // --- Load Contract Addresses ---
+    const deploymentAddresses = await getContractAddresses(targetChainId);
+    if (!deploymentAddresses || !deploymentAddresses.stabilizer) {
+      return NextResponse.json({ error: `Stabilizer contract address not found for chain ID ${targetChainId}` }, { status: 500 });
+    }
+    const stabilizerNftAddress = deploymentAddresses.stabilizer as Address;
+    
+    // Use STETH_ADDRESS_ENV and INSURANCE_ESCROW_ADDRESS_ENV defined at the top
+    const stEthAddress = STETH_ADDRESS_ENV as Address;
+    const insuranceEscrowAddressFromEnv = INSURANCE_ESCROW_ADDRESS_ENV as Address;
+
+
     // --- Fetch On-Chain Data ---
     let positionDataResult;
     try {
-      // Assuming StabilizerNFTAbi.abi is a valid ABI array
       positionDataResult = await publicClient.readContract({
-        address: STABILIZER_NFT_ADDRESS as Address,
+        address: stabilizerNftAddress,
         abi: StabilizerNFTAbi.abi,
         functionName: 'positions',
         args: [BigInt(tokenId)],
       });
     } catch (e: any) {
-      console.error(`Error fetching position data for token ${tokenId}:`, e.message);
+      console.error(`Error fetching position data for token ${tokenId} on chain ${targetChainId}:`, e.message);
       return NextResponse.json({ error: `Token ID ${tokenId} not found or error fetching position data.` }, { status: 404 });
     }
     
-    // Assuming `positions` returns a struct or named outputs that viem maps to an object.
-    // If it returns a tuple, access would be by index e.g., positionDataResult[0]
     const positionData = positionDataResult as { minCollateralRatio: bigint, mintedUspdEquivalent: bigint };
     const minCollateralRatioBps: bigint = positionData.minCollateralRatio;
-    const mintedUspdEquivalent: bigint = positionData.mintedUspdEquivalent; // This is 18 decimals
+    const mintedUspdEquivalent: bigint = positionData.mintedUspdEquivalent;
 
     let positionEscrowAddress: Address = zeroAddress;
     try {
       const rawPositionEscrowAddress = await publicClient.readContract({
-        address: STABILIZER_NFT_ADDRESS as Address,
+        address: stabilizerNftAddress,
         abi: StabilizerNFTAbi.abi,
         functionName: 'positionEscrows',
         args: [BigInt(tokenId)],
       });
-      positionEscrowAddress = getAddress(rawPositionEscrowAddress as string); // Checksum
+      positionEscrowAddress = getAddress(rawPositionEscrowAddress as string);
     } catch (e: any) {
-      console.warn(`Could not fetch positionEscrow for token ${tokenId}:`, e.message);
-      // Non-critical, can proceed with ZeroAddress
+      console.warn(`Could not fetch positionEscrow for token ${tokenId} on chain ${targetChainId}:`, e.message);
     }
     
-    const insuranceEscrowAddressChecksummed = getAddress(INSURANCE_ESCROW_ADDRESS as Address);
+    const insuranceEscrowAddressChecksummed = getAddress(insuranceEscrowAddressFromEnv);
 
     let insuranceEscrowStEthBalance: bigint = 0n;
     if (insuranceEscrowAddressChecksummed !== zeroAddress) {
       try {
         insuranceEscrowStEthBalance = await publicClient.readContract({
-            address: STETH_ADDRESS as Address,
+            address: stEthAddress,
             abi: Erc20Abi.abi,
             functionName: 'balanceOf',
             args: [insuranceEscrowAddressChecksummed]
         }) as bigint;
       } catch (e: any) {
-        console.warn(`Could not fetch stETH balance for main insurance escrow ${insuranceEscrowAddressChecksummed}:`, e.message);
+        console.warn(`Could not fetch stETH balance for main insurance escrow ${insuranceEscrowAddressChecksummed} on chain ${targetChainId}:`, e.message);
       }
     }
 
@@ -228,7 +261,7 @@ export async function GET(
     if (positionEscrowAddress !== zeroAddress) {
       try {
         positionEscrowStEthBalance = await publicClient.readContract({
-            address: STETH_ADDRESS as Address,
+            address: stEthAddress,
             abi: Erc20Abi.abi,
             functionName: 'balanceOf',
             args: [positionEscrowAddress]
