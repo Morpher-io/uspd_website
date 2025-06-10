@@ -166,7 +166,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const tokenId = params.id;
+  const tokenId = (await params).id;
 
   if (!tokenId || isNaN(parseInt(tokenId))) {
     return NextResponse.json({ error: 'Invalid token ID' }, { status: 400 });
