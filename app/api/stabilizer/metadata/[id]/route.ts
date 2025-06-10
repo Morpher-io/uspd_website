@@ -177,7 +177,7 @@ export async function GET(
 
     if (targetChainId === sepolia.id) {
       viemChain = sepolia;
-      rpcUrl = process.env.SEPOLIA_RPC_URL || 'https://rpc.sepolia.org';
+      rpcUrl = process.env.SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
     } else if (targetChainId === mainnet.id) {
       viemChain = mainnet;
       rpcUrl = process.env.MAINNET_RPC_URL; // User must set this
@@ -260,7 +260,7 @@ export async function GET(
             functionName: 'balanceOf',
             args: [insuranceEscrowAddressChecksummed] // This is now from deploymentInfo.contracts.insuranceEscrow
         }) as bigint;
-      } catch (e: any)
+      } catch (e: any) {
         console.warn(`Could not fetch stETH balance for main insurance escrow ${insuranceEscrowAddressChecksummed} on chain ${targetChainId}:`, e.message);
       }
     }
