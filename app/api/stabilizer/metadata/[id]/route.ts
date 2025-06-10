@@ -11,16 +11,12 @@ import {
     Chain
 } from 'viem';
 import { sepolia, mainnet } from 'viem/chains';
-import { getContractAddresses } from '@/lib/contracts';
+import { getDeploymentInfo } from '@/lib/contracts'; // Changed from getContractAddresses
 
 // --- CONFIGURATION ---
 const DEFAULT_CHAIN_ID = 11155111; // Sepolia
 
-// STETH_ADDRESS and INSURANCE_ESCROW_ADDRESS will still be sourced from environment variables or defaults.
-// If you want to load these from deployment JSON files in the future, ensure they exist in your
-// [chainId].json files and adjust lib/contracts.ts if necessary.
-const STETH_ADDRESS_ENV = process.env.STETH_ADDRESS || '0xYourStEthAddress'; // e.g., stETH on Sepolia or Mainnet
-const INSURANCE_ESCROW_ADDRESS_ENV = process.env.INSURANCE_ESCROW_ADDRESS || '0xYourInsuranceEscrowAddress'; // Main Insurance Escrow
+// Addresses will be loaded from deployment JSON files.
 
 // --- ABI IMPORTS (ensure these paths are correct for your project) ---
 import StabilizerNFTAbi from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json';
@@ -199,16 +195,28 @@ export async function GET(
     });
 
     // --- Load Contract Addresses ---
-    const deploymentAddresses = await getContractAddresses(targetChainId);
-    if (!deploymentAddresses || !deploymentAddresses.stabilizer) {
-      return NextResponse.json({ error: `Stabilizer contract address not found for chain ID ${targetChainId}` }, { status: 500 });
-    }
-    const stabilizerNftAddress = deploymentAddresses.stabilizer as Address;
-    
-    // Use STETH_ADDRESS_ENV and INSURANCE_ESCROW_ADDRESS_ENV defined at the top
-    const stEthAddress = STETH_ADDRESS_ENV as Address;
-    const insuranceEscrowAddressFromEnv = INSURANCE_ESCROW_ADDRESS_ENV as Address;
+    const deploymentInfo = await getDeploymentInfo(targetChainId);
 
+    if (!deploymentInfo) {
+      return NextResponse.json({ error: `Deployment info not found for chain ID ${targetChainId}` }, { status: 500 });
+    }
+    if (!deploymentInfo.contracts || !deploymentInfo.config) {
+      return NextResponse.json({ error: `Incomplete deployment info for chain ID ${targetChainId}` }, { status: 500 });
+    }
+
+    const stabilizerNftAddress = deploymentInfo.contracts.stabilizer as Address | undefined;
+    const stEthAddress = deploymentInfo.config.stETHAddress as Address | undefined; // From config section
+    const insuranceEscrowAddress = deploymentInfo.contracts.insuranceEscrow as Address | undefined; // From contracts section
+
+    if (!stabilizerNftAddress) {
+      return NextResponse.json({ error: `Stabilizer NFT contract address not found in deployment for chain ID ${targetChainId}` }, { status: 500 });
+    }
+    if (!stEthAddress) {
+      return NextResponse.json({ error: `stETH address not found in deployment config for chain ID ${targetChainId}` }, { status: 500 });
+    }
+    if (!insuranceEscrowAddress) {
+      return NextResponse.json({ error: `Insurance Escrow address not found in deployment for chain ID ${targetChainId}` }, { status: 500 });
+    }
 
     // --- Fetch On-Chain Data ---
     let positionDataResult;
@@ -241,18 +249,18 @@ export async function GET(
       console.warn(`Could not fetch positionEscrow for token ${tokenId} on chain ${targetChainId}:`, e.message);
     }
     
-    const insuranceEscrowAddressChecksummed = getAddress(insuranceEscrowAddressFromEnv);
+    const insuranceEscrowAddressChecksummed = getAddress(insuranceEscrowAddress);
 
     let insuranceEscrowStEthBalance: bigint = 0n;
     if (insuranceEscrowAddressChecksummed !== zeroAddress) {
       try {
         insuranceEscrowStEthBalance = await publicClient.readContract({
-            address: stEthAddress,
+            address: stEthAddress, // This is now from deploymentInfo.config.stETHAddress
             abi: Erc20Abi.abi,
             functionName: 'balanceOf',
-            args: [insuranceEscrowAddressChecksummed]
+            args: [insuranceEscrowAddressChecksummed] // This is now from deploymentInfo.contracts.insuranceEscrow
         }) as bigint;
-      } catch (e: any) {
+      } catch (e: any)
         console.warn(`Could not fetch stETH balance for main insurance escrow ${insuranceEscrowAddressChecksummed} on chain ${targetChainId}:`, e.message);
       }
     }
