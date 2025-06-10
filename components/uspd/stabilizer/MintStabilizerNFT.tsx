@@ -103,10 +103,10 @@ export default function MintStabilizerNFT() {
     return (
         <div className="my-8">
             {/* ContractLoader handles finding the correct contract address based on chainId */}
-            <ContractLoader contractKey="stabilizer" backLink="/stabilizer">
-                {(stabilizerAddress) => (
+            <ContractLoader contractKeys={["stabilizer"]} backLink="/stabilizer">
+                {(loadedAddresses) => (
                     <MintPageDetails
-                        stabilizerAddress={stabilizerAddress}
+                        stabilizerAddress={loadedAddresses.stabilizer}
                         stabilizerAbi={stabilizerAbiJson.abi}
                     />
                 )}

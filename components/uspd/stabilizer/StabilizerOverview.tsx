@@ -24,10 +24,10 @@ export default function StabilizerOverview() {
 
     return (
         <div className="mt-4">
-            <ContractLoader contractKey="stabilizer">
-                {(stabilizerAddress) => (
+            <ContractLoader contractKeys={["stabilizer"]}>
+                {(loadedAddresses) => (
                     <StabilizerData
-                        stabilizerAddress={stabilizerAddress}
+                        stabilizerAddress={loadedAddresses.stabilizer}
                         stabilizerAbi={stabilizerNFTJson.abi}
                     />
                 )}
