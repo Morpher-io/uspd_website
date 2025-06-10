@@ -21,10 +21,8 @@ const DEFAULT_CHAIN_ID = 11155111; // Sepolia
 // --- ABI IMPORTS (ensure these paths are correct for your project) ---
 import StabilizerNFTAbi from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json';
 import Erc20Abi from '@/contracts/out/ERC20.sol/ERC20.json'; // A standard ERC20 ABI
-// Assuming InsuranceEscrow and PositionEscrow might have specific functions, otherwise ERC20 ABI for balance is fine.
-// For simplicity, we'll use stETH.balanceOf(escrowAddress). If they have getStEthBalance(), import their ABIs.
-// import InsuranceEscrowAbi from '@/contracts/out/InsuranceEscrow.sol/InsuranceEscrow.json';
-// import PositionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json';
+import PositionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json';
+import PoolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json';
 
 // publicClient will be initialized within the GET handler based on TARGET_CHAIN_ID
 
@@ -60,32 +58,39 @@ function getRatioColor(ratioBps: bigint): string {
 // Function to generate the detailed SVG
 function generateStabilizerNFTSVG({
   tokenId,
-  insuranceEscrowAddress,
-  insuranceEscrowStEthBalance,
   positionEscrowAddress,
   positionEscrowStEthBalance,
+  backedPoolShares,
+  yieldFactor,
   minCollateralRatioBps,
   currentCollateralRatioBps,
-  mintedUspd,
+  mintedUspd, // This is the USPD equivalent liability from StabilizerNFT.positions()
   ethUsdPriceFormatted,
 }: {
   tokenId: string;
-  insuranceEscrowAddress: string;
-  insuranceEscrowStEthBalance: bigint;
   positionEscrowAddress: string;
   positionEscrowStEthBalance: bigint;
+  backedPoolShares: bigint;
+  yieldFactor: bigint;
   minCollateralRatioBps: bigint;
   currentCollateralRatioBps: bigint;
   mintedUspd: bigint;
   ethUsdPriceFormatted: string;
 }): string {
   const width = 380;
-  const height = 520;
+  const height = 560; // Increased height for more details
 
-  const formattedInsuranceEscrowStEth = formatBigIntDisplay(insuranceEscrowStEthBalance);
   const formattedPositionEscrowStEth = formatBigIntDisplay(positionEscrowStEthBalance);
-  const formattedMintedUspd = formatBigIntDisplay(mintedUspd);
+  const formattedBackedPoolShares = formatBigIntDisplay(backedPoolShares);
+  const formattedYieldFactor = formatBigIntDisplay(yieldFactor, 18, 5); // Higher precision for yield factor
   
+  // Calculate USPD equivalent from cUSPD shares and yield factor
+  const uspdEquivalentFromShares = (backedPoolShares * yieldFactor) / ONE_ETHER;
+  const formattedUspdEquivalentFromShares = formatBigIntDisplay(uspdEquivalentFromShares);
+  
+  // This is the primary liability from StabilizerNFT.positions()
+  const formattedMintedUspd = formatBigIntDisplay(mintedUspd); 
+
   const minCollateralRatioPercent = minCollateralRatioBps > 0n ? Number(minCollateralRatioBps) / 100 : 0;
   
   let currentCollateralRatioPercentText = "N/A";
@@ -120,33 +125,37 @@ function generateStabilizerNFTSVG({
         <text x="10" y="30" font-family="sans-serif" font-size="24" fill="#e2e8f0" font-weight="bold">USPD Stabilizer NFT #${tokenId}</text>
         <line x1="10" y1="45" x2="${width - 60}" y2="45" stroke="#4a5568" stroke-width="1"/>
 
-        <!-- Main Insurance Escrow Info -->
-        <rect x="10" y="60" width="${width - 60}" height="70" rx="10" fill="url(#cardGradient)" stroke="#718096" stroke-opacity="0.5"/>
-        <text x="25" y="85" font-family="sans-serif" font-size="14" fill="#a0aec0" font-weight="semibold">Main Insurance Escrow:</text>
-        <text x="25" y="105" font-family="monospace" font-size="13" fill="#e2e8f0">${formatAddress(insuranceEscrowAddress)}</text>
-        <text x="25" y="125" font-family="sans-serif" font-size="14" fill="#e2e8f0"><tspan font-weight="bold">${formattedInsuranceEscrowStEth}</tspan> stETH</text>
-
         <!-- Position Escrow Info -->
-        <rect x="10" y="145" width="${width - 60}" height="70" rx="10" fill="url(#cardGradient)" stroke="#718096" stroke-opacity="0.5"/>
-        <text x="25" y="170" font-family="sans-serif" font-size="14" fill="#a0aec0" font-weight="semibold">Position Escrow (NFT #${tokenId}):</text>
-        <text x="25" y="190" font-family="monospace" font-size="13" fill="#e2e8f0">${formatAddress(positionEscrowAddress)}</text>
-        <text x="25" y="210" font-family="sans-serif" font-size="14" fill="#e2e8f0"><tspan font-weight="bold">${formattedPositionEscrowStEth}</tspan> stETH</text>
+        <rect x="10" y="60" width="${width - 60}" height="70" rx="10" fill="url(#cardGradient)" stroke="#718096" stroke-opacity="0.5"/>
+        <text x="25" y="85" font-family="sans-serif" font-size="14" fill="#a0aec0" font-weight="semibold">Position Escrow (NFT #${tokenId}):</text>
+        <text x="25" y="105" font-family="monospace" font-size="13" fill="#e2e8f0">${formatAddress(positionEscrowAddress)}</text>
+        <text x="25" y="125" font-family="sans-serif" font-size="14" fill="#e2e8f0"><tspan font-weight="bold">${formattedPositionEscrowStEth}</tspan> stETH (Collateral)</text>
         
-        <!-- Position Details -->
-        <rect x="10" y="230" width="${width - 60}" height="155" rx="10" fill="url(#cardGradient)" stroke="#718096" stroke-opacity="0.5"/>
-        <text x="25" y="255" font-family="sans-serif" font-size="14" fill="#a0aec0" font-weight="semibold">Position Details (NFT #${tokenId}):</text>
-        
-        <text x="25" y="280" font-family="sans-serif" font-size="14" fill="#e2e8f0">Min. Collateral Ratio:</text>
-        <text x="${width - 85}" y="280" font-family="sans-serif" font-size="14" fill="#e2e8f0" text-anchor="end" font-weight="bold">${minCollateralRatioPercent.toFixed(2)}%</text>
+        <!-- Liability Details -->
+        <rect x="10" y="145" width="${width - 60}" height="100" rx="10" fill="url(#cardGradient)" stroke="#718096" stroke-opacity="0.5"/>
+        <text x="25" y="170" font-family="sans-serif" font-size="14" fill="#a0aec0" font-weight="semibold">Liability Details:</text>
+        <text x="25" y="195" font-family="sans-serif" font-size="13" fill="#e2e8f0">Backed cUSPD Shares:</text>
+        <text x="${width - 85}" y="195" font-family="sans-serif" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedBackedPoolShares}</text>
+        <text x="25" y="215" font-family="sans-serif" font-size="13" fill="#e2e8f0">Yield Factor:</text>
+        <text x="${width - 85}" y="215" font-family="sans-serif" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedYieldFactor}</text>
+        <text x="25" y="235" font-family="sans-serif" font-size="13" fill="#e2e8f0">Equivalent USPD (from shares):</text>
+        <text x="${width - 85}" y="235" font-family="sans-serif" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedUspdEquivalentFromShares}</text>
 
-        <text x="25" y="305" font-family="sans-serif" font-size="14" fill="#e2e8f0">Minted USPD:</text>
-        <text x="${width - 85}" y="305" font-family="sans-serif" font-size="14" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedMintedUspd}</text>
+        <!-- Position Health / Details -->
+        <rect x="10" y="260" width="${width - 60}" height="155" rx="10" fill="url(#cardGradient)" stroke="#718096" stroke-opacity="0.5"/>
+        <text x="25" y="285" font-family="sans-serif" font-size="14" fill="#a0aec0" font-weight="semibold">Position Health (NFT #${tokenId}):</text>
         
-        <text x="25" y="330" font-family="sans-serif" font-size="14" fill="#e2e8f0">Current Collateral Ratio:</text>
-        <text x="${width - 85}" y="330" font-family="sans-serif" font-size="16" fill="${ratioColor}" text-anchor="end" font-weight="bold">${currentCollateralRatioPercentText}</text>
+        <text x="25" y="310" font-family="sans-serif" font-size="14" fill="#e2e8f0">Min. Collateral Ratio:</text>
+        <text x="${width - 85}" y="310" font-family="sans-serif" font-size="14" fill="#e2e8f0" text-anchor="end" font-weight="bold">${minCollateralRatioPercent.toFixed(2)}%</text>
+
+        <text x="25" y="335" font-family="sans-serif" font-size="14" fill="#e2e8f0">Total Minted USPD (Liability):</text>
+        <text x="${width - 85}" y="335" font-family="sans-serif" font-size="14" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedMintedUspd}</text>
         
-        <text x="25" y="355" font-family="sans-serif" font-size="12" fill="#a0aec0">ETH Price (Snapshot):</text>
-        <text x="${width - 85}" y="355" font-family="sans-serif" font-size="12" fill="#a0aec0" text-anchor="end">${ethUsdPriceFormatted}</text>
+        <text x="25" y="360" font-family="sans-serif" font-size="14" fill="#e2e8f0">Current Collateral Ratio:</text>
+        <text x="${width - 85}" y="360" font-family="sans-serif" font-size="16" fill="${ratioColor}" text-anchor="end" font-weight="bold">${currentCollateralRatioPercentText}</text>
+        
+        <text x="25" y="385" font-family="sans-serif" font-size="12" fill="#a0aec0">ETH Price (Snapshot):</text>
+        <text x="${width - 85}" y="385" font-family="sans-serif" font-size="12" fill="#a0aec0" text-anchor="end">${ethUsdPriceFormatted}</text>
 
         <!-- Footer Text -->
         <text x="${(width-40)/2}" y="${height - 50}" font-family="sans-serif" font-size="10" fill="#718096" text-anchor="middle">USPD Protocol Stabilizer Position</text>
@@ -205,8 +214,8 @@ export async function GET(
     }
 
     const stabilizerNftAddress = deploymentInfo.contracts.stabilizer as Address | undefined;
-    const stEthAddress = deploymentInfo.config.stETHAddress as Address | undefined; // From config section
-    const insuranceEscrowAddress = deploymentInfo.contracts.insuranceEscrow as Address | undefined; // From contracts section
+    const stEthAddress = deploymentInfo.config.stETHAddress as Address | undefined; 
+    const rateContractAddress = deploymentInfo.contracts.rateContract as Address | undefined;
 
     if (!stabilizerNftAddress) {
       return NextResponse.json({ error: `Stabilizer NFT contract address not found in deployment for chain ID ${targetChainId}` }, { status: 500 });
@@ -214,9 +223,10 @@ export async function GET(
     if (!stEthAddress) {
       return NextResponse.json({ error: `stETH address not found in deployment config for chain ID ${targetChainId}` }, { status: 500 });
     }
-    if (!insuranceEscrowAddress) {
-      return NextResponse.json({ error: `Insurance Escrow address not found in deployment for chain ID ${targetChainId}` }, { status: 500 });
+    if (!rateContractAddress) {
+      return NextResponse.json({ error: `RateContract address not found in deployment for chain ID ${targetChainId}` }, { status: 500 });
     }
+    // InsuranceEscrowAddress is no longer needed here.
 
     // --- Fetch On-Chain Data ---
     let positionDataResult;
@@ -249,21 +259,7 @@ export async function GET(
       console.warn(`Could not fetch positionEscrow for token ${tokenId} on chain ${targetChainId}:`, e.message);
     }
     
-    const insuranceEscrowAddressChecksummed = getAddress(insuranceEscrowAddress);
-
-    let insuranceEscrowStEthBalance: bigint = 0n;
-    if (insuranceEscrowAddressChecksummed !== zeroAddress) {
-      try {
-        insuranceEscrowStEthBalance = await publicClient.readContract({
-            address: stEthAddress, // This is now from deploymentInfo.config.stETHAddress
-            abi: Erc20Abi.abi,
-            functionName: 'balanceOf',
-            args: [insuranceEscrowAddressChecksummed] // This is now from deploymentInfo.contracts.insuranceEscrow
-        }) as bigint;
-      } catch (e: any) {
-        console.warn(`Could not fetch stETH balance for main insurance escrow ${insuranceEscrowAddressChecksummed} on chain ${targetChainId}:`, e.message);
-      }
-    }
+    // insuranceEscrowAddressChecksummed and its balance fetch are removed.
 
     let positionEscrowStEthBalance: bigint = 0n;
     if (positionEscrowAddress !== zeroAddress) {
@@ -275,8 +271,34 @@ export async function GET(
             args: [positionEscrowAddress]
         }) as bigint;
       } catch (e: any) {
-        console.warn(`Could not fetch stETH balance for position escrow ${positionEscrowAddress}:`, e.message);
+        console.warn(`Could not fetch stETH balance for position escrow ${positionEscrowAddress} on chain ${targetChainId}:`, e.message);
       }
+    }
+
+    let backedPoolShares: bigint = 0n;
+    if (positionEscrowAddress !== zeroAddress) {
+        try {
+            backedPoolShares = await publicClient.readContract({
+                address: positionEscrowAddress,
+                abi: PositionEscrowAbi.abi,
+                functionName: 'backedPoolShares',
+                args: [],
+            }) as bigint;
+        } catch (e: any) {
+            console.warn(`Could not fetch backedPoolShares for position escrow ${positionEscrowAddress} on chain ${targetChainId}:`, e.message);
+        }
+    }
+
+    let yieldFactor: bigint = ONE_ETHER; // Default to 1e18 (no yield effect)
+    try {
+        yieldFactor = await publicClient.readContract({
+            address: rateContractAddress,
+            abi: PoolSharesConversionRateAbi.abi,
+            functionName: 'getYieldFactor',
+            args: [],
+        }) as bigint;
+    } catch (e: any) {
+        console.warn(`Could not fetch yieldFactor from ${rateContractAddress} on chain ${targetChainId}:`, e.message);
     }
     
     // --- Fetch ETH-USD Price ---
@@ -326,13 +348,13 @@ export async function GET(
     // --- Generate SVG ---
     const svgDataUri = generateStabilizerNFTSVG({
       tokenId,
-      insuranceEscrowAddress: insuranceEscrowAddressChecksummed,
-      insuranceEscrowStEthBalance,
       positionEscrowAddress,
       positionEscrowStEthBalance,
+      backedPoolShares,
+      yieldFactor,
       minCollateralRatioBps,
       currentCollateralRatioBps,
-      mintedUspd: mintedUspdEquivalent,
+      mintedUspd: mintedUspdEquivalent, // This is the USPD equivalent liability from StabilizerNFT.positions()
       ethUsdPriceFormatted,
     });
 
@@ -349,11 +371,15 @@ export async function GET(
           trait_type: "Current Collateral Ratio", 
           value: currentCollateralRatioBps === MAX_UINT256 ? "Infinite (No Debt)" : `${(Number(currentCollateralRatioBps) / 100).toFixed(2)}%`
         },
-        { trait_type: "Minted USPD", value: formatBigIntDisplay(mintedUspdEquivalent, 18, 6) },
+        { trait_type: "Minted USPD (Liability)", value: formatBigIntDisplay(mintedUspdEquivalent, 18, 6) },
         { trait_type: "Position Escrow Address", value: formatAddress(positionEscrowAddress) },
-        { trait_type: "Position Escrow Balance (stETH)", value: formatBigIntDisplay(positionEscrowStEthBalance, 18, 6) },
-        { trait_type: "Main Insurance Escrow Address", value: formatAddress(insuranceEscrowAddressChecksummed) },
-        { trait_type: "Main Insurance Escrow Balance (stETH)", value: formatBigIntDisplay(insuranceEscrowStEthBalance, 18, 6) },
+        { trait_type: "Position Escrow Collateral (stETH)", value: formatBigIntDisplay(positionEscrowStEthBalance, 18, 6) },
+        { trait_type: "Backed Liability (cUSPD)", value: formatBigIntDisplay(backedPoolShares, 18, 6) },
+        { trait_type: "Current Yield Factor", value: formatBigIntDisplay(yieldFactor, 18, 5) },
+        { 
+          trait_type: "Equivalent USPD from Shares", 
+          value: formatBigIntDisplay((backedPoolShares * yieldFactor) / ONE_ETHER, 18, 6)
+        },
       ],
     };
 
