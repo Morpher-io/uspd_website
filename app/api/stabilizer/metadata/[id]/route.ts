@@ -239,9 +239,11 @@ export async function GET(
       return NextResponse.json({ error: `Token ID ${tokenId} not found or error fetching position data.` }, { status: 404 });
     }
     
-    const positionData = positionDataResult as { minCollateralRatio: bigint, mintedUspdEquivalent: bigint };
-    const minCollateralRatioBps: bigint = positionData.minCollateralRatio;
-    const mintedUspdEquivalentFromPositions: bigint = positionData.mintedUspdEquivalent;
+    // When reading a struct, viem returns an array (tuple) of its members in order.
+    // PositionData struct: [minCollateralRatio, prevUnallocated, nextUnallocated, prevAllocated, nextAllocated, mintedUspdEquivalent]
+    const positionTuple = positionDataResult as [bigint, bigint, bigint, bigint, bigint, bigint];
+    const minCollateralRatioBps: bigint = positionTuple[0]; // minCollateralRatio is at index 0
+    const mintedUspdEquivalentFromPositions: bigint = positionTuple[5]; // mintedUspdEquivalent is at index 5
 
     let positionEscrowAddress: Address = zeroAddress;
     try {
