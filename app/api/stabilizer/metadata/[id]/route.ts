@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ethers } from 'ethers';
+import { 
+    createPublicClient, 
+    http, 
+    formatUnits, 
+    getAddress, 
+    zeroAddress, 
+    parseEther, 
+    maxUint256 as MAX_UINT256_VIEM,
+    Address
+} from 'viem';
+import { sepolia } from 'viem/chains'; // Assuming Sepolia based on RPC_URL
 
 // --- IMPORTANT: CONFIGURE THESE VALUES ---
 // Replace with your actual RPC URL (e.g., from environment variables)
@@ -18,19 +28,20 @@ import Erc20Abi from '@/contracts/out/ERC20.sol/ERC20.json'; // A standard ERC20
 // import InsuranceEscrowAbi from '@/contracts/out/InsuranceEscrow.sol/InsuranceEscrow.json';
 // import PositionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json';
 
-const provider = new ethers.JsonRpcProvider(RPC_URL);
-const stabilizerNftContract = new ethers.Contract(STABILIZER_NFT_ADDRESS, StabilizerNFTAbi.abi, provider);
-const stEthContract = new ethers.Contract(STETH_ADDRESS, Erc20Abi.abi, provider);
+const publicClient = createPublicClient({
+  chain: sepolia, // Or dynamically determine based on RPC_URL if needed
+  transport: http(RPC_URL),
+});
 
-const MAX_UINT256 = ethers.MaxUint256;
-const ONE_ETHER = ethers.parseEther("1"); // 10^18
+const MAX_UINT256 = MAX_UINT256_VIEM;
+const ONE_ETHER = parseEther("1"); // 10^18
 const BASIS_POINTS_DIVISOR = 10000n; // For ratios like 11000 for 110%
 
 // Helper to format address for display
-function formatAddress(address: string): string {
-  if (!address || address === ethers.ZeroAddress) return "N/A";
+function formatAddress(address: string | Address): string {
+  if (!address || address === zeroAddress) return "N/A";
   try {
-    const checksummedAddress = ethers.getAddress(address);
+    const checksummedAddress = getAddress(address as Address);
     return `${checksummedAddress.substring(0, 6)}...${checksummedAddress.substring(checksummedAddress.length - 4)}`;
   } catch {
     return "Invalid Address";
@@ -40,7 +51,7 @@ function formatAddress(address: string): string {
 // Helper to format BigInt to a fixed decimal string
 function formatBigIntDisplay(value: bigint | undefined, decimals: number = 18, precision: number = 4): string {
   if (value === undefined) return "N/A";
-  return parseFloat(ethers.formatUnits(value, decimals)).toFixed(precision);
+  return parseFloat(formatUnits(value, decimals)).toFixed(precision);
 }
 
 // Function to determine color based on collateralization ratio (BPS)
@@ -163,42 +174,65 @@ export async function GET(
 
   try {
     // --- Fetch On-Chain Data ---
-    let positionData;
+    let positionDataResult;
     try {
-      positionData = await stabilizerNftContract.positions(tokenId);
+      // Assuming StabilizerNFTAbi.abi is a valid ABI array
+      positionDataResult = await publicClient.readContract({
+        address: STABILIZER_NFT_ADDRESS as Address,
+        abi: StabilizerNFTAbi.abi,
+        functionName: 'positions',
+        args: [BigInt(tokenId)],
+      });
     } catch (e: any) {
       console.error(`Error fetching position data for token ${tokenId}:`, e.message);
-      // If position doesn't exist, contract call might revert.
       return NextResponse.json({ error: `Token ID ${tokenId} not found or error fetching position data.` }, { status: 404 });
     }
-
+    
+    // Assuming `positions` returns a struct or named outputs that viem maps to an object.
+    // If it returns a tuple, access would be by index e.g., positionDataResult[0]
+    const positionData = positionDataResult as { minCollateralRatio: bigint, mintedUspdEquivalent: bigint };
     const minCollateralRatioBps: bigint = positionData.minCollateralRatio;
     const mintedUspdEquivalent: bigint = positionData.mintedUspdEquivalent; // This is 18 decimals
 
-    let positionEscrowAddress: string = ethers.ZeroAddress;
+    let positionEscrowAddress: Address = zeroAddress;
     try {
-      positionEscrowAddress = await stabilizerNftContract.positionEscrows(tokenId);
-      positionEscrowAddress = ethers.getAddress(positionEscrowAddress); // Checksum
+      const rawPositionEscrowAddress = await publicClient.readContract({
+        address: STABILIZER_NFT_ADDRESS as Address,
+        abi: StabilizerNFTAbi.abi,
+        functionName: 'positionEscrows',
+        args: [BigInt(tokenId)],
+      });
+      positionEscrowAddress = getAddress(rawPositionEscrowAddress as string); // Checksum
     } catch (e: any) {
       console.warn(`Could not fetch positionEscrow for token ${tokenId}:`, e.message);
       // Non-critical, can proceed with ZeroAddress
     }
     
-    const insuranceEscrowAddressChecksummed = ethers.getAddress(INSURANCE_ESCROW_ADDRESS);
+    const insuranceEscrowAddressChecksummed = getAddress(INSURANCE_ESCROW_ADDRESS as Address);
 
     let insuranceEscrowStEthBalance: bigint = 0n;
-    if (insuranceEscrowAddressChecksummed !== ethers.ZeroAddress) {
+    if (insuranceEscrowAddressChecksummed !== zeroAddress) {
       try {
-        insuranceEscrowStEthBalance = await stEthContract.balanceOf(insuranceEscrowAddressChecksummed);
+        insuranceEscrowStEthBalance = await publicClient.readContract({
+            address: STETH_ADDRESS as Address,
+            abi: Erc20Abi.abi,
+            functionName: 'balanceOf',
+            args: [insuranceEscrowAddressChecksummed]
+        }) as bigint;
       } catch (e: any) {
         console.warn(`Could not fetch stETH balance for main insurance escrow ${insuranceEscrowAddressChecksummed}:`, e.message);
       }
     }
 
     let positionEscrowStEthBalance: bigint = 0n;
-    if (positionEscrowAddress !== ethers.ZeroAddress) {
+    if (positionEscrowAddress !== zeroAddress) {
       try {
-        positionEscrowStEthBalance = await stEthContract.balanceOf(positionEscrowAddress);
+        positionEscrowStEthBalance = await publicClient.readContract({
+            address: STETH_ADDRESS as Address,
+            abi: Erc20Abi.abi,
+            functionName: 'balanceOf',
+            args: [positionEscrowAddress]
+        }) as bigint;
       } catch (e: any) {
         console.warn(`Could not fetch stETH balance for position escrow ${positionEscrowAddress}:`, e.message);
       }
