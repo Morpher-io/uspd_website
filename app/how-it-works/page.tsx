@@ -478,8 +478,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           visible: true,
           status: "danger",
         };
-      case 15:
-        return { title: "", value: "", visible: false, status: "safe" };
       case 16:
       case 17:
         return {
@@ -519,7 +517,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         labelVisible={activeSceneId > 1}
         x={stabilizerX}
         y={stabilizerY}
-        visible={activeSceneId >= 1 && activeSceneId < 19 && activeSceneId != 15}
+        visible={activeSceneId >= 1 && activeSceneId < 17}
         iconAnimate={{ scale: stabilizerScale }}
       ></Actor>
 
@@ -535,7 +533,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         x={0}
         y={490}
         w={150}
-        visible={activeSceneId >= 4 && activeSceneId < 19 && activeSceneId != 15}
+        visible={activeSceneId >= 4 && activeSceneId < 17}
         title="150% Ratio"
         value="Stabilizer's Preference"
         status="safe"
@@ -623,7 +621,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
             value={
-              activeSceneId === 14
+              activeSceneId === 14 || activeSceneId === 15
                 ? 0.926
                 : activeSceneId >= 18
                 ? 0.97
@@ -737,13 +735,13 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={155} y={280} visible={activeSceneId === 8} />
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 8} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 11} />
-      <Arrow x={255} y={280} rotate={180} visible={activeSceneId === 15} />
-      <Arrow x={255} y={320} rotate={0} visible={activeSceneId === 15} />
+      <Arrow x={300} y={280} rotate={180} visible={activeSceneId === 15} />
+      <Arrow x={300} y={320} rotate={0} visible={activeSceneId === 15} />
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 16} />
       <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 18} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 19} />
       <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 23} />
-      <Arrow x={175} y={280} rotate={45} visible={activeSceneId === 24} />
+      <Arrow x={400} y={280} rotate={0} visible={activeSceneId === 24} />
     </div>
   );
 };
