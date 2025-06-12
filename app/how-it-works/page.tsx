@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Zap,
   Shield,
+  Users,
 } from "lucide-react";
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 
@@ -211,6 +212,58 @@ const scenes = [
       <p>
         The risky position is closed, the system's health is restored, and all
         participants were incentivized to act. The peg is secure.
+      </p>
+    ),
+  },
+  {
+    id: 20,
+    title: "What About The User?",
+    content: (
+      <p>
+        The original user's position was liquidated, but their 2,500 USPD are
+        still safe, now backed by the system's aggregate liquidity pool.
+      </p>
+    ),
+  },
+  {
+    id: 21,
+    title: "User Redeems USPD",
+    content: (
+      <p>
+        At any time, the user can burn their USPD to redeem the equivalent
+        value in ETH from the system at the current market rate.
+      </p>
+    ),
+  },
+  {
+    id: 22,
+    title: "Burning USPD",
+    content: (
+      <p>
+        The user burns their 2,500 USPD. The system removes this liability from
+        circulation, keeping the currency fully backed.
+      </p>
+    ),
+  },
+  {
+    id: 23,
+    title: "Receiving ETH",
+    content: (
+      <p>
+        They receive 0.926 ETH, the value of $2,500 at the current ETH price of
+        $2,700. They took a small loss, but their funds were protected from
+        their counterparty's failure.
+      </p>
+    ),
+  },
+  {
+    id: 24,
+    title: "Full Circle",
+    content: (
+      <p>
+        The user has successfully exited their position. The system ensured
+        their funds were safe, even when their original counterparty's position
+        was liquidated.
       </p>
     ),
   },
@@ -431,8 +484,11 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         label="User"
         x={activeSceneId >= 14 ? 400 : 500}
         y={50}
-        visible={activeSceneId >= 5}
-        animate={{ opacity: activeSceneId >= 14 ? 0.5 : 1 }}
+        visible={activeSceneId >= 5 && activeSceneId < 20}
+        animate={{
+          opacity: activeSceneId >= 14 && activeSceneId < 20 ? 0.5 : 1,
+          x: activeSceneId >= 21 ? 500 : activeSceneId >= 14 ? 400 : 500,
+        }}
       ></Actor>
 
       <Actor
@@ -440,7 +496,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         label="Liquidator"
         x={500}
         y={50}
-        visible={activeSceneId >= 14}
+        visible={activeSceneId >= 14 && activeSceneId < 20}
       ></Actor>
 
       {/* Charts */}
@@ -469,18 +525,24 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 5 && activeSceneId < 14}
+        visible={
+          (activeSceneId >= 5 && activeSceneId < 14) || activeSceneId >= 21
+        }
       >
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
-            value={activeSceneId >= 6 ? 0 : 1}
+            value={
+              activeSceneId >= 23 ? 0.926 : activeSceneId >= 6 ? 0 : 1
+            }
             maxValue={1.1}
             color="bg-green-500"
             label="Available"
             unit="ETH"
           />
           <ChartBar
-            value={activeSceneId >= 6 ? 2500 : 0}
+            value={
+              activeSceneId >= 22 ? 0 : activeSceneId >= 6 ? 2500 : 0
+            }
             maxValue={2550}
             color="bg-purple-500"
             label="Minted"
@@ -495,7 +557,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 14}
+        visible={activeSceneId >= 14 && activeSceneId < 21}
       >
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
@@ -572,7 +634,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 18}
+        visible={activeSceneId >= 18 && activeSceneId < 21}
       >
         <ChartBar
           value={activeSceneId >= 18 ? 0.08 : 0}
@@ -581,6 +643,17 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           label="System Reserve"
           unit="ETH"
         />
+      </ChartContainer>
+
+      <ChartContainer
+        label="USPD System Pool"
+        x={0}
+        y={150}
+        w={150}
+        h={300}
+        visible={activeSceneId >= 21}
+      >
+        <Users size={64} className="m-auto text-muted-foreground" />
       </ChartContainer>
 
       <InfoBox
@@ -599,6 +672,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 15} />
       <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 17} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 18} />
+      <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 22} />
+      <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 23} />
     </div>
   );
 };
@@ -659,7 +734,9 @@ export default function HowItWorksPage() {
 
   const firstChapterScenes = scenes.slice(0, 11);
   const liquidationHeroScene = scenes.find((s) => s.id === 12);
-  const liquidationScenes = scenes.slice(12);
+  const liquidationScenes = scenes.slice(12, 19);
+  const userRedemptionHeroScene = scenes.find((s) => s.id === 20);
+  const userRedemptionScenes = scenes.slice(20);
 
   return (
     <div className="bg-background text-foreground">
@@ -735,6 +812,40 @@ export default function HowItWorksPage() {
         {/* Right Scrolling Column */}
         <div className="relative">
           {liquidationScenes.map((scene) => (
+            <TextBlock
+              key={scene.id}
+              title={scene.title}
+              sceneId={scene.id}
+              setActiveSceneId={setActiveSceneId}
+            >
+              {scene.content}
+            </TextBlock>
+          ))}
+        </div>
+      </div>
+
+      {/* Chapter 4: User Redemption Intro */}
+      {userRedemptionHeroScene && (
+        <HeroBlock
+          key={userRedemptionHeroScene.id}
+          title={userRedemptionHeroScene.title}
+          sceneId={userRedemptionHeroScene.id}
+          setActiveSceneId={setActiveSceneId}
+        >
+          {userRedemptionHeroScene.content}
+        </HeroBlock>
+      )}
+
+      {/* Chapter 5: User Redemption Scenes */}
+      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative">
+        {/* Left Sticky Column */}
+        <div className="md:sticky top-0 h-screen flex items-center justify-center">
+          <SceneGraphic activeSceneId={activeSceneId} />
+        </div>
+
+        {/* Right Scrolling Column */}
+        <div className="relative">
+          {userRedemptionScenes.map((scene) => (
             <TextBlock
               key={scene.id}
               title={scene.title}
