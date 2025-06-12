@@ -136,11 +136,11 @@ const Actor = ({ icon, label, x, y, visible, children }: any) => (
     {visible && (
       <motion.div
         className="absolute flex flex-col items-center gap-2"
-        initial={{ opacity: 0, y: y + 20 }}
-        animate={{ opacity: 1, y }}
-        exit={{ opacity: 0, y: y + 20 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.5 }}
-        style={{ x, y }}
+        style={{ left: x, top: y }}
       >
         <div className="relative">{icon}</div>
         <span className="text-sm font-semibold">{label}</span>
@@ -159,7 +159,7 @@ const FloatingAsset = ({ icon, label, x, y, visible }: any) => (
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
-        style={{ x, y }}
+        style={{ left: x, top: y }}
       >
         {icon}
         <span className="text-xs">{label}</span>
@@ -173,11 +173,11 @@ const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
     {visible && (
       <motion.div
         className="absolute"
-        initial={{ opacity: 0, y: y + 30 }}
-        animate={{ opacity: 1, y: y }}
-        exit={{ opacity: 0, y: y + 30 }}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 30 }}
         transition={{ duration: 0.7, ease: "easeInOut" }}
-        style={{ x, y, width: w, height: h }}
+        style={{ left: x, top: y, width: w, height: h }}
       >
         <h3 className="text-center font-bold mb-2">{label}</h3>
         <div className="relative w-full h-full bg-secondary/50 rounded-lg border-2 border-dashed flex items-end justify-center gap-2 px-2 pb-12">
@@ -220,7 +220,7 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
         animate={{ opacity: 1, scale: 1, transition: { delay: 0.5 } }}
         exit={{ opacity: 0 }}
         className="absolute"
-        style={{ x, y, rotate }}
+        style={{ left: x, top: y, rotate }}
       >
         <ArrowRight size={48} className="text-muted-foreground" />
       </motion.div>
@@ -228,17 +228,17 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
   </AnimatePresence>
 );
 
-const InfoBox = ({ title, value, x, y, w, visible }: any) => (
+const InfoBox = ({ title, value, x, w, visible }: any) => (
   <AnimatePresence mode="wait">
     {visible && (
       <motion.div
         key={title + value}
-        className="absolute text-center"
+        className="absolute text-center -bottom-10"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.3 }}
-        style={{ x, y, width: w }}
+        style={{ left: x, width: w }}
       >
         <div className="text-sm text-muted-foreground">{value}</div>
         <div className="font-bold text-base">{title}</div>
@@ -297,7 +297,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <AnimatePresence>
           {activeSceneId >= 4 && (
             <motion.div
-              className="absolute left-full top-13 ml-2 text-center p-1 bg-secondary rounded-lg"
+              className="absolute left-full top-0 ml-2 text-center p-1 bg-secondary rounded-lg"
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0 }}
@@ -416,7 +416,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <InfoBox
         x={225}
-        y={455}
         w={150}
         visible={positionInfo.visible}
         title={positionInfo.title}
