@@ -262,9 +262,9 @@ const scenes = [
     title: "Receiving ETH",
     content: (
       <p>
-        They receive 0.926 ETH, the value of $2,500 at the current ETH price of
-        $2,700. They took a small loss, but their funds were protected from
-        their counterparty's failure.
+        They receive 0.926 ETH. At the current price of $2,700/ETH, this is
+        worth exactly $2,500. The user's funds were fully protected, and the
+        USPD peg held perfectly.
       </p>
     ),
   },
@@ -716,7 +716,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 17} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 18} />
       <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 22} />
-      <Arrow x={175} y={280} rotate={45} visible={activeSceneId === 23} />
+      <Arrow x={400} y={280} rotate={45} visible={activeSceneId === 23} />
     </div>
   );
 };
