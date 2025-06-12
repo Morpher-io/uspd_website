@@ -621,7 +621,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
             value={
-              activeSceneId === 14 || activeSceneId === 15
+              activeSceneId === 14
                 ? 0.926
                 : activeSceneId >= 18
                 ? 0.97
