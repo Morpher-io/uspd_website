@@ -11,6 +11,8 @@ import {
   Coins,
   Ticket,
   ArrowRight,
+  Zap,
+  Shield,
 } from "lucide-react";
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 
@@ -146,7 +148,69 @@ const scenes = [
       <p>
         The price of ETH drops to $2,700. The position's collateral is now worth
         only $2,835, pushing the ratio down to a risky 113%. The position is now
-        undercollateralized.
+        at risk of liquidation.
+      </p>
+    ),
+  },
+  {
+    id: 14,
+    title: "The Liquidator Arrives",
+    content: (
+      <p>
+        A new actor, the Liquidator, sees the risky position. They can help
+        secure the system and earn a reward by providing 2,500 USPD to close
+        the position.
+      </p>
+    ),
+  },
+  {
+    id: 15,
+    title: "Initiating Liquidation",
+    content: (
+      <p>
+        The Liquidator calls the liquidation function, sending their 2,500 USPD
+        to the system. This cancels out the original user's debt.
+      </p>
+    ),
+  },
+  {
+    id: 16,
+    title: "Collateral is Seized",
+    content: (
+      <p>
+        The system seizes the 1.05 ETH from the risky Position Escrow. The
+        original Stabilizer loses their collateral, but the system remains
+        solvent.
+      </p>
+    ),
+  },
+  {
+    id: 17,
+    title: "Liquidator is Rewarded",
+    content: (
+      <p>
+        The Liquidator receives ETH equal to the USPD they provided, plus a 5%
+        bonus. In total, they get 0.97 ETH for their service.
+      </p>
+    ),
+  },
+  {
+    id: 18,
+    title: "The Insurance Fund",
+    content: (
+      <p>
+        The remaining 0.08 ETH is sent to the system's Insurance Fund, which
+        provides an extra layer of security against extreme market events.
+      </p>
+    ),
+  },
+  {
+    id: 19,
+    title: "System Secured",
+    content: (
+      <p>
+        The risky position is closed, the system's health is restored, and all
+        participants were incentivized to act. The peg is secure.
       </p>
     ),
   },
@@ -303,6 +367,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           status: "safe",
         };
       case 13:
+      case 14:
+      case 15:
         return {
           title: "113% Collateralized",
           value: "ETH Price: $2,700",
@@ -324,17 +390,17 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         label="Stabilizer"
         x={30}
         y={50}
-        visible={activeSceneId >= 1}
+        visible={activeSceneId >= 1 && activeSceneId < 16}
       >
         <FloatingAsset
           icon={<Ticket size={32} />}
           label="NFT"
           x={40}
           y={0}
-          visible={activeSceneId >= 2}
+          visible={activeSceneId >= 2 && activeSceneId < 16}
         />
         <AnimatePresence>
-          {activeSceneId >= 4 && (
+          {activeSceneId >= 4 && activeSceneId < 16 && (
             <motion.div
               className="absolute left-full top-0 ml-2 text-center p-1 bg-secondary rounded-lg"
               initial={{ opacity: 0, scale: 0 }}
@@ -353,7 +419,15 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         label="User"
         x={500}
         y={50}
-        visible={activeSceneId >= 5}
+        visible={activeSceneId >= 5 && activeSceneId < 14}
+      ></Actor>
+
+      <Actor
+        icon={<Zap size={48} className="text-yellow-400" />}
+        label="Liquidator"
+        x={500}
+        y={50}
+        visible={activeSceneId >= 14}
       ></Actor>
 
       {/* Charts */}
@@ -363,7 +437,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 2}
+        visible={activeSceneId >= 2 && activeSceneId < 18}
       >
         <ChartBar
           value={
@@ -382,7 +456,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 5}
+        visible={activeSceneId >= 5 && activeSceneId < 14}
       >
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
@@ -403,12 +477,38 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       </ChartContainer>
 
       <ChartContainer
+        label="Liquidator Wallet"
+        x={450}
+        y={150}
+        w={150}
+        h={300}
+        visible={activeSceneId >= 14}
+      >
+        <div className="w-full h-full flex items-end gap-1">
+          <ChartBar
+            value={activeSceneId >= 15 ? 0 : 2500}
+            maxValue={2550}
+            color="bg-purple-500"
+            label="Available"
+            unit="USPD"
+          />
+          <ChartBar
+            value={activeSceneId >= 17 ? 0.97 : 0}
+            maxValue={1.1}
+            color="bg-green-500"
+            label="Received"
+            unit="ETH"
+          />
+        </div>
+      </ChartContainer>
+
+      <ChartContainer
         label="Position Escrow"
         x={225}
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 8 && activeSceneId !== 12}
+        visible={activeSceneId >= 8 && activeSceneId < 16}
       >
         <AnimatePresence mode="wait">
           {activeSceneId === 8 ? (
@@ -453,6 +553,23 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         </AnimatePresence>
       </ChartContainer>
 
+      <ChartContainer
+        label="Insurance Fund"
+        x={0}
+        y={150}
+        w={150}
+        h={300}
+        visible={activeSceneId >= 18}
+      >
+        <ChartBar
+          value={activeSceneId >= 18 ? 0.08 : 0}
+          maxValue={1}
+          color="bg-indigo-500"
+          label="System Reserve"
+          unit="ETH"
+        />
+      </ChartContainer>
+
       <InfoBox
         x={225}
         w={150}
@@ -466,6 +583,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={155} y={280} visible={activeSceneId === 8} />
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 8} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 11} />
+      <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 15} />
+      <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 17} />
     </div>
   );
 };
