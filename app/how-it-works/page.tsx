@@ -468,7 +468,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <InfoBox
         x={0}
-        y={455}
+        y={470}
         w={150}
         visible={activeSceneId >= 4 && activeSceneId < 16}
         title="150% Ratio"
@@ -654,7 +654,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <InfoBox
         x={225}
-        y={455}
+        y={470}
         w={150}
         visible={positionInfo.visible}
         title={positionInfo.title}
