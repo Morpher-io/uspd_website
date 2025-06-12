@@ -200,6 +200,7 @@ const ChartBar = ({
     <AnimatePresence>
       {visible && (
         <motion.div
+          layout
           className="w-full relative flex flex-col items-center"
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: `${heightPercentage}%`, opacity: 1 }}
@@ -381,7 +382,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         h={300}
         visible={activeSceneId >= 8}
       >
-        <div className="w-full h-full flex items-end gap-1">
+        <motion.div layout className="w-full h-full flex items-end gap-1">
           {/* Two separate bars for scene 8 */}
           <ChartBar
             value={1}
@@ -409,7 +410,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
             unit="ETH"
             visible={activeSceneId >= 9}
           />
-        </div>
+        </motion.div>
       </ChartContainer>
 
       <InfoBox
