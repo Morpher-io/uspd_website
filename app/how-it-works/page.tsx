@@ -517,7 +517,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         labelVisible={activeSceneId > 1}
         x={stabilizerX}
         y={stabilizerY}
-        visible={activeSceneId >= 1 && activeSceneId < 17}
+        visible={activeSceneId >= 1 && activeSceneId < 19  && activeSceneId != 15}
         iconAnimate={{ scale: stabilizerScale }}
       ></Actor>
 
@@ -533,7 +533,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         x={0}
         y={490}
         w={150}
-        visible={activeSceneId >= 4 && activeSceneId < 17}
+        visible={activeSceneId >= 4 && activeSceneId < 19 && activeSceneId != 15}                          
         title="150% Ratio"
         value="Stabilizer's Preference"
         status="safe"
