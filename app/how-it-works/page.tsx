@@ -21,12 +21,14 @@ export default function HowItWorksPage() {
           borderRadius: "50%",
           backgroundColor: "#3b82f6", // blue-500
           scale: [1, 1.05, 1],
+          opacity: 1,
         }
       : {
           // Scene 2: Red Square
           borderRadius: "10%",
           backgroundColor: "#ef4444", // red-500
           scale: 1,
+          opacity: 1,
         };
 
   // Define the transition properties for the shape
