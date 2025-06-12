@@ -218,13 +218,13 @@ const scenes = [
 
 // --- Graphic Components ---
 
-const Actor = ({ icon, label, x, y, visible, children }: any) => (
+const Actor = ({ icon, label, x, y, visible, children, animate }: any) => (
   <AnimatePresence>
     {visible && (
       <motion.div
         className="absolute flex flex-col items-center gap-2"
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={{ opacity: 1, y: 0, ...animate }}
         exit={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.5 }}
         style={{ left: x, top: y }}
@@ -417,9 +417,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Actor
         icon={<User size={48} />}
         label="User"
-        x={500}
+        x={activeSceneId >= 14 ? 400 : 500}
         y={50}
-        visible={activeSceneId >= 5 && activeSceneId < 14}
+        visible={activeSceneId >= 5}
+        animate={{ opacity: activeSceneId >= 14 ? 0.5 : 1 }}
       ></Actor>
 
       <Actor
