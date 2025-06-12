@@ -187,38 +187,26 @@ const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
   </AnimatePresence>
 );
 
-const ChartBar = ({
-  value,
-  maxValue,
-  color,
-  label,
-  unit,
-  layoutId,
-}: any) => {
+const ChartBar = ({ value, maxValue, color, label, unit }: any) => {
   const heightPercentage = (value / maxValue) * 100;
   return (
     <motion.div
-      layout
-      layoutId={layoutId}
       className="w-full relative flex flex-col items-center"
-      initial={{ opacity: 0 }}
+      initial={{ opacity: 0, height: 0 }}
       animate={{
         opacity: 1,
         height: `${heightPercentage}%`,
       }}
-      exit={{ opacity: 0, transition: { duration: 0.2 } }}
+      exit={{ opacity: 0, height: 0, transition: { duration: 0.3 } }}
       transition={{ duration: 0.7, ease: "easeInOut" }}
     >
-      <motion.div
-        layout="position"
-        className={`w-full h-full ${color} rounded-t-md`}
-      ></motion.div>
-      <motion.div layout="position" className="absolute -bottom-10 text-center">
+      <div className={`w-full h-full ${color} rounded-t-md`}></div>
+      <div className="absolute -bottom-10 text-center">
         <div className="font-bold text-sm">
           {value.toLocaleString()} {unit}
         </div>
         <div className="text-xs text-muted-foreground">{label}</div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 };
@@ -382,11 +370,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         h={300}
         visible={activeSceneId >= 8}
       >
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence>
           {activeSceneId === 8 && [
             <ChartBar
               key="user-escrow"
-              layoutId="position-escrow-bar"
               value={1}
               maxValue={1.6}
               color="bg-green-500"
@@ -406,7 +393,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           {activeSceneId >= 9 && (
             <ChartBar
               key="total-escrow"
-              layoutId="position-escrow-bar"
               value={activeSceneId >= 11 ? 1.25 : 1.5}
               maxValue={1.6}
               color="bg-teal-500"
