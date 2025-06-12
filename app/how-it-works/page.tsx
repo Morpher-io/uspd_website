@@ -145,6 +145,7 @@ const scenes = [
   {
     id: 12,
     title: "Danger Zone: Price Drops",
+    isHero: true,
     content: (
       <p>
         But what happens if the price of ETH falls? When a position's
@@ -244,6 +245,7 @@ const scenes = [
   {
     id: 21,
     title: "What About The User?",
+    isHero: true,
     content: (
       <p>
         The original user's position was liquidated, but their 2,500 USPD are
@@ -519,6 +521,48 @@ const InfoBox = ({ title, value, x, y, w, visible, status }: any) => (
         >
           {title}
         </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+const IncomeStream = ({ icon, label, value, x, y, visible }: any) => (
+  <AnimatePresence>
+    {visible && (
+      <motion.div
+        className="absolute flex flex-col items-center gap-2"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.5 }}
+        style={{ left: x, top: y }}
+      >
+        {icon}
+        <span className="text-sm font-semibold">{label}</span>
+        <span className="font-bold text-lg text-primary">{value}</span>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+const ApyCalculation = ({ visible }: any) => (
+  <AnimatePresence>
+    {visible && (
+      <motion.div
+        className="text-2xl md:text-4xl font-mono text-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.2 } }}>3x</motion.span>
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.4 } }}> * (</motion.span>
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.6 } }} className="text-green-500">4%</motion.span>
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.8 } }}> + </motion.span>
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.0 } }} className="text-blue-500">11%</motion.span>
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.2 } }}> - </motion.span>
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.4 } }} className="text-red-500">2%</motion.span>
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.6 } }}>) = </motion.span>
+        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.8 } }} className="font-bold text-primary">39% APY</motion.span>
       </motion.div>
     )}
   </AnimatePresence>
@@ -822,6 +866,95 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 19} />
       <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 23} />
       <Arrow x={400} y={280} rotate={0} visible={activeSceneId === 24} />
+
+      {/* Yield Chapter Graphics */}
+      <AnimatePresence>
+        {activeSceneId >= 27 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full flex items-center justify-center"
+          >
+            <Actor
+              icon={<ShieldCheck size={64} />}
+              label="Stabilizer"
+              x={260}
+              y={50}
+              visible={activeSceneId >= 27 && activeSceneId < 30}
+            />
+            <IncomeStream
+              icon={<Coins size={48} className="text-green-500" />}
+              label="Staking Yield"
+              value="~4% APY"
+              x={50}
+              y={200}
+              visible={activeSceneId === 27 || activeSceneId === 28}
+            />
+            <IncomeStream
+              icon={<Landmark size={48} className="text-blue-500" />}
+              label="Funding Fees"
+              value="~11% APY"
+              x={400}
+              y={200}
+              visible={activeSceneId === 27 || activeSceneId === 29}
+            />
+            <Arrow x={150} y={180} rotate={45} visible={activeSceneId === 27} />
+            <Arrow x={350} y={180} rotate={135} visible={activeSceneId === 27} />
+
+            <ChartContainer
+              label="Leverage"
+              x={150}
+              y={150}
+              w={300}
+              h={300}
+              visible={activeSceneId === 30}
+            >
+              <div className="w-full h-full flex items-end gap-4">
+                <ChartBar
+                  value={35}
+                  maxValue={110}
+                  color="bg-gray-500"
+                  label="Own Capital"
+                  unit="35%"
+                />
+                <ChartBar
+                  value={100}
+                  maxValue={110}
+                  color="bg-teal-500"
+                  label="Total Secured"
+                  unit="100%"
+                />
+              </div>
+              <InfoBox
+                x={0}
+                y={255}
+                w={300}
+                visible={true}
+                title="~3x Leverage"
+                value=""
+              />
+            </ChartContainer>
+
+            <ApyCalculation visible={activeSceneId === 31} />
+
+            <AnimatePresence>
+              {activeSceneId === 32 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center"
+                >
+                  <div className="text-6xl font-bold text-primary">39% APY</div>
+                  <div className="text-xl text-muted-foreground">
+                    Delta-Neutral
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -908,7 +1041,9 @@ export default function HowItWorksPage() {
   const liquidationHeroScene = scenes.find((s) => s.id === 12);
   const liquidationScenes = scenes.slice(12, 20);
   const userRedemptionHeroScene = scenes.find((s) => s.id === 21);
-  const userRedemptionScenes = scenes.slice(21);
+  const userRedemptionScenes = scenes.slice(21, 25);
+  const yieldHeroScene = scenes.find((s) => s.id === 26);
+  const yieldScenes = scenes.slice(26);
 
   return (
     <div className="bg-background text-foreground">
@@ -1031,6 +1166,41 @@ export default function HowItWorksPage() {
         {/* Right Scrolling Column */}
         <div className="relative">
           {userRedemptionScenes.map((scene) => (
+            <TextBlock
+              key={scene.id}
+              title={scene.title}
+              sceneId={scene.id}
+              setActiveSceneId={setActiveSceneId}
+              link={scene.link}
+            >
+              {scene.content}
+            </TextBlock>
+          ))}
+        </div>
+      </div>
+
+      {/* Chapter 6: Stabilizer Yield */}
+      {yieldHeroScene && (
+        <HeroBlock
+          key={yieldHeroScene.id}
+          title={yieldHeroScene.title}
+          sceneId={yieldHeroScene.id}
+          setActiveSceneId={setActiveSceneId}
+          link={yieldHeroScene.link}
+        >
+          {yieldHeroScene.content}
+        </HeroBlock>
+      )}
+
+      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative">
+        {/* Left Sticky Column */}
+        <div className="md:sticky top-0 h-screen flex items-center justify-center">
+          <SceneGraphic activeSceneId={activeSceneId} />
+        </div>
+
+        {/* Right Scrolling Column */}
+        <div className="relative">
+          {yieldScenes.map((scene) => (
             <TextBlock
               key={scene.id}
               title={scene.title}
