@@ -369,6 +369,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       case 13:
       case 14:
       case 15:
+      case 16:
         return {
           title: "113% Collateralized",
           value: "ETH Price: $2,700",
@@ -381,6 +382,15 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   };
 
   const positionInfo = getPositionInfo(activeSceneId);
+
+  let positionEscrowValue;
+  if (activeSceneId >= 17) {
+    positionEscrowValue = 0.08;
+  } else if (activeSceneId >= 11) {
+    positionEscrowValue = 1.05;
+  } else {
+    positionEscrowValue = 1.5;
+  }
 
   return (
     <div className="relative w-[600px] h-[500px] text-foreground scale-90 md:scale-100">
@@ -509,7 +519,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 8 && activeSceneId < 16}
+        visible={activeSceneId >= 8 && activeSceneId < 18}
       >
         <AnimatePresence mode="wait">
           {activeSceneId === 8 ? (
@@ -542,7 +552,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                 animate={{ opacity: 1, transition: { duration: 0.4 } }}
               >
                 <ChartBar
-                  value={activeSceneId >= 11 ? 1.05 : 1.5}
+                  value={positionEscrowValue}
                   maxValue={1.6}
                   color="bg-teal-500"
                   label="Total Collateral"
