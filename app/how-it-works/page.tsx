@@ -477,7 +477,7 @@ const ChartBar = ({ value, maxValue, color, label, unit }: any) => {
       <div className={`w-full h-full ${color} rounded-t-md`}></div>
       <div className="absolute -bottom-10 text-center">
         <div className="font-bold text-sm">
-          {value.toLocaleString()} {unit}
+          {unit?.includes("%") ? unit : `${value.toLocaleString()} ${unit}`}
         </div>
         <div className="text-xs text-muted-foreground">{label}</div>
       </div>
@@ -911,25 +911,25 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                   maxValue={110}
                   color="bg-gray-500"
                   label="Own Capital"
-                  unit="35%"
+                  unit="%"
                 />
                 <ChartBar
                   value={100}
                   maxValue={110}
                   color="bg-teal-500"
                   label="Total Secured"
-                  unit="100%"
+                  unit="%"
                 />
               </div>
-              <InfoBox
-                x={0}
-                y={255}
-                w={300}
-                visible={true}
-                title="~3x Leverage"
-                value=""
-              />
             </ChartContainer>
+            <InfoBox
+              x={150}
+              y={490}
+              w={300}
+              visible={activeSceneId === 30}
+              title="~3x Leverage"
+              value=""
+            />
 
             <ApyCalculation visible={activeSceneId === 31} />
 
