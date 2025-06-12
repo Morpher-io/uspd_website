@@ -103,7 +103,7 @@ const scenes = [
 
 // --- Graphic Components ---
 
-const Actor = ({ icon, label, x, y, visible }: any) => (
+const Actor = ({ icon, label, x, y, visible, children }: any) => (
   <AnimatePresence>
     {visible && (
       <motion.div
@@ -114,14 +114,15 @@ const Actor = ({ icon, label, x, y, visible }: any) => (
         transition={{ duration: 0.5 }}
         style={{ x, y }}
       >
-        {icon}
+        <div className="relative">{icon}</div>
         <span className="text-sm font-semibold">{label}</span>
+        {children}
       </motion.div>
     )}
   </AnimatePresence>
 );
 
-const Asset = ({ icon, label, x, y, visible, animate }: any) => (
+const Asset = ({ icon, label, x, y, visible, animate, transition }: any) => (
   <AnimatePresence>
     {visible && (
       <motion.div
@@ -129,7 +130,7 @@ const Asset = ({ icon, label, x, y, visible, animate }: any) => (
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1, ...animate }}
         exit={{ opacity: 0, scale: 0 }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
+        transition={transition || { duration: 0.5, ease: "easeInOut" }}
         style={{ x, y }}
       >
         {icon}
@@ -179,7 +180,21 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         x={50}
         y={50}
         visible={activeSceneId >= 1}
-      />
+      >
+        <AnimatePresence>
+          {activeSceneId >= 4 && (
+            <motion.div
+              className="absolute left-1/2 -right-12 top-0 text-center p-1 bg-secondary rounded-lg"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0 }}
+            >
+              <div className="font-bold text-base leading-none">150%</div>
+              <div className="text-xs leading-none">Ratio</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Actor>
       <Actor
         icon={<User size={48} />}
         label="User"
@@ -210,71 +225,66 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         visible={activeSceneId === 6}
         animate={{ y: 250 }}
+        transition={{ duration: 0.8, ease: "easeInOut" }}
       />
       <Asset
-        icon={<div className="font-bold text-green-500">USPD</div>}
+        icon={<div className="font-bold text-green-500 text-2xl">USPD</div>}
         label="2,500"
-        x={430}
-        y={150}
+        x={400}
+        y={120}
         visible={activeSceneId >= 6}
-        animate={{ y: 100 }}
+      />
+      <Asset
+        icon={<Coins size={32} className="text-blue-500" />}
+        label="0.5 ETH"
+        x={125}
+        y={220}
+        visible={activeSceneId === 7}
+        animate={{ x: 375, y: 325 }}
+        transition={{ duration: 0.8, ease: "easeInOut" }}
       />
 
-      {/* Stabilizer Vault */}
+      {/* Stabilizer Escrow */}
       <Vault
-        label="Stabilizer Vault"
+        label="Stabilizer Escrow"
         x={25}
         y={200}
         w={200}
         h={250}
         visible={activeSceneId >= 2}
       >
+        <Asset
+          icon={<Coins size={40} />}
+          label={activeSceneId >= 4 ? "" : "10 ETH"}
+          x={75}
+          y={100}
+          visible={activeSceneId >= 3 && activeSceneId < 7}
+          animate={{ y: activeSceneId >= 4 ? 10 : 100 }}
+        />
         <AnimatePresence>
-          {activeSceneId === 3 && (
+          {activeSceneId >= 4 && (
             <motion.div
+              className="w-1/3 h-full absolute bottom-0 left-[33%]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Asset
-                icon={<Coins size={40} />}
-                label="10 ETH"
-                x={75}
-                y={100}
-                visible={true}
+              <Bar
+                value={activeSceneId >= 7 ? 95 : 100}
+                color="bg-gray-500"
               />
+              <motion.span
+                className="absolute -bottom-5 w-full text-center text-sm font-semibold"
+                key={activeSceneId >= 7 ? "9.5" : "10"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                {activeSceneId >= 7 ? "9.5 ETH" : "10 ETH"}
+              </motion.span>
             </motion.div>
           )}
         </AnimatePresence>
-        {activeSceneId >= 4 && (
-          <div className="w-1/3 h-full absolute bottom-0 left-[33%]">
-            <Bar
-              value={100}
-              color="bg-gray-500"
-              label={activeSceneId >= 7 ? "9.5 ETH" : "10 ETH"}
-            />
-            <AnimatePresence>
-              {activeSceneId >= 7 && (
-                <Bar
-                  value={50}
-                  color="bg-blue-700"
-                  label="0.5 ETH"
-                  animate={{ x: 155, y: 125, width: "33%" }}
-                />
-              )}
-            </AnimatePresence>
-          </div>
-        )}
-        {activeSceneId === 4 && (
-          <motion.div
-            className="absolute top-4 right-4 text-center p-2 bg-secondary rounded-lg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <div className="font-bold text-lg">150%</div>
-            <div className="text-xs">Ratio</div>
-          </motion.div>
-        )}
       </Vault>
 
       {/* Position Escrow */}
@@ -310,10 +320,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       {/* Arrows */}
       <AnimatePresence>
-        {activeSceneId === 8 && (
+        {activeSceneId === 7 && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            animate={{ opacity: 1, transition: { delay: 0.2 } }}
             exit={{ opacity: 0 }}
           >
             <ArrowRight
