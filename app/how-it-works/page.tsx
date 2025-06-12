@@ -235,7 +235,7 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
   </AnimatePresence>
 );
 
-const InfoBox = ({ title, value, x, y, visible }: any) => (
+const InfoBox = ({ title, value, x, y, w, visible }: any) => (
   <AnimatePresence mode="wait">
     {visible && (
       <motion.div
@@ -245,7 +245,7 @@ const InfoBox = ({ title, value, x, y, visible }: any) => (
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.3 }}
-        style={{ x, y }}
+        style={{ x, y, width: w }}
       >
         <div className="font-bold text-base">{title}</div>
         <div className="text-sm text-muted-foreground">{value}</div>
@@ -397,14 +397,16 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
             unit="ETH"
           />
         </div>
-        <InfoBox
-          x={0}
-          y={255}
-          visible={positionInfo.visible}
-          title={positionInfo.title}
-          value={positionInfo.value}
-        />
       </ChartContainer>
+
+      <InfoBox
+        x={225}
+        y={455}
+        w={150}
+        visible={positionInfo.visible}
+        title={positionInfo.title}
+        value={positionInfo.value}
+      />
 
       {/* Arrows */}
       <Arrow x={155} y={280} visible={activeSceneId === 8} />
