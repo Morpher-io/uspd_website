@@ -121,8 +121,9 @@ const scenes = [
     title: "Stabilizer Takes Profit",
     content: (
       <p>
-        The Stabilizer can now withdraw the excess 0.25 ETH, rebalancing the
-        position back to a healthy 150% ratio and realizing a profit.
+        The Stabilizer can withdraw any collateral above the 125% minimum. They
+        take 0.45 ETH, rebalancing the position to a lean 126% and realizing a
+        profit.
       </p>
     ),
   },
@@ -232,7 +233,7 @@ const InfoBox = ({ title, value, x, y, w, visible }: any) => (
     {visible && (
       <motion.div
         key={title + value}
-        className="absolute text-center -bottom-10"
+        className="absolute text-center"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
@@ -265,7 +266,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         };
       case 11:
         return {
-          title: "150% Collateralized",
+          title: "126% Collateralized",
           value: "ETH Price: $3,000",
           visible: true,
         };
@@ -327,7 +328,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       >
         <ChartBar
           value={
-            activeSceneId >= 11 ? 9.75 : activeSceneId >= 7 ? 9.5 : 10
+            activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
           }
           maxValue={MAX_CHART_ETH}
           color="bg-gray-500"
@@ -401,7 +402,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                 animate={{ opacity: 1, transition: { duration: 0.4 } }}
               >
                 <ChartBar
-                  value={activeSceneId >= 11 ? 1.25 : 1.5}
+                  value={activeSceneId >= 11 ? 1.05 : 1.5}
                   maxValue={1.6}
                   color="bg-teal-500"
                   label="Total Collateral"
