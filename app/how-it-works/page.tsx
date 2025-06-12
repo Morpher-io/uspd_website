@@ -14,6 +14,10 @@ import {
   Zap,
   Shield,
   Users,
+  Landmark,
+  Plus,
+  Minus,
+  Scale,
 } from "lucide-react";
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 import Link from "next/link";
@@ -290,6 +294,82 @@ const scenes = [
       </p>
     ),
   },
+  {
+    id: 26,
+    title: "How Stabilizers Earn Yield",
+    isHero: true,
+    content: (
+      <p>
+        Stabilizing USPD is not just a public good; it's a powerful,
+        delta-neutral yield-generating strategy.
+      </p>
+    ),
+  },
+  {
+    id: 27,
+    title: "Two Income Streams",
+    content: (
+      <p>
+        Stabilizers generate income from two primary sources: staking rewards
+        from their ETH collateral and funding fees from hedging their position.
+      </p>
+    ),
+  },
+  {
+    id: 28,
+    title: "1. Staking Yield",
+    content: (
+      <p>
+        The entire pool of Ether collateral is staked, generating a baseline
+        yield of ~4% annually. This yield accrues directly to the Stabilizers.
+      </p>
+    ),
+  },
+  {
+    id: 29,
+    title: "2. Funding Fees",
+    content: (
+      <p>
+        To remain market-neutral, Stabilizers hedge their ETH exposure by
+        opening a short position on a perpetual futures exchange. In most market
+        conditions, shorts are paid funding fees by longs, yielding an
+        additional ~11% annually.
+      </p>
+    ),
+  },
+  {
+    id: 30,
+    title: "The Power of Leverage",
+    content: (
+      <p>
+        Because the short position is leveraged, Stabilizers only need to
+        provide capital for a fraction of the total value they secure. This
+        results in approximately 3x leverage on their capital.
+      </p>
+    ),
+  },
+  {
+    id: 31,
+    title: "Putting It All Together",
+    content: (
+      <p>
+        After accounting for minor costs, the combination of staking yield,
+        funding fees, and leverage can result in a highly competitive APY, all
+        while maintaining a delta-neutral position.
+      </p>
+    ),
+  },
+  {
+    id: 32,
+    title: "Ready to Earn?",
+    content: (
+      <p>
+        Become a Stabilizer today to start earning yield while helping to secure
+        the USPD ecosystem.
+      </p>
+    ),
+    link: { href: "/stabilizer", text: "Become a Stabilizer" },
+  },
 ];
 
 // --- Graphic Components ---
@@ -517,7 +597,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         labelVisible={activeSceneId > 1}
         x={stabilizerX}
         y={stabilizerY}
-        visible={activeSceneId >= 1 && activeSceneId < 19  && activeSceneId != 15}
+        visible={activeSceneId >= 1 && activeSceneId < 17}
         iconAnimate={{ scale: stabilizerScale }}
       ></Actor>
 
@@ -533,7 +613,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         x={0}
         y={490}
         w={150}
-        visible={activeSceneId >= 4 && activeSceneId < 19 && activeSceneId != 15}                          
+        visible={activeSceneId >= 4 && activeSceneId < 17}
         title="150% Ratio"
         value="Stabilizer's Preference"
         status="safe"
