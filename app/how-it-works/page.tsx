@@ -283,7 +283,17 @@ const scenes = [
 
 // --- Graphic Components ---
 
-const Actor = ({ icon, label, x, y, visible, children, animate, iconAnimate }: any) => (
+const Actor = ({
+  icon,
+  label,
+  x,
+  y,
+  visible,
+  children,
+  animate,
+  iconAnimate,
+  labelVisible = true,
+}: any) => (
   <AnimatePresence>
     {visible && (
       <motion.div
@@ -302,7 +312,18 @@ const Actor = ({ icon, label, x, y, visible, children, animate, iconAnimate }: a
         >
           {icon}
         </motion.div>
-        <span className="text-sm font-semibold">{label}</span>
+        <AnimatePresence>
+          {labelVisible && (
+            <motion.span
+              className="text-sm font-semibold"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.5, duration: 0.4 } }}
+              exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            >
+              {label}
+            </motion.span>
+          )}
+        </AnimatePresence>
         {children}
       </motion.div>
     )}
@@ -475,7 +496,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       {/* Actors */}
       <Actor
         icon={<ShieldCheck size={48} />}
-        label={activeSceneId === 1 ? "" : "Stabilizer"}
+        label="Stabilizer"
+        labelVisible={activeSceneId > 1}
         x={stabilizerX}
         y={stabilizerY}
         visible={activeSceneId >= 1 && activeSceneId < 16}
