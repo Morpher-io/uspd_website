@@ -368,17 +368,17 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
   </AnimatePresence>
 );
 
-const InfoBox = ({ title, value, x, w, visible, status }: any) => (
+const InfoBox = ({ title, value, x, y, w, visible, status }: any) => (
   <AnimatePresence mode="wait">
     {visible && (
       <motion.div
         key={title + value}
-        className="absolute text-center -bottom-10"
+        className="absolute text-center"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.3 }}
-        style={{ left: x, width: w }}
+        style={{ left: x, top: y, width: w }}
       >
         <div className="text-sm text-muted-foreground">{value}</div>
         <div
@@ -437,9 +437,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   const positionInfo = getPositionInfo(activeSceneId);
 
   let positionEscrowValue;
-  if (activeSceneId >= 18) {
+  if (activeSceneId >= 19) {
     positionEscrowValue = 0;
-  } else if (activeSceneId === 17) {
+  } else if (activeSceneId >= 17) {
     positionEscrowValue = 0.08;
   } else if (activeSceneId >= 11) {
     positionEscrowValue = 1.05;
@@ -456,38 +456,34 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         x={30}
         y={50}
         visible={activeSceneId >= 1 && activeSceneId < 16}
-      >
-        <FloatingAsset
-          icon={<Ticket size={32} />}
-          label="NFT"
-          x={40}
-          y={0}
-          visible={activeSceneId >= 2 && activeSceneId < 16}
-        />
-        <AnimatePresence>
-          {activeSceneId >= 4 && activeSceneId < 16 && (
-            <motion.div
-              className="absolute left-full top-0 ml-2 text-center p-1 bg-secondary rounded-lg"
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0 }}
-            >
-              <div className="font-bold text-base leading-none">150%</div>
-              <div className="text-xs leading-none">Ratio</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Actor>
+      ></Actor>
+
+      <FloatingAsset
+        icon={<Ticket size={32} />}
+        label="NFT"
+        x={75}
+        y={120}
+        visible={activeSceneId >= 2 && activeSceneId < 16}
+      />
+
+      <InfoBox
+        x={0}
+        y={455}
+        w={150}
+        visible={activeSceneId >= 4 && activeSceneId < 16}
+        title="150% Ratio"
+        value="Stabilizer's Preference"
+        status="safe"
+      />
 
       <Actor
         icon={<User size={48} />}
         label="User"
-        x={activeSceneId >= 14 ? 400 : 500}
+        x={activeSceneId >= 14 && activeSceneId < 21 ? 400 : 500}
         y={50}
-        visible={activeSceneId >= 5 && activeSceneId < 20}
+        visible={activeSceneId >= 5}
         animate={{
-          opacity: activeSceneId >= 14 && activeSceneId < 20 ? 0.5 : 1,
-          x: activeSceneId >= 21 ? 500 : activeSceneId >= 14 ? 400 : 500,
+          opacity: activeSceneId >= 14 && activeSceneId < 21 ? 0.5 : 1,
         }}
       ></Actor>
 
@@ -496,7 +492,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         label="Liquidator"
         x={500}
         y={50}
-        visible={activeSceneId >= 14 && activeSceneId < 20}
+        visible={activeSceneId >= 14 && activeSceneId < 21}
       ></Actor>
 
       {/* Charts */}
@@ -583,7 +579,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 8 && activeSceneId < 19}
+        visible={activeSceneId >= 8 && activeSceneId <= 19}
       >
         <AnimatePresence mode="wait">
           {activeSceneId === 8 ? (
@@ -647,7 +643,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <ChartContainer
         label="USPD System Pool"
-        x={0}
+        x={225}
         y={150}
         w={150}
         h={300}
@@ -658,6 +654,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <InfoBox
         x={225}
+        y={455}
         w={150}
         visible={positionInfo.visible}
         title={positionInfo.title}
@@ -672,8 +669,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 15} />
       <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 17} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 18} />
-      <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 22} />
-      <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 23} />
+      <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 22} />
+      <Arrow x={175} y={280} rotate={45} visible={activeSceneId === 23} />
     </div>
   );
 };
