@@ -239,8 +239,8 @@ const InfoBox = ({ title, value, x, y, w, visible }: any) => (
         transition={{ duration: 0.3 }}
         style={{ x, y, width: w }}
       >
-        <div className="font-bold text-base">{title}</div>
         <div className="text-sm text-muted-foreground">{value}</div>
+        <div className="font-bold text-base">{title}</div>
       </motion.div>
     )}
   </AnimatePresence>
