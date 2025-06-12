@@ -92,8 +92,37 @@ const scenes = [
     content: (
       <p>
         The User's 1 ETH and the Stabilizer's 0.5 ETH are locked together in a
-        new, secure Position Escrow contract, fully collateralizing the minted
-        USPD.
+        new, secure Position Escrow contract.
+      </p>
+    ),
+  },
+  {
+    id: 9,
+    title: "Fully Collateralized",
+    content: (
+      <p>
+        The Position Escrow is now overcollateralized at 150%, with the ETH
+        price at $2,500. This creates a safety buffer against price drops.
+      </p>
+    ),
+  },
+  {
+    id: 10,
+    title: "Price Goes Up",
+    content: (
+      <p>
+        The price of ETH increases to $3,000. The value of the collateral is now
+        $4,500, pushing the collateralization ratio up to a very safe 180%.
+      </p>
+    ),
+  },
+  {
+    id: 11,
+    title: "Stabilizer Takes Profit",
+    content: (
+      <p>
+        The Stabilizer can now withdraw the excess 0.25 ETH, rebalancing the
+        position back to a healthy 150% ratio and realizing a profit.
       </p>
     ),
   },
@@ -206,8 +235,54 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
   </AnimatePresence>
 );
 
+const InfoBox = ({ title, value, x, y, visible }: any) => (
+  <AnimatePresence mode="wait">
+    {visible && (
+      <motion.div
+        key={title + value}
+        className="absolute text-center"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.3 }}
+        style={{ x, y }}
+      >
+        <div className="font-bold text-base">{title}</div>
+        <div className="text-sm text-muted-foreground">{value}</div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
 const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
-  const MAX_CHART_ETH = 11; // A bit more than 10 for padding
+  const MAX_CHART_ETH = 11;
+
+  const getPositionInfo = (sceneId: number) => {
+    switch (sceneId) {
+      case 9:
+        return {
+          title: "150% Collateralized",
+          value: "ETH Price: $2,500",
+          visible: true,
+        };
+      case 10:
+        return {
+          title: "180% Collateralized",
+          value: "ETH Price: $3,000",
+          visible: true,
+        };
+      case 11:
+        return {
+          title: "150% Collateralized",
+          value: "ETH Price: $3,000",
+          visible: true,
+        };
+      default:
+        return { title: "", value: "", visible: false };
+    }
+  };
+
+  const positionInfo = getPositionInfo(activeSceneId);
 
   return (
     <div className="relative w-[600px] h-[500px] text-foreground scale-90 md:scale-100">
@@ -259,9 +334,11 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         visible={activeSceneId >= 2}
       >
         <ChartBar
-          value={activeSceneId >= 7 ? 9.5 : 10}
+          value={
+            activeSceneId >= 11 ? 9.75 : activeSceneId >= 7 ? 9.5 : 10
+          }
           maxValue={MAX_CHART_ETH}
-          color="bg-green-500"
+          color="bg-gray-500"
           label="Unallocated"
           unit="ETH"
           visible={activeSceneId >= 2}
@@ -307,24 +384,32 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
             value={1}
-            maxValue={1.1}
+            maxValue={1.6}
             color="bg-green-500"
             label="User"
             unit="ETH"
           />
           <ChartBar
-            value={0.5}
-            maxValue={1.1}
+            value={activeSceneId >= 11 ? 0.25 : 0.5}
+            maxValue={1.6}
             color="bg-blue-700"
             label="Stabilizer"
             unit="ETH"
           />
         </div>
+        <InfoBox
+          x={0}
+          y={255}
+          visible={positionInfo.visible}
+          title={positionInfo.title}
+          value={positionInfo.value}
+        />
       </ChartContainer>
 
       {/* Arrows */}
-      <Arrow x={155} y={280} visible={activeSceneId >= 8} />
-      <Arrow x={385} y={280} rotate={180} visible={activeSceneId >= 8} />
+      <Arrow x={155} y={280} visible={activeSceneId === 8} />
+      <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 8} />
+      <Arrow x={155} y={280} visible={activeSceneId === 11} />
     </div>
   );
 };
