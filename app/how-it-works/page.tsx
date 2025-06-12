@@ -13,23 +13,32 @@ export default function HowItWorksPage() {
     scenesContainerRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Define the animation states for the shape based on the active scene
-  const shapeAnimate =
-    activeScene === 1
-      ? {
+  // A function to get the animation properties for the current scene
+  const getSceneAnimation = (scene: number) => {
+    switch (scene) {
+      case 1:
+        return {
           // Scene 1: Blue Pulsating Circle
           borderRadius: "50%",
           backgroundColor: "#3b82f6", // blue-500
           scale: [1, 1.05, 1],
           opacity: 1,
-        }
-      : {
+        };
+      case 2:
+        return {
           // Scene 2: Red Square
           borderRadius: "10%",
           backgroundColor: "#ef4444", // red-500
           scale: 1,
           opacity: 1,
         };
+      default:
+        // Default state for scene 0 (intro) or any other case
+        return { scale: 0, opacity: 0 };
+    }
+  };
+
+  const shapeAnimate = getSceneAnimation(activeScene);
 
   // Define the transition properties for the shape
   const shapeTransition =
@@ -66,6 +75,7 @@ export default function HowItWorksPage() {
     <motion.div
       className="h-screen flex items-center"
       onViewportEnter={() => setActiveScene(sceneNum)}
+      viewport={{ amount: 0.5 }} // FIX: Trigger when 50% of the element is in view
     >
       <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md">
         <h2 className="text-3xl md:text-4xl font-bold text-foreground">
@@ -100,7 +110,7 @@ export default function HowItWorksPage() {
           <motion.div
             className="w-48 h-48 md:w-64 md:h-64"
             initial={{ scale: 0, opacity: 0, borderRadius: "50%" }}
-            animate={activeScene > 0 ? shapeAnimate : { scale: 0, opacity: 0 }}
+            animate={shapeAnimate}
             transition={activeScene > 0 ? shapeTransition : { duration: 0.5 }}
           />
         </div>
