@@ -572,6 +572,14 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   const MAX_CHART_ETH = 11;
 
   const getPositionInfo = (sceneId: number) => {
+    if (sceneId >= 13 && sceneId <= 17 && sceneId !== 15) {
+      return {
+        title: "113% Collateralized",
+        value: "ETH Price: $2,700",
+        visible: true,
+        status: "danger",
+      };
+    }
     switch (sceneId) {
       case 9:
         return {
@@ -593,22 +601,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           value: "ETH Price: $3,000",
           visible: true,
           status: "safe",
-        };
-      case 13:
-      case 14:
-        return {
-          title: "113% Collateralized",
-          value: "ETH Price: $2,700",
-          visible: true,
-          status: "danger",
-        };
-      case 16:
-      case 17:
-        return {
-          title: "113% Collateralized",
-          value: "ETH Price: $2,700",
-          visible: true,
-          status: "danger",
         };
       default:
         return { title: "", value: "", visible: false, status: "safe" };
@@ -668,7 +660,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         label="User"
         x={activeSceneId >= 14 && activeSceneId < 21 ? 400 : 500}
         y={50}
-        visible={activeSceneId >= 5}
+        visible={activeSceneId >= 5 && activeSceneId < 26}
         animate={{
           opacity: activeSceneId >= 14 && activeSceneId < 21 ? 0.5 : 1,
         }}
@@ -709,7 +701,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         w={150}
         h={300}
         visible={
-          (activeSceneId >= 5 && activeSceneId < 14) || activeSceneId >= 21
+          (activeSceneId >= 5 && activeSceneId < 14) ||
+          (activeSceneId >= 21 && activeSceneId <= 25)
         }
       >
         <div className="w-full h-full flex items-end gap-1">
@@ -772,7 +765,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 8 && activeSceneId <= 20 && activeSceneId !== 15}
+        visible={activeSceneId >= 8 && activeSceneId < 21 && activeSceneId !== 15}
       >
         <AnimatePresence mode="wait">
           {activeSceneId === 8 ? (
@@ -840,7 +833,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={activeSceneId === 15 ? 400 : 150}
         h={300}
-        visible={activeSceneId === 15 || activeSceneId >= 21}
+        visible={
+          activeSceneId === 15 || (activeSceneId >= 21 && activeSceneId <= 25)
+        }
       >
         <Users size={64} className="m-auto text-muted-foreground" />
       </ChartContainer>
