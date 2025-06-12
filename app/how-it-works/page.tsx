@@ -283,18 +283,25 @@ const scenes = [
 
 // --- Graphic Components ---
 
-const Actor = ({ icon, label, x, y, visible, children, animate }: any) => (
+const Actor = ({ icon, label, x, y, visible, children, animate, iconAnimate }: any) => (
   <AnimatePresence>
     {visible && (
       <motion.div
+        layout="position"
         className="absolute flex flex-col items-center gap-2"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0, ...animate }}
         exit={{ opacity: 0, y: 20 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.7, ease: "easeInOut" }}
         style={{ left: x, top: y }}
       >
-        <div className="relative">{icon}</div>
+        <motion.div
+          className="relative"
+          animate={iconAnimate}
+          transition={{ duration: 0.7, ease: "easeInOut" }}
+        >
+          {icon}
+        </motion.div>
         <span className="text-sm font-semibold">{label}</span>
         {children}
       </motion.div>
@@ -459,15 +466,20 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
     positionEscrowValue = 1.5;
   }
 
+  const stabilizerX = activeSceneId === 1 ? 270 : 30;
+  const stabilizerY = activeSceneId === 1 ? 200 : 50;
+  const stabilizerScale = activeSceneId === 1 ? 2 : 1;
+
   return (
     <div className="relative w-[600px] h-[500px] text-foreground scale-90 md:scale-100">
       {/* Actors */}
       <Actor
         icon={<ShieldCheck size={48} />}
         label="Stabilizer"
-        x={30}
-        y={50}
+        x={stabilizerX}
+        y={stabilizerY}
         visible={activeSceneId >= 1 && activeSceneId < 16}
+        iconAnimate={{ scale: stabilizerScale }}
       ></Actor>
 
       <FloatingAsset
