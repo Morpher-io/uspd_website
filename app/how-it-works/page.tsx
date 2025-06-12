@@ -782,14 +782,23 @@ export default function HowItWorksPage() {
           Learn all about Stabilizers, Liquidity and Overcollateralization in
           USPD through a series of interactive scroll-explainer graphics.
         </div>
-        <div className="absolute bottom-20">
+        <motion.div
+          className="absolute bottom-40"
+          animate={{ y: [0, -10, 0] }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatType: "loop",
+            ease: "easeInOut",
+          }}
+        >
           <ShimmerButton onClick={scrollToStart} className="shadow-2xl">
             <span className="flex flex-row items-center text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
               Scroll to Start{" "}
               <ArrowBigDown className="ml-1 size-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
             </span>
           </ShimmerButton>
-        </div>
+        </motion.div>
       </section>
 
       {/* Chapter 1: Minting & Profit Taking */}
