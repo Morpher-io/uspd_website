@@ -475,7 +475,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       {/* Actors */}
       <Actor
         icon={<ShieldCheck size={48} />}
-        label="Stabilizer"
+        label={activeSceneId === 1 ? "" : "Stabilizer"}
         x={stabilizerX}
         y={stabilizerY}
         visible={activeSceneId >= 1 && activeSceneId < 16}
