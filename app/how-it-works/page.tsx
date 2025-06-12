@@ -1,94 +1,104 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { AuroraText } from "@/components/magicui/aurora-text";
-import { Button } from "@/components/ui/button";
-import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
-import { ArrowBigDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
+import { ArrowBigDown } from "lucide-react";
+
+// --- Graphic Components for each scene ---
+
+const graphicVariants = {
+  initial: { opacity: 0, scale: 0.8, y: 20 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut" },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.8,
+    y: -20,
+    transition: { duration: 0.4, ease: "easeIn" },
+  },
+};
+
+const Scene1Graphic = () => (
+  <motion.div
+    variants={graphicVariants}
+    initial="initial"
+    animate="animate"
+    exit="exit"
+  >
+    <motion.div
+      className="w-48 h-48 md:w-64 md:h-64 bg-blue-500 rounded-full"
+      animate={{ scale: [1, 1.05, 1] }}
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+    />
+  </motion.div>
+);
+
+const Scene2Graphic = () => (
+  <motion.div
+    className="w-48 h-48 md:w-64 md:h-64 bg-red-500 rounded-2xl"
+    variants={graphicVariants}
+    initial="initial"
+    animate="animate"
+    exit="exit"
+  />
+);
+
+// --- Scene Configuration ---
+
+const scenes = [
+  {
+    id: 1,
+    title: "A Pulsating Orb of Potential",
+    content: (
+      <p>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
+        tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+        veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
+        commodo consequat.
+      </p>
+    ),
+    GraphicComponent: Scene1Graphic,
+  },
+  {
+    id: 2,
+    title: "A Solid Foundation",
+    content: (
+      <p>
+        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
+        dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+        proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      </p>
+    ),
+    GraphicComponent: Scene2Graphic,
+  },
+  // You can add more scenes here, e.g.:
+  // {
+  //   id: 3,
+  //   title: "Another Scene",
+  //   content: <p>Some new text...</p>,
+  //   GraphicComponent: SomeOtherGraphic,
+  // },
+];
+
+// --- Main Page Component ---
 
 export default function HowItWorksPage() {
-  const [activeScene, setActiveScene] = useState(0); // 0: intro, 1: scene 1, 2: scene 2
+  const [activeSceneId, setActiveSceneId] = useState(0);
   const scenesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToStart = () => {
     scenesContainerRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // A function to get the animation properties for the current scene
-  const getSceneAnimation = (scene: number) => {
-    switch (scene) {
-      case 1:
-        return {
-          // Scene 1: Blue Pulsating Circle
-          borderRadius: "50%",
-          backgroundColor: "#3b82f6", // blue-500
-          scale: [1, 1.05, 1],
-          opacity: 1,
-        };
-      case 2:
-        return {
-          // Scene 2: Red Square
-          borderRadius: "10%",
-          backgroundColor: "#ef4444", // red-500
-          scale: 1,
-          opacity: 1,
-        };
-      default:
-        // Default state for scene 0 (intro) or any other case
-        return { scale: 0, opacity: 0 };
-    }
-  };
-
-  const shapeAnimate = getSceneAnimation(activeScene);
-
-  // Define the transition properties for the shape
-  const shapeTransition =
-    activeScene === 1
-      ? {
-        // For pulsation
-        scale: {
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-        },
-        // For transitions between scenes
-        default: {
-          duration: 0.7,
-          ease: "easeInOut",
-        },
-      }
-      : {
-        // For transitions between scenes
-        duration: 0.7,
-        ease: "easeInOut",
-      };
-
-  // A helper component for the text blocks that triggers scene changes
-  const TextBlock = ({
-    title,
-    sceneNum,
-    children,
-  }: {
-    title: string;
-    sceneNum: number;
-    children: React.ReactNode;
-  }) => (
-    <motion.div
-      className="h-screen flex items-center"
-      onViewportEnter={() => setActiveScene(sceneNum)}
-      viewport={{ amount: 0.5 }} // FIX: Trigger when 50% of the element is in view
-    >
-      <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md">
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-          {title}
-        </h2>
-        {children}
-      </div>
-    </motion.div>
-  );
+  const ActiveGraphic = scenes.find(
+    (s) => s.id === activeSceneId
+  )?.GraphicComponent;
 
   return (
     <div className="bg-background text-foreground">
@@ -97,16 +107,17 @@ export default function HowItWorksPage() {
         <AuroraText className="text-6xl md:text-8xl font-bold tracking-tighter px-4">
           How USPD Works
         </AuroraText>
-        <div className="mt-4 text-xl w-4xl">
-          Learn all about Stabilizers, Liquidity and Overcollateralization in USPD through a series of interactive scroll-explainer graphics.
+        <div className="mt-4 text-xl w-4xl max-w-3xl">
+          Learn all about Stabilizers, Liquidity and Overcollateralization in
+          USPD through a series of interactive scroll-explainer graphics.
         </div>
-        <div className="absolute bottom-50">
+        <div className="absolute bottom-20">
           <ShimmerButton onClick={scrollToStart} className="shadow-2xl">
             <span className="flex flex-row items-center text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
-              Scroll to Start <ArrowBigDown className="ml-1 size-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
+              Scroll to Start{" "}
+              <ArrowBigDown className="ml-1 size-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
             </span>
           </ShimmerButton>
-
         </div>
       </section>
 
@@ -117,36 +128,62 @@ export default function HowItWorksPage() {
       >
         {/* Left Sticky Column */}
         <div className="md:sticky top-0 h-screen flex items-center justify-center">
-          <motion.div
-            className="w-48 h-48 md:w-64 md:h-64"
-            initial={{ scale: 0, opacity: 0, borderRadius: "50%" }}
-            animate={shapeAnimate}
-            transition={activeScene > 0 ? shapeTransition : { duration: 0.5 }}
-          />
+          <AnimatePresence mode="wait">
+            {ActiveGraphic && <ActiveGraphic key={activeSceneId} />}
+          </AnimatePresence>
         </div>
 
         {/* Right Scrolling Column */}
         <div className="relative">
-          <TextBlock title="A Pulsating Orb of Potential" sceneNum={1}>
-            <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-              eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-              ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-              aliquip ex ea commodo consequat.
-            </p>
-          </TextBlock>
-          <TextBlock title="A Solid Foundation" sceneNum={2}>
-            <p>
-              Duis aute irure dolor in reprehenderit in voluptate velit esse
-              cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat
-              cupidatat non proident, sunt in culpa qui officia deserunt mollit
-              anim id est laborum.
-            </p>
-          </TextBlock>
-          {/* Add a spacer div at the end to allow scrolling past the second one */}
+          {scenes.map((scene) => (
+            <TextBlock
+              key={scene.id}
+              title={scene.title}
+              sceneId={scene.id}
+              setActiveSceneId={setActiveSceneId}
+            >
+              {scene.content}
+            </TextBlock>
+          ))}
+          {/* Add a spacer div at the end to allow scrolling past the last one */}
           <div className="h-48" />
         </div>
       </div>
     </div>
   );
 }
+
+// --- Helper Components ---
+
+const TextBlock = ({
+  title,
+  sceneId,
+  setActiveSceneId,
+  children,
+}: {
+  title: string;
+  sceneId: number;
+  setActiveSceneId: (id: number) => void;
+  children: React.ReactNode;
+}) => (
+  <motion.div
+    className="h-screen flex items-center"
+    onViewportEnter={() => setActiveSceneId(sceneId)}
+    onViewportLeave={() => {
+      // When scrolling up, set the active scene to the previous one
+      if (sceneId > 1) {
+        setActiveSceneId(sceneId - 1);
+      } else {
+        setActiveSceneId(0); // Back to intro
+      }
+    }}
+    viewport={{ amount: 0.5 }}
+  >
+    <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md">
+      <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+        {title}
+      </h2>
+      {children}
+    </div>
+  </motion.div>
+);
