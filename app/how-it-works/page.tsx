@@ -12,6 +12,7 @@ import {
   Ticket,
   ArrowRight,
 } from "lucide-react";
+import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 
 // --- Scene Configuration ---
 const scenes = [
@@ -127,6 +128,28 @@ const scenes = [
       </p>
     ),
   },
+  {
+    id: 12,
+    title: "Danger Zone: Price Drops",
+    content: (
+      <p>
+        But what happens if the price of ETH falls? When a position's
+        collateralization ratio drops below the 125% minimum, it becomes
+        vulnerable to liquidation.
+      </p>
+    ),
+  },
+  {
+    id: 13,
+    title: "Entering Liquidation Risk",
+    content: (
+      <p>
+        The price of ETH drops to $2,700. The position's collateral is now worth
+        only $2,835, pushing the ratio down to a risky 113%. The position is now
+        undercollateralized.
+      </p>
+    ),
+  },
 ];
 
 // --- Graphic Components ---
@@ -228,7 +251,7 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
   </AnimatePresence>
 );
 
-const InfoBox = ({ title, value, x, w, visible }: any) => (
+const InfoBox = ({ title, value, x, w, visible, status }: any) => (
   <AnimatePresence mode="wait">
     {visible && (
       <motion.div
@@ -241,7 +264,13 @@ const InfoBox = ({ title, value, x, w, visible }: any) => (
         style={{ left: x, width: w }}
       >
         <div className="text-sm text-muted-foreground">{value}</div>
-        <div className="font-bold text-base">{title}</div>
+        <div
+          className={`font-bold text-base ${
+            status === "danger" ? "text-red-500" : ""
+          }`}
+        >
+          {title}
+        </div>
       </motion.div>
     )}
   </AnimatePresence>
@@ -257,21 +286,31 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           title: "150% Collateralized",
           value: "ETH Price: $2,500",
           visible: true,
+          status: "safe",
         };
       case 10:
         return {
           title: "180% Collateralized",
           value: "ETH Price: $3,000",
           visible: true,
+          status: "safe",
         };
       case 11:
         return {
           title: "126% Collateralized",
           value: "ETH Price: $3,000",
           visible: true,
+          status: "safe",
+        };
+      case 13:
+        return {
+          title: "113% Collateralized",
+          value: "ETH Price: $2,700",
+          visible: true,
+          status: "danger",
         };
       default:
-        return { title: "", value: "", visible: false };
+        return { title: "", value: "", visible: false, status: "safe" };
     }
   };
 
@@ -369,7 +408,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 8}
+        visible={activeSceneId >= 8 && activeSceneId !== 12}
       >
         <AnimatePresence mode="wait">
           {activeSceneId === 8 ? (
@@ -420,6 +459,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         visible={positionInfo.visible}
         title={positionInfo.title}
         value={positionInfo.value}
+        status={positionInfo.status}
       />
 
       {/* Arrows */}
@@ -429,73 +469,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
     </div>
   );
 };
-
-// --- Main Page Component ---
-
-export default function HowItWorksPage() {
-  const [activeSceneId, setActiveSceneId] = useState(0);
-  const scenesContainerRef = useRef<HTMLDivElement>(null);
-
-  const scrollToStart = () => {
-    scenesContainerRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  return (
-    <div className="bg-background text-foreground">
-      {/* Scene 0: Intro */}
-      <section className="h-screen w-full flex flex-col items-center justify-center text-center relative">
-        <AuroraText className="text-6xl md:text-8xl font-bold tracking-tighter px-4">
-          How USPD Works
-        </AuroraText>
-        <div className="mt-4 text-xl w-4xl max-w-3xl">
-          Learn all about Stabilizers, Liquidity and Overcollateralization in
-          USPD through a series of interactive scroll-explainer graphics.
-        </div>
-        <div className="absolute bottom-20">
-          <ShimmerButton onClick={scrollToStart} className="shadow-2xl">
-            <span className="flex flex-row items-center text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
-              Scroll to Start{" "}
-              <ArrowBigDown className="ml-1 size-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
-            </span>
-          </ShimmerButton>
-        </div>
-      </section>
-
-      {/* Scenes 1 & 2: Two-column layout */}
-      <div
-        ref={scenesContainerRef}
-        className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative"
-      >
-        {/* Left Sticky Column */}
-        <div className="md:sticky top-0 h-screen flex items-center justify-center">
-          <SceneGraphic activeSceneId={activeSceneId} />
-        </div>
-
-        {/* Right Scrolling Column */}
-        <div className="relative">
-          {/* This invisible div triggers the graphic to disappear when scrolling back to the top */}
-          <motion.div
-            className="absolute top-0 h-16"
-            onViewportEnter={() => setActiveSceneId(0)}
-            viewport={{ amount: 1 }}
-          />
-          {scenes.map((scene) => (
-            <TextBlock
-              key={scene.id}
-              title={scene.title}
-              sceneId={scene.id}
-              setActiveSceneId={setActiveSceneId}
-            >
-              {scene.content}
-            </TextBlock>
-          ))}
-          {/* Add a spacer div at the end to allow scrolling past the last one */}
-          <div className="h-48" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // --- Helper Components ---
 
@@ -523,3 +496,125 @@ const TextBlock = ({
     </div>
   </motion.div>
 );
+
+const HeroBlock = ({ title, sceneId, setActiveSceneId, children }: any) => (
+  <motion.section
+    className="h-screen w-full flex flex-col items-center justify-center text-center relative"
+    onViewportEnter={() => setActiveSceneId(sceneId)}
+    viewport={{ amount: 0.5 }}
+  >
+    <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
+      <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-red-500/80 dark:text-red-500">
+        {title}
+      </h2>
+    </AnimatedShinyText>
+    <div className="mt-8 text-xl w-4xl max-w-3xl text-muted-foreground">
+      {children}
+    </div>
+  </motion.section>
+);
+
+// --- Main Page Component ---
+
+export default function HowItWorksPage() {
+  const [activeSceneId, setActiveSceneId] = useState(0);
+  const scenesContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToStart = () => {
+    scenesContainerRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const firstChapterScenes = scenes.slice(0, 11);
+  const liquidationHeroScene = scenes.find((s) => s.id === 12);
+  const liquidationScenes = scenes.slice(12);
+
+  return (
+    <div className="bg-background text-foreground">
+      {/* Scene 0: Intro */}
+      <section className="h-screen w-full flex flex-col items-center justify-center text-center relative">
+        <AuroraText className="text-6xl md:text-8xl font-bold tracking-tighter px-4">
+          How USPD Works
+        </AuroraText>
+        <div className="mt-4 text-xl w-4xl max-w-3xl">
+          Learn all about Stabilizers, Liquidity and Overcollateralization in
+          USPD through a series of interactive scroll-explainer graphics.
+        </div>
+        <div className="absolute bottom-20">
+          <ShimmerButton onClick={scrollToStart} className="shadow-2xl">
+            <span className="flex flex-row items-center text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
+              Scroll to Start{" "}
+              <ArrowBigDown className="ml-1 size-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
+            </span>
+          </ShimmerButton>
+        </div>
+      </section>
+
+      {/* Chapter 1: Minting & Profit Taking */}
+      <div
+        ref={scenesContainerRef}
+        className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative"
+      >
+        {/* Left Sticky Column */}
+        <div className="md:sticky top-0 h-screen flex items-center justify-center">
+          <SceneGraphic activeSceneId={activeSceneId} />
+        </div>
+
+        {/* Right Scrolling Column */}
+        <div className="relative">
+          {/* This invisible div triggers the graphic to disappear when scrolling back to the top */}
+          <motion.div
+            className="absolute top-0 h-16"
+            onViewportEnter={() => setActiveSceneId(0)}
+            viewport={{ amount: 1 }}
+          />
+          {firstChapterScenes.map((scene) => (
+            <TextBlock
+              key={scene.id}
+              title={scene.title}
+              sceneId={scene.id}
+              setActiveSceneId={setActiveSceneId}
+            >
+              {scene.content}
+            </TextBlock>
+          ))}
+        </div>
+      </div>
+
+      {/* Chapter 2: Liquidation Intro */}
+      {liquidationHeroScene && (
+        <HeroBlock
+          key={liquidationHeroScene.id}
+          title={liquidationHeroScene.title}
+          sceneId={liquidationHeroScene.id}
+          setActiveSceneId={setActiveSceneId}
+        >
+          {liquidationHeroScene.content}
+        </HeroBlock>
+      )}
+
+      {/* Chapter 3: Liquidation Scenes */}
+      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative">
+        {/* Left Sticky Column */}
+        <div className="md:sticky top-0 h-screen flex items-center justify-center">
+          <SceneGraphic activeSceneId={activeSceneId} />
+        </div>
+
+        {/* Right Scrolling Column */}
+        <div className="relative">
+          {liquidationScenes.map((scene) => (
+            <TextBlock
+              key={scene.id}
+              title={scene.title}
+              sceneId={scene.id}
+              setActiveSceneId={setActiveSceneId}
+            >
+              {scene.content}
+            </TextBlock>
+          ))}
+          {/* Add a spacer div at the end to allow scrolling past the last one */}
+          <div className="h-48" />
+        </div>
+      </div>
+    </div>
+  );
+}
