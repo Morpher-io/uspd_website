@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Coins,
   Ticket,
-  Box,
   ArrowRight,
 } from "lucide-react";
 
@@ -31,8 +30,8 @@ const scenes = [
     title: "Minting a Stabilizer NFT",
     content: (
       <p>
-        The Stabilizer mints a Stabilizer NFT, creating their own personal vault
-        in the USPD system.
+        The Stabilizer mints a Stabilizer NFT and deposits 10 ETH into their
+        personal Stabilizer Escrow.
       </p>
     ),
   },
@@ -41,8 +40,7 @@ const scenes = [
     title: "Adding Collateral",
     content: (
       <p>
-        They deposit their ETH into the vault as unallocated collateral, ready
-        to back new USPD.
+        This ETH is now unallocated collateral, ready to back new USPD.
       </p>
     ),
   },
@@ -62,8 +60,8 @@ const scenes = [
     title: "The User Arrives",
     content: (
       <p>
-        Now, a User arrives. They want to mint USPD, a stablecoin pegged to the
-        US dollar, by using their own ETH.
+        Now, a User arrives with 1 ETH. They want to mint USPD, a stablecoin
+        pegged to the US dollar.
       </p>
     ),
   },
@@ -72,8 +70,8 @@ const scenes = [
     title: "User Mints USPD",
     content: (
       <p>
-        The User deposits 1 ETH (let's say it's worth $2,500) and in return
-        receives 2,500 USPD.
+        The User deposits their 1 ETH (let's say it's worth $2,500) and in
+        return receives 2,500 USPD. Their ETH is now marked for use.
       </p>
     ),
   },
@@ -82,7 +80,7 @@ const scenes = [
     title: "Stabilizer Matches Collateral",
     content: (
       <p>
-        To maintain the 150% ratio, the Stabilizer's vault automatically
+        To maintain the 150% ratio, the Stabilizer's Escrow automatically
         allocates 0.5 ETH from their unallocated collateral to match the user's
         deposit.
       </p>
@@ -122,15 +120,15 @@ const Actor = ({ icon, label, x, y, visible, children }: any) => (
   </AnimatePresence>
 );
 
-const Asset = ({ icon, label, x, y, visible, animate, transition }: any) => (
+const FloatingAsset = ({ icon, label, x, y, visible }: any) => (
   <AnimatePresence>
     {visible && (
       <motion.div
         className="absolute flex flex-col items-center gap-1"
         initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: 1, scale: 1, ...animate }}
+        animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0 }}
-        transition={transition || { duration: 0.5, ease: "easeInOut" }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
         style={{ x, y }}
       >
         {icon}
@@ -140,39 +138,70 @@ const Asset = ({ icon, label, x, y, visible, animate, transition }: any) => (
   </AnimatePresence>
 );
 
-const Vault = ({ label, x, y, w, h, visible, children }: any) => (
+const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
   <AnimatePresence>
     {visible && (
       <motion.div
-        className="absolute border-2 border-dashed rounded-lg flex flex-col items-center justify-center"
-        initial={{ opacity: 0, width: 0, height: 0 }}
-        animate={{ opacity: 1, width: w, height: h }}
-        exit={{ opacity: 0, width: 0, height: 0 }}
+        className="absolute"
+        initial={{ opacity: 0, y: y + 30 }}
+        animate={{ opacity: 1, y: y }}
+        exit={{ opacity: 0, y: y + 30 }}
         transition={{ duration: 0.7, ease: "easeInOut" }}
-        style={{ x, y }}
+        style={{ x, y, width: w, height: h }}
       >
-        <span className="absolute -top-6 text-sm font-bold">{label}</span>
-        <div className="relative w-full h-full">{children}</div>
+        <h3 className="text-center font-bold mb-2">{label}</h3>
+        <div className="relative w-full h-full bg-secondary/50 rounded-lg border-2 border-dashed flex items-end justify-center gap-2 px-2">
+          {children}
+        </div>
       </motion.div>
     )}
   </AnimatePresence>
 );
 
-const Bar = ({ value, color, label, animate, y, height }: any) => (
-  <motion.div
-    className={`absolute bottom-0 ${color} rounded-t-sm flex items-center justify-center text-white text-xs font-bold`}
-    initial={{ height: 0, opacity: 0 }}
-    animate={{ height: `${value}%`, opacity: 1, ...animate }}
-    transition={{ duration: 0.7, ease: "circOut" }}
-    style={{ y, height }}
-  >
-    {label}
-  </motion.div>
+const ChartBar = ({ value, maxValue, color, label, visible = true }: any) => {
+  const heightPercentage = (value / maxValue) * 100;
+  return (
+    <AnimatePresence>
+      {visible && value > 0 && (
+        <motion.div
+          className="w-full relative flex flex-col items-center"
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: `${heightPercentage}%`, opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 1, ease: "circOut" }}
+        >
+          <div className={`w-full h-full ${color} rounded-t-md`}></div>
+          <div className="absolute -bottom-6 text-center">
+            <div className="font-bold text-sm">{value} ETH</div>
+            <div className="text-xs text-muted-foreground">{label}</div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+const Arrow = ({ x, y, rotate, visible }: any) => (
+  <AnimatePresence>
+    {visible && (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1, transition: { delay: 0.5 } }}
+        exit={{ opacity: 0 }}
+        className="absolute"
+        style={{ x, y, rotate }}
+      >
+        <ArrowRight size={48} className="text-muted-foreground" />
+      </motion.div>
+    )}
+  </AnimatePresence>
 );
 
 const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
+  const MAX_CHART_ETH = 12; // A bit more than 10 for padding
+
   return (
-    <div className="relative w-[500px] h-[500px] text-foreground scale-90 md:scale-100">
+    <div className="relative w-[600px] h-[500px] text-foreground scale-90 md:scale-100">
       {/* Actors */}
       <Actor
         icon={<ShieldCheck size={48} />}
@@ -181,10 +210,17 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={50}
         visible={activeSceneId >= 1}
       >
+        <FloatingAsset
+          icon={<Ticket size={32} />}
+          label="NFT"
+          x={40}
+          y={0}
+          visible={activeSceneId >= 2}
+        />
         <AnimatePresence>
           {activeSceneId >= 4 && (
             <motion.div
-              className="absolute left-1/2 -right-12 top-0 text-center p-1 bg-secondary rounded-lg"
+              className="absolute left-full top-0 ml-2 text-center p-1 bg-secondary rounded-lg"
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0 }}
@@ -195,145 +231,85 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           )}
         </AnimatePresence>
       </Actor>
+
       <Actor
         icon={<User size={48} />}
         label="User"
-        x={400}
+        x={450}
         y={50}
         visible={activeSceneId >= 5}
-      />
+      >
+        <FloatingAsset
+          icon={<div className="font-bold text-green-500 text-2xl">USPD</div>}
+          label="2,500"
+          x={0}
+          y={60}
+          visible={activeSceneId >= 6}
+        />
+      </Actor>
 
-      {/* Assets */}
-      <Asset
-        icon={<Coins size={32} />}
-        label="ETH"
-        x={80}
-        y={150}
-        visible={activeSceneId === 1}
-      />
-      <Asset
-        icon={<Ticket size={32} />}
-        label="NFT"
-        x={150}
-        y={70}
-        visible={activeSceneId === 2}
-      />
-      <Asset
-        icon={<Coins size={32} />}
-        label="1 ETH"
-        x={430}
-        y={150}
-        visible={activeSceneId === 6}
-        animate={{ y: 250 }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
-      />
-      <Asset
-        icon={<div className="font-bold text-green-500 text-2xl">USPD</div>}
-        label="2,500"
-        x={400}
-        y={120}
-        visible={activeSceneId >= 6}
-      />
-      <Asset
-        icon={<Coins size={32} className="text-blue-500" />}
-        label="0.5 ETH"
-        x={125}
-        y={220}
-        visible={activeSceneId === 7}
-        animate={{ x: 375, y: 325 }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
-      />
-
-      {/* Stabilizer Escrow */}
-      <Vault
+      {/* Charts */}
+      <ChartContainer
         label="Stabilizer Escrow"
-        x={25}
-        y={200}
-        w={200}
-        h={250}
+        x={0}
+        y={150}
+        w={150}
+        h={300}
         visible={activeSceneId >= 2}
       >
-        <Asset
-          icon={<Coins size={40} />}
-          label={activeSceneId >= 4 ? "" : "10 ETH"}
-          x={75}
-          y={100}
-          visible={activeSceneId >= 3 && activeSceneId < 7}
-          animate={{ y: activeSceneId >= 4 ? 10 : 100 }}
+        <ChartBar
+          value={activeSceneId >= 7 ? 9.5 : 10}
+          maxValue={MAX_CHART_ETH}
+          color="bg-gray-500"
+          label="Unallocated"
+          visible={activeSceneId >= 2}
         />
-        <AnimatePresence>
-          {activeSceneId >= 4 && (
-            <motion.div
-              className="w-1/3 h-full absolute bottom-0 left-[33%]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <Bar
-                value={activeSceneId >= 7 ? 95 : 100}
-                color="bg-gray-500"
-              />
-              <motion.span
-                className="absolute -bottom-5 w-full text-center text-sm font-semibold"
-                key={activeSceneId >= 7 ? "9.5" : "10"}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                {activeSceneId >= 7 ? "9.5 ETH" : "10 ETH"}
-              </motion.span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Vault>
+      </ChartContainer>
 
-      {/* Position Escrow */}
-      <Vault
+      <ChartContainer
+        label="User Wallet"
+        x={450}
+        y={150}
+        w={150}
+        h={300}
+        visible={activeSceneId >= 5}
+      >
+        <ChartBar
+          value={activeSceneId >= 6 ? 0 : 1}
+          maxValue={MAX_CHART_ETH}
+          color="bg-green-500"
+          label="Available"
+          visible={activeSceneId >= 5}
+        />
+      </ChartContainer>
+
+      <ChartContainer
         label="Position Escrow"
-        x={275}
-        y={200}
-        w={200}
-        h={250}
+        x={225}
+        y={150}
+        w={150}
+        h={300}
         visible={activeSceneId >= 8}
       >
-        <div className="w-full h-full absolute bottom-0 flex justify-center">
-          <div className="w-2/3 h-full relative">
-            <Bar
-              value={100}
-              color="bg-green-500"
-              label="1 ETH (User)"
-              animate={{ width: "66.66%" }}
-            />
-            <Bar
-              value={50}
-              color="bg-blue-700"
-              label="0.5 ETH (Stab.)"
-              animate={{ width: "33.33%", left: "66.66%" }}
-            />
-          </div>
+        <div className="w-full h-full flex items-end gap-1">
+          <ChartBar
+            value={1}
+            maxValue={MAX_CHART_ETH}
+            color="bg-green-500"
+            label="User"
+          />
+          <ChartBar
+            value={0.5}
+            maxValue={MAX_CHART_ETH}
+            color="bg-blue-700"
+            label="Stabilizer"
+          />
         </div>
-        <div className="absolute top-4 text-center p-2">
-          <div className="font-bold text-lg">1.5 ETH</div>
-          <div className="text-xs text-muted-foreground">Total Collateral</div>
-        </div>
-      </Vault>
+      </ChartContainer>
 
       {/* Arrows */}
-      <AnimatePresence>
-        {activeSceneId === 7 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { delay: 0.2 } }}
-            exit={{ opacity: 0 }}
-          >
-            <ArrowRight
-              size={32}
-              className="absolute"
-              style={{ top: 325, left: 235 }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Arrow x={155} y={280} visible={activeSceneId >= 8} />
+      <Arrow x={385} y={280} rotate={180} visible={activeSceneId >= 8} />
     </div>
   );
 };
