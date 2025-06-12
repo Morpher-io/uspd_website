@@ -177,6 +177,17 @@ const scenes = [
   },
   {
     id: 15,
+    title: "Acquiring USPD",
+    content: (
+      <p>
+        To do this, the Liquidator uses their own ETH to acquire 2,500 USPD from
+        the system's aggregate liquidity pool, which is backed by many other
+        healthy Stabilizer positions.
+      </p>
+    ),
+  },
+  {
+    id: 16,
     title: "Initiating Liquidation",
     content: (
       <p>
@@ -186,7 +197,7 @@ const scenes = [
     ),
   },
   {
-    id: 16,
+    id: 17,
     title: "Collateral is Seized",
     content: (
       <p>
@@ -197,7 +208,7 @@ const scenes = [
     ),
   },
   {
-    id: 17,
+    id: 18,
     title: "Liquidator is Rewarded",
     content: (
       <p>
@@ -207,7 +218,7 @@ const scenes = [
     ),
   },
   {
-    id: 18,
+    id: 19,
     title: "The Insurance Fund",
     content: (
       <p>
@@ -217,7 +228,7 @@ const scenes = [
     ),
   },
   {
-    id: 19,
+    id: 20,
     title: "System Secured",
     content: (
       <p>
@@ -227,7 +238,7 @@ const scenes = [
     ),
   },
   {
-    id: 20,
+    id: 21,
     title: "What About The User?",
     content: (
       <p>
@@ -237,7 +248,7 @@ const scenes = [
     ),
   },
   {
-    id: 21,
+    id: 22,
     title: "User Redeems USPD",
     content: (
       <p>
@@ -247,7 +258,7 @@ const scenes = [
     ),
   },
   {
-    id: 22,
+    id: 23,
     title: "Burning USPD",
     content: (
       <p>
@@ -258,7 +269,7 @@ const scenes = [
     link: { href: "/uspd", text: "Burn USPD" },
   },
   {
-    id: 23,
+    id: 24,
     title: "Receiving ETH",
     content: (
       <p>
@@ -269,7 +280,7 @@ const scenes = [
     ),
   },
   {
-    id: 24,
+    id: 25,
     title: "Full Circle",
     content: (
       <p>
@@ -463,6 +474,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       case 14:
       case 15:
       case 16:
+      case 17:
         return {
           title: "113% Collateralized",
           value: "ETH Price: $2,700",
@@ -477,9 +489,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   const positionInfo = getPositionInfo(activeSceneId);
 
   let positionEscrowValue;
-  if (activeSceneId >= 19) {
+  if (activeSceneId >= 20) {
     positionEscrowValue = 0;
-  } else if (activeSceneId >= 17) {
+  } else if (activeSceneId >= 18) {
     positionEscrowValue = 0.08;
   } else if (activeSceneId >= 11) {
     positionEscrowValue = 1.05;
@@ -500,7 +512,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         labelVisible={activeSceneId > 1}
         x={stabilizerX}
         y={stabilizerY}
-        visible={activeSceneId >= 1 && activeSceneId < 16}
+        visible={activeSceneId >= 1 && activeSceneId < 17}
         iconAnimate={{ scale: stabilizerScale }}
       ></Actor>
 
@@ -516,7 +528,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         x={0}
         y={490}
         w={150}
-        visible={activeSceneId >= 4 && activeSceneId < 16}
+        visible={activeSceneId >= 4 && activeSceneId < 17}
         title="150% Ratio"
         value="Stabilizer's Preference"
         status="safe"
@@ -548,7 +560,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 3 && activeSceneId < 18}
+        visible={activeSceneId >= 3 && activeSceneId < 19}
       >
         <ChartBar
           value={
@@ -574,7 +586,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
             value={
-              activeSceneId >= 23 ? 0.926 : activeSceneId >= 6 ? 0 : 1
+              activeSceneId >= 24 ? 0.926 : activeSceneId >= 6 ? 0 : 1
             }
             maxValue={1.1}
             color="bg-green-500"
@@ -583,7 +595,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           />
           <ChartBar
             value={
-              activeSceneId >= 22 ? 0 : activeSceneId >= 6 ? 2500 : 0
+              activeSceneId >= 23 ? 0 : activeSceneId >= 6 ? 2500 : 0
             }
             maxValue={2550}
             color="bg-purple-500"
@@ -603,14 +615,14 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       >
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
-            value={activeSceneId >= 15 ? 0 : 2500}
+            value={activeSceneId >= 16 ? 0 : 2500}
             maxValue={2550}
             color="bg-purple-500"
             label="Available"
             unit="USPD"
           />
           <ChartBar
-            value={activeSceneId >= 17 ? 0.97 : 0}
+            value={activeSceneId >= 18 ? 0.97 : 0}
             maxValue={1.1}
             color="bg-green-500"
             label="Received"
@@ -625,7 +637,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 8 && activeSceneId <= 19}
+        visible={activeSceneId >= 8 && activeSceneId <= 20}
       >
         <AnimatePresence mode="wait">
           {activeSceneId === 8 ? (
@@ -676,10 +688,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 18 && activeSceneId < 21}
+        visible={activeSceneId >= 19 && activeSceneId < 21}
       >
         <ChartBar
-          value={activeSceneId >= 18 ? 0.08 : 0}
+          value={activeSceneId >= 19 ? 0.08 : 0}
           maxValue={1}
           color="bg-indigo-500"
           label="System Reserve"
@@ -693,7 +705,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 21}
+        visible={activeSceneId === 15 || activeSceneId >= 21}
       >
         <Users size={64} className="m-auto text-muted-foreground" />
       </ChartContainer>
@@ -712,11 +724,13 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={155} y={280} visible={activeSceneId === 8} />
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 8} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 11} />
-      <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 15} />
-      <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 17} />
-      <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 18} />
-      <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 22} />
-      <Arrow x={400} y={280} rotate={45} visible={activeSceneId === 23} />
+      <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 15} />
+      <Arrow x={175} y={280} rotate={45} visible={activeSceneId === 15} />
+      <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 16} />
+      <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 18} />
+      <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 19} />
+      <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 23} />
+      <Arrow x={175} y={280} rotate={45} visible={activeSceneId === 24} />
     </div>
   );
 };
@@ -801,9 +815,9 @@ export default function HowItWorksPage() {
 
   const firstChapterScenes = scenes.slice(0, 11);
   const liquidationHeroScene = scenes.find((s) => s.id === 12);
-  const liquidationScenes = scenes.slice(12, 19);
-  const userRedemptionHeroScene = scenes.find((s) => s.id === 20);
-  const userRedemptionScenes = scenes.slice(20);
+  const liquidationScenes = scenes.slice(12, 20);
+  const userRedemptionHeroScene = scenes.find((s) => s.id === 21);
+  const userRedemptionScenes = scenes.slice(21);
 
   return (
     <div className="bg-background text-foreground">
