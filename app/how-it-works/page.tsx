@@ -382,19 +382,32 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         visible={activeSceneId >= 8}
       >
         <div className="w-full h-full flex items-end gap-1">
+          {/* Two separate bars for scene 8 */}
           <ChartBar
             value={1}
             maxValue={1.6}
             color="bg-green-500"
             label="User"
             unit="ETH"
+            visible={activeSceneId === 8}
           />
           <ChartBar
-            value={activeSceneId >= 11 ? 0.25 : 0.5}
+            value={0.5}
             maxValue={1.6}
             color="bg-blue-700"
             label="Stabilizer"
             unit="ETH"
+            visible={activeSceneId === 8}
+          />
+
+          {/* Single combined bar for scenes 9+ */}
+          <ChartBar
+            value={activeSceneId >= 11 ? 1.25 : 1.5}
+            maxValue={1.6}
+            color="bg-teal-500"
+            label="Total Collateral"
+            unit="ETH"
+            visible={activeSceneId >= 9}
           />
         </div>
       </ChartContainer>
@@ -411,7 +424,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       {/* Arrows */}
       <Arrow x={155} y={280} visible={activeSceneId === 8} />
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 8} />
-      <Arrow x={155} y={280} visible={activeSceneId === 11} />
+      <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 11} />
     </div>
   );
 };
