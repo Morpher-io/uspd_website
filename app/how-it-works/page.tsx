@@ -193,30 +193,33 @@ const ChartBar = ({
   color,
   label,
   unit,
-  visible = true,
+  layoutId,
 }: any) => {
   const heightPercentage = (value / maxValue) * 100;
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          layout
-          className="w-full relative flex flex-col items-center"
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: `${heightPercentage}%`, opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 1, ease: "circOut" }}
-        >
-          <div className={`w-full h-full ${color} rounded-t-md`}></div>
-          <div className="absolute -bottom-10 text-center">
-            <div className="font-bold text-sm">
-              {value.toLocaleString()} {unit}
-            </div>
-            <div className="text-xs text-muted-foreground">{label}</div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <motion.div
+      layout
+      layoutId={layoutId}
+      className="w-full relative flex flex-col items-center"
+      initial={{ opacity: 0 }}
+      animate={{
+        opacity: 1,
+        height: `${heightPercentage}%`,
+      }}
+      exit={{ opacity: 0, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.7, ease: "easeInOut" }}
+    >
+      <motion.div
+        layout="position"
+        className={`w-full h-full ${color} rounded-t-md`}
+      ></motion.div>
+      <motion.div layout="position" className="absolute -bottom-10 text-center">
+        <div className="font-bold text-sm">
+          {value.toLocaleString()} {unit}
+        </div>
+        <div className="text-xs text-muted-foreground">{label}</div>
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -342,7 +345,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           color="bg-gray-500"
           label="Unallocated"
           unit="ETH"
-          visible={activeSceneId >= 2}
         />
       </ChartContainer>
 
@@ -361,7 +363,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
             color="bg-green-500"
             label="Available"
             unit="ETH"
-            visible={activeSceneId >= 5}
           />
           <ChartBar
             value={activeSceneId >= 6 ? 2500 : 0}
@@ -369,7 +370,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
             color="bg-purple-500"
             label="Minted"
             unit="USPD"
-            visible={activeSceneId >= 5}
           />
         </div>
       </ChartContainer>
@@ -382,35 +382,39 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         h={300}
         visible={activeSceneId >= 8}
       >
-        <motion.div layout className="w-full h-full flex items-end gap-1">
-          {/* Two separate bars for scene 8 */}
-          <ChartBar
-            value={1}
-            maxValue={1.6}
-            color="bg-green-500"
-            label="User"
-            unit="ETH"
-            visible={activeSceneId === 8}
-          />
-          <ChartBar
-            value={0.5}
-            maxValue={1.6}
-            color="bg-blue-700"
-            label="Stabilizer"
-            unit="ETH"
-            visible={activeSceneId === 8}
-          />
+        <AnimatePresence mode="popLayout">
+          {activeSceneId === 8 && [
+            <ChartBar
+              key="user-escrow"
+              layoutId="position-escrow-bar"
+              value={1}
+              maxValue={1.6}
+              color="bg-green-500"
+              label="User"
+              unit="ETH"
+            />,
+            <ChartBar
+              key="stab-escrow"
+              value={0.5}
+              maxValue={1.6}
+              color="bg-blue-700"
+              label="Stabilizer"
+              unit="ETH"
+            />,
+          ]}
 
-          {/* Single combined bar for scenes 9+ */}
-          <ChartBar
-            value={activeSceneId >= 11 ? 1.25 : 1.5}
-            maxValue={1.6}
-            color="bg-teal-500"
-            label="Total Collateral"
-            unit="ETH"
-            visible={activeSceneId >= 9}
-          />
-        </motion.div>
+          {activeSceneId >= 9 && (
+            <ChartBar
+              key="total-escrow"
+              layoutId="position-escrow-bar"
+              value={activeSceneId >= 11 ? 1.25 : 1.5}
+              maxValue={1.6}
+              color="bg-teal-500"
+              label="Total Collateral"
+              unit="ETH"
+            />
+          )}
+        </AnimatePresence>
       </ChartContainer>
 
       <InfoBox
