@@ -560,7 +560,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 3 && activeSceneId < 19}
+        visible={activeSceneId >= 3 && activeSceneId < 19 && activeSceneId !== 15}
       >
         <ChartBar
           value={
@@ -615,18 +615,24 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       >
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
-            value={activeSceneId >= 16 ? 0 : 2500}
-            maxValue={2550}
-            color="bg-purple-500"
-            label="Available"
-            unit="USPD"
-          />
-          <ChartBar
-            value={activeSceneId >= 18 ? 0.97 : 0}
+            value={
+              activeSceneId === 14
+                ? 0.926
+                : activeSceneId >= 18
+                ? 0.97
+                : 0
+            }
             maxValue={1.1}
             color="bg-green-500"
-            label="Received"
+            label={activeSceneId >= 18 ? "Received" : "To Spend"}
             unit="ETH"
+          />
+          <ChartBar
+            value={activeSceneId >= 15 && activeSceneId < 16 ? 2500 : 0}
+            maxValue={2550}
+            color="bg-purple-500"
+            label="For Liquidation"
+            unit="USPD"
           />
         </div>
       </ChartContainer>
@@ -637,7 +643,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 8 && activeSceneId <= 20}
+        visible={activeSceneId >= 8 && activeSceneId <= 20 && activeSceneId !== 15}
       >
         <AnimatePresence mode="wait">
           {activeSceneId === 8 ? (
@@ -701,9 +707,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <ChartContainer
         label="USPD System Pool"
-        x={225}
+        x={activeSceneId === 15 ? 0 : 225}
         y={150}
-        w={150}
+        w={activeSceneId === 15 ? 400 : 150}
         h={300}
         visible={activeSceneId === 15 || activeSceneId >= 21}
       >
@@ -724,8 +730,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={155} y={280} visible={activeSceneId === 8} />
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 8} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 11} />
-      <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 15} />
-      <Arrow x={175} y={280} rotate={45} visible={activeSceneId === 15} />
+      <Arrow x={255} y={280} rotate={180} visible={activeSceneId === 15} />
+      <Arrow x={255} y={320} rotate={0} visible={activeSceneId === 15} />
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 16} />
       <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 18} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 19} />
