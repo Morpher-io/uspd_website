@@ -384,7 +384,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   const positionInfo = getPositionInfo(activeSceneId);
 
   let positionEscrowValue;
-  if (activeSceneId >= 17) {
+  if (activeSceneId >= 18) {
+    positionEscrowValue = 0;
+  } else if (activeSceneId === 17) {
     positionEscrowValue = 0.08;
   } else if (activeSceneId >= 11) {
     positionEscrowValue = 1.05;
@@ -519,7 +521,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 8 && activeSceneId < 18}
+        visible={activeSceneId >= 8 && activeSceneId < 19}
       >
         <AnimatePresence mode="wait">
           {activeSceneId === 8 ? (
@@ -595,7 +597,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 8} />
       <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 11} />
       <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 15} />
-      <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 17} />
+      <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 17} />
+      <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 18} />
     </div>
   );
 };
