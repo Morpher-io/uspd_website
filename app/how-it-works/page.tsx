@@ -150,7 +150,7 @@ const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
         style={{ x, y, width: w, height: h }}
       >
         <h3 className="text-center font-bold mb-2">{label}</h3>
-        <div className="relative w-full h-full bg-secondary/50 rounded-lg border-2 border-dashed flex items-end justify-center gap-2 px-2">
+        <div className="relative w-full h-full bg-secondary/50 rounded-lg border-2 border-dashed flex items-end justify-center gap-2 px-2 pb-8">
           {children}
         </div>
       </motion.div>
