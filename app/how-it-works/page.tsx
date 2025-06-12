@@ -158,7 +158,14 @@ const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
   </AnimatePresence>
 );
 
-const ChartBar = ({ value, maxValue, color, label, visible = true }: any) => {
+const ChartBar = ({
+  value,
+  maxValue,
+  color,
+  label,
+  unit,
+  visible = true,
+}: any) => {
   const heightPercentage = (value / maxValue) * 100;
   return (
     <AnimatePresence>
@@ -172,7 +179,9 @@ const ChartBar = ({ value, maxValue, color, label, visible = true }: any) => {
         >
           <div className={`w-full h-full ${color} rounded-t-md`}></div>
           <div className="absolute -bottom-6 text-center">
-            <div className="font-bold text-sm">{value} ETH</div>
+            <div className="font-bold text-sm">
+              {value} {unit}
+            </div>
             <div className="text-xs text-muted-foreground">{label}</div>
           </div>
         </motion.div>
@@ -238,15 +247,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         x={450}
         y={50}
         visible={activeSceneId >= 5}
-      >
-        <FloatingAsset
-          icon={<div className="font-bold text-green-500 text-2xl">USPD</div>}
-          label="2,500"
-          x={0}
-          y={60}
-          visible={activeSceneId >= 6}
-        />
-      </Actor>
+      ></Actor>
 
       {/* Charts */}
       <ChartContainer
@@ -262,6 +263,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           maxValue={MAX_CHART_ETH}
           color="bg-gray-500"
           label="Unallocated"
+          unit="ETH"
           visible={activeSceneId >= 2}
         />
       </ChartContainer>
@@ -274,13 +276,24 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         h={300}
         visible={activeSceneId >= 5}
       >
-        <ChartBar
-          value={activeSceneId >= 6 ? 0 : 1}
-          maxValue={MAX_CHART_ETH}
-          color="bg-green-500"
-          label="Available"
-          visible={activeSceneId >= 5}
-        />
+        <div className="w-full h-full flex items-end gap-1">
+          <ChartBar
+            value={activeSceneId >= 6 ? 0 : 1}
+            maxValue={1}
+            color="bg-green-500"
+            label="Available"
+            unit="ETH"
+            visible={activeSceneId >= 5}
+          />
+          <ChartBar
+            value={activeSceneId >= 6 ? 2500 : 0}
+            maxValue={2500}
+            color="bg-purple-500"
+            label="Minted"
+            unit="USPD"
+            visible={activeSceneId >= 5}
+          />
+        </div>
       </ChartContainer>
 
       <ChartContainer
@@ -297,12 +310,14 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
             maxValue={MAX_CHART_ETH}
             color="bg-green-500"
             label="User"
+            unit="ETH"
           />
           <ChartBar
             value={0.5}
             maxValue={MAX_CHART_ETH}
             color="bg-blue-700"
             label="Stabilizer"
+            unit="ETH"
           />
         </div>
       </ChartContainer>
