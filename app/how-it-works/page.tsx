@@ -370,35 +370,45 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         h={300}
         visible={activeSceneId >= 8}
       >
-        <AnimatePresence>
-          {activeSceneId === 8 && [
-            <ChartBar
-              key="user-escrow"
-              value={1}
-              maxValue={1.6}
-              color="bg-green-500"
-              label="User"
-              unit="ETH"
-            />,
-            <ChartBar
-              key="stab-escrow"
-              value={0.5}
-              maxValue={1.6}
-              color="bg-blue-700"
-              label="Stabilizer"
-              unit="ETH"
-            />,
-          ]}
-
-          {activeSceneId >= 9 && (
-            <ChartBar
-              key="total-escrow"
-              value={activeSceneId >= 11 ? 1.25 : 1.5}
-              maxValue={1.6}
-              color="bg-teal-500"
-              label="Total Collateral"
-              unit="ETH"
-            />
+        <AnimatePresence mode="wait">
+          {activeSceneId === 8 ? (
+            <motion.div
+              key="two-bars"
+              className="w-full h-full flex items-end gap-1"
+              exit={{ opacity: 0, transition: { duration: 0.4 } }}
+            >
+              <ChartBar
+                value={1}
+                maxValue={1.6}
+                color="bg-green-500"
+                label="User"
+                unit="ETH"
+              />
+              <ChartBar
+                value={0.5}
+                maxValue={1.6}
+                color="bg-blue-700"
+                label="Stabilizer"
+                unit="ETH"
+              />
+            </motion.div>
+          ) : (
+            activeSceneId >= 9 && (
+              <motion.div
+                key="one-bar"
+                className="w-full h-full flex items-end gap-1"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { duration: 0.4 } }}
+              >
+                <ChartBar
+                  value={activeSceneId >= 11 ? 1.25 : 1.5}
+                  maxValue={1.6}
+                  color="bg-teal-500"
+                  label="Total Collateral"
+                  unit="ETH"
+                />
+              </motion.div>
+            )
           )}
         </AnimatePresence>
       </ChartContainer>
