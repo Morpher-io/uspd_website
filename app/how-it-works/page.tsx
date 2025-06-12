@@ -472,7 +472,14 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         };
       case 13:
       case 14:
+        return {
+          title: "113% Collateralized",
+          value: "ETH Price: $2,700",
+          visible: true,
+          status: "danger",
+        };
       case 15:
+        return { title: "", value: "", visible: false, status: "safe" };
       case 16:
       case 17:
         return {
@@ -499,7 +506,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
     positionEscrowValue = 1.5;
   }
 
-  const stabilizerX = activeSceneId === 1 ? 270 : 30;
+  const stabilizerX = activeSceneId === 1 ? 270 : 40;
   const stabilizerY = activeSceneId === 1 ? 200 : 50;
   const stabilizerScale = activeSceneId === 1 ? 2 : 1;
 
@@ -512,7 +519,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         labelVisible={activeSceneId > 1}
         x={stabilizerX}
         y={stabilizerY}
-        visible={activeSceneId >= 1 && activeSceneId < 17}
+        visible={activeSceneId >= 1 && activeSceneId < 19 && activeSceneId != 15}
         iconAnimate={{ scale: stabilizerScale }}
       ></Actor>
 
@@ -528,7 +535,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         x={0}
         y={490}
         w={150}
-        visible={activeSceneId >= 4 && activeSceneId < 17}
+        visible={activeSceneId >= 4 && activeSceneId < 19 && activeSceneId != 15}
         title="150% Ratio"
         value="Stabilizer's Preference"
         status="safe"
