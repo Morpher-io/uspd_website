@@ -4,6 +4,10 @@ import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { Button } from "@/components/ui/button";
+import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
+import { ArrowBigDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ShimmerButton } from "@/components/magicui/shimmer-button";
 
 export default function HowItWorksPage() {
   const [activeScene, setActiveScene] = useState(0); // 0: intro, 1: scene 1, 2: scene 2
@@ -44,23 +48,23 @@ export default function HowItWorksPage() {
   const shapeTransition =
     activeScene === 1
       ? {
-          // For pulsation
-          scale: {
-            duration: 2,
-            repeat: Infinity,
-            ease: "easeInOut",
-          },
-          // For transitions between scenes
-          default: {
-            duration: 0.7,
-            ease: "easeInOut",
-          },
-        }
-      : {
-          // For transitions between scenes
+        // For pulsation
+        scale: {
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut",
+        },
+        // For transitions between scenes
+        default: {
           duration: 0.7,
           ease: "easeInOut",
-        };
+        },
+      }
+      : {
+        // For transitions between scenes
+        duration: 0.7,
+        ease: "easeInOut",
+      };
 
   // A helper component for the text blocks that triggers scene changes
   const TextBlock = ({
@@ -93,10 +97,16 @@ export default function HowItWorksPage() {
         <AuroraText className="text-6xl md:text-8xl font-bold tracking-tighter px-4">
           How USPD Works
         </AuroraText>
-        <div className="absolute bottom-20">
-          <Button onClick={scrollToStart} size="lg" variant="outline">
-            Scroll to Start
-          </Button>
+        <div className="mt-4 text-xl w-4xl">
+          Learn all about Stabilizers, Liquidity and Overcollateralization in USPD through a series of interactive scroll-explainer graphics.
+        </div>
+        <div className="absolute bottom-50">
+          <ShimmerButton onClick={scrollToStart} className="shadow-2xl">
+            <span className="flex flex-row items-center text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
+              Scroll to Start <ArrowBigDown className="ml-1 size-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
+            </span>
+          </ShimmerButton>
+
         </div>
       </section>
 
