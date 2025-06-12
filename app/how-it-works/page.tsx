@@ -169,7 +169,7 @@ const ChartBar = ({
   const heightPercentage = (value / maxValue) * 100;
   return (
     <AnimatePresence>
-      {visible && value > 0 && (
+      {visible && (
         <motion.div
           className="w-full relative flex flex-col items-center"
           initial={{ height: 0, opacity: 0 }}
@@ -180,7 +180,7 @@ const ChartBar = ({
           <div className={`w-full h-full ${color} rounded-t-md`}></div>
           <div className="absolute -bottom-6 text-center">
             <div className="font-bold text-sm">
-              {value} {unit}
+              {value.toLocaleString()} {unit}
             </div>
             <div className="text-xs text-muted-foreground">{label}</div>
           </div>
