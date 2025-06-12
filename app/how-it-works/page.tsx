@@ -232,7 +232,7 @@ const InfoBox = ({ title, value, x, y, w, visible }: any) => (
     {visible && (
       <motion.div
         key={title + value}
-        className="absolute text-center"
+        className="absolute text-center -bottom-10"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
