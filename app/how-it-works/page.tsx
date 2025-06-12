@@ -34,8 +34,8 @@ const scenes = [
     title: "Minting a Stabilizer NFT",
     content: (
       <p>
-        The Stabilizer mints a Stabilizer NFT and deposits 10 ETH into their
-        personal Stabilizer Escrow.
+        The Stabilizer mints a Stabilizer NFT, which represents their position
+        in the system.
       </p>
     ),
   },
@@ -44,7 +44,8 @@ const scenes = [
     title: "Adding Collateral",
     content: (
       <p>
-        This ETH is now unallocated collateral, ready to back new USPD.
+        They then deposit 10 ETH into their personal Stabilizer Escrow. This ETH
+        is now unallocated collateral, ready to back new USPD.
       </p>
     ),
   },
@@ -459,11 +460,11 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       ></Actor>
 
       <FloatingAsset
-        icon={<Ticket size={32} />}
-        label="NFT"
-        x={75}
-        y={120}
-        visible={activeSceneId >= 2 && activeSceneId < 16}
+        icon={<Ticket size={96} />}
+        label="Stabilizer NFT"
+        x={250}
+        y={200}
+        visible={activeSceneId === 2}
       />
 
       <InfoBox
@@ -502,7 +503,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         y={150}
         w={150}
         h={300}
-        visible={activeSceneId >= 2 && activeSceneId < 18}
+        visible={activeSceneId >= 3 && activeSceneId < 18}
       >
         <ChartBar
           value={
