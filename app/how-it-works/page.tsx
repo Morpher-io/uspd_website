@@ -1,53 +1,12 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { ArrowBigDown } from "lucide-react";
 
-// --- Graphic Components for each scene ---
-
-const graphicVariants = {
-  initial: { opacity: 0, scale: 0.8, y: 20 },
-  animate: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.8,
-    y: -20,
-    transition: { duration: 0.4, ease: "easeIn" },
-  },
-};
-
-const Scene1Graphic = () => (
-  <motion.div
-    variants={graphicVariants}
-    initial="initial"
-    animate="animate"
-    exit="exit"
-  >
-    <motion.div
-      className="w-48 h-48 md:w-64 md:h-64 bg-blue-500 rounded-full"
-      animate={{ scale: [1, 1.05, 1] }}
-      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-    />
-  </motion.div>
-);
-
-const Scene2Graphic = () => (
-  <motion.div
-    className="w-48 h-48 md:w-64 md:h-64 bg-red-500 rounded-2xl"
-    variants={graphicVariants}
-    initial="initial"
-    animate="animate"
-    exit="exit"
-  />
-);
+// --- Graphic Components are removed in favor of a single, transforming element ---
 
 // --- Scene Configuration ---
 
@@ -63,7 +22,6 @@ const scenes = [
         commodo consequat.
       </p>
     ),
-    GraphicComponent: Scene1Graphic,
   },
   {
     id: 2,
@@ -75,14 +33,12 @@ const scenes = [
         proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
       </p>
     ),
-    GraphicComponent: Scene2Graphic,
   },
   // You can add more scenes here, e.g.:
   // {
   //   id: 3,
   //   title: "Another Scene",
   //   content: <p>Some new text...</p>,
-  //   GraphicComponent: SomeOtherGraphic,
   // },
 ];
 
@@ -96,9 +52,46 @@ export default function HowItWorksPage() {
     scenesContainerRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const ActiveGraphic = scenes.find(
-    (s) => s.id === activeSceneId
-  )?.GraphicComponent;
+  // Function to get animation properties for the single graphic element
+  const getGraphicProps = (sceneId: number) => {
+    let animate = {};
+    let transition = { duration: 0.7, ease: "easeInOut" };
+
+    switch (sceneId) {
+      case 1:
+        animate = {
+          opacity: 1,
+          scale: [1, 1.05, 1],
+          backgroundColor: "#3b82f6", // blue-500
+          borderRadius: "50%",
+        };
+        transition = {
+          // @ts-ignore
+          scale: {
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut",
+          },
+          default: { duration: 0.7, ease: "easeInOut" },
+        };
+        break;
+      case 2:
+        animate = {
+          opacity: 1,
+          scale: 1,
+          backgroundColor: "#ef4444", // red-500
+          borderRadius: "10%",
+        };
+        break;
+      default:
+        animate = { opacity: 0, scale: 0 };
+        transition = { duration: 0.5, ease: "easeOut" };
+        break;
+    }
+    return { animate, transition };
+  };
+
+  const graphicProps = getGraphicProps(activeSceneId);
 
   return (
     <div className="bg-background text-foreground">
@@ -128,13 +121,22 @@ export default function HowItWorksPage() {
       >
         {/* Left Sticky Column */}
         <div className="md:sticky top-0 h-screen flex items-center justify-center">
-          <AnimatePresence mode="wait">
-            {ActiveGraphic && <ActiveGraphic key={activeSceneId} />}
-          </AnimatePresence>
+          <motion.div
+            className="w-48 h-48 md:w-64 md:h-64"
+            initial={{ opacity: 0, scale: 0, borderRadius: "50%" }}
+            animate={graphicProps.animate}
+            transition={graphicProps.transition}
+          />
         </div>
 
         {/* Right Scrolling Column */}
         <div className="relative">
+          {/* This invisible div triggers the graphic to disappear when scrolling back to the top */}
+          <motion.div
+            className="absolute top-0 h-16"
+            onViewportEnter={() => setActiveSceneId(0)}
+            viewport={{ amount: 1 }}
+          />
           {scenes.map((scene) => (
             <TextBlock
               key={scene.id}
@@ -169,14 +171,6 @@ const TextBlock = ({
   <motion.div
     className="h-screen flex items-center"
     onViewportEnter={() => setActiveSceneId(sceneId)}
-    onViewportLeave={() => {
-      // When scrolling up, set the active scene to the previous one
-      if (sceneId > 1) {
-        setActiveSceneId(sceneId - 1);
-      } else {
-        setActiveSceneId(0); // Back to intro
-      }
-    }}
     viewport={{ amount: 0.5 }}
   >
     <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md">
