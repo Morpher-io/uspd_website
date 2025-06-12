@@ -16,6 +16,8 @@ import {
   Users,
 } from "lucide-react";
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 // --- Scene Configuration ---
 const scenes = [
@@ -38,6 +40,7 @@ const scenes = [
         in the system.
       </p>
     ),
+    link: { href: "/stabilizer/mint", text: "Mint a Stabilizer NFT" },
   },
   {
     id: 3,
@@ -48,6 +51,7 @@ const scenes = [
         is now unallocated collateral, ready to back new USPD.
       </p>
     ),
+    link: { href: "/stabilizer", text: "Manage Collateral" },
   },
   {
     id: 4,
@@ -79,6 +83,7 @@ const scenes = [
         return receives 2,500 USPD. Their ETH is now marked for use.
       </p>
     ),
+    link: { href: "/uspd", text: "Mint USPD" },
   },
   {
     id: 7,
@@ -131,6 +136,7 @@ const scenes = [
         profit.
       </p>
     ),
+    link: { href: "/stabilizer", text: "Manage Collateral" },
   },
   {
     id: 12,
@@ -142,6 +148,10 @@ const scenes = [
         vulnerable to liquidation.
       </p>
     ),
+    link: {
+      href: "/docs/stabilizers/liquidation",
+      text: "Read Liquidation Docs",
+    },
   },
   {
     id: 13,
@@ -245,6 +255,7 @@ const scenes = [
         circulation, keeping the currency fully backed.
       </p>
     ),
+    link: { href: "/uspd", text: "Burn USPD" },
   },
   {
     id: 23,
@@ -683,11 +694,13 @@ const TextBlock = ({
   sceneId,
   setActiveSceneId,
   children,
+  link,
 }: {
   title: string;
   sceneId: number;
   setActiveSceneId: (id: number) => void;
   children: React.ReactNode;
+  link?: { href: string; text: string };
 }) => (
   <motion.div
     className="h-screen flex items-center"
@@ -699,11 +712,24 @@ const TextBlock = ({
         {title}
       </h2>
       {children}
+      {link && (
+        <div className="pt-4">
+          <Link href={link.href} passHref>
+            <Button variant="outline">{link.text}</Button>
+          </Link>
+        </div>
+      )}
     </div>
   </motion.div>
 );
 
-const HeroBlock = ({ title, sceneId, setActiveSceneId, children }: any) => (
+const HeroBlock = ({
+  title,
+  sceneId,
+  setActiveSceneId,
+  children,
+  link,
+}: any) => (
   <motion.section
     className="h-screen w-full flex flex-col items-center justify-center text-center relative"
     onViewportEnter={() => setActiveSceneId(sceneId)}
@@ -717,6 +743,15 @@ const HeroBlock = ({ title, sceneId, setActiveSceneId, children }: any) => (
     <div className="mt-8 text-xl w-4xl max-w-3xl text-muted-foreground">
       {children}
     </div>
+    {link && (
+      <div className="mt-8">
+        <Link href={link.href} passHref>
+          <Button variant="outline" size="lg">
+            {link.text}
+          </Button>
+        </Link>
+      </div>
+    )}
   </motion.section>
 );
 
@@ -781,6 +816,7 @@ export default function HowItWorksPage() {
               title={scene.title}
               sceneId={scene.id}
               setActiveSceneId={setActiveSceneId}
+              link={scene.link}
             >
               {scene.content}
             </TextBlock>
@@ -795,6 +831,7 @@ export default function HowItWorksPage() {
           title={liquidationHeroScene.title}
           sceneId={liquidationHeroScene.id}
           setActiveSceneId={setActiveSceneId}
+          link={liquidationHeroScene.link}
         >
           {liquidationHeroScene.content}
         </HeroBlock>
@@ -815,6 +852,7 @@ export default function HowItWorksPage() {
               title={scene.title}
               sceneId={scene.id}
               setActiveSceneId={setActiveSceneId}
+              link={scene.link}
             >
               {scene.content}
             </TextBlock>
@@ -829,6 +867,7 @@ export default function HowItWorksPage() {
           title={userRedemptionHeroScene.title}
           sceneId={userRedemptionHeroScene.id}
           setActiveSceneId={setActiveSceneId}
+          link={userRedemptionHeroScene.link}
         >
           {userRedemptionHeroScene.content}
         </HeroBlock>
@@ -849,6 +888,7 @@ export default function HowItWorksPage() {
               title={scene.title}
               sceneId={scene.id}
               setActiveSceneId={setActiveSceneId}
+              link={scene.link}
             >
               {scene.content}
             </TextBlock>
