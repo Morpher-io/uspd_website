@@ -13,6 +13,7 @@ import { IPriceOracle } from '@/types/contracts'
 import positionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json'
 import ierc20Abi from '@/contracts/out/IERC20.sol/IERC20.json'
 import poolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json' // Add Rate Contract ABI
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface PositionEscrowManagerProps {
     tokenId: number

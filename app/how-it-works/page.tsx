@@ -150,7 +150,7 @@ const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
         style={{ x, y, width: w, height: h }}
       >
         <h3 className="text-center font-bold mb-2">{label}</h3>
-        <div className="relative w-full h-full bg-secondary/50 rounded-lg border-2 border-dashed flex items-end justify-center gap-2 px-2 pb-8">
+        <div className="relative w-full h-full bg-secondary/50 rounded-lg border-2 border-dashed flex items-end justify-center gap-2 px-2 pb-12">
           {children}
         </div>
       </motion.div>
@@ -178,7 +178,7 @@ const ChartBar = ({
           transition={{ duration: 1, ease: "circOut" }}
         >
           <div className={`w-full h-full ${color} rounded-t-md`}></div>
-          <div className="absolute -bottom-6 text-center">
+          <div className="absolute -bottom-10 text-center">
             <div className="font-bold text-sm">
               {value.toLocaleString()} {unit}
             </div>
@@ -207,7 +207,7 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
 );
 
 const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
-  const MAX_CHART_ETH = 12; // A bit more than 10 for padding
+  const MAX_CHART_ETH = 11; // A bit more than 10 for padding
 
   return (
     <div className="relative w-[600px] h-[500px] text-foreground scale-90 md:scale-100">
@@ -215,7 +215,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Actor
         icon={<ShieldCheck size={48} />}
         label="Stabilizer"
-        x={50}
+        x={30}
         y={50}
         visible={activeSceneId >= 1}
       >
@@ -229,7 +229,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <AnimatePresence>
           {activeSceneId >= 4 && (
             <motion.div
-              className="absolute left-full top-0 ml-2 text-center p-1 bg-secondary rounded-lg"
+              className="absolute left-full top-13 ml-2 text-center p-1 bg-secondary rounded-lg"
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0 }}
@@ -244,7 +244,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Actor
         icon={<User size={48} />}
         label="User"
-        x={450}
+        x={500}
         y={50}
         visible={activeSceneId >= 5}
       ></Actor>
@@ -261,7 +261,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <ChartBar
           value={activeSceneId >= 7 ? 9.5 : 10}
           maxValue={MAX_CHART_ETH}
-          color="bg-gray-500"
+          color="bg-green-500"
           label="Unallocated"
           unit="ETH"
           visible={activeSceneId >= 2}
@@ -279,7 +279,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
             value={activeSceneId >= 6 ? 0 : 1}
-            maxValue={1}
+            maxValue={1.1}
             color="bg-green-500"
             label="Available"
             unit="ETH"
@@ -287,7 +287,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           />
           <ChartBar
             value={activeSceneId >= 6 ? 2500 : 0}
-            maxValue={2500}
+            maxValue={2550}
             color="bg-purple-500"
             label="Minted"
             unit="USPD"
@@ -307,14 +307,14 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <div className="w-full h-full flex items-end gap-1">
           <ChartBar
             value={1}
-            maxValue={MAX_CHART_ETH}
+            maxValue={1.1}
             color="bg-green-500"
             label="User"
             unit="ETH"
           />
           <ChartBar
             value={0.5}
-            maxValue={MAX_CHART_ETH}
+            maxValue={1.1}
             color="bg-blue-700"
             label="Stabilizer"
             unit="ETH"
