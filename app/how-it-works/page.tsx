@@ -24,6 +24,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { RetroGrid } from "@/components/magicui/retro-grid";
 import { BlurFade } from "@/components/magicui/blur-fade";
+import { ShineBorder } from "@/components/magicui/shine-border";
 
 // --- Scene Configuration ---
 const scenes = [
@@ -1009,11 +1010,10 @@ const HeroBlock = ({
   link,
 }: any) => (
   <motion.section
-    className="h-screen w-full flex flex-col items-center justify-center text-center relative overflow-hidden"
+    className="h-screen w-full flex flex-col items-center justify-center text-center relative"
     onViewportEnter={() => setActiveSceneId(sceneId)}
     viewport={{ amount: 0.5 }}
   >
-    <RetroGrid />
     <BlurFade>
       <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
         <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-red-500/80 dark:text-red-500">
