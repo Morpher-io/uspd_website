@@ -22,6 +22,7 @@ import {
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { RetroGrid } from "@/components/magicui/retro-grid";
 
 // --- Scene Configuration ---
 const scenes = [
@@ -570,6 +571,7 @@ const ApyCalculation = ({ visible }: any) => (
 
 const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   const MAX_CHART_ETH = 11;
+  const isHero = scenes.find((s) => s.id === activeSceneId)?.isHero;
 
   const getPositionInfo = (sceneId: number) => {
     if (sceneId >= 13 && sceneId <= 17 && sceneId !== 15) {
@@ -626,330 +628,336 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
   return (
     <div className="relative w-full max-w-[600px] h-[500px] text-foreground">
-      {/* Actors */}
-      <Actor
-        icon={<ShieldCheck size={48} />}
-        label="Stabilizer"
-        labelVisible={activeSceneId > 1}
-        x={stabilizerX}
-        y={stabilizerY}
-        visible={activeSceneId >= 1 && activeSceneId < 17}
-        iconAnimate={{ scale: stabilizerScale }}
-      ></Actor>
-
-      <FloatingAsset
-        icon={<Ticket size={96} />}
-        label="Stabilizer NFT"
-        x={"41.67%"}
-        y={"40%"}
-        visible={activeSceneId === 2}
-      />
-
-      <InfoBox
-        x={"0%"}
-        y={"98%"}
-        w={"25%"}
-        visible={activeSceneId >= 4 && activeSceneId < 17}
-        title="150% Ratio"
-        value="Stabilizer's Preference"
-        status="safe"
-      />
-
-      <Actor
-        icon={<User size={48} />}
-        label="User"
-        x={activeSceneId >= 14 && activeSceneId < 21 ? "66.67%" : "83.33%"}
-        y={"10%"}
-        visible={activeSceneId >= 5 && activeSceneId < 26}
-        animate={{
-          opacity: activeSceneId >= 14 && activeSceneId < 21 ? 0.5 : 1,
-        }}
-      ></Actor>
-
-      <Actor
-        icon={<Zap size={48} className="text-yellow-400" />}
-        label="Liquidator"
-        x={"83.33%"}
-        y={"10%"}
-        visible={activeSceneId >= 14 && activeSceneId < 21}
-      ></Actor>
-
-      {/* Charts */}
-      <ChartContainer
-        label="Stabilizer Escrow"
-        x={"0%"}
-        y={"30%"}
-        w={"25%"}
-        h={"60%"}
-        visible={activeSceneId >= 3 && activeSceneId < 19 && activeSceneId !== 15}
+      <motion.div
+        animate={{ opacity: isHero ? 0 : 1 }}
+        transition={{ duration: 0.4 }}
+        className="w-full h-full"
       >
-        <ChartBar
-          value={
-            activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
-          }
-          maxValue={MAX_CHART_ETH}
-          color="bg-gray-500"
-          label="Unallocated"
-          unit="ETH"
+        {/* Actors */}
+        <Actor
+          icon={<ShieldCheck size={48} />}
+          label="Stabilizer"
+          labelVisible={activeSceneId > 1}
+          x={stabilizerX}
+          y={stabilizerY}
+          visible={activeSceneId >= 1 && activeSceneId < 17}
+          iconAnimate={{ scale: stabilizerScale }}
+        ></Actor>
+
+        <FloatingAsset
+          icon={<Ticket size={96} />}
+          label="Stabilizer NFT"
+          x={"41.67%"}
+          y={"40%"}
+          visible={activeSceneId === 2}
         />
-      </ChartContainer>
 
-      <ChartContainer
-        label="User Wallet"
-        x={"75%"}
-        y={"30%"}
-        w={"25%"}
-        h={"60%"}
-        visible={
-          (activeSceneId >= 5 && activeSceneId < 14) ||
-          (activeSceneId >= 21 && activeSceneId <= 25)
-        }
-      >
-        <div className="w-full h-full flex items-end gap-1">
+        <InfoBox
+          x={"0%"}
+          y={"98%"}
+          w={"25%"}
+          visible={activeSceneId >= 4 && activeSceneId < 17}
+          title="150% Ratio"
+          value="Stabilizer's Preference"
+          status="safe"
+        />
+
+        <Actor
+          icon={<User size={48} />}
+          label="User"
+          x={activeSceneId >= 14 && activeSceneId < 21 ? "66.67%" : "83.33%"}
+          y={"10%"}
+          visible={activeSceneId >= 5 && activeSceneId < 26}
+          animate={{
+            opacity: activeSceneId >= 14 && activeSceneId < 21 ? 0.5 : 1,
+          }}
+        ></Actor>
+
+        <Actor
+          icon={<Zap size={48} className="text-yellow-400" />}
+          label="Liquidator"
+          x={"83.33%"}
+          y={"10%"}
+          visible={activeSceneId >= 14 && activeSceneId < 21}
+        ></Actor>
+
+        {/* Charts */}
+        <ChartContainer
+          label="Stabilizer Escrow"
+          x={"0%"}
+          y={"30%"}
+          w={"25%"}
+          h={"60%"}
+          visible={activeSceneId >= 3 && activeSceneId < 19 && activeSceneId !== 15}
+        >
           <ChartBar
             value={
-              activeSceneId >= 24 ? 0.926 : activeSceneId >= 6 ? 0 : 1
+              activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
             }
-            maxValue={1.1}
-            color="bg-green-500"
-            label="Available"
+            maxValue={MAX_CHART_ETH}
+            color="bg-gray-500"
+            label="Unallocated"
             unit="ETH"
           />
-          <ChartBar
-            value={
-              activeSceneId >= 23 ? 0 : activeSceneId >= 6 ? 2500 : 0
-            }
-            maxValue={2550}
-            color="bg-purple-500"
-            label="Minted"
-            unit="USPD"
-          />
-        </div>
-      </ChartContainer>
+        </ChartContainer>
 
-      <ChartContainer
-        label="Liquidator Wallet"
-        x={"75%"}
-        y={"30%"}
-        w={"25%"}
-        h={"60%"}
-        visible={activeSceneId >= 14 && activeSceneId < 21}
-      >
-        <div className="w-full h-full flex items-end gap-1">
-          <ChartBar
-            value={
-              activeSceneId === 14
-                ? 0.926
-                : activeSceneId >= 18
-                ? 0.97
-                : 0
-            }
-            maxValue={1.1}
-            color="bg-green-500"
-            label={activeSceneId >= 18 ? "Received" : "To Spend"}
-            unit="ETH"
-          />
-          <ChartBar
-            value={activeSceneId >= 15 && activeSceneId < 16 ? 2500 : 0}
-            maxValue={2550}
-            color="bg-purple-500"
-            label="For Liquidation"
-            unit="USPD"
-          />
-        </div>
-      </ChartContainer>
+        <ChartContainer
+          label="User Wallet"
+          x={"75%"}
+          y={"30%"}
+          w={"25%"}
+          h={"60%"}
+          visible={
+            (activeSceneId >= 5 && activeSceneId < 14) ||
+            (activeSceneId >= 21 && activeSceneId <= 25)
+          }
+        >
+          <div className="w-full h-full flex items-end gap-1">
+            <ChartBar
+              value={
+                activeSceneId >= 24 ? 0.926 : activeSceneId >= 6 ? 0 : 1
+              }
+              maxValue={1.1}
+              color="bg-green-500"
+              label="Available"
+              unit="ETH"
+            />
+            <ChartBar
+              value={
+                activeSceneId >= 23 ? 0 : activeSceneId >= 6 ? 2500 : 0
+              }
+              maxValue={2550}
+              color="bg-purple-500"
+              label="Minted"
+              unit="USPD"
+            />
+          </div>
+        </ChartContainer>
 
-      <ChartContainer
-        label="Position Escrow"
-        x={"37.5%"}
-        y={"30%"}
-        w={"25%"}
-        h={"60%"}
-        visible={activeSceneId >= 8 && activeSceneId < 21 && activeSceneId !== 15}
-      >
-        <AnimatePresence mode="wait">
-          {activeSceneId === 8 ? (
-            <motion.div
-              key="two-bars"
-              className="w-full h-full flex items-end gap-1"
-              exit={{ opacity: 0, transition: { duration: 0.4 } }}
-            >
-              <ChartBar
-                value={1}
-                maxValue={1.6}
-                color="bg-green-500"
-                label="User"
-                unit="ETH"
-              />
-              <ChartBar
-                value={0.5}
-                maxValue={1.6}
-                color="bg-blue-700"
-                label="Stabilizer"
-                unit="ETH"
-              />
-            </motion.div>
-          ) : (
-            activeSceneId >= 9 && (
+        <ChartContainer
+          label="Liquidator Wallet"
+          x={"75%"}
+          y={"30%"}
+          w={"25%"}
+          h={"60%"}
+          visible={activeSceneId >= 14 && activeSceneId < 21}
+        >
+          <div className="w-full h-full flex items-end gap-1">
+            <ChartBar
+              value={
+                activeSceneId === 14
+                  ? 0.926
+                  : activeSceneId >= 18
+                  ? 0.97
+                  : 0
+              }
+              maxValue={1.1}
+              color="bg-green-500"
+              label={activeSceneId >= 18 ? "Received" : "To Spend"}
+              unit="ETH"
+            />
+            <ChartBar
+              value={activeSceneId >= 15 && activeSceneId < 16 ? 2500 : 0}
+              maxValue={2550}
+              color="bg-purple-500"
+              label="For Liquidation"
+              unit="USPD"
+            />
+          </div>
+        </ChartContainer>
+
+        <ChartContainer
+          label="Position Escrow"
+          x={"37.5%"}
+          y={"30%"}
+          w={"25%"}
+          h={"60%"}
+          visible={activeSceneId >= 8 && activeSceneId < 21 && activeSceneId !== 15}
+        >
+          <AnimatePresence mode="wait">
+            {activeSceneId === 8 ? (
               <motion.div
-                key="one-bar"
+                key="two-bars"
                 className="w-full h-full flex items-end gap-1"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, transition: { duration: 0.4 } }}
+                exit={{ opacity: 0, transition: { duration: 0.4 } }}
               >
                 <ChartBar
-                  value={positionEscrowValue}
+                  value={1}
                   maxValue={1.6}
-                  color="bg-teal-500"
-                  label="Total Collateral"
+                  color="bg-green-500"
+                  label="User"
+                  unit="ETH"
+                />
+                <ChartBar
+                  value={0.5}
+                  maxValue={1.6}
+                  color="bg-blue-700"
+                  label="Stabilizer"
                   unit="ETH"
                 />
               </motion.div>
-            )
+            ) : (
+              activeSceneId >= 9 && (
+                <motion.div
+                  key="one-bar"
+                  className="w-full h-full flex items-end gap-1"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, transition: { duration: 0.4 } }}
+                >
+                  <ChartBar
+                    value={positionEscrowValue}
+                    maxValue={1.6}
+                    color="bg-teal-500"
+                    label="Total Collateral"
+                    unit="ETH"
+                  />
+                </motion.div>
+              )
+            )}
+          </AnimatePresence>
+        </ChartContainer>
+
+        <ChartContainer
+          label="Insurance Fund"
+          x={"0%"}
+          y={"30%"}
+          w={"25%"}
+          h={"60%"}
+          visible={activeSceneId >= 19 && activeSceneId < 21}
+        >
+          <ChartBar
+            value={activeSceneId >= 19 ? 0.08 : 0}
+            maxValue={1}
+            color="bg-indigo-500"
+            label="System Reserve"
+            unit="ETH"
+          />
+        </ChartContainer>
+
+        <ChartContainer
+          label="USPD System Pool"
+          x={activeSceneId === 15 ? "0%" : "37.5%"}
+          y={"30%"}
+          w={activeSceneId === 15 ? "66.67%" : "25%"}
+          h={"60%"}
+          visible={
+            activeSceneId === 15 || (activeSceneId >= 21 && activeSceneId <= 25)
+          }
+        >
+          <Users size={64} className="m-auto text-muted-foreground" />
+        </ChartContainer>
+
+        <InfoBox
+          x={"37.5%"}
+          y={"98%"}
+          w={"25%"}
+          visible={positionInfo.visible}
+          title={positionInfo.title}
+          value={positionInfo.value}
+          status={positionInfo.status}
+        />
+
+        {/* Arrows */}
+        <Arrow x={"25.83%"} y={"56%"} visible={activeSceneId === 8} />
+        <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 8} />
+        <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 11} />
+        <Arrow x={"50%"} y={"56%"} rotate={180} visible={activeSceneId === 15} />
+        <Arrow x={"50%"} y={"64%"} rotate={0} visible={activeSceneId === 15} />
+        <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 16} />
+        <Arrow x={"64.17%"} y={"56%"} rotate={0} visible={activeSceneId === 18} />
+        <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 19} />
+        <Arrow x={"66.67%"} y={"56%"} rotate={-135} visible={activeSceneId === 23} />
+        <Arrow x={"66.67%"} y={"56%"} rotate={0} visible={activeSceneId === 24} />
+
+        {/* Yield Chapter Graphics */}
+        <AnimatePresence>
+          {activeSceneId >= 27 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full flex items-center justify-center"
+            >
+              <Actor
+                icon={<ShieldCheck size={64} />}
+                label="Stabilizer"
+                x={"43.33%"}
+                y={"10%"}
+                visible={activeSceneId >= 27 && activeSceneId < 30}
+              />
+              <IncomeStream
+                icon={<Coins size={48} className="text-green-500" />}
+                label="Staking Yield"
+                value="~4% APY"
+                x={"8.33%"}
+                y={"40%"}
+                visible={activeSceneId === 27 || activeSceneId === 28}
+              />
+              <IncomeStream
+                icon={<Landmark size={48} className="text-blue-500" />}
+                label="Funding Fees"
+                value="~11% APY"
+                x={"66.67%"}
+                y={"40%"}
+                visible={activeSceneId === 27 || activeSceneId === 29}
+              />
+              <Arrow x={"25%"} y={"36%"} rotate={45} visible={activeSceneId === 27} />
+              <Arrow x={"58.33%"} y={"36%"} rotate={135} visible={activeSceneId === 27} />
+
+              <ChartContainer
+                label="Leverage"
+                x={"25%"}
+                y={"30%"}
+                w={"50%"}
+                h={"60%"}
+                visible={activeSceneId === 30}
+              >
+                <div className="w-full h-full flex items-end gap-4">
+                  <ChartBar
+                    value={35}
+                    maxValue={110}
+                    color="bg-gray-500"
+                    label="Own Capital"
+                    unit="%"
+                  />
+                  <ChartBar
+                    value={100}
+                    maxValue={110}
+                    color="bg-teal-500"
+                    label="Total Secured"
+                    unit="%"
+                  />
+                </div>
+              </ChartContainer>
+              <InfoBox
+                x={"25%"}
+                y={"98%"}
+                w={"50%"}
+                visible={activeSceneId === 30}
+                title="~3x Leverage"
+                value=""
+              />
+
+              <ApyCalculation visible={activeSceneId === 31} />
+
+              <AnimatePresence>
+                {activeSceneId === 32 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-center"
+                  >
+                    <div className="text-6xl font-bold text-primary">39% APY</div>
+                    <div className="text-xl text-muted-foreground">
+                      Delta-Neutral
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           )}
         </AnimatePresence>
-      </ChartContainer>
-
-      <ChartContainer
-        label="Insurance Fund"
-        x={"0%"}
-        y={"30%"}
-        w={"25%"}
-        h={"60%"}
-        visible={activeSceneId >= 19 && activeSceneId < 21}
-      >
-        <ChartBar
-          value={activeSceneId >= 19 ? 0.08 : 0}
-          maxValue={1}
-          color="bg-indigo-500"
-          label="System Reserve"
-          unit="ETH"
-        />
-      </ChartContainer>
-
-      <ChartContainer
-        label="USPD System Pool"
-        x={activeSceneId === 15 ? "0%" : "37.5%"}
-        y={"30%"}
-        w={activeSceneId === 15 ? "66.67%" : "25%"}
-        h={"60%"}
-        visible={
-          activeSceneId === 15 || (activeSceneId >= 21 && activeSceneId <= 25)
-        }
-      >
-        <Users size={64} className="m-auto text-muted-foreground" />
-      </ChartContainer>
-
-      <InfoBox
-        x={"37.5%"}
-        y={"98%"}
-        w={"25%"}
-        visible={positionInfo.visible}
-        title={positionInfo.title}
-        value={positionInfo.value}
-        status={positionInfo.status}
-      />
-
-      {/* Arrows */}
-      <Arrow x={"25.83%"} y={"56%"} visible={activeSceneId === 8} />
-      <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 8} />
-      <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 11} />
-      <Arrow x={"50%"} y={"56%"} rotate={180} visible={activeSceneId === 15} />
-      <Arrow x={"50%"} y={"64%"} rotate={0} visible={activeSceneId === 15} />
-      <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 16} />
-      <Arrow x={"64.17%"} y={"56%"} rotate={0} visible={activeSceneId === 18} />
-      <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 19} />
-      <Arrow x={"66.67%"} y={"56%"} rotate={-135} visible={activeSceneId === 23} />
-      <Arrow x={"68%"} y={"56%"} rotate={0} visible={activeSceneId === 24} />
-
-      {/* Yield Chapter Graphics */}
-      <AnimatePresence>
-        {activeSceneId >= 27 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="w-full h-full flex items-center justify-center"
-          >
-            <Actor
-              icon={<ShieldCheck size={64} />}
-              label="Stabilizer"
-              x={"43.33%"}
-              y={"10%"}
-              visible={activeSceneId >= 27 && activeSceneId < 30}
-            />
-            <IncomeStream
-              icon={<Coins size={48} className="text-green-500" />}
-              label="Staking Yield"
-              value="~4% APY"
-              x={"8.33%"}
-              y={"40%"}
-              visible={activeSceneId === 27 || activeSceneId === 28}
-            />
-            <IncomeStream
-              icon={<Landmark size={48} className="text-blue-500" />}
-              label="Funding Fees"
-              value="~11% APY"
-              x={"66.67%"}
-              y={"40%"}
-              visible={activeSceneId === 27 || activeSceneId === 29}
-            />
-            <Arrow x={"25%"} y={"36%"} rotate={45} visible={activeSceneId === 27} />
-            <Arrow x={"58.33%"} y={"36%"} rotate={135} visible={activeSceneId === 27} />
-
-            <ChartContainer
-              label="Leverage"
-              x={"25%"}
-              y={"30%"}
-              w={"50%"}
-              h={"60%"}
-              visible={activeSceneId === 30}
-            >
-              <div className="w-full h-full flex items-end gap-4">
-                <ChartBar
-                  value={35}
-                  maxValue={110}
-                  color="bg-gray-500"
-                  label="Own Capital"
-                  unit="%"
-                />
-                <ChartBar
-                  value={100}
-                  maxValue={110}
-                  color="bg-teal-500"
-                  label="Total Secured"
-                  unit="%"
-                />
-              </div>
-            </ChartContainer>
-            <InfoBox
-              x={"25%"}
-              y={"98%"}
-              w={"50%"}
-              visible={activeSceneId === 30}
-              title="~3x Leverage"
-              value=""
-            />
-
-            <ApyCalculation visible={activeSceneId === 31} />
-
-            <AnimatePresence>
-              {activeSceneId === 32 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center"
-                >
-                  <div className="text-6xl font-bold text-primary">39% APY</div>
-                  <div className="text-xl text-muted-foreground">
-                    Delta-Neutral
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </motion.div>
     </div>
   );
 };
@@ -974,19 +982,21 @@ const TextBlock = ({
     onViewportEnter={() => setActiveSceneId(sceneId)}
     viewport={{ amount: 0.5 }}
   >
-    <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md">
-      <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-        {title}
-      </h2>
-      {children}
-      {link && (
-        <div className="pt-4">
-          <Link href={link.href} passHref>
-            <Button variant="outline">{link.text}</Button>
-          </Link>
-        </div>
-      )}
-    </div>
+    <BlurFade>
+      <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md">
+        <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+          {title}
+        </h2>
+        {children}
+        {link && (
+          <div className="pt-4">
+            <Link href={link.href} passHref>
+              <Button variant="outline">{link.text}</Button>
+            </Link>
+          </div>
+        )}
+      </div>
+    </BlurFade>
   </motion.div>
 );
 
@@ -998,27 +1008,30 @@ const HeroBlock = ({
   link,
 }: any) => (
   <motion.section
-    className="h-screen w-full flex flex-col items-center justify-center text-center relative"
+    className="h-screen w-full flex flex-col items-center justify-center text-center relative overflow-hidden"
     onViewportEnter={() => setActiveSceneId(sceneId)}
     viewport={{ amount: 0.5 }}
   >
-    <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
-      <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-red-500/80 dark:text-red-500">
-        {title}
-      </h2>
-    </AnimatedShinyText>
-    <div className="mt-8 px-4 text-xl w-full max-w-3xl text-muted-foreground">
-      {children}
-    </div>
-    {link && (
-      <div className="mt-8">
-        <Link href={link.href} passHref>
-          <Button variant="outline" size="lg">
-            {link.text}
-          </Button>
-        </Link>
+    <RetroGrid />
+    <BlurFade>
+      <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
+        <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-red-500/80 dark:text-red-500">
+          {title}
+        </h2>
+      </AnimatedShinyText>
+      <div className="mt-8 px-4 text-xl w-full max-w-3xl text-muted-foreground">
+        {children}
       </div>
-    )}
+      {link && (
+        <div className="mt-8">
+          <Link href={link.href} passHref>
+            <Button variant="outline" size="lg">
+              {link.text}
+            </Button>
+          </Link>
+        </div>
+      )}
+    </BlurFade>
   </motion.section>
 );
 
@@ -1053,18 +1066,13 @@ export default function HowItWorksPage() {
     scenesContainerRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const firstChapterScenes = scenes.slice(0, 11);
-  const liquidationHeroScene = scenes.find((s) => s.id === 12);
-  const liquidationScenes = scenes.slice(12, 20);
-  const userRedemptionHeroScene = scenes.find((s) => s.id === 21);
-  const userRedemptionScenes = scenes.slice(21, 25);
-  const yieldHeroScene = scenes.find((s) => s.id === 26);
-  const yieldScenes = scenes.slice(26);
+  const allScenes = scenes.slice(0); // Create a copy
 
   return (
     <div className="bg-background text-foreground">
       {/* Scene 0: Intro */}
-      <section className="h-screen w-full flex flex-col items-center justify-center text-center relative">
+      <section className="h-screen w-full flex flex-col items-center justify-center text-center relative overflow-hidden">
+        <RetroGrid />
         <AuroraText className="text-6xl md:text-8xl font-bold tracking-tighter px-4">
           How USPD Works
         </AuroraText>
@@ -1091,24 +1099,32 @@ export default function HowItWorksPage() {
         </motion.div>
       </section>
 
-      {/* Chapter 1: Minting & Profit Taking */}
+      {/* Desktop Layout */}
       <div
         ref={scenesContainerRef}
-        className="container mx-auto"
+        className="hidden md:grid container mx-auto grid-cols-2 gap-16 relative"
       >
-        {/* Desktop Layout */}
-        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-16 relative">
-          <div className="md:sticky top-0 h-screen flex items-center justify-center">
-            <SceneGraphic activeSceneId={activeSceneId} />
-          </div>
-          <div className="relative">
-            {/* This invisible div triggers the graphic to disappear when scrolling back to the top */}
-            <motion.div
-              className="absolute top-0 h-16"
-              onViewportEnter={() => setActiveSceneId(0)}
-              viewport={{ amount: 1 }}
-            />
-            {firstChapterScenes.map((scene) => (
+        <div className="sticky top-0 h-screen flex items-center justify-center">
+          <SceneGraphic activeSceneId={activeSceneId} />
+        </div>
+        <div className="relative">
+          <motion.div
+            className="absolute top-0 h-16"
+            onViewportEnter={() => setActiveSceneId(0)}
+            viewport={{ amount: 1 }}
+          />
+          {allScenes.map((scene) =>
+            scene.isHero ? (
+              <HeroBlock
+                key={scene.id}
+                title={scene.title}
+                sceneId={scene.id}
+                setActiveSceneId={setActiveSceneId}
+                link={scene.link}
+              >
+                {scene.content}
+              </HeroBlock>
+            ) : (
               <TextBlock
                 key={scene.id}
                 title={scene.title}
@@ -1118,143 +1134,30 @@ export default function HowItWorksPage() {
               >
                 {scene.content}
               </TextBlock>
-            ))}
-          </div>
-        </div>
-        {/* Mobile Layout */}
-        <div className="md:hidden">
-          {firstChapterScenes.map((scene) => (
-            <MobileScene key={scene.id} scene={scene} />
-          ))}
-        </div>
-      </div>
-
-      {/* Chapter 2: Liquidation Intro */}
-      {liquidationHeroScene && (
-        <HeroBlock
-          key={liquidationHeroScene.id}
-          title={liquidationHeroScene.title}
-          sceneId={liquidationHeroScene.id}
-          setActiveSceneId={setActiveSceneId}
-          link={liquidationHeroScene.link}
-        >
-          {liquidationHeroScene.content}
-        </HeroBlock>
-      )}
-
-      {/* Chapter 3: Liquidation Scenes */}
-      <div className="container mx-auto">
-        {/* Desktop Layout */}
-        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-16 relative">
-          <div className="md:sticky top-0 h-screen flex items-center justify-center">
-            <SceneGraphic activeSceneId={activeSceneId} />
-          </div>
-          <div className="relative">
-            {liquidationScenes.map((scene) => (
-              <TextBlock
-                key={scene.id}
-                title={scene.title}
-                sceneId={scene.id}
-                setActiveSceneId={setActiveSceneId}
-                link={scene.link}
-              >
-                {scene.content}
-              </TextBlock>
-            ))}
-          </div>
-        </div>
-        {/* Mobile Layout */}
-        <div className="md:hidden">
-          {liquidationScenes.map((scene) => (
-            <MobileScene key={scene.id} scene={scene} />
-          ))}
-        </div>
-      </div>
-
-      {/* Chapter 4: User Redemption Intro */}
-      {userRedemptionHeroScene && (
-        <HeroBlock
-          key={userRedemptionHeroScene.id}
-          title={userRedemptionHeroScene.title}
-          sceneId={userRedemptionHeroScene.id}
-          setActiveSceneId={setActiveSceneId}
-          link={userRedemptionHeroScene.link}
-        >
-          {userRedemptionHeroScene.content}
-        </HeroBlock>
-      )}
-
-      {/* Chapter 5: User Redemption Scenes */}
-      <div className="container mx-auto">
-        {/* Desktop Layout */}
-        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-16 relative">
-          <div className="md:sticky top-0 h-screen flex items-center justify-center">
-            <SceneGraphic activeSceneId={activeSceneId} />
-          </div>
-          <div className="relative">
-            {userRedemptionScenes.map((scene) => (
-              <TextBlock
-                key={scene.id}
-                title={scene.title}
-                sceneId={scene.id}
-                setActiveSceneId={setActiveSceneId}
-                link={scene.link}
-              >
-                {scene.content}
-              </TextBlock>
-            ))}
-          </div>
-        </div>
-        {/* Mobile Layout */}
-        <div className="md:hidden">
-          {userRedemptionScenes.map((scene) => (
-            <MobileScene key={scene.id} scene={scene} />
-          ))}
-        </div>
-      </div>
-
-      {/* Chapter 6: Stabilizer Yield */}
-      {yieldHeroScene && (
-        <HeroBlock
-          key={yieldHeroScene.id}
-          title={yieldHeroScene.title}
-          sceneId={yieldHeroScene.id}
-          setActiveSceneId={setActiveSceneId}
-          link={yieldHeroScene.link}
-        >
-          {yieldHeroScene.content}
-        </HeroBlock>
-      )}
-
-      <div className="container mx-auto">
-        {/* Desktop Layout */}
-        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-16 relative">
-          <div className="md:sticky top-0 h-screen flex items-center justify-center">
-            <SceneGraphic activeSceneId={activeSceneId} />
-          </div>
-          <div className="relative">
-            {yieldScenes.map((scene) => (
-              <TextBlock
-                key={scene.id}
-                title={scene.title}
-                sceneId={scene.id}
-                setActiveSceneId={setActiveSceneId}
-                link={scene.link}
-              >
-                {scene.content}
-              </TextBlock>
-            ))}
-            {/* Add a spacer div at the end to allow scrolling past the last one */}
-            <div className="h-48" />
-          </div>
-        </div>
-        {/* Mobile Layout */}
-        <div className="md:hidden">
-          {yieldScenes.map((scene) => (
-            <MobileScene key={scene.id} scene={scene} />
-          ))}
+            )
+          )}
           <div className="h-48" />
         </div>
+      </div>
+
+      {/* Mobile Layout */}
+      <div className="md:hidden">
+        {allScenes.map((scene) =>
+          scene.isHero ? (
+            <HeroBlock
+              key={scene.id}
+              title={scene.title}
+              sceneId={scene.id}
+              setActiveSceneId={setActiveSceneId}
+              link={scene.link}
+            >
+              {scene.content}
+            </HeroBlock>
+          ) : (
+            <MobileScene key={scene.id} scene={scene} />
+          )
+        )}
+        <div className="h-48" />
       </div>
     </div>
   );
