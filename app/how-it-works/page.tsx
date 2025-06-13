@@ -23,6 +23,7 @@ import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { RetroGrid } from "@/components/magicui/retro-grid";
+import { BlurFade } from "@/components/magicui/blur-fade";
 
 // --- Scene Configuration ---
 const scenes = [
