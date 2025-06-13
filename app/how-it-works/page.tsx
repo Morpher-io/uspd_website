@@ -151,6 +151,10 @@ const scenes = [
     id: 12,
     title: "Danger Zone: Price Drops",
     isHero: true,
+    heroOptions: {
+      gridColor: "#ff0000",
+      textColor: "text-red-500/80 dark:text-red-500",
+    },
     content: (
       <p>
         But what happens if the price of ETH falls? When a position's
@@ -251,6 +255,10 @@ const scenes = [
     id: 21,
     title: "What About The User?",
     isHero: true,
+    heroOptions: {
+      gridColor: "#00ff00",
+      textColor: "text-green-500/80 dark:text-green-500",
+    },
     content: (
       <p>
         The original user's position was liquidated, but their 2,500 USPD are
@@ -305,6 +313,10 @@ const scenes = [
     id: 26,
     title: "How Stabilizers Earn Yield",
     isHero: true,
+    heroOptions: {
+      gridColor: "#888888",
+      textColor: "text-foreground",
+    },
     content: (
       <p>
         Stabilizing USPD is not just a public good; it's a powerful,
@@ -1004,11 +1016,12 @@ const TextBlock = ({
 );
 
 const HeroBlock = ({
-  title,
   sceneId,
   setActiveSceneId,
   children,
+  content,
   link,
+  heroOptions,
 }: any) => (
   <motion.section
     className="h-screen w-full flex flex-col items-center justify-center text-center relative"
@@ -1019,18 +1032,16 @@ const HeroBlock = ({
       className="absolute top-0 left-0 w-full h-full z-0 [mask-image:radial-gradient(450px_circle_at_center,white,transparent)]"
       squareSize={4}
       gridGap={6}
-      color="#ff0000"
+      color={heroOptions.gridColor}
       maxOpacity={0.5}
       flickerChance={0.1}
     />
     <BlurFade inView={true}>
       <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
-        <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-red-500/80 dark:text-red-500">
-          {title}
-        </h2>
+        {children}
       </AnimatedShinyText>
       <div className="mt-8 px-4 text-xl w-full max-w-3xl text-muted-foreground">
-        {children}
+        {content}
       </div>
       {link && (
         <div className="mt-8">
@@ -1078,7 +1089,10 @@ export default function HowItWorksPage() {
 
   const allScenes = scenes.slice(0); // Create a copy
 
-  type Scene = typeof scenes[0];
+  type Scene = (typeof scenes)[0] & {
+    heroOptions?: { gridColor: string; textColor: string };
+  };
+
   const sceneGroups = allScenes
     .reduce<Array<Array<Scene>>>((acc, scene) => {
       if (scene.isHero) {
@@ -1132,15 +1146,24 @@ export default function HowItWorksPage() {
 
           if (isHeroGroup) {
             const scene = group[0];
+            const heroOptions = scene.heroOptions || {
+              gridColor: "#888888",
+              textColor: "text-foreground",
+            };
             return (
               <HeroBlock
                 key={scene.id}
-                title={scene.title}
                 sceneId={scene.id}
                 setActiveSceneId={setActiveSceneId}
                 link={scene.link}
+                content={scene.content}
+                heroOptions={heroOptions}
               >
-                {scene.content}
+                <h2
+                  className={`text-4xl md:text-6xl font-bold tracking-tighter ${heroOptions.textColor}`}
+                >
+                  {scene.title}
+                </h2>
               </HeroBlock>
             );
           }
@@ -1182,21 +1205,31 @@ export default function HowItWorksPage() {
 
       {/* Mobile Layout */}
       <div className="md:hidden">
-        {allScenes.map((scene) =>
-          scene.isHero ? (
-            <HeroBlock
-              key={scene.id}
-              title={scene.title}
-              sceneId={scene.id}
-              setActiveSceneId={setActiveSceneId}
-              link={scene.link}
-            >
-              {scene.content}
-            </HeroBlock>
-          ) : (
-            <MobileScene key={scene.id} scene={scene} />
-          )
-        )}
+        {allScenes.map((scene) => {
+          if (scene.isHero) {
+            const heroOptions = scene.heroOptions || {
+              gridColor: "#888888",
+              textColor: "text-foreground",
+            };
+            return (
+              <HeroBlock
+                key={scene.id}
+                sceneId={scene.id}
+                setActiveSceneId={setActiveSceneId}
+                link={scene.link}
+                content={scene.content}
+                heroOptions={heroOptions}
+              >
+                <h2
+                  className={`text-4xl md:text-6xl font-bold tracking-tighter ${heroOptions.textColor}`}
+                >
+                  {scene.title}
+                </h2>
+              </HeroBlock>
+            );
+          }
+          return <MobileScene key={scene.id} scene={scene} />;
+        })}
         <div className="h-48" />
       </div>
     </div>
