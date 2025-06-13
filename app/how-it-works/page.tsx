@@ -629,7 +629,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   const stabilizerScale = activeSceneId === 1 ? 2 : 1;
 
   return (
-    <div className="relative w-full max-w-[600px] h-[500px] text-foreground">
+    <div className={"relative w-full h-[500px] text-foreground" + (isHero ? '' : ' max-w-[600px] ')}>
       <motion.div
         animate={{ opacity: isHero ? 0 : 1 }}
         transition={{ duration: 0.4 }}
