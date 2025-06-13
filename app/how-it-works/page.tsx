@@ -1022,6 +1022,25 @@ const HeroBlock = ({
   </motion.section>
 );
 
+const MobileScene = ({ scene }: { scene: any }) => (
+  <div className="min-h-screen flex flex-col justify-center items-center py-24 px-4">
+    <div className="h-[50vh] flex items-center justify-center w-full">
+      <SceneGraphic activeSceneId={scene.id} />
+    </div>
+    <div className="mt-12 text-lg text-muted-foreground space-y-4 max-w-md">
+      <h2 className="text-3xl font-bold text-foreground">{scene.title}</h2>
+      {scene.content}
+      {scene.link && (
+        <div className="pt-4">
+          <Link href={scene.link.href} passHref>
+            <Button variant="outline">{scene.link.text}</Button>
+          </Link>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 // --- Main Page Component ---
 
 export default function HowItWorksPage() {
@@ -1073,31 +1092,37 @@ export default function HowItWorksPage() {
       {/* Chapter 1: Minting & Profit Taking */}
       <div
         ref={scenesContainerRef}
-        className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative"
+        className="container mx-auto"
       >
-        {/* Left Sticky Column */}
-        <div className="md:sticky top-0 h-screen flex items-center justify-center">
-          <SceneGraphic activeSceneId={activeSceneId} />
+        {/* Desktop Layout */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-16 relative">
+          <div className="md:sticky top-0 h-screen flex items-center justify-center">
+            <SceneGraphic activeSceneId={activeSceneId} />
+          </div>
+          <div className="relative">
+            {/* This invisible div triggers the graphic to disappear when scrolling back to the top */}
+            <motion.div
+              className="absolute top-0 h-16"
+              onViewportEnter={() => setActiveSceneId(0)}
+              viewport={{ amount: 1 }}
+            />
+            {firstChapterScenes.map((scene) => (
+              <TextBlock
+                key={scene.id}
+                title={scene.title}
+                sceneId={scene.id}
+                setActiveSceneId={setActiveSceneId}
+                link={scene.link}
+              >
+                {scene.content}
+              </TextBlock>
+            ))}
+          </div>
         </div>
-
-        {/* Right Scrolling Column */}
-        <div className="relative">
-          {/* This invisible div triggers the graphic to disappear when scrolling back to the top */}
-          <motion.div
-            className="absolute top-0 h-16"
-            onViewportEnter={() => setActiveSceneId(0)}
-            viewport={{ amount: 1 }}
-          />
+        {/* Mobile Layout */}
+        <div className="md:hidden">
           {firstChapterScenes.map((scene) => (
-            <TextBlock
-              key={scene.id}
-              title={scene.title}
-              sceneId={scene.id}
-              setActiveSceneId={setActiveSceneId}
-              link={scene.link}
-            >
-              {scene.content}
-            </TextBlock>
+            <MobileScene key={scene.id} scene={scene} />
           ))}
         </div>
       </div>
@@ -1116,24 +1141,30 @@ export default function HowItWorksPage() {
       )}
 
       {/* Chapter 3: Liquidation Scenes */}
-      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative">
-        {/* Left Sticky Column */}
-        <div className="md:sticky top-0 h-screen flex items-center justify-center">
-          <SceneGraphic activeSceneId={activeSceneId} />
+      <div className="container mx-auto">
+        {/* Desktop Layout */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-16 relative">
+          <div className="md:sticky top-0 h-screen flex items-center justify-center">
+            <SceneGraphic activeSceneId={activeSceneId} />
+          </div>
+          <div className="relative">
+            {liquidationScenes.map((scene) => (
+              <TextBlock
+                key={scene.id}
+                title={scene.title}
+                sceneId={scene.id}
+                setActiveSceneId={setActiveSceneId}
+                link={scene.link}
+              >
+                {scene.content}
+              </TextBlock>
+            ))}
+          </div>
         </div>
-
-        {/* Right Scrolling Column */}
-        <div className="relative">
+        {/* Mobile Layout */}
+        <div className="md:hidden">
           {liquidationScenes.map((scene) => (
-            <TextBlock
-              key={scene.id}
-              title={scene.title}
-              sceneId={scene.id}
-              setActiveSceneId={setActiveSceneId}
-              link={scene.link}
-            >
-              {scene.content}
-            </TextBlock>
+            <MobileScene key={scene.id} scene={scene} />
           ))}
         </div>
       </div>
@@ -1152,24 +1183,30 @@ export default function HowItWorksPage() {
       )}
 
       {/* Chapter 5: User Redemption Scenes */}
-      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative">
-        {/* Left Sticky Column */}
-        <div className="md:sticky top-0 h-screen flex items-center justify-center">
-          <SceneGraphic activeSceneId={activeSceneId} />
+      <div className="container mx-auto">
+        {/* Desktop Layout */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-16 relative">
+          <div className="md:sticky top-0 h-screen flex items-center justify-center">
+            <SceneGraphic activeSceneId={activeSceneId} />
+          </div>
+          <div className="relative">
+            {userRedemptionScenes.map((scene) => (
+              <TextBlock
+                key={scene.id}
+                title={scene.title}
+                sceneId={scene.id}
+                setActiveSceneId={setActiveSceneId}
+                link={scene.link}
+              >
+                {scene.content}
+              </TextBlock>
+            ))}
+          </div>
         </div>
-
-        {/* Right Scrolling Column */}
-        <div className="relative">
+        {/* Mobile Layout */}
+        <div className="md:hidden">
           {userRedemptionScenes.map((scene) => (
-            <TextBlock
-              key={scene.id}
-              title={scene.title}
-              sceneId={scene.id}
-              setActiveSceneId={setActiveSceneId}
-              link={scene.link}
-            >
-              {scene.content}
-            </TextBlock>
+            <MobileScene key={scene.id} scene={scene} />
           ))}
         </div>
       </div>
@@ -1187,26 +1224,33 @@ export default function HowItWorksPage() {
         </HeroBlock>
       )}
 
-      <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 relative">
-        {/* Left Sticky Column */}
-        <div className="md:sticky top-0 h-screen flex items-center justify-center">
-          <SceneGraphic activeSceneId={activeSceneId} />
+      <div className="container mx-auto">
+        {/* Desktop Layout */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-16 relative">
+          <div className="md:sticky top-0 h-screen flex items-center justify-center">
+            <SceneGraphic activeSceneId={activeSceneId} />
+          </div>
+          <div className="relative">
+            {yieldScenes.map((scene) => (
+              <TextBlock
+                key={scene.id}
+                title={scene.title}
+                sceneId={scene.id}
+                setActiveSceneId={setActiveSceneId}
+                link={scene.link}
+              >
+                {scene.content}
+              </TextBlock>
+            ))}
+            {/* Add a spacer div at the end to allow scrolling past the last one */}
+            <div className="h-48" />
+          </div>
         </div>
-
-        {/* Right Scrolling Column */}
-        <div className="relative">
+        {/* Mobile Layout */}
+        <div className="md:hidden">
           {yieldScenes.map((scene) => (
-            <TextBlock
-              key={scene.id}
-              title={scene.title}
-              sceneId={scene.id}
-              setActiveSceneId={setActiveSceneId}
-              link={scene.link}
-            >
-              {scene.content}
-            </TextBlock>
+            <MobileScene key={scene.id} scene={scene} />
           ))}
-          {/* Add a spacer div at the end to allow scrolling past the last one */}
           <div className="h-48" />
         </div>
       </div>
