@@ -620,8 +620,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
     positionEscrowValue = 1.5;
   }
 
-  const stabilizerX = activeSceneId === 1 ? 270 : 40;
-  const stabilizerY = activeSceneId === 1 ? 200 : 50;
+  const stabilizerX = activeSceneId === 1 ? "45%" : "5%";
+  const stabilizerY = activeSceneId === 1 ? "40%" : "10%";
   const stabilizerScale = activeSceneId === 1 ? 2 : 1;
 
   return (
@@ -640,15 +640,15 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <FloatingAsset
         icon={<Ticket size={96} />}
         label="Stabilizer NFT"
-        x={250}
-        y={200}
+        x={"41.67%"}
+        y={"40%"}
         visible={activeSceneId === 2}
       />
 
       <InfoBox
-        x={0}
-        y={490}
-        w={150}
+        x={"0%"}
+        y={"98%"}
+        w={"25%"}
         visible={activeSceneId >= 4 && activeSceneId < 17}
         title="150% Ratio"
         value="Stabilizer's Preference"
@@ -658,8 +658,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Actor
         icon={<User size={48} />}
         label="User"
-        x={activeSceneId >= 14 && activeSceneId < 21 ? 400 : 500}
-        y={50}
+        x={activeSceneId >= 14 && activeSceneId < 21 ? "66.67%" : "83.33%"}
+        y={"10%"}
         visible={activeSceneId >= 5 && activeSceneId < 26}
         animate={{
           opacity: activeSceneId >= 14 && activeSceneId < 21 ? 0.5 : 1,
@@ -669,18 +669,18 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       <Actor
         icon={<Zap size={48} className="text-yellow-400" />}
         label="Liquidator"
-        x={500}
-        y={50}
+        x={"83.33%"}
+        y={"10%"}
         visible={activeSceneId >= 14 && activeSceneId < 21}
       ></Actor>
 
       {/* Charts */}
       <ChartContainer
         label="Stabilizer Escrow"
-        x={0}
-        y={150}
-        w={150}
-        h={300}
+        x={"0%"}
+        y={"30%"}
+        w={"25%"}
+        h={"60%"}
         visible={activeSceneId >= 3 && activeSceneId < 19 && activeSceneId !== 15}
       >
         <ChartBar
@@ -696,10 +696,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <ChartContainer
         label="User Wallet"
-        x={450}
-        y={150}
-        w={150}
-        h={300}
+        x={"75%"}
+        y={"30%"}
+        w={"25%"}
+        h={"60%"}
         visible={
           (activeSceneId >= 5 && activeSceneId < 14) ||
           (activeSceneId >= 21 && activeSceneId <= 25)
@@ -729,10 +729,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <ChartContainer
         label="Liquidator Wallet"
-        x={450}
-        y={150}
-        w={150}
-        h={300}
+        x={"75%"}
+        y={"30%"}
+        w={"25%"}
+        h={"60%"}
         visible={activeSceneId >= 14 && activeSceneId < 21}
       >
         <div className="w-full h-full flex items-end gap-1">
@@ -761,10 +761,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <ChartContainer
         label="Position Escrow"
-        x={225}
-        y={150}
-        w={150}
-        h={300}
+        x={"37.5%"}
+        y={"30%"}
+        w={"25%"}
+        h={"60%"}
         visible={activeSceneId >= 8 && activeSceneId < 21 && activeSceneId !== 15}
       >
         <AnimatePresence mode="wait">
@@ -812,10 +812,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <ChartContainer
         label="Insurance Fund"
-        x={0}
-        y={150}
-        w={150}
-        h={300}
+        x={"0%"}
+        y={"30%"}
+        w={"25%"}
+        h={"60%"}
         visible={activeSceneId >= 19 && activeSceneId < 21}
       >
         <ChartBar
@@ -829,10 +829,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
       <ChartContainer
         label="USPD System Pool"
-        x={activeSceneId === 15 ? 0 : 225}
-        y={150}
-        w={activeSceneId === 15 ? 400 : 150}
-        h={300}
+        x={activeSceneId === 15 ? "0%" : "37.5%"}
+        y={"30%"}
+        w={activeSceneId === 15 ? "66.67%" : "25%"}
+        h={"60%"}
         visible={
           activeSceneId === 15 || (activeSceneId >= 21 && activeSceneId <= 25)
         }
@@ -841,9 +841,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       </ChartContainer>
 
       <InfoBox
-        x={225}
-        y={490}
-        w={150}
+        x={"37.5%"}
+        y={"98%"}
+        w={"25%"}
         visible={positionInfo.visible}
         title={positionInfo.title}
         value={positionInfo.value}
@@ -851,16 +851,16 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
       />
 
       {/* Arrows */}
-      <Arrow x={155} y={280} visible={activeSceneId === 8} />
-      <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 8} />
-      <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 11} />
-      <Arrow x={300} y={280} rotate={180} visible={activeSceneId === 15} />
-      <Arrow x={300} y={320} rotate={0} visible={activeSceneId === 15} />
-      <Arrow x={385} y={280} rotate={180} visible={activeSceneId === 16} />
-      <Arrow x={385} y={280} rotate={0} visible={activeSceneId === 18} />
-      <Arrow x={155} y={280} rotate={180} visible={activeSceneId === 19} />
-      <Arrow x={400} y={280} rotate={-135} visible={activeSceneId === 23} />
-      <Arrow x={400} y={280} rotate={0} visible={activeSceneId === 24} />
+      <Arrow x={"25.83%"} y={"56%"} visible={activeSceneId === 8} />
+      <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 8} />
+      <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 11} />
+      <Arrow x={"50%"} y={"56%"} rotate={180} visible={activeSceneId === 15} />
+      <Arrow x={"50%"} y={"64%"} rotate={0} visible={activeSceneId === 15} />
+      <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 16} />
+      <Arrow x={"64.17%"} y={"56%"} rotate={0} visible={activeSceneId === 18} />
+      <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 19} />
+      <Arrow x={"66.67%"} y={"56%"} rotate={-135} visible={activeSceneId === 23} />
+      <Arrow x={"68%"} y={"56%"} rotate={0} visible={activeSceneId === 24} />
 
       {/* Yield Chapter Graphics */}
       <AnimatePresence>
@@ -874,35 +874,35 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
             <Actor
               icon={<ShieldCheck size={64} />}
               label="Stabilizer"
-              x={260}
-              y={50}
+              x={"43.33%"}
+              y={"10%"}
               visible={activeSceneId >= 27 && activeSceneId < 30}
             />
             <IncomeStream
               icon={<Coins size={48} className="text-green-500" />}
               label="Staking Yield"
               value="~4% APY"
-              x={50}
-              y={200}
+              x={"8.33%"}
+              y={"40%"}
               visible={activeSceneId === 27 || activeSceneId === 28}
             />
             <IncomeStream
               icon={<Landmark size={48} className="text-blue-500" />}
               label="Funding Fees"
               value="~11% APY"
-              x={400}
-              y={200}
+              x={"66.67%"}
+              y={"40%"}
               visible={activeSceneId === 27 || activeSceneId === 29}
             />
-            <Arrow x={150} y={180} rotate={45} visible={activeSceneId === 27} />
-            <Arrow x={350} y={180} rotate={135} visible={activeSceneId === 27} />
+            <Arrow x={"25%"} y={"36%"} rotate={45} visible={activeSceneId === 27} />
+            <Arrow x={"58.33%"} y={"36%"} rotate={135} visible={activeSceneId === 27} />
 
             <ChartContainer
               label="Leverage"
-              x={150}
-              y={150}
-              w={300}
-              h={300}
+              x={"25%"}
+              y={"30%"}
+              w={"50%"}
+              h={"60%"}
               visible={activeSceneId === 30}
             >
               <div className="w-full h-full flex items-end gap-4">
@@ -923,9 +923,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
               </div>
             </ChartContainer>
             <InfoBox
-              x={150}
-              y={490}
-              w={300}
+              x={"25%"}
+              y={"98%"}
+              w={"50%"}
               visible={activeSceneId === 30}
               title="~3x Leverage"
               value=""
