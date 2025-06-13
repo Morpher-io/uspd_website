@@ -1023,11 +1023,9 @@ const HeroBlock = ({
 );
 
 const MobileScene = ({ scene }: { scene: any }) => (
-  <div className="min-h-screen flex flex-col justify-center items-center py-24 px-4">
-    <div className="h-[50vh] flex items-center justify-center w-full">
-      <SceneGraphic activeSceneId={scene.id} />
-    </div>
-    <div className="mt-12 text-lg text-muted-foreground space-y-4 max-w-md">
+  <div className="flex flex-col items-center py-16 px-4">
+    {/* Text comes first on mobile */}
+    <div className="text-lg text-center text-muted-foreground space-y-4 max-w-md">
       <h2 className="text-3xl font-bold text-foreground">{scene.title}</h2>
       {scene.content}
       {scene.link && (
@@ -1037,6 +1035,10 @@ const MobileScene = ({ scene }: { scene: any }) => (
           </Link>
         </div>
       )}
+    </div>
+    {/* Graphic comes second */}
+    <div className="mt-12 h-[50vh] flex items-center justify-center w-full">
+      <SceneGraphic activeSceneId={scene.id} />
     </div>
   </div>
 );
