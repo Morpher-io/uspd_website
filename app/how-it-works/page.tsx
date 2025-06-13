@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { RetroGrid } from "@/components/magicui/retro-grid";
 import { BlurFade } from "@/components/magicui/blur-fade";
 import { ShineBorder } from "@/components/magicui/shine-border";
+import { MagicCard } from "@/components/magicui/magic-card";
+import { FlickeringGrid } from "@/components/magicui/flickering-grid";
 
 // --- Scene Configuration ---
 const scenes = [
@@ -518,9 +520,8 @@ const InfoBox = ({ title, value, x, y, w, visible, status }: any) => (
       >
         <div className="text-sm text-muted-foreground">{value}</div>
         <div
-          className={`font-bold text-base ${
-            status === "danger" ? "text-red-500" : ""
-          }`}
+          className={`font-bold text-base ${status === "danger" ? "text-red-500" : ""
+            }`}
         >
           {title}
         </div>
@@ -750,8 +751,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                 activeSceneId === 14
                   ? 0.926
                   : activeSceneId >= 18
-                  ? 0.97
-                  : 0
+                    ? 0.97
+                    : 0
               }
               maxValue={1.1}
               color="bg-green-500"
@@ -984,8 +985,8 @@ const TextBlock = ({
     onViewportEnter={() => setActiveSceneId(sceneId)}
     viewport={{ amount: 0.5 }}
   >
-    <BlurFade>
-      <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md">
+    <MagicCard>
+      <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
         <h2 className="text-3xl md:text-4xl font-bold text-foreground">
           {title}
         </h2>
@@ -993,12 +994,12 @@ const TextBlock = ({
         {link && (
           <div className="pt-4">
             <Link href={link.href} passHref>
-              <Button variant="outline">{link.text}</Button>
+              <Button variant="outline" className="hover:cursor-pointer">{link.text}</Button>
             </Link>
           </div>
         )}
       </div>
-    </BlurFade>
+    </MagicCard>
   </motion.div>
 );
 
@@ -1014,7 +1015,15 @@ const HeroBlock = ({
     onViewportEnter={() => setActiveSceneId(sceneId)}
     viewport={{ amount: 0.5 }}
   >
-    <BlurFade>
+    <FlickeringGrid
+      className="absolute top-0 left-0 w-full h-full z-0 [mask-image:radial-gradient(450px_circle_at_center,white,transparent)]"
+      squareSize={4}
+      gridGap={6}
+      color="#ff0000"
+      maxOpacity={0.5}
+      flickerChance={0.1}
+    />
+    <BlurFade inView={true}>
       <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
         <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-red-500/80 dark:text-red-500">
           {title}
