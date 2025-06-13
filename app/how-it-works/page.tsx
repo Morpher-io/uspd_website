@@ -1069,6 +1069,22 @@ export default function HowItWorksPage() {
 
   const allScenes = scenes.slice(0); // Create a copy
 
+  type Scene = typeof scenes[0];
+  const sceneGroups = allScenes
+    .reduce<Array<Array<Scene>>>((acc, scene) => {
+      if (scene.isHero) {
+        acc.push([scene]);
+        acc.push([]); // Start a new group for subsequent non-hero scenes
+      } else {
+        if (acc.length === 0) {
+          acc.push([]);
+        }
+        acc[acc.length - 1].push(scene);
+      }
+      return acc;
+    }, [])
+    .filter((group) => group.length > 0);
+
   return (
     <div className="bg-background text-foreground">
       {/* Scene 0: Intro */}
@@ -1101,21 +1117,13 @@ export default function HowItWorksPage() {
       </section>
 
       {/* Desktop Layout */}
-      <div
-        ref={scenesContainerRef}
-        className="hidden md:grid container mx-auto grid-cols-2 gap-16 relative"
-      >
-        <div className="sticky top-0 h-screen flex items-center justify-center">
-          <SceneGraphic activeSceneId={activeSceneId} />
-        </div>
-        <div className="relative">
-          <motion.div
-            className="absolute top-0 h-16"
-            onViewportEnter={() => setActiveSceneId(0)}
-            viewport={{ amount: 1 }}
-          />
-          {allScenes.map((scene) =>
-            scene.isHero ? (
+      <div ref={scenesContainerRef} className="hidden md:block">
+        {sceneGroups.map((group, index) => {
+          const isHeroGroup = group.length === 1 && group[0].isHero;
+
+          if (isHeroGroup) {
+            const scene = group[0];
+            return (
               <HeroBlock
                 key={scene.id}
                 title={scene.title}
@@ -1125,20 +1133,42 @@ export default function HowItWorksPage() {
               >
                 {scene.content}
               </HeroBlock>
-            ) : (
-              <TextBlock
-                key={scene.id}
-                title={scene.title}
-                sceneId={scene.id}
-                setActiveSceneId={setActiveSceneId}
-                link={scene.link}
-              >
-                {scene.content}
-              </TextBlock>
-            )
-          )}
-          <div className="h-48" />
-        </div>
+            );
+          }
+
+          // It's a non-hero group
+          return (
+            <div
+              key={`group-${index}`}
+              className="container mx-auto grid grid-cols-2 gap-16 relative"
+            >
+              <div className="sticky top-0 h-screen flex items-center justify-center">
+                <SceneGraphic activeSceneId={activeSceneId} />
+              </div>
+              <div className="relative">
+                {index === 0 && (
+                  <motion.div
+                    className="absolute top-0 h-16"
+                    onViewportEnter={() => setActiveSceneId(0)}
+                    viewport={{ amount: 1 }}
+                  />
+                )}
+                {group.map((scene) => (
+                  <TextBlock
+                    key={scene.id}
+                    title={scene.title}
+                    sceneId={scene.id}
+                    setActiveSceneId={setActiveSceneId}
+                    link={scene.link}
+                  >
+                    {scene.content}
+                  </TextBlock>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        <div className="h-48" />
       </div>
 
       {/* Mobile Layout */}
