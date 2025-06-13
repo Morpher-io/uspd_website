@@ -625,7 +625,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   const stabilizerScale = activeSceneId === 1 ? 2 : 1;
 
   return (
-    <div className="relative w-[600px] h-[500px] text-foreground scale-90 md:scale-100">
+    <div className="relative w-full max-w-[600px] h-[500px] text-foreground">
       {/* Actors */}
       <Actor
         icon={<ShieldCheck size={48} />}
@@ -1007,7 +1007,7 @@ const HeroBlock = ({
         {title}
       </h2>
     </AnimatedShinyText>
-    <div className="mt-8 text-xl w-4xl max-w-3xl text-muted-foreground">
+    <div className="mt-8 px-4 text-xl w-full max-w-3xl text-muted-foreground">
       {children}
     </div>
     {link && (
@@ -1068,7 +1068,7 @@ export default function HowItWorksPage() {
         <AuroraText className="text-6xl md:text-8xl font-bold tracking-tighter px-4">
           How USPD Works
         </AuroraText>
-        <div className="mt-4 text-xl w-4xl max-w-3xl">
+        <div className="mt-4 px-4 text-xl w-full max-w-3xl">
           Learn all about Stabilizers, Liquidity and Overcollateralization in
           USPD through a series of interactive scroll-explainer graphics.
         </div>
