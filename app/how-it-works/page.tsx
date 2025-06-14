@@ -22,6 +22,57 @@ import { BlurFade } from "@/components/magicui/blur-fade";
 import { MagicCard } from "@/components/magicui/magic-card";
 import { FlickeringGrid } from "@/components/magicui/flickering-grid";
 
+// --- Progress Indicator Component ---
+const ScrollProgressIndicator = ({
+  scenes,
+  activeSceneId,
+}: {
+  scenes: Array<{ id: number; title: string | React.ReactNode }>;
+  activeSceneId: number;
+}) => {
+  const activeSceneIndex = scenes.findIndex(
+    (scene) => scene.id === activeSceneId
+  );
+
+  if (activeSceneIndex === -1) {
+    return null;
+  }
+
+  // Each dot container is h-6 (1.5rem = 24px), gap is gap-y-4 (1rem = 16px).
+  // Total height per item is 40px.
+  const itemHeight = 40;
+
+  return (
+    <div className="relative flex flex-col justify-center gap-y-4 py-4">
+      <motion.div
+        className="absolute left-0 w-6 h-6 bg-primary rounded-full -z-10"
+        initial={false}
+        animate={{ y: activeSceneIndex * itemHeight }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      />
+      {scenes.map((scene, index) => (
+        <div
+          key={scene.id}
+          className="h-6 w-6 flex items-center justify-center"
+          title={typeof scene.title === "string" ? scene.title : ""}
+        >
+          <motion.div
+            className="h-3 w-3 rounded-full"
+            animate={{
+              scale: activeSceneIndex === index ? 1.2 : 1,
+              backgroundColor:
+                activeSceneIndex === index
+                  ? "hsl(var(--primary-foreground))"
+                  : "hsl(var(--muted-foreground))",
+            }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // --- Scene Configuration ---
 const scenes = [
   {
@@ -1170,11 +1221,19 @@ export default function HowItWorksPage() {
           return (
             <div
               key={`group-${index}`}
-              className="container mx-auto grid grid-cols-2 gap-16 relative"
+              className="container mx-auto grid grid-cols-[1fr_auto_1fr] gap-16 relative"
             >
               <div className="sticky top-0 h-screen flex items-center justify-center">
                 <SceneGraphic activeSceneId={activeSceneId} />
               </div>
+
+              <div className="sticky top-0 h-screen flex items-center justify-center">
+                <ScrollProgressIndicator
+                  scenes={group}
+                  activeSceneId={activeSceneId}
+                />
+              </div>
+
               <div className="relative">
                 {index === 0 && (
                   <motion.div
