@@ -1062,32 +1062,40 @@ const TextBlock = React.forwardRef<
     children: React.ReactNode;
     link?: { href: string; text: string };
   }
->(({ title, sceneId, setActiveSceneId, children, link }, ref) => (
-  <motion.div
-    ref={ref}
-    className="h-screen flex items-center"
-    onViewportEnter={() => setActiveSceneId(sceneId)}
-    viewport={{ amount: 0.5 }}
-  >
-    <BlurFade inView={true}>
-      <MagicCard>
-        <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-            {title}
-          </h2>
-          {children}
-          {link && (
-            <div className="pt-4">
-              <Link href={link.href} passHref>
-                <Button variant="outline" className="hover:cursor-pointer">{link.text}</Button>
-              </Link>
-            </div>
-          )}
-        </div>
-      </MagicCard>
-    </BlurFade>
-  </motion.div>
-));
+>(({ title, sceneId, setActiveSceneId, children, link }, ref) => {
+  const { resolvedTheme } = useTheme();
+  const magicCardGradientColor =
+    resolvedTheme === "dark" ? "#262626" : "#f5f5f5";
+
+  return (
+    <motion.div
+      ref={ref}
+      className="h-screen flex items-center"
+      onViewportEnter={() => setActiveSceneId(sceneId)}
+      viewport={{ amount: 0.5 }}
+    >
+      <BlurFade inView={true}>
+        <MagicCard gradientColor={magicCardGradientColor}>
+          <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+              {title}
+            </h2>
+            {children}
+            {link && (
+              <div className="pt-4">
+                <Link href={link.href} passHref>
+                  <Button variant="outline" className="hover:cursor-pointer">
+                    {link.text}
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </MagicCard>
+      </BlurFade>
+    </motion.div>
+  );
+});
 TextBlock.displayName = "TextBlock";
 
 const HeroBlock = ({
