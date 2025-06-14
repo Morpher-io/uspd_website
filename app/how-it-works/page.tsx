@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useThemeConfig } from "nextra-theme-docs";
+import { useTheme, useThemeConfig } from "nextra-theme-docs";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import {
@@ -33,7 +33,8 @@ const ScrollProgressIndicator = ({
   activeSceneId: number;
   onDotClick: (id: number) => void;
 }) => {
-  const { darkMode } = useThemeConfig();
+  const {theme} = useTheme();
+  const darkMode = theme == 'dark';
   const activeSceneIndex = scenes.findIndex(
     (scene) => scene.id === activeSceneId
   );
@@ -1063,8 +1064,10 @@ const TextBlock = React.forwardRef<
     link?: { href: string; text: string };
   }
 >(({ title, sceneId, setActiveSceneId, children, link }, ref) => {
-  const { darkMode } = useThemeConfig();
-  const magicCardGradientColor = darkMode ? "#262626" : "#f5f5f5";
+
+  const { theme } = useTheme();
+
+  const magicCardGradientColor = theme == 'dark' ? "#262626" : "#f5f5f5";
 
   return (
     <motion.div
