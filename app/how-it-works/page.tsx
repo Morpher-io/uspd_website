@@ -1064,6 +1064,7 @@ const TextBlock = React.forwardRef<
   }
 >(({ title, sceneId, setActiveSceneId, children, link }, ref) => {
   const { resolvedTheme } = useTheme();
+  console.log(resolvedTheme);
   const magicCardGradientColor =
     resolvedTheme === "dark" ? "#262626" : "#f5f5f5";
 
