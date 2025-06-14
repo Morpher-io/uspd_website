@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useMotionTemplate, useMotionValue } from "motion/react";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
@@ -30,8 +30,20 @@ export function MagicCard({
   const mouseX = useMotionValue(-gradientSize);
   const mouseY = useMotionValue(-gradientSize);
 
-  const gradientColor =
-    gradientColorProp ?? (resolvedTheme === "dark" ? "#262626" : "#ffffff");
+  // State to hold the theme-dependent color, avoiding hydration issues.
+  const [gradientColor, setGradientColor] = useState(
+    gradientColorProp ?? "#262626",
+  );
+
+  useEffect(() => {
+    // This effect runs on the client after hydration and when the theme changes.
+    if (gradientColorProp) {
+      setGradientColor(gradientColorProp);
+    } else {
+      // Use a dark gray for the glow in dark mode, and a light gray in light mode.
+      setGradientColor(resolvedTheme === "dark" ? "#262626" : "#f5f5f5");
+    }
+  }, [resolvedTheme, gradientColorProp]);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
