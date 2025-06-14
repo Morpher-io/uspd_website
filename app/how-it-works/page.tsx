@@ -1117,8 +1117,10 @@ const HeroBlock = ({
         {children}
         
       </div>
-      <div className="mt-8 px-4 text-xl w-full max-w-3xl text-muted-foreground">
-        {content}
+      <div className="mt-8 px-4 w-full max-w-3xl">
+        <div className="bg-background/70 backdrop-blur-sm p-6 rounded-lg text-xl text-muted-foreground">
+          {content}
+        </div>
       </div>
       {link && (
         <div className="mt-8">
