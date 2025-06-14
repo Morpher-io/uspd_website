@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "next-themes";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import {
@@ -30,6 +31,7 @@ const ScrollProgressIndicator = ({
   scenes: Array<{ id: number; title: string | React.ReactNode }>;
   activeSceneId: number;
 }) => {
+  const { resolvedTheme } = useTheme();
   const activeSceneIndex = scenes.findIndex(
     (scene) => scene.id === activeSceneId
   );
@@ -57,6 +59,7 @@ const ScrollProgressIndicator = ({
           title={typeof scene.title === "string" ? scene.title : ""}
         >
           <motion.div
+            key={resolvedTheme} // Force re-render on theme change
             className="h-3 w-3 rounded-full"
             animate={{
               scale: activeSceneIndex === index ? 1.2 : 1,
