@@ -1046,7 +1046,7 @@ const TextBlock = ({
     viewport={{ amount: 0.5 }}
   >
     <BlurFade inView={true}>
-      <MagicCard>
+      <MagicCard className="background-black">
         <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground">
             {title}
