@@ -42,40 +42,61 @@ const ScrollProgressIndicator = ({
     return null;
   }
 
-  // Each dot container is h-6 (1.5rem = 24px), gap is gap-y-4 (1rem = 16px).
-  // Total height per item is 40px.
-  const itemHeight = 40;
+  // Refined sizing for a sleeker look
+  const itemHeight = 32; // h-5 (20px) + gap-y-3 (12px)
+
+  // Define colors for clarity and theme-awareness
+  const brandColor = "hsl(161, 100%, 38%)";
+  const activeDotColor = "hsl(0, 0%, 100%)"; // White for high contrast on brand color
+  const inactiveDotColor =
+    resolvedTheme === "dark" ? "hsl(240, 4%, 30%)" : "hsl(240, 5%, 85%)";
+  const lineColor =
+    resolvedTheme === "dark"
+      ? "hsla(240, 4%, 30%, 0.5)"
+      : "hsla(240, 5%, 85%, 0.5)";
 
   return (
-    <div className="relative flex flex-col gap-y-4 py-4">
-      {/* The moving background circle. Black in light mode, white in dark mode. */}
+    <div className="relative flex flex-col items-center gap-y-3 py-4">
+      {/* Fading vertical line */}
+      <div
+        className="absolute top-[-10px] w-[2px] h-[calc(100%_+_20px)]"
+        style={{
+          background: `linear-gradient(to bottom, transparent, ${lineColor}, transparent)`,
+        }}
+      />
+
+      {/* The moving background "blob" */}
       <motion.div
-        className="absolute left-0 w-6 h-6 bg-foreground rounded-full"
+        className="absolute left-1/2 w-5 h-5 rounded-full"
+        style={{
+          translateX: "-50%",
+          backgroundColor: brandColor,
+        }}
         initial={false}
         animate={{ y: activeSceneIndex * itemHeight }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
       />
+
       {scenes.map((scene, index) => (
-        <div
+        <motion.div
           key={scene.id}
-          className="h-6 w-6 flex items-center justify-center z-10 cursor-pointer" // z-10 to ensure dots are on top
+          className="h-5 w-5 flex items-center justify-center z-10 cursor-pointer"
           title={typeof scene.title === "string" ? scene.title : ""}
           onClick={() => onDotClick(scene.id)}
+          whileHover={{ scale: 1.5 }} // Wow-factor: hover effect
+          transition={{ type: "spring", stiffness: 400, damping: 15 }}
         >
           <motion.div
-            // Key combines scene id and theme to ensure uniqueness and re-render on theme change
-            key={`${scene.id}-${resolvedTheme}`}
-            className="h-3 w-3 rounded-full"
+            key={`${scene.id}-${resolvedTheme}`} // Force re-render on theme change
+            className="h-2 w-2 rounded-full"
             animate={{
-              scale: activeSceneIndex === index ? 1.2 : 1,
+              scale: activeSceneIndex === index ? 1.5 : 1,
               backgroundColor:
-                activeSceneIndex === index
-                  ? resolvedTheme == "dark" ? "#333" : "#aaa" // Contrast with moving foreground circle
-                  : resolvedTheme == "dark" ? "#777" : "#ccc", // Grayish for inactive dots
+                activeSceneIndex === index ? activeDotColor : inactiveDotColor,
             }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
           />
-        </div>
+        </motion.div>
       ))}
     </div>
   );
@@ -1049,7 +1070,7 @@ const TextBlock = React.forwardRef<
     viewport={{ amount: 0.5 }}
   >
     <BlurFade inView={true}>
-      <MagicCard className="background-black">
+      <MagicCard>
         <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground">
             {title}
