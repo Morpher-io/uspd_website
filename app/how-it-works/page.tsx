@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme } from "next-themes";
+import { useThemeConfig } from "nextra-theme-docs";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import {
@@ -33,7 +33,7 @@ const ScrollProgressIndicator = ({
   activeSceneId: number;
   onDotClick: (id: number) => void;
 }) => {
-  const { resolvedTheme } = useTheme();
+  const { darkMode } = useThemeConfig();
   const activeSceneIndex = scenes.findIndex(
     (scene) => scene.id === activeSceneId
   );
@@ -48,12 +48,12 @@ const ScrollProgressIndicator = ({
   // Define colors for clarity and theme-awareness
   const brandColor = "hsl(161, 100%, 38%)";
   const activeDotColor = "hsl(0, 0%, 100%)"; // White for high contrast on brand color
-  const inactiveDotColor =
-    resolvedTheme === "dark" ? "hsl(240, 4%, 30%)" : "hsl(240, 5%, 85%)";
-  const lineColor =
-    resolvedTheme === "dark"
-      ? "hsla(240, 4%, 30%, 0.5)"
-      : "hsla(240, 5%, 85%, 0.5)";
+  const inactiveDotColor = darkMode
+    ? "hsl(240, 4%, 30%)"
+    : "hsl(240, 5%, 85%)";
+  const lineColor = darkMode
+    ? "hsla(240, 4%, 30%, 0.5)"
+    : "hsla(240, 5%, 85%, 0.5)";
 
   return (
     <div className="relative flex flex-col items-center gap-y-3 py-4">
@@ -87,7 +87,7 @@ const ScrollProgressIndicator = ({
           transition={{ type: "spring", stiffness: 400, damping: 15 }}
         >
           <motion.div
-            key={`${scene.id}-${resolvedTheme}`} // Force re-render on theme change
+            key={`${scene.id}-${darkMode}`} // Force re-render on theme change
             className="h-2 w-2 rounded-full"
             animate={{
               scale: activeSceneIndex === index ? 1.5 : 1,
@@ -1063,11 +1063,6 @@ const TextBlock = React.forwardRef<
     link?: { href: string; text: string };
   }
 >(({ title, sceneId, setActiveSceneId, children, link }, ref) => {
-  const { resolvedTheme } = useTheme();
-  console.log(resolvedTheme);
-  const magicCardGradientColor =
-    resolvedTheme === "dark" ? "#262626" : "#f5f5f5";
-
   return (
     <motion.div
       ref={ref}
@@ -1076,7 +1071,7 @@ const TextBlock = React.forwardRef<
       viewport={{ amount: 0.5 }}
     >
       <BlurFade inView={true}>
-        <MagicCard gradientColor={magicCardGradientColor}>
+        <MagicCard>
           <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               {title}
