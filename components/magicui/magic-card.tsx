@@ -2,6 +2,7 @@
 
 import { motion, useMotionTemplate, useMotionValue } from "motion/react";
 import React, { useCallback, useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
 
@@ -19,14 +20,18 @@ export function MagicCard({
   children,
   className,
   gradientSize = 200,
-  gradientColor = "#262626",
+  gradientColor: gradientColorProp,
   gradientOpacity = 0.8,
   gradientFrom = "#9E7AFF",
   gradientTo = "#FE8BBB",
 }: MagicCardProps) {
+  const { resolvedTheme } = useTheme();
   const cardRef = useRef<HTMLDivElement>(null);
   const mouseX = useMotionValue(-gradientSize);
   const mouseY = useMotionValue(-gradientSize);
+
+  const gradientColor =
+    gradientColorProp ?? (resolvedTheme === "dark" ? "#262626" : "#ffffff");
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
