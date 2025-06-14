@@ -46,8 +46,9 @@ const ScrollProgressIndicator = ({
 
   return (
     <div className="relative flex flex-col justify-center gap-y-4 py-4">
+      {/* The moving background circle. Black in light mode, white in dark mode. */}
       <motion.div
-        className="absolute left-0 w-6 h-6 bg-primary rounded-full -z-10"
+        className="absolute left-0 w-6 h-6 bg-foreground rounded-full"
         initial={false}
         animate={{ y: activeSceneIndex * itemHeight }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -55,18 +56,19 @@ const ScrollProgressIndicator = ({
       {scenes.map((scene, index) => (
         <div
           key={scene.id}
-          className="h-6 w-6 flex items-center justify-center"
+          className="h-6 w-6 flex items-center justify-center z-10" // z-10 to ensure dots are on top
           title={typeof scene.title === "string" ? scene.title : ""}
         >
           <motion.div
-            key={resolvedTheme} // Force re-render on theme change
+            // Key combines scene id and theme to ensure uniqueness and re-render on theme change
+            key={`${scene.id}-${resolvedTheme}`}
             className="h-3 w-3 rounded-full"
             animate={{
               scale: activeSceneIndex === index ? 1.2 : 1,
               backgroundColor:
                 activeSceneIndex === index
-                  ? "hsl(var(--primary-foreground))"
-                  : "hsl(var(--muted-foreground))",
+                  ? "hsl(var(--background))" // Contrast with moving foreground circle
+                  : "hsl(var(--muted-foreground))", // Grayish for inactive dots
             }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           />
