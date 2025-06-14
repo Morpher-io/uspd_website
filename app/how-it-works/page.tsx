@@ -1063,6 +1063,9 @@ const TextBlock = React.forwardRef<
     link?: { href: string; text: string };
   }
 >(({ title, sceneId, setActiveSceneId, children, link }, ref) => {
+  const { darkMode } = useThemeConfig();
+  const magicCardGradientColor = darkMode ? "#262626" : "#f5f5f5";
+
   return (
     <motion.div
       ref={ref}
@@ -1071,7 +1074,7 @@ const TextBlock = React.forwardRef<
       viewport={{ amount: 0.5 }}
     >
       <BlurFade inView={true}>
-        <MagicCard>
+        <MagicCard gradientColor={magicCardGradientColor}>
           <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               {title}
