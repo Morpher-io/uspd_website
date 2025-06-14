@@ -27,9 +27,11 @@ import { FlickeringGrid } from "@/components/magicui/flickering-grid";
 const ScrollProgressIndicator = ({
   scenes,
   activeSceneId,
+  onDotClick,
 }: {
   scenes: Array<{ id: number; title: string | React.ReactNode }>;
   activeSceneId: number;
+  onDotClick: (id: number) => void;
 }) => {
   const { resolvedTheme } = useTheme();
   const activeSceneIndex = scenes.findIndex(
@@ -56,8 +58,9 @@ const ScrollProgressIndicator = ({
       {scenes.map((scene, index) => (
         <div
           key={scene.id}
-          className="h-6 w-6 flex items-center justify-center z-10" // z-10 to ensure dots are on top
+          className="h-6 w-6 flex items-center justify-center z-10 cursor-pointer" // z-10 to ensure dots are on top
           title={typeof scene.title === "string" ? scene.title : ""}
+          onClick={() => onDotClick(scene.id)}
         >
           <motion.div
             // Key combines scene id and theme to ensure uniqueness and re-render on theme change
@@ -1029,20 +1032,18 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
 // --- Helper Components ---
 
-const TextBlock = ({
-  title,
-  sceneId,
-  setActiveSceneId,
-  children,
-  link,
-}: {
-  title: string;
-  sceneId: number;
-  setActiveSceneId: (id: number) => void;
-  children: React.ReactNode;
-  link?: { href: string; text: string };
-}) => (
+const TextBlock = React.forwardRef<
+  HTMLDivElement,
+  {
+    title: string;
+    sceneId: number;
+    setActiveSceneId: (id: number) => void;
+    children: React.ReactNode;
+    link?: { href: string; text: string };
+  }
+>(({ title, sceneId, setActiveSceneId, children, link }, ref) => (
   <motion.div
+    ref={ref}
     className="h-screen flex items-center"
     onViewportEnter={() => setActiveSceneId(sceneId)}
     viewport={{ amount: 0.5 }}
@@ -1065,7 +1066,8 @@ const TextBlock = ({
       </MagicCard>
     </BlurFade>
   </motion.div>
-);
+));
+TextBlock.displayName = "TextBlock";
 
 const HeroBlock = ({
   sceneId,
@@ -1136,9 +1138,17 @@ const MobileScene = ({ scene }: { scene: any }) => (
 export default function HowItWorksPage() {
   const [activeSceneId, setActiveSceneId] = useState(0);
   const scenesContainerRef = useRef<HTMLDivElement>(null);
+  const sceneRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
 
   const scrollToStart = () => {
     scenesContainerRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleDotClick = (sceneId: number) => {
+    const element = sceneRefs.current.get(sceneId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   };
 
   const allScenes = scenes.slice(0); // Create a copy
@@ -1236,6 +1246,7 @@ export default function HowItWorksPage() {
                 <ScrollProgressIndicator
                   scenes={group}
                   activeSceneId={activeSceneId}
+                  onDotClick={handleDotClick}
                 />
               </div>
 
@@ -1249,6 +1260,7 @@ export default function HowItWorksPage() {
                 )}
                 {group.map((scene) => (
                   <TextBlock
+                    ref={(el) => sceneRefs.current.set(scene.id, el)}
                     key={scene.id}
                     title={scene.title}
                     sceneId={scene.id}
