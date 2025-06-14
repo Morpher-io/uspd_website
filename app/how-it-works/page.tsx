@@ -45,7 +45,7 @@ const ScrollProgressIndicator = ({
   const itemHeight = 40;
 
   return (
-    <div className="relative flex flex-col justify-center gap-y-4 py-4">
+    <div className="relative flex flex-col gap-y-4 py-4">
       {/* The moving background circle. Black in light mode, white in dark mode. */}
       <motion.div
         className="absolute left-0 w-6 h-6 bg-foreground rounded-full"
@@ -67,8 +67,8 @@ const ScrollProgressIndicator = ({
               scale: activeSceneIndex === index ? 1.2 : 1,
               backgroundColor:
                 activeSceneIndex === index
-                  ? "hsl(var(--background))" // Contrast with moving foreground circle
-                  : "hsl(var(--muted-foreground))", // Grayish for inactive dots
+                  ? resolvedTheme == "dark" ? "#333" : "#aaa" // Contrast with moving foreground circle
+                  : resolvedTheme == "dark" ? "#777" : "#ccc", // Grayish for inactive dots
             }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           />
