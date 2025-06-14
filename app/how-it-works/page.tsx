@@ -12,19 +12,13 @@ import {
   Ticket,
   ArrowRight,
   Zap,
-  Shield,
   Users,
   Landmark,
-  Plus,
-  Minus,
-  Scale,
 } from "lucide-react";
-import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { RetroGrid } from "@/components/magicui/retro-grid";
 import { BlurFade } from "@/components/magicui/blur-fade";
-import { ShineBorder } from "@/components/magicui/shine-border";
 import { MagicCard } from "@/components/magicui/magic-card";
 import { FlickeringGrid } from "@/components/magicui/flickering-grid";
 
@@ -149,7 +143,7 @@ const scenes = [
   },
   {
     id: 12,
-    title: "Danger Zone: Price Drops",
+    title: <>Danger Zone: Price Drops</>,
     isHero: true,
     heroOptions: {
       gridColor: "#ff0000",
@@ -637,7 +631,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
     positionEscrowValue = 1.5;
   }
 
-  const stabilizerX = activeSceneId === 1 ? "45%" : "5%";
+  const stabilizerX = activeSceneId === 1 ? "45%" : "7%";
   const stabilizerY = activeSceneId === 1 ? "40%" : "10%";
   const stabilizerScale = activeSceneId === 1 ? 2 : 1;
 
@@ -655,7 +649,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           labelVisible={activeSceneId > 1}
           x={stabilizerX}
           y={stabilizerY}
-          visible={activeSceneId >= 1 && activeSceneId < 17}
+          visible={activeSceneId >= 1 && activeSceneId < 19 && activeSceneId != 15}
           iconAnimate={{ scale: stabilizerScale }}
         ></Actor>
 
@@ -671,7 +665,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           x={"0%"}
           y={"98%"}
           w={"25%"}
-          visible={activeSceneId >= 4 && activeSceneId < 17}
+          visible={activeSceneId >= 4 && activeSceneId < 19 && activeSceneId != 15}
           title="150% Ratio"
           value="Stabilizer's Preference"
           status="safe"
@@ -682,7 +676,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           label="User"
           x={activeSceneId >= 14 && activeSceneId < 21 ? "66.67%" : "83.33%"}
           y={"10%"}
-          visible={activeSceneId >= 5 && activeSceneId < 26}
+          visible={activeSceneId >= 5 && activeSceneId < 26 && activeSceneId != 15}
           animate={{
             opacity: activeSceneId >= 14 && activeSceneId < 21 ? 0.5 : 1,
           }}
@@ -997,21 +991,23 @@ const TextBlock = ({
     onViewportEnter={() => setActiveSceneId(sceneId)}
     viewport={{ amount: 0.5 }}
   >
-    <MagicCard>
-      <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-          {title}
-        </h2>
-        {children}
-        {link && (
-          <div className="pt-4">
-            <Link href={link.href} passHref>
-              <Button variant="outline" className="hover:cursor-pointer">{link.text}</Button>
-            </Link>
-          </div>
-        )}
-      </div>
-    </MagicCard>
+    <BlurFade inView={true}>
+      <MagicCard>
+        <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+            {title}
+          </h2>
+          {children}
+          {link && (
+            <div className="pt-4">
+              <Link href={link.href} passHref>
+                <Button variant="outline" className="hover:cursor-pointer">{link.text}</Button>
+              </Link>
+            </div>
+          )}
+        </div>
+      </MagicCard>
+    </BlurFade>
   </motion.div>
 );
 
@@ -1029,7 +1025,7 @@ const HeroBlock = ({
     viewport={{ amount: 0.5 }}
   >
     <FlickeringGrid
-      className="absolute top-0 left-0 w-full h-full z-0 [mask-image:radial-gradient(450px_circle_at_center,white,transparent)]"
+      className="absolute top-0 left-0 w-full h-full z-0 [mask-image:radial-gradient(650px_circle_at_center,white,transparent)]"
       squareSize={4}
       gridGap={6}
       color={heroOptions.gridColor}
@@ -1037,16 +1033,18 @@ const HeroBlock = ({
       flickerChance={0.1}
     />
     <BlurFade inView={true}>
-      <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
+      <div className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
+        
         {children}
-      </AnimatedShinyText>
+        
+      </div>
       <div className="mt-8 px-4 text-xl w-full max-w-3xl text-muted-foreground">
         {content}
       </div>
       {link && (
         <div className="mt-8">
           <Link href={link.href} passHref>
-            <Button variant="outline" size="lg">
+            <Button variant="outline" size="lg" className="hover:cursor-pointer">
               {link.text}
             </Button>
           </Link>

@@ -2,7 +2,7 @@
 
 import { Footer as NextraFooter, Layout, Navbar } from 'nextra-theme-docs'
 import { Footer } from '@/components/Footer';
-import { Banner, Head } from 'nextra/components'
+import { Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import { Toaster } from "@/components/ui/sonner" // if you re-export from ui                                                      
 
