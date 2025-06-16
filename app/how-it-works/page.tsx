@@ -863,25 +863,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           }
         >
           <AnimatePresence mode="wait">
-            {activeSceneId === 6 ? (
+            {activeSceneId >= 6 && activeSceneId <= 7 ? (
               <motion.div
-                key="one-bar-user"
-                className="w-full h-full flex items-end gap-1"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <ChartBar
-                  value={1}
-                  maxValue={1.6}
-                  color="bg-green-500"
-                  label="User"
-                  unit="ETH"
-                />
-              </motion.div>
-            ) : activeSceneId === 7 ? (
-              <motion.div
-                key="two-bars"
+                key="two-bars-evolving"
                 className="w-full h-full flex items-end gap-1"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -895,31 +879,29 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                   unit="ETH"
                 />
                 <ChartBar
-                  value={0.5}
+                  value={activeSceneId === 6 ? 0 : 0.5}
                   maxValue={1.6}
                   color="bg-blue-700"
                   label="Stabilizer"
                   unit="ETH"
                 />
               </motion.div>
-            ) : (
-              activeSceneId >= 8 && (
-                <motion.div
-                  key="one-bar-combined"
-                  className="w-full h-full flex items-end gap-1"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <ChartBar
-                    value={positionEscrowValue}
-                    maxValue={1.6}
-                    color="bg-teal-500"
-                    label="Total Collateral"
-                    unit="ETH"
-                  />
-                </motion.div>
-              )
-            )}
+            ) : activeSceneId >= 8 ? (
+              <motion.div
+                key="one-bar-combined"
+                className="w-full h-full flex items-end gap-1"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <ChartBar
+                  value={positionEscrowValue}
+                  maxValue={1.6}
+                  color="bg-teal-500"
+                  label="Total Collateral"
+                  unit="ETH"
+                />
+              </motion.div>
+            ) : null}
           </AnimatePresence>
         </ChartContainer>
 
