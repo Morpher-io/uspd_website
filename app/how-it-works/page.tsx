@@ -715,7 +715,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
   const stabilizerX =
     activeSceneId === 1 ? "45%" : activeSceneId === 2 ? "50%" : "7%";
   const stabilizerY =
-    activeSceneId === 1 ? "40%" : activeSceneId === 2 ? "25%" : "10%";
+    activeSceneId === 1 ? "30%" : activeSceneId === 2 ? "25%" : "10%";
   const stabilizerAnimate = activeSceneId === 2 ? { x: "-50%" } : {};
   const stabilizerScale = activeSceneId === 1 ? 2 : 1;
 
@@ -730,7 +730,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <Actor
           icon={<ShieldCheck size={48} />}
           label="Stabilizer"
-          labelVisible={activeSceneId > 1}
+          labelVisible={activeSceneId !== 2}
           x={stabilizerX}
           y={stabilizerY}
           visible={activeSceneId >= 1 && activeSceneId < 19 && activeSceneId != 15}
@@ -749,6 +749,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                 translateX: "-50%",
                 translateY: "-50%",
               }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.5 }}
             >
               <h3 className="text-lg font-bold mb-2">Stabilizer NFT</h3>
@@ -759,9 +761,13 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                 >
                   Stabilizer Escrow
                 </motion.div>
-                <div className="w-32 h-24 bg-secondary/50 rounded-lg border-2 border-dashed flex items-center justify-center text-center text-xs p-2">
+                <motion.div
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-32 h-24 bg-secondary/50 rounded-lg border-2 border-dashed flex items-center justify-center text-center text-xs p-2"
+                >
                   Position Escrow
-                </div>
+                </motion.div>
               </div>
             </motion.div>
           )}
