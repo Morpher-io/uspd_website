@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme, useThemeConfig } from "nextra-theme-docs";
+import { useTheme } from "nextra-theme-docs";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import {
@@ -1057,17 +1057,15 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 const TextBlock = React.forwardRef<
   HTMLDivElement,
   {
-    title: string;
+    title: string | React.ReactNode;
     sceneId: number;
+    activeSceneId: number;
     setActiveSceneId: (id: number) => void;
     children: React.ReactNode;
     link?: { href: string; text: string };
   }
->(({ title, sceneId, setActiveSceneId, children, link }, ref) => {
-
-  const { theme } = useTheme();
-
-  const magicCardGradientColor = theme == 'dark' ? "#262626" : "#f5f5f5";
+>(({ title, sceneId, activeSceneId, setActiveSceneId, children, link }, ref) => {
+  const isActive = sceneId === activeSceneId;
 
   return (
     <motion.div
@@ -1076,23 +1074,9 @@ const TextBlock = React.forwardRef<
       onViewportEnter={() => setActiveSceneId(sceneId)}
       viewport={{ amount: 0.5 }}
     >
-      <BlurFade inView={true}>
-        <ChronoCard title={title}>
-          <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-              {title}
-            </h2>
-            {children}
-            {link && (
-              <div className="pt-4">
-                <Link href={link.href} passHref>
-                  <Button variant="outline" className="hover:cursor-pointer">
-                    {link.text}
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
+      <BlurFade inView={isActive} delay={0.25}>
+        <ChronoCard isActive={isActive} title={title} link={link}>
+          {children}
         </ChronoCard>
       </BlurFade>
     </motion.div>
@@ -1297,6 +1281,7 @@ export default function HowItWorksPage() {
                     key={scene.id}
                     title={scene.title}
                     sceneId={scene.id}
+                    activeSceneId={activeSceneId}
                     setActiveSceneId={setActiveSceneId}
                     link={scene.link}
                   >
