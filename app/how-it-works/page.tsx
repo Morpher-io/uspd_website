@@ -586,7 +586,7 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
   </AnimatePresence>
 );
 
-const InfoBox = ({ title, value, x, y, w, visible, status }: any) => (
+const InfoBox = ({ title, value, x, y, w, visible, status, centered = false }: any) => (
   <AnimatePresence mode="wait">
     {visible && (
       <motion.div
@@ -596,7 +596,12 @@ const InfoBox = ({ title, value, x, y, w, visible, status }: any) => (
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.3 }}
-        style={{ left: x, top: y, width: w }}
+        style={{
+          left: x,
+          top: y,
+          width: w,
+          transform: centered ? "translateX(-50%)" : undefined,
+        }}
       >
         <div className="text-sm text-muted-foreground">{value}</div>
         <div
@@ -974,7 +979,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1, transition: { delay: 0.3 } }}
                     className="absolute"
-                    style={{ left: "50%", top: "42%", transform: "translateX(-50%)" }}
+                    style={{ left: "calc(50% - 24px)", top: "42%" }}
                   >
                     <Scale size={48} />
                   </motion.div>
@@ -1006,12 +1011,13 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                     </motion.div>
                     <Arrow x="calc(50% - 24px)" y="48%" rotate={90} visible={true} />
                     <InfoBox
-                      x="0"
+                      x="50%"
                       y="75%"
-                      w="100%"
+                      w="auto"
                       visible={true}
                       title="~11% APY"
                       value="Funding Fees"
+                      centered={true}
                     />
                   </motion.div>
                 )}
