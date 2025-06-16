@@ -926,9 +926,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
         <ChartContainer
           label="USPD System Pool"
-          x={activeSceneId === 15 ? "0%" : "37.5%"}
+          x={"0%"}
           y={"30%"}
-          w={activeSceneId === 15 ? "66.67%" : "25%"}
+          w={"66.67%"}
           h={"60%"}
           visible={
             activeSceneId === 15 || (activeSceneId >= 21 && activeSceneId <= 25)
