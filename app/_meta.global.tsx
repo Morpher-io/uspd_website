@@ -10,6 +10,12 @@ export default {
     title: 'Documentation',
 
   },
+  "how-it-works": {
+    // type: 'page',
+    type: 'page',
+    title: 'How USPD Works',
+
+  },
   docshref: {
     type: 'page',
     title: 'Documentation',

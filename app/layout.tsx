@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 
 const navbar = (
   <Navbar
-    logo={<Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />}
+    logo={<div className='flex gap-2 items-center'><Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} /><span>USPD</span></div>}
     children={<ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />}
 
   // ... Your additional navbar options

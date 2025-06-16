@@ -457,6 +457,22 @@ const scenes = [
     ),
     link: { href: "/stabilizer", text: "Become a Stabilizer" },
   },
+  {
+    id: 33,
+    title: "Questions?",
+    isHero: true,
+
+    heroOptions: {
+      gridColor: "#888888",
+      textColor: "text-foreground",
+    },
+    content: (
+      <p>
+        If you have any questions, feel free to join our Telegram community
+      </p>
+    ),
+    link: { href: "https://t.me/+XKKeAZZwypM0MDFk", text: "Join Telegram" },
+  },
 ];
 
 // --- Graphic Components ---
@@ -508,23 +524,6 @@ const Actor = ({
   </AnimatePresence>
 );
 
-const FloatingAsset = ({ icon, label, x, y, visible }: any) => (
-  <AnimatePresence>
-    {visible && (
-      <motion.div
-        className="absolute flex flex-col items-center gap-1"
-        initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0 }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
-        style={{ left: x, top: y }}
-      >
-        {icon}
-        <span className="text-xs">{label}</span>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
 
 const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
   <AnimatePresence>
@@ -848,8 +847,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           w={"25%"}
           h={"60%"}
           visible={
-            activeSceneId === 2 ||
-            (activeSceneId >= 6 && activeSceneId < 21 && activeSceneId !== 15)
+            
+            (activeSceneId >= 2 && activeSceneId < 21 && activeSceneId !== 15)
           }
         >
           <AnimatePresence mode="wait">
@@ -979,7 +978,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1, transition: { delay: 0.3 } }}
                     className="absolute"
-                    style={{ left: "calc(50% - 24px)", top: "42%" }}
+                    style={{ left: "50%", top: "42%" }}
                   >
                     <Scale size={48} />
                   </motion.div>
@@ -991,7 +990,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="relative w-full h-full"
+                    className="relative w-full h-full justify-center"
                   >
                     <YieldStrategyBox
                       icon={<TrendingDown size={48} />}
@@ -1005,11 +1004,11 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: 0.5 } }}
                       className="absolute"
-                      style={{ top: "60%", left: "50%", transform: "translateX(-50%)" }}
+                      style={{ top: "62%", left: "52%" }}
                     >
                       <Coins size={48} className="text-yellow-400" />
                     </motion.div>
-                    <Arrow x="calc(50% - 24px)" y="48%" rotate={90} visible={true} />
+                    <Arrow x="52%" y="52%" rotate={90} visible={true} />
                     <InfoBox
                       x="50%"
                       y="75%"
@@ -1150,7 +1149,7 @@ const HeroBlock = ({
     viewport={{ amount: 0.5 }}
   >
     <FlickeringGrid
-      className="absolute top-0 left-0 w-full h-full z-0 [mask-image:radial-gradient(650px_circle_at_center,white,transparent)]"
+      className="absolute top-0 left-0 w-full h-full z-0 [mask-image:radial-gradient(550px_circle_at_center,white,transparent)]"
       squareSize={4}
       gridGap={6}
       color={heroOptions.gridColor}
