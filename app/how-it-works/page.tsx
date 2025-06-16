@@ -712,11 +712,8 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
     positionEscrowValue = 1.5;
   }
 
-  const stabilizerX =
-    activeSceneId === 1 ? "45%" : activeSceneId === 2 ? "50%" : "7%";
-  const stabilizerY =
-    activeSceneId === 1 ? "30%" : activeSceneId === 2 ? "25%" : "10%";
-  const stabilizerAnimate = activeSceneId === 2 ? { x: "-50%" } : {};
+  const stabilizerX = activeSceneId === 1 ? "45%" : "7%";
+  const stabilizerY = activeSceneId === 1 ? "40%" : "10%";
   const stabilizerScale = activeSceneId === 1 ? 2 : 1;
 
   return (
@@ -730,74 +727,33 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         <Actor
           icon={<ShieldCheck size={48} />}
           label="Stabilizer"
-          labelVisible={activeSceneId !== 2}
+          labelVisible={activeSceneId > 1}
           x={stabilizerX}
           y={stabilizerY}
           visible={activeSceneId >= 1 && activeSceneId < 19 && activeSceneId != 15}
-          animate={stabilizerAnimate}
           iconAnimate={{ scale: stabilizerScale }}
         ></Actor>
 
-        {/* NFT Minting Animation (Scene 2) */}
-        <AnimatePresence>
-          {activeSceneId === 2 && (
-            <motion.div
-              className="absolute flex flex-col items-center justify-center"
-              style={{
-                left: "50%",
-                top: "50%",
-                translateX: "-50%",
-                translateY: "-50%",
-              }}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            >
-              <h3 className="text-lg font-bold mb-2">Stabilizer NFT</h3>
-              <div className="flex gap-4 p-4 border-2 border-dashed rounded-lg bg-background/50">
-                <motion.div
-                  layoutId="stabilizer-escrow-box"
-                  className="w-32 h-24 bg-secondary/50 rounded-lg border-2 border-dashed flex items-center justify-center text-center text-xs p-2"
-                >
-                  Stabilizer Escrow
-                </motion.div>
-                <motion.div
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-32 h-24 bg-secondary/50 rounded-lg border-2 border-dashed flex items-center justify-center text-center text-xs p-2"
-                >
-                  Position Escrow
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Stabilizer Escrow Chart (Scene 3+) */}
-        <AnimatePresence>
-          {activeSceneId >= 3 && activeSceneId < 19 && activeSceneId !== 15 && (
-            <motion.div
-              layoutId="stabilizer-escrow-box"
-              className="absolute bg-secondary/50 rounded-lg border-2 border-dashed"
-              style={{ left: "0%", top: "30%", width: "25%", height: "60%" }}
-            >
-              <h3 className="text-center font-bold mt-2 mb-2">
-                Stabilizer Escrow
-              </h3>
-              <div className="relative w-full h-full flex items-end justify-center gap-2 px-2 pb-12">
-                <ChartBar
-                  value={
-                    activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
-                  }
-                  maxValue={MAX_CHART_ETH}
-                  color="bg-gray-500"
-                  label="Unallocated"
-                  unit="ETH"
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Charts */}
+        <ChartContainer
+          label="Stabilizer Escrow"
+          x={"0%"}
+          y={"30%"}
+          w={"25%"}
+          h={"60%"}
+          visible={activeSceneId >= 2 && activeSceneId < 19 && activeSceneId !== 15}
+        >
+          <ChartBar
+            value={
+              activeSceneId < 3 ? 0 : // Scenes before 3 show 0
+              activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
+            }
+            maxValue={MAX_CHART_ETH}
+            color="bg-gray-500"
+            label="Unallocated"
+            unit="ETH"
+          />
+        </ChartContainer>
 
         <InfoBox
           x={"0%"}
@@ -901,7 +857,10 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           y={"30%"}
           w={"25%"}
           h={"60%"}
-          visible={activeSceneId >= 6 && activeSceneId < 21 && activeSceneId !== 15}
+          visible={
+            activeSceneId === 2 ||
+            (activeSceneId >= 6 && activeSceneId < 21 && activeSceneId !== 15)
+          }
         >
           <AnimatePresence mode="wait">
             {activeSceneId === 6 ? (
