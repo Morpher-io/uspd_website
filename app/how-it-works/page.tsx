@@ -712,8 +712,11 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
     positionEscrowValue = 1.5;
   }
 
-  const stabilizerX = activeSceneId === 1 ? "45%" : "7%";
-  const stabilizerY = activeSceneId === 1 ? "40%" : "10%";
+  const stabilizerX =
+    activeSceneId === 1 ? "45%" : activeSceneId === 2 ? "50%" : "7%";
+  const stabilizerY =
+    activeSceneId === 1 ? "40%" : activeSceneId === 2 ? "25%" : "10%";
+  const stabilizerAnimate = activeSceneId === 2 ? { x: "-50%" } : {};
   const stabilizerScale = activeSceneId === 1 ? 2 : 1;
 
   return (
@@ -731,16 +734,64 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           x={stabilizerX}
           y={stabilizerY}
           visible={activeSceneId >= 1 && activeSceneId < 19 && activeSceneId != 15}
+          animate={stabilizerAnimate}
           iconAnimate={{ scale: stabilizerScale }}
         ></Actor>
 
-        <FloatingAsset
-          icon={<Ticket size={96} />}
-          label="Stabilizer NFT"
-          x={"41.67%"}
-          y={"40%"}
-          visible={activeSceneId === 2}
-        />
+        {/* NFT Minting Animation (Scene 2) */}
+        <AnimatePresence>
+          {activeSceneId === 2 && (
+            <motion.div
+              className="absolute flex flex-col items-center justify-center"
+              style={{
+                left: "50%",
+                top: "50%",
+                translateX: "-50%",
+                translateY: "-50%",
+              }}
+              exit={{ opacity: 0, scale: 0.5 }}
+            >
+              <h3 className="text-lg font-bold mb-2">Stabilizer NFT</h3>
+              <div className="flex gap-4 p-4 border-2 border-dashed rounded-lg bg-background/50">
+                <motion.div
+                  layoutId="stabilizer-escrow-box"
+                  className="w-32 h-24 bg-secondary/50 rounded-lg border-2 border-dashed flex items-center justify-center text-center text-xs p-2"
+                >
+                  Stabilizer Escrow
+                </motion.div>
+                <div className="w-32 h-24 bg-secondary/50 rounded-lg border-2 border-dashed flex items-center justify-center text-center text-xs p-2">
+                  Position Escrow
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Stabilizer Escrow Chart (Scene 3+) */}
+        <AnimatePresence>
+          {activeSceneId >= 3 && activeSceneId < 19 && activeSceneId !== 15 && (
+            <motion.div
+              layoutId="stabilizer-escrow-box"
+              className="absolute bg-secondary/50 rounded-lg border-2 border-dashed"
+              style={{ left: "0%", top: "30%", width: "25%", height: "60%" }}
+            >
+              <h3 className="text-center font-bold mt-2 mb-2">
+                Stabilizer Escrow
+              </h3>
+              <div className="relative w-full h-full flex items-end justify-center gap-2 px-2 pb-12">
+                <ChartBar
+                  value={
+                    activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
+                  }
+                  maxValue={MAX_CHART_ETH}
+                  color="bg-gray-500"
+                  label="Unallocated"
+                  unit="ETH"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <InfoBox
           x={"0%"}
@@ -772,24 +823,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         ></Actor>
 
         {/* Charts */}
-        <ChartContainer
-          label="Stabilizer Escrow"
-          x={"0%"}
-          y={"30%"}
-          w={"25%"}
-          h={"60%"}
-          visible={activeSceneId >= 3 && activeSceneId < 19 && activeSceneId !== 15}
-        >
-          <ChartBar
-            value={
-              activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
-            }
-            maxValue={MAX_CHART_ETH}
-            color="bg-gray-500"
-            label="Unallocated"
-            unit="ETH"
-          />
-        </ChartContainer>
 
         <ChartContainer
           label="User Wallet"
