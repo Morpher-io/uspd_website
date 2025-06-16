@@ -19,12 +19,16 @@ export function ChronoCard({
   link,
 }: ChronoCardProps) {
   return (
-    <div className="relative w-full max-w-md rounded-lg border border-border bg-background/50 p-6 shadow-sm backdrop-blur-lg transition-all duration-300">
-      {/* Animated active indicator bar */}
+    <div className="relative w-full max-w-md rounded-lg bg-background/60 p-6 shadow-lg backdrop-blur-xl transition-all duration-300">
+      {/* Animated active indicator bar with gradient */}
       <AnimatePresence>
         {isActive && (
           <motion.div
-            className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-primary"
+            className="absolute left-0 top-0 h-full w-0.5 rounded-l-lg"
+            style={{
+              background:
+                "linear-gradient(to bottom, transparent, hsl(161, 100%, 38%), transparent)",
+            }}
             initial={{ scaleY: 0, originY: 0.5 }}
             animate={{ scaleY: 1, originY: 0.5 }}
             exit={{ scaleY: 0, originY: 0.5 }}
@@ -33,7 +37,7 @@ export function ChronoCard({
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 space-y-4">
+      <div className="relative z-10 space-y-4 pl-4">
         <h2 className="text-3xl md:text-4xl font-bold text-foreground">
           {title}
         </h2>
