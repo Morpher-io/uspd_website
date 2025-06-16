@@ -751,7 +751,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
               }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
             >
               <h3 className="text-lg font-bold mb-2">Stabilizer NFT</h3>
               <div className="flex gap-4 p-4 border-2 border-dashed rounded-lg bg-background/50">
