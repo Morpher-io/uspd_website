@@ -15,6 +15,9 @@ import {
   Zap,
   Users,
   Landmark,
+  TrendingUp,
+  TrendingDown,
+  Scale,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -395,50 +398,51 @@ const scenes = [
     content: (
       <p>
         Stabilizing USPD is not just a public good; it's a powerful,
-        delta-neutral yield-generating strategy.
+        delta-neutral yield-generating strategy based on funding fees.
       </p>
     ),
   },
   {
     id: 27,
-    title: "Two Income Streams",
+    title: "The Delta-Neutral Strategy",
     content: (
       <p>
-        Stabilizers generate income from two primary sources: staking rewards
-        from their ETH collateral and funding fees from hedging their position.
+        To remain market-neutral against their long ETH exposure, Stabilizers
+        open a short position on a perpetual futures exchange. This hedges
+        against ETH price volatility.
       </p>
     ),
   },
   {
     id: 28,
-    title: "1. Staking Yield",
+    title: "Earning Funding Fees",
     content: (
       <p>
-        The entire pool of Ether collateral is staked, generating a baseline
-        yield of ~4% annually. This yield accrues directly to the Stabilizers.
+        In most market conditions, traders who are short ETH are paid funding
+        fees by those who are long. This provides a consistent yield, averaging
+        around 11% annually.
       </p>
     ),
   },
   {
     id: 29,
-    title: "2. Funding Fees",
+    title: "The Power of Leverage",
     content: (
       <p>
-        To remain market-neutral, Stabilizers hedge their ETH exposure by
-        opening a short position on a perpetual futures exchange. In most market
-        conditions, shorts are paid funding fees by longs, yielding an
-        additional ~11% annually.
+        This strategy is highly capital-efficient. Stabilizers only need to
+        provide a fraction of the capital for the short position they open,
+        effectively leveraging their capital.
       </p>
     ),
   },
   {
     id: 30,
-    title: "The Power of Leverage",
+    title: "Choose Your Strategy",
     content: (
       <p>
-        Because the short position is leveraged, Stabilizers only need to
-        provide capital for a fraction of the total value they secure. This
-        results in approximately 3x leverage on their capital.
+        Stabilizers can choose their level of risk. A conservative 2x leveraged
+        short can yield ~22% APY, while a more aggressive 3x leverage can yield
+        ~33% APY.
       </p>
     ),
   },
@@ -447,9 +451,9 @@ const scenes = [
     title: "Putting It All Together",
     content: (
       <p>
-        After accounting for minor costs, the combination of staking yield,
-        funding fees, and leverage can result in a highly competitive APY, all
-        while maintaining a delta-neutral position.
+        By combining a delta-neutral strategy with leverage, stabilizers can
+        achieve highly competitive, market-neutral yields. For example: 3x
+        Leverage * 11% Funding Rate = 33% APY.
       </p>
     ),
   },
@@ -458,8 +462,8 @@ const scenes = [
     title: "Ready to Earn?",
     content: (
       <p>
-        Become a Stabilizer today to start earning yield while helping to secure
-        the USPD ecosystem.
+        Become a Stabilizer today to start earning a competitive, delta-neutral
+        yield while helping to secure the USPD ecosystem.
       </p>
     ),
     link: { href: "/stabilizer", text: "Become a Stabilizer" },
@@ -617,7 +621,21 @@ const InfoBox = ({ title, value, x, y, w, visible, status }: any) => (
   </AnimatePresence>
 );
 
-const IncomeStream = ({ icon, label, value, x, y, visible }: any) => (
+const YieldStrategyBox = ({
+  icon,
+  label,
+  x,
+  y,
+  visible,
+  color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  x: string;
+  y: string;
+  visible: boolean;
+  color: string;
+}) => (
   <AnimatePresence>
     {visible && (
       <motion.div
@@ -626,34 +644,12 @@ const IncomeStream = ({ icon, label, value, x, y, visible }: any) => (
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.5 }}
-        style={{ left: x, top: y }}
+        style={{ left: x, top: y, transform: "translateX(-50%)" }}
       >
-        {icon}
+        <div className={`p-3 rounded-full bg-secondary/80 border-2 ${color}`}>
+          {icon}
+        </div>
         <span className="text-sm font-semibold">{label}</span>
-        <span className="font-bold text-lg text-primary">{value}</span>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
-
-const ApyCalculation = ({ visible }: any) => (
-  <AnimatePresence>
-    {visible && (
-      <motion.div
-        className="text-2xl md:text-4xl font-mono text-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.2 } }}>3x</motion.span>
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.4 } }}> * (</motion.span>
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.6 } }} className="text-green-500">4%</motion.span>
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.8 } }}> + </motion.span>
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.0 } }} className="text-blue-500">11%</motion.span>
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.2 } }}> - </motion.span>
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.4 } }} className="text-red-500">2%</motion.span>
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.6 } }}>) = </motion.span>
-        <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.8 } }} className="font-bold text-primary">39% APY</motion.span>
       </motion.div>
     )}
   </AnimatePresence>
@@ -967,31 +963,70 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
               exit={{ opacity: 0 }}
               className="w-full h-full flex items-center justify-center"
             >
-              <Actor
-                icon={<ShieldCheck size={64} />}
-                label="Stabilizer"
-                x={"43.33%"}
-                y={"10%"}
-                visible={activeSceneId >= 27 && activeSceneId < 30}
+              <YieldStrategyBox
+                icon={<TrendingUp size={32} />}
+                label="Long ETH"
+                x="25%"
+                y="40%"
+                visible={activeSceneId === 27}
+                color="border-green-500"
               />
-              <IncomeStream
-                icon={<Coins size={48} className="text-green-500" />}
-                label="Staking Yield"
-                value="~4% APY"
-                x={"8.33%"}
-                y={"40%"}
-                visible={activeSceneId === 27 || activeSceneId === 28}
+              <YieldStrategyBox
+                icon={<TrendingDown size={32} />}
+                label="Short ETH"
+                x="75%"
+                y="40%"
+                visible={activeSceneId === 27}
+                color="border-red-500"
               />
-              <IncomeStream
-                icon={<Landmark size={48} className="text-blue-500" />}
-                label="Funding Fees"
-                value="~11% APY"
-                x={"66.67%"}
-                y={"40%"}
-                visible={activeSceneId === 27 || activeSceneId === 29}
-              />
-              <Arrow x={"25%"} y={"36%"} rotate={45} visible={activeSceneId === 27} />
-              <Arrow x={"58.33%"} y={"36%"} rotate={135} visible={activeSceneId === 27} />
+              <AnimatePresence>
+                {activeSceneId === 27 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, transition: { delay: 0.3 } }}
+                    className="absolute"
+                    style={{ left: "50%", top: "42%", transform: "translateX(-50%)" }}
+                  >
+                    <Scale size={48} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {activeSceneId === 28 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center"
+                  >
+                    <YieldStrategyBox
+                      icon={<TrendingDown size={48} />}
+                      label="Short ETH"
+                      x="50%"
+                      y="30%"
+                      visible={true}
+                      color="border-red-500"
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0, transition: { delay: 0.5 } }}
+                      className="absolute"
+                      style={{ top: "60%" }}
+                    >
+                      <Coins size={48} className="text-yellow-400" />
+                    </motion.div>
+                    <Arrow x="45%" y="48%" rotate={90} visible={true} />
+                    <InfoBox
+                      x="50%"
+                      y="75%"
+                      w="100%"
+                      visible={true}
+                      title="~11% APY"
+                      value="Funding Fees"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <ChartContainer
                 label="Leverage"
@@ -999,21 +1034,21 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                 y={"30%"}
                 w={"50%"}
                 h={"60%"}
-                visible={activeSceneId === 30}
+                visible={activeSceneId === 29}
               >
                 <div className="w-full h-full flex items-end gap-4">
                   <ChartBar
-                    value={35}
+                    value={33}
                     maxValue={110}
                     color="bg-gray-500"
-                    label="Own Capital"
+                    label="Margin"
                     unit="%"
                   />
                   <ChartBar
                     value={100}
                     maxValue={110}
-                    color="bg-teal-500"
-                    label="Total Secured"
+                    color="bg-red-500"
+                    label="Short Position"
                     unit="%"
                   />
                 </div>
@@ -1022,12 +1057,52 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                 x={"25%"}
                 y={"98%"}
                 w={"50%"}
-                visible={activeSceneId === 30}
+                visible={activeSceneId === 29}
                 title="~3x Leverage"
-                value=""
+                value="Capital Efficiency"
               />
 
-              <ApyCalculation visible={activeSceneId === 31} />
+              <AnimatePresence>
+                {activeSceneId === 30 && (
+                  <div className="w-full flex justify-around">
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="text-center font-mono"
+                    >
+                      <div className="text-lg font-bold">Risk-Averse</div>
+                      <div className="text-2xl mt-2">2x * 11% =</div>
+                      <div className="text-4xl font-bold text-primary">22% APY</div>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="text-center font-mono"
+                    >
+                      <div className="text-lg font-bold">Risk-On</div>
+                      <div className="text-2xl mt-2">3x * 11% =</div>
+                      <div className="text-4xl font-bold text-primary">33% APY</div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {activeSceneId === 31 && (
+                  <motion.div
+                    className="text-2xl md:text-4xl font-mono text-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.2 } }}>3x</motion.span>
+                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.4 } }}> * </motion.span>
+                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.6 } }} className="text-blue-500">11%</motion.span>
+                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.8 } }}> = </motion.span>
+                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.0 } }} className="font-bold text-primary">33% APY</motion.span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <AnimatePresence>
                 {activeSceneId === 32 && (
@@ -1036,7 +1111,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                     animate={{ opacity: 1, scale: 1 }}
                     className="text-center"
                   >
-                    <div className="text-6xl font-bold text-primary">39% APY</div>
+                    <div className="text-6xl font-bold text-primary">~20-35% APY</div>
                     <div className="text-xl text-muted-foreground">
                       Delta-Neutral
                     </div>
