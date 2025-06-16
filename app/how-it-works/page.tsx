@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useThemeConfig } from "nextra-theme-docs";
+import { useTheme, useThemeConfig } from "nextra-theme-docs";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import {
@@ -33,7 +33,8 @@ const ScrollProgressIndicator = ({
   activeSceneId: number;
   onDotClick: (id: number) => void;
 }) => {
-  const { darkMode } = useThemeConfig();
+  const { theme } = useTheme();
+  const darkMode = theme == 'dark';
   const activeSceneIndex = scenes.findIndex(
     (scene) => scene.id === activeSceneId
   );
@@ -1076,7 +1077,7 @@ const TextBlock = React.forwardRef<
       viewport={{ amount: 0.5 }}
     >
       <BlurFade inView={true}>
-        <MagicCard gradientColor={magicCardGradientColor}>
+        <ChronoCard title={title}>
           <div className="text-lg md:text-xl text-muted-foreground space-y-4 max-w-md p-4">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground">
               {title}
@@ -1092,7 +1093,7 @@ const TextBlock = React.forwardRef<
               </div>
             )}
           </div>
-        </MagicCard>
+        </ChronoCard>
       </BlurFade>
     </motion.div>
   );
