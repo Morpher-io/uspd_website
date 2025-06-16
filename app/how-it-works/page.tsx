@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme, useThemeConfig } from "nextra-theme-docs";
+import { useThemeConfig } from "nextra-theme-docs";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import {
@@ -20,7 +20,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { RetroGrid } from "@/components/magicui/retro-grid";
 import { BlurFade } from "@/components/magicui/blur-fade";
-import { MagicCard } from "@/components/magicui/magic-card";
+import { ChronoCard } from "@/components/uspd/how-it-works/ChronoCard";
 import { FlickeringGrid } from "@/components/magicui/flickering-grid";
 
 // --- Progress Indicator Component ---
@@ -33,8 +33,7 @@ const ScrollProgressIndicator = ({
   activeSceneId: number;
   onDotClick: (id: number) => void;
 }) => {
-  const {theme} = useTheme();
-  const darkMode = theme == 'dark';
+  const { darkMode } = useThemeConfig();
   const activeSceneIndex = scenes.findIndex(
     (scene) => scene.id === activeSceneId
   );
