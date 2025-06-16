@@ -163,8 +163,8 @@ const scenes = [
     title: "User Mints USPD",
     content: (
       <p>
-        The User deposits their 1 ETH (let's say it's worth $2,500) and in
-        return receives 2,500 USPD. Their ETH is now marked for use.
+        The User deposits their 1 ETH (worth $2,500) into a new Position
+        Escrow. This ETH is now locked, ready to be collateralized.
       </p>
     ),
     link: { href: "/uspd", text: "Mint USPD" },
@@ -174,9 +174,8 @@ const scenes = [
     title: "Stabilizer Matches Collateral",
     content: (
       <p>
-        To maintain the 150% ratio, the Stabilizer's Escrow automatically
-        allocates 0.5 ETH from their unallocated collateral to match the user's
-        deposit.
+        To meet the 150% ratio, the Stabilizer's Escrow automatically moves 0.5
+        ETH into the Position Escrow, matching the user's deposit.
       </p>
     ),
   },
@@ -185,8 +184,9 @@ const scenes = [
     title: "The Position Escrow",
     content: (
       <p>
-        The User's 1 ETH and the Stabilizer's 0.5 ETH are locked together in a
-        new, secure Position Escrow contract.
+        With the position now fully collateralized, 2,500 USPD are minted and
+        sent to the User's wallet. The Position Escrow securely holds the 1.5
+        ETH.
       </p>
     ),
   },
@@ -814,7 +814,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
             />
             <ChartBar
               value={
-                activeSceneId >= 23 ? 0 : activeSceneId >= 6 ? 2500 : 0
+                activeSceneId >= 23 ? 0 : activeSceneId >= 8 ? 2500 : 0
               }
               maxValue={2550}
               color="bg-purple-500"
@@ -862,14 +862,32 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           y={"30%"}
           w={"25%"}
           h={"60%"}
-          visible={activeSceneId >= 8 && activeSceneId < 21 && activeSceneId !== 15}
+          visible={activeSceneId >= 6 && activeSceneId < 21 && activeSceneId !== 15}
         >
           <AnimatePresence mode="wait">
-            {activeSceneId === 8 ? (
+            {activeSceneId === 6 ? (
+              <motion.div
+                key="one-bar-user"
+                className="w-full h-full flex items-end gap-1"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <ChartBar
+                  value={1}
+                  maxValue={1.6}
+                  color="bg-green-500"
+                  label="User"
+                  unit="ETH"
+                />
+              </motion.div>
+            ) : activeSceneId === 7 ? (
               <motion.div
                 key="two-bars"
                 className="w-full h-full flex items-end gap-1"
-                exit={{ opacity: 0, transition: { duration: 0.4 } }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
               >
                 <ChartBar
                   value={1}
@@ -887,12 +905,12 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                 />
               </motion.div>
             ) : (
-              activeSceneId >= 9 && (
+              activeSceneId >= 8 && (
                 <motion.div
-                  key="one-bar"
+                  key="one-bar-combined"
                   className="w-full h-full flex items-end gap-1"
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 1, transition: { duration: 0.4 } }}
+                  animate={{ opacity: 1 }}
                 >
                   <ChartBar
                     value={positionEscrowValue}
@@ -948,8 +966,9 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         />
 
         {/* Arrows */}
-        <Arrow x={"25.83%"} y={"56%"} visible={activeSceneId === 8} />
-        <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 8} />
+        <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 6} />
+        <Arrow x={"25.83%"} y={"56%"} visible={activeSceneId === 7} />
+        <Arrow x={"64.17%"} y={"45%"} rotate={0} visible={activeSceneId === 8} />
         <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 11} />
         <Arrow x={"50%"} y={"56%"} rotate={180} visible={activeSceneId === 15} />
         <Arrow x={"50%"} y={"64%"} rotate={0} visible={activeSceneId === 15} />
