@@ -447,17 +447,6 @@ const scenes = [
     ),
   },
   {
-    id: 31,
-    title: "Putting It All Together",
-    content: (
-      <p>
-        By combining a delta-neutral strategy with leverage, stabilizers can
-        achieve highly competitive, market-neutral yields. For example: 3x
-        Leverage * 11% Funding Rate = 33% APY.
-      </p>
-    ),
-  },
-  {
     id: 32,
     title: "Ready to Earn?",
     content: (
@@ -997,7 +986,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex flex-col items-center"
+                    className="relative w-full h-full"
                   >
                     <YieldStrategyBox
                       icon={<TrendingDown size={48} />}
@@ -1011,13 +1000,13 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: 0.5 } }}
                       className="absolute"
-                      style={{ top: "60%" }}
+                      style={{ top: "60%", left: "50%", transform: "translateX(-50%)" }}
                     >
                       <Coins size={48} className="text-yellow-400" />
                     </motion.div>
-                    <Arrow x="45%" y="48%" rotate={90} visible={true} />
+                    <Arrow x="calc(50% - 24px)" y="48%" rotate={90} visible={true} />
                     <InfoBox
-                      x="50%"
+                      x="0"
                       y="75%"
                       w="100%"
                       visible={true}
@@ -1084,23 +1073,6 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
                       <div className="text-4xl font-bold text-primary">33% APY</div>
                     </motion.div>
                   </div>
-                )}
-              </AnimatePresence>
-
-              <AnimatePresence>
-                {activeSceneId === 31 && (
-                  <motion.div
-                    className="text-2xl md:text-4xl font-mono text-center"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.2 } }}>3x</motion.span>
-                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.4 } }}> * </motion.span>
-                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.6 } }} className="text-blue-500">11%</motion.span>
-                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.8 } }}> = </motion.span>
-                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 1.0 } }} className="font-bold text-primary">33% APY</motion.span>
-                  </motion.div>
                 )}
               </AnimatePresence>
 
