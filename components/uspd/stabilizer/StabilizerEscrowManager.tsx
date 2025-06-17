@@ -35,7 +35,6 @@ export function StabilizerEscrowManager({
     const [stabilizerEscrowAddress, setStabilizerEscrowAddress] = useState<Address | null>(null)
     const [unallocatedStEthBalance, setUnallocatedStEthBalance] = useState<bigint>(BigInt(0))
 
-    const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
 
     // --- Fetch Escrow Address ---
