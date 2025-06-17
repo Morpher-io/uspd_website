@@ -5,11 +5,12 @@ import { useReadContracts, useReadContract } from 'wagmi' // Added useReadContra
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { StabilizerNFTList } from './StabilizerNFTList'
 import { StabilizerNFTMetadata } from './StabilizerNFTMetadata' // Import the new component
+import type { Abi } from 'viem'
 // import { StabilizerAdminCard } from './StabilizerAdminCard' // StabilizerAdminCard removed
 
 interface StabilizerDataProps {
   stabilizerAddress: `0x${string}`
-  stabilizerAbi: any
+  stabilizerAbi: Abi
 }
 
 export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerDataProps) {
@@ -57,7 +58,7 @@ export function StabilizerData({ stabilizerAddress, stabilizerAbi }: StabilizerD
       {!balance || balance === 0 ? (
         <Alert>
           <AlertDescription className='text-center'>
-            You don't have any Stabilizer NFTs.
+            You don&apos;t have any Stabilizer NFTs.
           </AlertDescription>
         </Alert>
       ) : (
