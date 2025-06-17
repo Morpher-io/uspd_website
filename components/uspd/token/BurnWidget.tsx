@@ -4,15 +4,13 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi'
-import { formatEther, parseEther, formatUnits, Address } from 'viem' // Add Address
+import { parseEther, formatUnits, Address } from 'viem' // Add Address
 import { IPriceOracle } from '@/types/contracts'
 import { TokenDisplay } from './TokenDisplay'
 import { ArrowDown } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
 // Import necessary ABIs (assuming paths are correct)
-import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
 import poolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json'
-import erc20Abi from '@/contracts/out/ERC20.sol/ERC20.json' // For stETH balance
 
 interface BurnWidgetProps {
     tokenAddress: `0x${string}` // USPDToken address (for balance display)
