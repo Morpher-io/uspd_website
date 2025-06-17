@@ -232,8 +232,9 @@ export async function GET(
         functionName: 'positions',
         args: [BigInt(tokenId)],
       });
-    } catch (e: any) {
-      console.error(`Error fetching position data for token ${tokenId} on chain ${targetChainId}:`, e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`Error fetching position data for token ${tokenId} on chain ${targetChainId}:`, message);
       return NextResponse.json({ error: `Token ID ${tokenId} not found or error fetching position data.` }, { status: 404 });
     }
     
@@ -248,8 +249,9 @@ export async function GET(
             functionName: 'ownerOf',
             args: [BigInt(tokenId)],
         }) as Address;
-    } catch (e: any) {
-        console.warn(`Could not fetch owner for token ${tokenId} on chain ${targetChainId}:`, e.message);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn(`Could not fetch owner for token ${tokenId} on chain ${targetChainId}:`, message);
     }
 
     let stabilizerEscrowAddress: Address = zeroAddress;
@@ -261,8 +263,9 @@ export async function GET(
         args: [BigInt(tokenId)],
       });
       stabilizerEscrowAddress = getAddress(rawStabilizerEscrowAddress as string);
-    } catch (e: any) {
-      console.warn(`Could not fetch stabilizerEscrow for token ${tokenId} on chain ${targetChainId}:`, e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn(`Could not fetch stabilizerEscrow for token ${tokenId} on chain ${targetChainId}:`, message);
     }
 
     let positionEscrowAddress: Address = zeroAddress;
@@ -274,8 +277,9 @@ export async function GET(
         args: [BigInt(tokenId)],
       });
       positionEscrowAddress = getAddress(rawPositionEscrowAddress as string);
-    } catch (e: any) {
-      console.warn(`Could not fetch positionEscrow for token ${tokenId} on chain ${targetChainId}:`, e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn(`Could not fetch positionEscrow for token ${tokenId} on chain ${targetChainId}:`, message);
     }
     
     let stabilizerEscrowStEthBalance: bigint = 0n;
@@ -287,8 +291,9 @@ export async function GET(
             functionName: 'balanceOf',
             args: [stabilizerEscrowAddress]
         }) as bigint;
-      } catch (e: any) {
-        console.warn(`Could not fetch stETH balance for stabilizer escrow ${stabilizerEscrowAddress} on chain ${targetChainId}:`, e.message);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn(`Could not fetch stETH balance for stabilizer escrow ${stabilizerEscrowAddress} on chain ${targetChainId}:`, message);
       }
     }
 
@@ -301,8 +306,9 @@ export async function GET(
             functionName: 'balanceOf',
             args: [positionEscrowAddress]
         }) as bigint;
-      } catch (e: any) {
-        console.warn(`Could not fetch stETH balance for position escrow ${positionEscrowAddress} on chain ${targetChainId}:`, e.message);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn(`Could not fetch stETH balance for position escrow ${positionEscrowAddress} on chain ${targetChainId}:`, message);
       }
     }
 
@@ -315,8 +321,9 @@ export async function GET(
                 functionName: 'backedPoolShares',
                 args: [],
             }) as bigint;
-        } catch (e: any) {
-            console.warn(`Could not fetch backedPoolShares for position escrow ${positionEscrowAddress} on chain ${targetChainId}:`, e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            console.warn(`Could not fetch backedPoolShares for position escrow ${positionEscrowAddress} on chain ${targetChainId}:`, message);
         }
     }
 
@@ -328,8 +335,9 @@ export async function GET(
             functionName: 'getYieldFactor',
             args: [],
         }) as bigint;
-    } catch (e: any) {
-        console.warn(`Could not fetch yieldFactor from ${rateContractAddress} on chain ${targetChainId}:`, e.message);
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn(`Could not fetch yieldFactor from ${rateContractAddress} on chain ${targetChainId}:`, message);
     }
     
     // --- Fetch ETH-USD Price ---
@@ -347,8 +355,9 @@ export async function GET(
       ethUsdPrice = BigInt(priceData.price);
       ethUsdPriceDecimals = Number(priceData.decimals);
       ethUsdPriceFormatted = `$${(Number(ethUsdPrice) / (10**ethUsdPriceDecimals)).toFixed(2)}`;
-    } catch (e: any) {
-      console.error("Error fetching ETH-USD price:", e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error("Error fetching ETH-USD price:", message);
     }
 
     // --- Calculate Current Collateralization Ratio based on PositionEscrow's liability ---
@@ -408,8 +417,9 @@ export async function GET(
 
     return NextResponse.json(metadata);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Failed to generate metadata for token ${tokenId}:`, error);
-    return NextResponse.json({ error: 'Failed to generate metadata', details: error.message }, { status: 500 });
+    const details = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: 'Failed to generate metadata', details }, { status: 500 });
   }
 }
