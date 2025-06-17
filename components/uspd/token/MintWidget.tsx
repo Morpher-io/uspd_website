@@ -4,16 +4,25 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi'
-import { parseEther, formatUnits } from 'viem' // Add Address
+import { parseEther, formatUnits, Abi } from 'viem'
 import { TokenDisplay } from './TokenDisplay'
 import { ArrowDown } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
 
+// Define a type for the price data from the API
+interface PriceData {
+    price: string;
+    decimals: number;
+    dataTimestamp: number;
+    assetPair: `0x${string}`;
+    signature: `0x${string}`;
+}
+
 interface MintWidgetProps {
     tokenAddress: `0x${string}` // USPDToken address (for balance display)
-    tokenAbi: any
+    tokenAbi: Abi
     cuspdTokenAddress: `0x${string}` // cUSPDToken address (for minting)
-    cuspdTokenAbi: any
+    cuspdTokenAbi: Abi
 }
 
 export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTokenAbi }: MintWidgetProps) {
@@ -22,7 +31,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
-    const [priceData, setPriceData] = useState<any>(null)
+    const [priceData, setPriceData] = useState<PriceData | null>(null)
     const [isLoadingPrice, setIsLoadingPrice] = useState(false)
 
     const debouncedEthAmount = useDebounce(ethAmount, 500)
@@ -49,7 +58,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
             setIsLoadingPrice(true)
             const response = await fetch('/api/v1/price/eth-usd')
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json()
+            const data: PriceData = await response.json()
             setPriceData(data)
             return data
         } catch (err) {
@@ -140,8 +149,12 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
             setUspdAmount('')
             refetchUspdBalance()
 
-        } catch (err: any) {
-            setError(err.message || 'Failed to mint USPD')
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to mint USPD');
+            } else {
+                setError('An unknown error occurred while minting.');
+            }
             console.error(err)
         } finally {
             setIsLoading(false)
