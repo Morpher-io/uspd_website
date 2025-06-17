@@ -177,8 +177,8 @@ const scenes = [
     title: "Stabilizer Matches Collateral",
     content: (
       <p>
-        To meet the 150% ratio, the Stabilizer's Escrow automatically moves 0.5
-        ETH into the Position Escrow, matching the user's deposit.
+        To meet the 150% ratio, the Stabilizer&apos;s Escrow automatically moves 0.5
+        ETH into the Position Escrow, matching the user&apos;s deposit.
       </p>
     ),
   },
@@ -188,7 +188,7 @@ const scenes = [
     content: (
       <p>
         With the position now fully collateralized, 2,500 USPD are minted and
-        sent to the User's wallet. The Position Escrow securely holds the 1.5
+        sent to the User&apos;s wallet. The Position Escrow securely holds the 1.5
         ETH.
       </p>
     ),
@@ -235,7 +235,7 @@ const scenes = [
     },
     content: (
       <p>
-        But what happens if the price of ETH falls? When a position's
+        But what happens if the price of ETH falls? When a position&apos;s
         collateralization ratio drops below the 125% minimum, it becomes
         vulnerable to liquidation.
       </p>
@@ -250,7 +250,7 @@ const scenes = [
     title: "Entering Liquidation Risk",
     content: (
       <p>
-        The price of ETH drops to $2,700. The position's collateral is now worth
+        The price of ETH drops to $2,700. The position&apos;s collateral is now worth
         only $2,835, pushing the ratio down to a risky 113%. The position is now
         at risk of liquidation.
       </p>
@@ -273,7 +273,7 @@ const scenes = [
     content: (
       <p>
         To do this, the Liquidator uses their own ETH to acquire 2,500 USPD from
-        the system's aggregate liquidity pool, which is backed by many other
+        the system&apos;s aggregate liquidity pool, which is backed by many other
         healthy Stabilizer positions.
       </p>
     ),
@@ -284,7 +284,7 @@ const scenes = [
     content: (
       <p>
         The Liquidator calls the liquidation function, sending their 2,500 USPD
-        to the system. This cancels out the original user's debt.
+        to the system. This cancels out the original user&apos;s debt.
       </p>
     ),
   },
@@ -314,7 +314,7 @@ const scenes = [
     title: "The Insurance Fund",
     content: (
       <p>
-        The remaining 0.08 ETH is sent to the system's Insurance Fund, which
+        The remaining 0.08 ETH is sent to the system&apos;s Insurance Fund, which
         provides an extra layer of security against extreme market events.
       </p>
     ),
@@ -324,7 +324,7 @@ const scenes = [
     title: "System Secured",
     content: (
       <p>
-        The risky position is closed, the system's health is restored, and all
+        The risky position is closed, the system&apos;s health is restored, and all
         participants were incentivized to act. The peg is secure.
       </p>
     ),
@@ -339,8 +339,8 @@ const scenes = [
     },
     content: (
       <p>
-        The original user's position was liquidated, but their 2,500 USPD are
-        still safe, now backed by the system's aggregate liquidity pool.
+        The original user&apos;s position was liquidated, but their 2,500 USPD are
+        still safe, now backed by the system&apos;s aggregate liquidity pool.
       </p>
     ),
   },
@@ -371,7 +371,7 @@ const scenes = [
     content: (
       <p>
         They receive 0.926 ETH. At the current price of $2,700/ETH, this is
-        worth exactly $2,500. The user's funds were fully protected, and the
+        worth exactly $2,500. The user&apos;s funds were fully protected, and the
         USPD peg held perfectly.
       </p>
     ),
@@ -382,7 +382,7 @@ const scenes = [
     content: (
       <p>
         The user has successfully exited their position. The system ensured
-        their funds were safe, even when their original counterparty's position
+        their funds were safe, even when their original counterparty&apos;s position
         was liquidated.
       </p>
     ),
@@ -397,7 +397,7 @@ const scenes = [
     },
     content: (
       <p>
-        Stabilizing USPD is not just a public good; it's a powerful,
+        Stabilizing USPD is not just a public good; it&apos;s a powerful,
         delta-neutral yield-generating strategy based on funding fees.
       </p>
     ),
@@ -477,6 +477,18 @@ const scenes = [
 
 // --- Graphic Components ---
 
+type ActorProps = {
+  icon: React.ReactNode;
+  label: string;
+  x: string;
+  y: string;
+  visible: boolean;
+  children?: React.ReactNode;
+  animate?: Record<string, unknown>;
+  iconAnimate?: Record<string, unknown>;
+  labelVisible?: boolean;
+};
+
 const Actor = ({
   icon,
   label,
@@ -487,7 +499,7 @@ const Actor = ({
   animate,
   iconAnimate,
   labelVisible = true,
-}: any) => (
+}: ActorProps) => (
   <AnimatePresence>
     {visible && (
       <motion.div
@@ -524,8 +536,25 @@ const Actor = ({
   </AnimatePresence>
 );
 
+type ChartContainerProps = {
+  label: string;
+  x: string;
+  y: string;
+  w: string;
+  h: string;
+  visible: boolean;
+  children: React.ReactNode;
+};
 
-const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
+const ChartContainer = ({
+  label,
+  x,
+  y,
+  w,
+  h,
+  visible,
+  children,
+}: ChartContainerProps) => (
   <AnimatePresence>
     {visible && (
       <motion.div
@@ -545,7 +574,15 @@ const ChartContainer = ({ label, x, y, w, h, visible, children }: any) => (
   </AnimatePresence>
 );
 
-const ChartBar = ({ value, maxValue, color, label, unit }: any) => {
+type ChartBarProps = {
+  value: number;
+  maxValue: number;
+  color: string;
+  label: string;
+  unit: string;
+};
+
+const ChartBar = ({ value, maxValue, color, label, unit }: ChartBarProps) => {
   const heightPercentage = (value / maxValue) * 100;
   return (
     <motion.div
@@ -569,7 +606,14 @@ const ChartBar = ({ value, maxValue, color, label, unit }: any) => {
   );
 };
 
-const Arrow = ({ x, y, rotate, visible }: any) => (
+type ArrowProps = {
+  x: string;
+  y: string;
+  rotate: number;
+  visible: boolean;
+};
+
+const Arrow = ({ x, y, rotate, visible }: ArrowProps) => (
   <AnimatePresence>
     {visible && (
       <motion.div
@@ -585,7 +629,27 @@ const Arrow = ({ x, y, rotate, visible }: any) => (
   </AnimatePresence>
 );
 
-const InfoBox = ({ title, value, x, y, w, visible, status, centered = false }: any) => (
+type InfoBoxProps = {
+  title: string;
+  value: string;
+  x: string;
+  y: string;
+  w: string;
+  visible: boolean;
+  status?: "danger" | "safe";
+  centered?: boolean;
+};
+
+const InfoBox = ({
+  title,
+  value,
+  x,
+  y,
+  w,
+  visible,
+  status,
+  centered = false,
+}: InfoBoxProps) => (
   <AnimatePresence mode="wait">
     {visible && (
       <motion.div
@@ -604,8 +668,9 @@ const InfoBox = ({ title, value, x, y, w, visible, status, centered = false }: a
       >
         <div className="text-sm text-muted-foreground">{value}</div>
         <div
-          className={`font-bold text-base ${status === "danger" ? "text-red-500" : ""
-            }`}
+          className={`font-bold text-base ${
+            status === "danger" ? "text-red-500" : ""
+          }`}
         >
           {title}
         </div>
@@ -658,7 +723,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         title: "113% Collateralized",
         value: "ETH Price: $2,700",
         visible: true,
-        status: "danger",
+        status: "danger" as const,
       };
     }
     switch (sceneId) {
@@ -667,24 +732,29 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           title: "150% Collateralized",
           value: "ETH Price: $2,500",
           visible: true,
-          status: "safe",
+          status: "safe" as const,
         };
       case 10:
         return {
           title: "180% Collateralized",
           value: "ETH Price: $3,000",
           visible: true,
-          status: "safe",
+          status: "safe" as const,
         };
       case 11:
         return {
           title: "126% Collateralized",
           value: "ETH Price: $3,000",
           visible: true,
-          status: "safe",
+          status: "safe" as const,
         };
       default:
-        return { title: "", value: "", visible: false, status: "safe" };
+        return {
+          title: "",
+          value: "",
+          visible: false,
+          status: "safe" as const,
+        };
     }
   };
 
@@ -750,7 +820,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           w={"25%"}
           visible={activeSceneId >= 4 && activeSceneId < 19 && activeSceneId != 15}
           title="150% Ratio"
-          value="Stabilizer's Preference"
+          value="Stabilizer&apos;s Preference"
           status="safe"
         />
 
@@ -1135,6 +1205,15 @@ const TextBlock = React.forwardRef<
 });
 TextBlock.displayName = "TextBlock";
 
+type HeroBlockProps = {
+  sceneId: number;
+  setActiveSceneId: (id: number) => void;
+  children: React.ReactNode;
+  content: React.ReactNode;
+  link?: { href: string; text: string };
+  heroOptions: { gridColor: string; textColor: string };
+};
+
 const HeroBlock = ({
   sceneId,
   setActiveSceneId,
@@ -1142,7 +1221,7 @@ const HeroBlock = ({
   content,
   link,
   heroOptions,
-}: any) => (
+}: HeroBlockProps) => (
   <motion.section
     className="h-screen w-full flex flex-col items-center justify-center text-center relative"
     onViewportEnter={() => setActiveSceneId(sceneId)}
@@ -1181,7 +1260,7 @@ const HeroBlock = ({
   </motion.section>
 );
 
-const MobileScene = ({ scene }: { scene: any }) => (
+const MobileScene = ({ scene }: { scene: (typeof scenes)[0] }) => (
   <div className="flex flex-col items-center py-16 px-4">
     {/* Text comes first on mobile */}
     <div className="text-lg text-center text-muted-foreground space-y-4 max-w-md">
