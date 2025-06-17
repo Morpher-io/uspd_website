@@ -3,10 +3,11 @@ import { useAccount, usePublicClient, useWatchContractEvent } from 'wagmi' // Im
 import { StabilizerNFTItem } from './StabilizerNFTItem'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { readContract } from 'viem/actions'
+import type { Abi } from 'viem'
 
 interface StabilizerNFTListProps {
   stabilizerAddress: `0x${string}`
-  stabilizerAbi: any
+  stabilizerAbi: Abi
   balance: number // Initial balance, might become stale
 }
 
@@ -54,7 +55,7 @@ export function StabilizerNFTList({
 
     fetchTokenIds()
     // Dependencies: address, stabilizerAddress, balance (for initial fetch limit), refreshCounter, publicClient
-  }, [address, stabilizerAddress, balance, refreshCounter, publicClient])
+  }, [address, stabilizerAddress, balance, refreshCounter, publicClient, stabilizerAbi])
 
   // --- Event Listener for Transfers ---
   useWatchContractEvent({
@@ -99,7 +100,7 @@ export function StabilizerNFTList({
     return (
       <Alert>
         <AlertDescription>
-          You own stabilizer NFTs, but we couldn't load their details. Please try again later.
+          You own stabilizer NFTs, but we couldn&apos;t load their details. Please try again later.
         </AlertDescription>
       </Alert>
     )

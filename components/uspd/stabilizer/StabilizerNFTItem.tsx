@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import type { Abi } from 'viem'
 
 // Import the sub-components
 import { StabilizerEscrowManager } from './StabilizerEscrowManager'
@@ -8,7 +9,7 @@ import CollateralRatioSlider from "./CollateralRatioSlider"
 interface StabilizerNFTItemProps {
   tokenId: number
   stabilizerAddress: `0x${string}`
-  stabilizerAbi: any
+  stabilizerAbi: Abi
 }
 
 export function StabilizerNFTItem({
