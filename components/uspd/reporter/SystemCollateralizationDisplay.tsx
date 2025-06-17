@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useReadContract, useChainId, useAccount, useWalletClient, useConfig } from 'wagmi' // Added useConfig
 import { formatUnits, Address } from 'viem'
 import Link from 'next/link'
@@ -25,6 +25,12 @@ import { readContract as viewReadContract } from 'wagmi/actions' // Renamed to a
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
 const FACTOR_10000 = BigInt(10000);
 const MAX_STABILIZERS_TO_CHECK = 10; // Limit for iterating unallocated stabilizers
+
+interface PriceApiResponse {
+    price: string;
+    decimals: number;
+    dataTimestamp: number;
+}
 
 interface SystemDataDisplayProps {
     reporterAddress: Address;
@@ -68,7 +74,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     const config = useConfig(); // Get config from WagmiProvider context
 
     // Price and general stats state
-    const [priceData, setPriceData] = useState<any>(null)
+    const [priceData, setPriceData] = useState<PriceApiResponse | null>(null)
     const [isLoadingPrice, setIsLoadingPrice] = useState(true)
     const [priceError, setPriceError] = useState<string | null>(null)
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -107,11 +113,15 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     }, [fetchPriceData])
 
     // Prepare the priceResponse object for the contract call based on IPriceOracle.PriceResponse struct
-    const priceResponseForContract = priceData ? {
-        price: BigInt(priceData.price),
-        decimals: Number(priceData.decimals),
-        timestamp: BigInt(priceData.dataTimestamp), // Corresponds to PriceResponse.timestamp
-    } : undefined;
+    const priceResponseForContract = useMemo(() => {
+        if (!priceData) return undefined;
+
+        return {
+            price: BigInt(priceData.price),
+            decimals: Number(priceData.decimals),
+            timestamp: BigInt(priceData.dataTimestamp), // Corresponds to PriceResponse.timestamp
+        };
+    }, [priceData]);
 
     const {
         data: systemRatioData,
@@ -165,7 +175,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
             refetchEthEquivalent();
             refetchYieldFactor();
         }
-    }, [priceData, refetchRatio, refetchEthEquivalent, refetchYieldFactor, priceResponseForContract]); // priceData is the key trigger
+    }, [priceResponseForContract, refetchRatio, refetchEthEquivalent, refetchYieldFactor]);
 
     // --- Token Data Fetching ---
     const { data: uspdTotalSupplyData, isLoading: isLoadingUspdTotalSupply } = useReadContract({
