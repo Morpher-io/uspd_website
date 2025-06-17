@@ -175,8 +175,9 @@ function generateStabilizerNFTSVG({
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   const tokenId = params.id;
 
 
