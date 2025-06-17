@@ -206,7 +206,7 @@ export async function GET(
     const stabilizerNftAddress = deploymentInfo.contracts.stabilizer as Address | undefined;
     const stEthAddress = deploymentInfo.config.stETHAddress as Address | undefined; 
     const rateContractAddress = deploymentInfo.contracts.rateContract as Address | undefined;
-    const insuranceEscrowAddress = deploymentInfo.contracts.insurance as Address | undefined;
+    const insuranceEscrowAddress = deploymentInfo.contracts.insuranceEscrow as Address | undefined;
 
     if (!stabilizerNftAddress) {
       return NextResponse.json({ error: `Stabilizer NFT contract address not found in deployment for chain ID ${targetChainId}` }, { status: 500 });
