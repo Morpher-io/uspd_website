@@ -4,12 +4,10 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi'
-import { formatEther, parseEther, formatUnits, Address } from 'viem' // Add Address
-import { IPriceOracle } from '@/types/contracts' // This type might need adjustment for PriceAttestationQuery
+import { parseEther, formatUnits } from 'viem' // Add Address
 import { TokenDisplay } from './TokenDisplay'
 import { ArrowDown } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
-import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json' // Import cUSPD ABI
 
 interface MintWidgetProps {
     tokenAddress: `0x${string}` // USPDToken address (for balance display)
