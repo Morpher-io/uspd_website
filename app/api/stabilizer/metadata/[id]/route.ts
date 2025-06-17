@@ -111,6 +111,19 @@ function generateStabilizerNFTSVG({
     <circle cx="32.0005" cy="32" r="3.75" fill="#00C386"/>
   `;
 
+  // Helper for creating data point groups. This solves overlapping text and improves design.
+  const createDataPoint = (x: number, y: number, label: string, value: string, unit = '', valueFontSize = 15) => {
+    const unitSpan = unit ? `<tspan dx="5" font-size="12" fill="#a0aec0">${unit}</tspan>` : '';
+    return `
+      <g transform="translate(${x}, ${y})">
+        <text x="0" y="0" font-family="sans-serif" font-size="13" fill="#a0aec0">${label}</text>
+        <text x="0" y="20" font-family="sans-serif" font-size="${valueFontSize}" fill="#e2e8f0" font-weight="bold">
+          ${value}${unitSpan}
+        </text>
+      </g>
+    `;
+  };
+
   const svg = `
     <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -142,31 +155,29 @@ function generateStabilizerNFTSVG({
       <!-- Details Section -->
       <g transform="translate(32, 230)">
         <!-- Left Card: Position Details -->
-        <rect x="0" y="0" width="220" height="190" rx="12" fill="url(#card)" stroke="#4a5568" stroke-opacity="0.3" />
-        <text x="15" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold">Position Escrow</text>
-        <text x="15" y="60" font-family="sans-serif" font-size="14" fill="#cbd5e0">Address:</text>
-        <text x="205" y="60" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formatAddress(positionEscrowAddress)}</text>
-        <text x="15" y="90" font-family="sans-serif" font-size="14" fill="#cbd5e0">Collateral:</text>
-        <text x="205" y="90" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formattedPositionEscrowStEth} stETH</text>
-        <text x="15" y="120" font-family="sans-serif" font-size="14" fill="#cbd5e0">Liability (USPD):</text>
-        <text x="205" y="120" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formattedUspdEquivalentFromShares} USPD</text>
-        <text x="15" y="150" font-family="sans-serif" font-size="14" fill="#cbd5e0">Liability (Shares):</text>
-        <text x="205" y="150" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formatBigIntDisplay(backedPoolShares, 18, 4)} cUSPD</text>
+        <rect x="0" y="0" width="220" height="180" rx="12" fill="url(#card)" stroke="#4a5568" stroke-opacity="0.3" />
+        <text x="15" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold">Position Details</text>
+        
+        ${createDataPoint(15, 55, 'Collateral', formattedPositionEscrowStEth, 'stETH')}
+        ${createDataPoint(120, 55, 'Liability', formattedUspdEquivalentFromShares, 'USPD')}
+        
+        ${createDataPoint(15, 115, 'Liability (Shares)', formatBigIntDisplay(backedPoolShares, 18, 4), 'cUSPD')}
+        ${createDataPoint(120, 115, 'Escrow Address', formatAddress(positionEscrowAddress), '', 13)}
 
         <!-- Right Card: NFT Details -->
-        <rect x="228" y="0" width="220" height="190" rx="12" fill="url(#card)" stroke="#4a5568" stroke-opacity="0.3" />
+        <rect x="228" y="0" width="220" height="180" rx="12" fill="url(#card)" stroke="#4a5568" stroke-opacity="0.3" />
         <text x="243" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold">NFT Details</text>
-        <text x="243" y="60" font-family="sans-serif" font-size="14" fill="#cbd5e0">Owner:</text>
-        <text x="433" y="60" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formatAddress(ownerAddress)}</text>
-        <text x="243" y="90" font-family="sans-serif" font-size="14" fill="#cbd5e0">Min Ratio:</text>
-        <text x="433" y="90" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${minCollateralRatioPercent.toFixed(2)}%</text>
-        <text x="243" y="120" font-family="sans-serif" font-size="14" fill="#cbd5e0">Minting Collateral:</text>
-        <text x="433" y="120" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formattedStabilizerEscrowStEth} stETH</text>
+
+        ${createDataPoint(243, 55, 'Owner', formatAddress(ownerAddress), '', 13)}
+        ${createDataPoint(353, 55, 'Min. Ratio', `${minCollateralRatioPercent.toFixed(2)}%`)}
+
+        ${createDataPoint(243, 115, 'Available to Mint', formattedStabilizerEscrowStEth, 'stETH')}
+        ${createDataPoint(353, 115, 'Stabilizer Escrow', formatAddress(stabilizerEscrowAddress), '', 13)}
       </g>
       
       <!-- Footer -->
-      <text x="32" y="470" font-family="sans-serif" font-size="13" fill="#a0aec0">ETH Price (Snapshot): ${ethUsdPriceFormatted}</text>
-      <text x="480" y="470" font-family="sans-serif" font-size="13" fill="#718096" text-anchor="end">USPD Protocol</text>
+      <text x="32" y="450" font-family="sans-serif" font-size="13" fill="#a0aec0">ETH Price (Snapshot): ${ethUsdPriceFormatted}</text>
+      <text x="480" y="450" font-family="sans-serif" font-size="13" fill="#718096" text-anchor="end">USPD Protocol</text>
     </svg>
   `;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
