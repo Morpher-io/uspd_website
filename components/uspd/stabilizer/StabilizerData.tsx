@@ -2,7 +2,6 @@
 
 import { useAccount } from 'wagmi'
 import { useReadContracts, useReadContract } from 'wagmi' // Added useReadContract
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { StabilizerNFTList } from './StabilizerNFTList'
 import { StabilizerNFTMetadata } from './StabilizerNFTMetadata' // Import the new component
