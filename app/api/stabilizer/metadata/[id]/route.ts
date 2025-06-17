@@ -177,7 +177,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const tokenId = (await params).id;
+  const tokenId = params.id;
 
 
   if (!tokenId || isNaN(parseInt(tokenId))) {
