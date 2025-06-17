@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi'
-import { parseEther, formatUnits, Address } from 'viem' // Add Address
+import { parseEther, formatUnits, Address, Abi } from 'viem' // Add Abi
 import { IPriceOracle } from '@/types/contracts'
 import { TokenDisplay } from './TokenDisplay'
 import { ArrowDown } from 'lucide-react'
@@ -12,11 +12,20 @@ import useDebounce from '@/components/utils/debounce'
 // Import necessary ABIs (assuming paths are correct)
 import poolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json'
 
+interface PriceData {
+    price: string;
+    decimals: number;
+    dataTimestamp: number;
+    requestTimestamp: number;
+    assetPair: `0x${string}`;
+    signature: `0x${string}`;
+}
+
 interface BurnWidgetProps {
     tokenAddress: `0x${string}` // USPDToken address (for balance display)
-    tokenAbi: any
+    tokenAbi: Abi
     cuspdTokenAddress: `0x${string}` // cUSPDToken address (for burning)
-    cuspdTokenAbi: any
+    cuspdTokenAbi: Abi
 }
 
 export function BurnWidget({
@@ -32,7 +41,7 @@ export function BurnWidget({
     const [success, setSuccess] = useState<string | null>(null)
     
     const [isLoading, setIsLoading] = useState(false)
-    const [priceData, setPriceData] = useState<any>(null)
+    const [priceData, setPriceData] = useState<PriceData | null>(null)
     const [isLoadingPrice, setIsLoadingPrice] = useState(false)
     const [rateContractAddress, setRateContractAddress] = useState<Address | null>(null)
     const [stEthTokenAddress, setStEthTokenAddress] = useState<Address | null>(null);
@@ -53,7 +62,7 @@ export function BurnWidget({
     })
 
     // Fetch Rate Contract address from cUSPDToken
-    const { data: fetchedRateContractAddress, isLoading: isLoadingRateAddr } = useReadContract({
+    const { data: fetchedRateContractAddress } = useReadContract({
         address: cuspdTokenAddress,
         abi: cuspdTokenAbi,
         functionName: 'rateContract',
@@ -67,7 +76,7 @@ export function BurnWidget({
     }, [fetchedRateContractAddress]);
 
     // Fetch stETH address from Rate Contract
-    const { data: fetchedStEthAddress, isLoading: isLoadingStEthAddr } = useReadContract({
+    const { data: fetchedStEthAddress } = useReadContract({
         address: rateContractAddress!,
         abi: poolSharesConversionRateAbi.abi,
         functionName: 'stETH',
@@ -87,7 +96,7 @@ export function BurnWidget({
     });
 
     // Fetch Yield Factor from Rate Contract
-    const { data: fetchedYieldFactor, isLoading: isLoadingYieldFactor } = useReadContract({
+    const { data: fetchedYieldFactor } = useReadContract({
         address: rateContractAddress!,
         abi: poolSharesConversionRateAbi.abi,
         functionName: 'getYieldFactor',
@@ -112,7 +121,7 @@ export function BurnWidget({
             setIsLoadingPrice(true)
             const response = await fetch('/api/v1/price/eth-usd')
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json()
+            const data: PriceData = await response.json()
             setPriceData(data)
             return data
         } catch (err) {
@@ -238,9 +247,13 @@ export function BurnWidget({
             if (refetchStEthBalance) refetchStEthBalance();
 
 
-        } catch (err: any) {
-            setError(err.message || 'Failed to burn USPD')
-            console.error(err)
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to burn USPD');
+            } else {
+                setError('An unknown error occurred while burning USPD');
+            }
+            console.error(err);
         } finally {
             setIsLoading(false)
         }
