@@ -156,23 +156,18 @@ function generateStabilizerNFTSVG({
       <g transform="translate(32, 230)">
         <!-- Left Card: Position Details -->
         <rect x="0" y="0" width="220" height="180" rx="12" fill="url(#card)" stroke="#4a5568" stroke-opacity="0.3" />
-        <text x="15" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold">Position Details</text>
+        <text x="110" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold" text-anchor="middle">Position Details</text>
+        <text x="110" y="48" font-family="monospace" font-size="13" fill="#718096" text-anchor="middle">${formatAddress(positionEscrowAddress)}</text>
         
-        ${createDataPoint(15, 55, 'Collateral', formattedPositionEscrowStEth, 'stETH')}
-        ${createDataPoint(120, 55, 'Liability', formattedUspdEquivalentFromShares, 'USPD')}
-        
-        ${createDataPoint(15, 115, 'Liability (Shares)', formatBigIntDisplay(backedPoolShares, 18, 4), 'cUSPD')}
-        ${createDataPoint(120, 115, 'Escrow Address', formatAddress(positionEscrowAddress), '', 13)}
+        ${createDataPoint(15, 80, 'Collateral', formattedPositionEscrowStEth, 'stETH')}
+        ${createDataPoint(15, 130, 'Liability', formattedUspdEquivalentFromShares, 'USPD')}
 
         <!-- Right Card: NFT Details -->
         <rect x="228" y="0" width="220" height="180" rx="12" fill="url(#card)" stroke="#4a5568" stroke-opacity="0.3" />
-        <text x="243" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold">NFT Details</text>
+        <text x="338" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold" text-anchor="middle">NFT Details</text>
 
-        ${createDataPoint(243, 55, 'Owner', formatAddress(ownerAddress), '', 13)}
-        ${createDataPoint(353, 55, 'Min. Ratio', `${minCollateralRatioPercent.toFixed(2)}%`)}
-
-        ${createDataPoint(243, 115, 'Available to Mint', formattedStabilizerEscrowStEth, 'stETH')}
-        ${createDataPoint(353, 115, 'Stabilizer Escrow', formatAddress(stabilizerEscrowAddress), '', 13)}
+        ${createDataPoint(243, 60, 'Min. Ratio', `${minCollateralRatioPercent.toFixed(2)}%`)}
+        ${createDataPoint(243, 110, 'Available to Mint', formattedStabilizerEscrowStEth, 'stETH')}
       </g>
       
       <!-- Footer -->
@@ -420,9 +415,9 @@ export async function GET(
       image: svgDataUri,
       attributes: [
         { trait_type: "Token ID", value: tokenId },
-        { trait_type: "Owner", value: formatAddress(ownerAddress) },
-        { trait_type: "Stabilizer Escrow", value: formatAddress(stabilizerEscrowAddress) },
-        { trait_type: "Position Escrow", value: formatAddress(positionEscrowAddress) },
+        { trait_type: "Owner", value: ownerAddress === zeroAddress ? "N/A" : getAddress(ownerAddress) },
+        { trait_type: "Stabilizer Escrow", value: stabilizerEscrowAddress === zeroAddress ? "N/A" : getAddress(stabilizerEscrowAddress) },
+        { trait_type: "Position Escrow", value: positionEscrowAddress === zeroAddress ? "N/A" : getAddress(positionEscrowAddress) },
         { trait_type: "Min Collateral Ratio", value: `${(Number(minCollateralRatioBps) / 100).toFixed(2)}%` },
         { trait_type: "Available Minting Collateral", value: `${formatBigIntDisplay(stabilizerEscrowStEthBalance, 18, 6)} stETH` },
         { 
