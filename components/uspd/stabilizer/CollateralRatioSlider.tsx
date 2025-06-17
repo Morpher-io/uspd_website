@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { type Abi } from "viem"
 import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -11,7 +12,7 @@ interface CollateralRatioSliderProps {
   tokenId: number
   // currentRatio prop removed
   stabilizerAddress: `0x${string}`
-  stabilizerAbi: any
+  stabilizerAbi: Abi
 }
 
 export default function CollateralRatioSlider({
@@ -67,8 +68,12 @@ export default function CollateralRatioSlider({
       
       setSuccess(`Successfully updated collateralization ratio to ${(ratio / 100).toFixed(2)}%`)
       // onSuccess call removed
-    } catch (err: any) {
-      setError(err.message || 'Failed to update ratio')
+    } catch (err) {
+      let message = "Failed to update ratio"
+      if (err instanceof Error) {
+        message = err.message
+      }
+      setError(message)
       console.error(err)
     } finally {
       setIsUpdating(false)
