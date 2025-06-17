@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useWriteContract, useAccount, useReadContracts, useWatchContractEvent, useReadContract } from 'wagmi' // Import useWatchContractEvent
-import { parseEther, formatEther, formatUnits, Address } from 'viem'
+import { parseEther, formatEther, formatUnits, Address, Abi } from 'viem'
 import { IPriceOracle } from '@/types/contracts'
 
 // Import necessary ABIs
@@ -18,8 +18,18 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface PositionEscrowManagerProps {
     tokenId: number
     stabilizerAddress: Address // StabilizerNFT contract address
-    stabilizerAbi: any
+    stabilizerAbi: Abi
     // minCollateralRatio prop removed
+}
+
+// Define an interface for the price data from the API
+interface PriceData {
+    price: string;
+    decimals: number;
+    dataTimestamp: number;
+    requestTimestamp: number;
+    assetPair: `0x${string}`;
+    signature: `0x${string}`;
 }
 
 export function PositionEscrowManager({
@@ -44,7 +54,7 @@ export function PositionEscrowManager({
     const [currentCollateralRatio, setCurrentCollateralRatio] = useState<number>(0) // Ratio percentage (e.g., 110.5)
 
     // Price data
-    const [priceData, setPriceData] = useState<any>(null)
+    const [priceData, setPriceData] = useState<PriceData | null>(null)
     const [isLoadingPrice, setIsLoadingPrice] = useState(false)
 
     const { address } = useAccount()
@@ -94,7 +104,7 @@ export function PositionEscrowManager({
             setIsLoadingPrice(true)
             const response = await fetch('/api/v1/price/eth-usd')
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json()
+            const data: PriceData = await response.json()
             setPriceData(data)
             return data
         } catch (err) {
@@ -301,8 +311,12 @@ export function PositionEscrowManager({
             setSuccess(`Successfully added ${addDirectAmount} ETH directly to Position Escrow for Stabilizer #${tokenId}`)
             setAddDirectAmount('')
             refetchAllPositionData()
-        } catch (err: any) {
-            setError(err.message || 'Failed to add direct collateral')
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to add direct collateral');
+            } else {
+                setError('Failed to add direct collateral');
+            }
             console.error(err)
         } finally {
             setIsAddingDirectCollateral(false)
@@ -346,16 +360,17 @@ export function PositionEscrowManager({
 
             setSuccess(`Successfully initiated withdrawal of excess collateral from Position Escrow for Stabilizer #${tokenId}`)
             refetchAllPositionData()
-        } catch (err: any) {
-            setError(err.message || 'Failed to withdraw excess collateral')
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to withdraw excess collateral');
+            } else {
+                setError('Failed to withdraw excess collateral');
+            }
             console.error(err)
         } finally {
             setIsWithdrawingExcess(false)
         }
     }
-
-    // Update loading check to include individual address loading states
-    const isLoading = isLoadingPositionAddr || isLoadingStEthAddr || isLoadingRateAddr || isLoadingPositionEscrowData || isLoadingPrice;
 
     // Show loading if addresses are loading OR if data is loading after addresses are known
     if (isLoadingPositionAddr || isLoadingStEthAddr || isLoadingRateAddr || (isLoadingPositionEscrowData && !!positionEscrowAddress)) {
