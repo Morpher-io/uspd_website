@@ -5,8 +5,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract, useAccount, useReadContract, useWatchContractEvent } from 'wagmi' // Import useWatchContractEvent
-import { parseEther, formatEther, Address } from 'viem'
+import { useWriteContract, useReadContract, useWatchContractEvent } from 'wagmi' // Import useWatchContractEvent
+import { parseEther, formatEther, Address, Abi } from 'viem'
 
 // Import necessary ABIs
 import stabilizerEscrowAbi from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json'
@@ -14,7 +14,7 @@ import stabilizerEscrowAbi from '@/contracts/out/StabilizerEscrow.sol/Stabilizer
 interface StabilizerEscrowManagerProps {
     tokenId: number
     stabilizerAddress: Address // StabilizerNFT contract address
-    stabilizerAbi: any
+    stabilizerAbi: Abi
     // onSuccess prop removed
 }
 
@@ -176,8 +176,12 @@ export function StabilizerEscrowManager({
             setAddAmount('')
             refetchAllEscrowData() // Use combined refetch
             // onSuccess call removed
-        } catch (err: any) {
-            setError(err.message || 'Failed to add funds')
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to add funds')
+            } else {
+                setError('Failed to add funds')
+            }
             console.error(err)
         } finally {
             setIsAddingFunds(false)
@@ -214,8 +218,12 @@ export function StabilizerEscrowManager({
             setWithdrawAmount('')
             refetchAllEscrowData() // Use combined refetch
             // onSuccess call removed
-        } catch (err: any) {
-            setError(err.message || 'Failed to withdraw funds')
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to withdraw funds')
+            } else {
+                setError('Failed to withdraw funds')
+            }
             console.error(err)
         } finally {
             setIsWithdrawingFunds(false)
