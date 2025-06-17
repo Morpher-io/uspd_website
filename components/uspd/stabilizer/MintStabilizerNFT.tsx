@@ -1,5 +1,6 @@
 'use client'
 
+import { type Abi } from 'viem'
 import { useAccount, useReadContract } from 'wagmi' // Added useReadContract
 import stabilizerAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 interface MintPageDetailsProps {
   stabilizerAddress: `0x${string}`
-  stabilizerAbi: any
+  stabilizerAbi: Abi
 }
 
 function MintPageDetails({ stabilizerAddress, stabilizerAbi }: MintPageDetailsProps) {
@@ -107,7 +108,7 @@ export default function MintStabilizerNFT() {
                 {(loadedAddresses) => (
                     <MintPageDetails
                         stabilizerAddress={loadedAddresses.stabilizer}
-                        stabilizerAbi={stabilizerAbiJson.abi}
+                        stabilizerAbi={stabilizerAbiJson.abi as Abi}
                     />
                 )}
             </ContractLoader>
