@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type TargetAndTransition } from "framer-motion";
 import { useTheme } from "nextra-theme-docs";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
@@ -484,8 +484,8 @@ type ActorProps = {
   y: string;
   visible: boolean;
   children?: React.ReactNode;
-  animate?: Record<string, unknown>;
-  iconAnimate?: Record<string, unknown>;
+  animate?: TargetAndTransition;
+  iconAnimate?: TargetAndTransition;
   labelVisible?: boolean;
 };
 
