@@ -35,8 +35,12 @@ export function StabilizerNFTMetadata({ tokenId }: StabilizerNFTMetadataProps) {
         }
         const data: NFTMetadata = await response.json()
         setMetadata(data)
-      } catch (err: any) {
-        setError(err.message || 'An unknown error occurred')
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message)
+        } else {
+          setError('An unknown error occurred')
+        }
         setMetadata(null)
       } finally {
         setIsLoading(false)
