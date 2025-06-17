@@ -82,13 +82,10 @@ function generateStabilizerNFTSVG({
   currentCollateralRatioBps: bigint;
   ethUsdPriceFormatted: string;
 }): string {
-  const width = 380;
-  const height = 560; // Adjusted height for new layout
-
-  const formattedStabilizerEscrowStEth = formatBigIntDisplay(stabilizerEscrowStEthBalance);
-  const formattedPositionEscrowStEth = formatBigIntDisplay(positionEscrowStEthBalance);
-  const formattedBackedPoolShares = formatBigIntDisplay(backedPoolShares);
-  const formattedUspdEquivalentFromShares = formatBigIntDisplay(uspdEquivalentFromShares);
+  // Data formatting
+  const formattedPositionEscrowStEth = formatBigIntDisplay(positionEscrowStEthBalance, 18, 4);
+  const formattedUspdEquivalentFromShares = formatBigIntDisplay(uspdEquivalentFromShares, 18, 4);
+  const formattedStabilizerEscrowStEth = formatBigIntDisplay(stabilizerEscrowStEthBalance, 18, 4);
 
   const minCollateralRatioPercent = minCollateralRatioBps > 0n ? Number(minCollateralRatioBps) / 100 : 0;
   
@@ -103,59 +100,73 @@ function generateStabilizerNFTSVG({
 
   const ratioColor = getRatioColor(currentCollateralRatioBps);
 
+  // Inlined USPD logo content from public/images/logo_uspd.svg
+  const uspdLogoPaths = `
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M15.1415 8.00452L17.2121 15.7319C17.8791 18.2214 20.4381 19.6988 22.9276 19.0318C25.4171 18.3647 26.8945 15.8058 26.2274 13.3163L24.1568 5.58887L28.0205 4.5536L30.0911 12.281C31.1518 16.2395 29.293 20.2924 25.8347 22.1538L26.93 26.2415L23.0663 27.2768L21.971 23.1891C18.0453 23.3062 14.4091 20.7257 13.3484 16.7672L11.2778 9.03979L15.1415 8.00452Z" fill="#00C386"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M44.7659 5.39508L39.1091 11.0519C37.2866 12.8744 37.2866 15.8291 39.1091 17.6516C40.9315 19.474 43.8863 19.474 45.7087 17.6516L51.3656 11.9947L54.194 14.8232L48.5372 20.48C45.6394 23.3778 41.2 23.7946 37.8588 21.7303L34.8664 24.7227L32.038 21.8942L35.0304 18.9018C32.9661 15.5606 33.3828 11.1213 36.2806 8.2235L41.9375 2.56665L44.7659 5.39508Z" fill="#00C386"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M61.2919 29.3906L53.5645 27.32C51.075 26.6529 48.5161 28.1303 47.849 30.6198C47.1819 33.1093 48.6593 35.6683 51.1488 36.3353L58.8762 38.4059L57.841 42.2696L50.1136 40.199C46.1551 39.1383 43.5745 35.5021 43.6917 31.5764L39.6039 30.4811L40.6392 26.6174L44.7269 27.7127C46.5883 24.2544 50.6413 22.3956 54.5997 23.4563L62.3271 25.5269L61.2919 29.3906Z" fill="#00C386"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M2.7091 34.6094L10.4365 36.68C12.926 37.3471 15.4849 35.8697 16.152 33.3802C16.819 30.8907 15.3417 28.3317 12.8521 27.6647L5.12475 25.5941L6.16003 21.7304L13.8874 23.801C17.8459 24.8617 20.4265 28.4979 20.3093 32.4236L24.397 33.5189L23.3618 37.3826L19.274 36.2873C17.4127 39.7456 13.3597 41.6044 9.40123 40.5437L1.67383 38.4731L2.7091 34.6094Z" fill="#00C386"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M49.2862 56.0895L47.2156 48.3621C46.5486 45.8726 43.9897 44.3952 41.5002 45.0622C39.0107 45.7293 37.5333 48.2882 38.2003 50.7777L40.2709 58.5051L36.4072 59.5404L34.3366 51.813C33.276 47.8545 35.1347 43.8016 38.5931 41.9402L37.4978 37.8525L41.3615 36.8172L42.4568 40.9049C46.3825 40.7877 50.0187 43.3683 51.0793 47.3268L53.1499 55.0542L49.2862 56.0895Z" fill="#00C386"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M19.6618 58.6989L25.3187 53.0421C27.1411 51.2196 27.1411 48.2648 25.3187 46.4424C23.4962 44.62 20.5414 44.62 18.719 46.4424L13.0621 52.0993L10.2337 49.2708L15.8906 43.614C18.7884 40.7162 23.2277 40.2994 26.5689 42.3637L29.5613 39.3713L32.3897 42.1998L29.3973 45.1922C31.4616 48.5334 31.0449 52.9727 28.1471 55.8705L22.4902 61.5273L19.6618 58.6989Z" fill="#00C386"/>
+    <circle cx="32.0005" cy="32" r="3.75" fill="#00C386"/>
+  `;
+
   const svg = `
-    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#2d3748;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#1a202c;stop-opacity:1" />
-        </linearGradient>
-        <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#4a5568;stop-opacity:0.3" />
-          <stop offset="100%" style="stop-color:#2d3748;stop-opacity:0.5" />
+        <radialGradient id="background" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+          <stop offset="0%" stop-color="#1a202c" />
+          <stop offset="100%" stop-color="#2d3748" />
+        </radialGradient>
+        <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="rgba(74, 85, 104, 0.2)" />
+          <stop offset="100%" stop-color="rgba(45, 55, 72, 0.4)" />
         </linearGradient>
       </defs>
-      <rect width="100%" height="100%" rx="20" fill="url(#backgroundGradient)" />
       
-      <g transform="translate(20, 20)">
-        <text x="10" y="30" font-family="sans-serif" font-size="24" fill="#e2e8f0" font-weight="bold">USPD Stabilizer NFT #${tokenId}</text>
-        <line x1="10" y1="45" x2="${width - 60}" y2="45" stroke="#4a5568" stroke-width="1"/>
-
-        <!-- NFT Overview -->
-        <rect x="10" y="60" width="${width - 60}" height="140" rx="10" fill="url(#cardGradient)" stroke="#718096" stroke-opacity="0.5"/>
-        <text x="25" y="85" font-family="sans-serif" font-size="14" fill="#a0aec0" font-weight="semibold">NFT Overview</text>
-        <text x="25" y="110" font-family="sans-serif" font-size="13" fill="#e2e8f0">Owner:</text>
-        <text x="${width - 85}" y="110" font-family="monospace" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formatAddress(ownerAddress)}</text>
-        <text x="25" y="135" font-family="sans-serif" font-size="13" fill="#e2e8f0">Stabilizer Escrow:</text>
-        <text x="${width - 85}" y="135" font-family="monospace" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formatAddress(stabilizerEscrowAddress)}</text>
-        <text x="25" y="160" font-family="sans-serif" font-size="13" fill="#e2e8f0">Min. Collateral Ratio:</text>
-        <text x="${width - 85}" y="160" font-family="sans-serif" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${minCollateralRatioPercent.toFixed(2)}%</text>
-        <text x="25" y="185" font-family="sans-serif" font-size="13" fill="#e2e8f0">Available Minting Collateral:</text>
-        <text x="${width - 85}" y="185" font-family="sans-serif" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedStabilizerEscrowStEth} stETH</text>
-
-        <!-- Position Escrow Details -->
-        <rect x="10" y="215" width="${width - 60}" height="225" rx="10" fill="url(#cardGradient)" stroke="#718096" stroke-opacity="0.5"/>
-        <text x="25" y="240" font-family="sans-serif" font-size="14" fill="#a0aec0" font-weight="semibold">Position Escrow Details (NFT #${tokenId})</text>
-        <text x="25" y="265" font-family="sans-serif" font-size="13" fill="#e2e8f0">Address:</text>
-        <text x="${width - 85}" y="265" font-family="monospace" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formatAddress(positionEscrowAddress)}</text>
-        <text x="25" y="290" font-family="sans-serif" font-size="13" fill="#e2e8f0">Collateral:</text>
-        <text x="${width - 85}" y="290" font-family="sans-serif" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedPositionEscrowStEth} stETH</text>
-        <text x="25" y="315" font-family="sans-serif" font-size="13" fill="#e2e8f0">Liability (Shares):</text>
-        <text x="${width - 85}" y="315" font-family="sans-serif" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedBackedPoolShares} cUSPD</text>
-        <text x="25" y="340" font-family="sans-serif" font-size="13" fill="#e2e8f0">Liability (USPD Equivalent):</text>
-        <text x="${width - 85}" y="340" font-family="sans-serif" font-size="13" fill="#e2e8f0" text-anchor="end" font-weight="bold">${formattedUspdEquivalentFromShares} USPD</text>
-        
-        <line x1="25" y1="355" x2="${width - 75}" y2="355" stroke="#4a5568" stroke-width="0.5"/>
-
-        <text x="25" y="375" font-family="sans-serif" font-size="14" fill="#e2e8f0">Current Collateral Ratio:</text>
-        <text x="${width - 85}" y="375" font-family="sans-serif" font-size="16" fill="${ratioColor}" text-anchor="end" font-weight="bold">${currentCollateralRatioPercentText}</text>
-        
-        <text x="25" y="405" font-family="sans-serif" font-size="12" fill="#a0aec0">ETH Price (Snapshot):</text>
-        <text x="${width - 85}" y="405" font-family="sans-serif" font-size="12" fill="#a0aec0" text-anchor="end">${ethUsdPriceFormatted}</text>
-
-        <!-- Footer Text -->
-        <text x="${(width-40)/2}" y="${height - 50}" font-family="sans-serif" font-size="10" fill="#718096" text-anchor="middle">USPD Protocol Stabilizer Position</text>
+      <rect width="512" height="512" rx="32" fill="url(#background)" />
+      
+      <!-- Header -->
+      <g transform="translate(32, 32) scale(0.75)">
+        ${uspdLogoPaths}
       </g>
+      <text x="92" y="68" font-family="sans-serif" font-size="22" fill="#e2e8f0" font-weight="bold">Stabilizer NFT</text>
+      <text x="480" y="58" font-family="monospace" font-size="28" fill="#a0aec0" text-anchor="end" font-weight="bold">#${tokenId}</text>
+      
+      <!-- Main Content: Collateral Ratio -->
+      <g transform="translate(0, 110)">
+        <text x="256" y="0" font-family="sans-serif" font-size="18" fill="#a0aec0" text-anchor="middle">Current Collateral Ratio</text>
+        <text x="256" y="60" font-family="sans-serif" font-size="60" fill="${ratioColor}" text-anchor="middle" font-weight="bold">${currentCollateralRatioPercentText}</text>
+      </g>
+      
+      <!-- Details Section -->
+      <g transform="translate(32, 230)">
+        <!-- Left Card: Position Details -->
+        <rect x="0" y="0" width="220" height="190" rx="12" fill="url(#card)" stroke="#4a5568" stroke-opacity="0.3" />
+        <text x="15" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold">Position Escrow</text>
+        <text x="15" y="60" font-family="sans-serif" font-size="14" fill="#cbd5e0">Address:</text>
+        <text x="205" y="60" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formatAddress(positionEscrowAddress)}</text>
+        <text x="15" y="90" font-family="sans-serif" font-size="14" fill="#cbd5e0">Collateral:</text>
+        <text x="205" y="90" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formattedPositionEscrowStEth} stETH</text>
+        <text x="15" y="120" font-family="sans-serif" font-size="14" fill="#cbd5e0">Liability (USPD):</text>
+        <text x="205" y="120" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formattedUspdEquivalentFromShares} USPD</text>
+        <text x="15" y="150" font-family="sans-serif" font-size="14" fill="#cbd5e0">Liability (Shares):</text>
+        <text x="205" y="150" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formatBigIntDisplay(backedPoolShares, 18, 4)} cUSPD</text>
+
+        <!-- Right Card: NFT Details -->
+        <rect x="228" y="0" width="220" height="190" rx="12" fill="url(#card)" stroke="#4a5568" stroke-opacity="0.3" />
+        <text x="243" y="28" font-family="sans-serif" font-size="16" fill="#a0aec0" font-weight="semibold">NFT Details</text>
+        <text x="243" y="60" font-family="sans-serif" font-size="14" fill="#cbd5e0">Owner:</text>
+        <text x="433" y="60" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formatAddress(ownerAddress)}</text>
+        <text x="243" y="90" font-family="sans-serif" font-size="14" fill="#cbd5e0">Min Ratio:</text>
+        <text x="433" y="90" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${minCollateralRatioPercent.toFixed(2)}%</text>
+        <text x="243" y="120" font-family="sans-serif" font-size="14" fill="#cbd5e0">Minting Collateral:</text>
+        <text x="433" y="120" font-family="monospace" font-size="14" fill="#e2e8f0" text-anchor="end">${formattedStabilizerEscrowStEth} stETH</text>
+      </g>
+      
+      <!-- Footer -->
+      <text x="32" y="470" font-family="sans-serif" font-size="13" fill="#a0aec0">ETH Price (Snapshot): ${ethUsdPriceFormatted}</text>
+      <text x="480" y="470" font-family="sans-serif" font-size="13" fill="#718096" text-anchor="end">USPD Protocol</text>
     </svg>
   `;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
