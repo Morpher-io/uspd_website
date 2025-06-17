@@ -59,25 +59,19 @@ function getRatioColor(ratioBps: bigint): string {
 // Function to generate the detailed SVG
 function generateStabilizerNFTSVG({
   tokenId,
-  ownerAddress,
-  stabilizerEscrowAddress,
   stabilizerEscrowStEthBalance,
   minCollateralRatioBps,
   positionEscrowAddress,
   positionEscrowStEthBalance,
-  backedPoolShares,
   uspdEquivalentFromShares,
   currentCollateralRatioBps,
   ethUsdPriceFormatted,
 }: {
   tokenId: string;
-  ownerAddress: Address;
-  stabilizerEscrowAddress: Address;
   stabilizerEscrowStEthBalance: bigint;
   minCollateralRatioBps: bigint;
   positionEscrowAddress: string;
   positionEscrowStEthBalance: bigint;
-  backedPoolShares: bigint;
   uspdEquivalentFromShares: bigint;
   currentCollateralRatioBps: bigint;
   ethUsdPriceFormatted: string;
@@ -180,10 +174,11 @@ function generateStabilizerNFTSVG({
 
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const tokenId = (await params).id;
+
 
   if (!tokenId || isNaN(parseInt(tokenId))) {
     return NextResponse.json({ error: 'Invalid token ID' }, { status: 400 });
@@ -396,13 +391,10 @@ export async function GET(
     // --- Generate SVG ---
     const svgDataUri = generateStabilizerNFTSVG({
       tokenId,
-      ownerAddress,
-      stabilizerEscrowAddress,
       stabilizerEscrowStEthBalance,
       minCollateralRatioBps,
       positionEscrowAddress,
       positionEscrowStEthBalance,
-      backedPoolShares,
       uspdEquivalentFromShares,
       currentCollateralRatioBps,
       ethUsdPriceFormatted,
