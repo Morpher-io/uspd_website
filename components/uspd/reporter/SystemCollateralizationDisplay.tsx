@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useReadContract, useChainId, useAccount, useWalletClient, useBalance, useConfig } from 'wagmi' // Added useConfig
+import { useReadContract, useChainId, useAccount, useWalletClient, useConfig } from 'wagmi' // Added useConfig
 import { formatUnits, Address } from 'viem'
 import Link from 'next/link'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
@@ -165,7 +165,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
             refetchEthEquivalent();
             refetchYieldFactor();
         }
-    }, [priceData, refetchRatio, refetchEthEquivalent, refetchYieldFactor]); // priceData is the key trigger
+    }, [priceData, refetchRatio, refetchEthEquivalent, refetchYieldFactor, priceResponseForContract]); // priceData is the key trigger
 
     // --- Token Data Fetching ---
     const { data: uspdTotalSupplyData, isLoading: isLoadingUspdTotalSupply } = useReadContract({
@@ -203,7 +203,6 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     // --- End Token Data Fetching ---
 
 
-    const isLoadingAnyContractData = isLoadingRatio || isLoadingEthEquivalent || isLoadingYieldFactor || isLoadingUspdTotalSupply || isLoadingUserUspdBalance || isLoadingCuspdTotalSupply || isLoadingUserCuspdBalance;
 
     // --- Calculate Mintable Capacity ---
     const calculateMintableCapacity = useCallback(async () => {
@@ -335,7 +334,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
             // const intervalId = setInterval(calculateMintableCapacity, 60000); // e.g., every 60 seconds
             // return () => clearInterval(intervalId);
         }
-    }, [calculateMintableCapacity, stabilizerNftAddress, priceData]);
+    }, [config, calculateMintableCapacity, stabilizerNftAddress, priceData]);
     // --- End Calculate Mintable Capacity ---
 
     const systemRatio = systemRatioData as bigint | undefined;
@@ -395,7 +394,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     const copyToClipboard = (text: string, label: string) => {
         navigator.clipboard.writeText(text)
             .then(() => toast.success(`${label} copied to clipboard!`))
-            .catch(err => toast.error(`Failed to copy ${label}`));
+            .catch(() => toast.error(`Failed to copy ${label}`));
     };
 
     const renderAddressCell = (address: Address, label: string) => (
