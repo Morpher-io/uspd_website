@@ -1,17 +1,11 @@
 'use client'
 
-// import { useAccount } from 'wagmi' // No longer needed for role check
-// import { useReadContracts } from 'wagmi' // No longer needed for role check
-// import { Alert, AlertDescription } from "@/components/ui/alert" // No longer needed for permission message
-// import { Button } from "@/components/ui/button" // No longer needed
-// import { useRouter } from 'next/navigation' // No longer needed
-// import Link from 'next/link' // No longer needed
-// import { useEffect } from "react" // No longer needed
+import type { Abi } from 'viem'
 import { MintForm } from './MintForm'
 
 interface MintDataProps {
   stabilizerAddress: `0x${string}`
-  stabilizerAbi: any
+  stabilizerAbi: Abi
 }
 
 export function MintData({ stabilizerAddress, stabilizerAbi }: MintDataProps) {
