@@ -10,21 +10,21 @@ import {
   User,
   ShieldCheck,
   Coins,
-  Ticket,
   ArrowRight,
   Zap,
   Users,
-  Landmark,
   TrendingUp,
   TrendingDown,
   Scale,
+  ExternalLinkIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { RetroGrid } from "@/components/magicui/retro-grid";
 import { BlurFade } from "@/components/magicui/blur-fade";
 import { ChronoCard } from "@/components/uspd/how-it-works/ChronoCard";
 import { FlickeringGrid } from "@/components/magicui/flickering-grid";
+import { AnimatedGridPattern } from "@/components/magicui/animated-grid-pattern";
+import { cn } from "@/lib/utils";
 
 // --- Progress Indicator Component ---
 const ScrollProgressIndicator = ({
@@ -124,10 +124,10 @@ const scenes = [
     content: (
       <p>
         The Stabilizer mints a Stabilizer NFT, which represents their position
-        in the system.
+        in the system. The NFT automatically gets two contracts attached: A Stabilizer Escrow contract and a Position Escrow contract.
       </p>
     ),
-    link: { href: "/stabilizer/mint", text: "Mint a Stabilizer NFT" },
+    link: { href: "/stabilizer/mint", text: "Open the Minting Page" },
   },
   {
     id: 3,
@@ -138,14 +138,14 @@ const scenes = [
         is now unallocated collateral, ready to back new USPD.
       </p>
     ),
-    link: { href: "/stabilizer", text: "Manage Collateral" },
+    link: { href: "/stabilizer", text: "Open the Collateralization Manager" },
   },
   {
     id: 4,
     title: "Setting the Ratio",
     content: (
       <p>
-        Next, they set their desired overcollateralization ratio. For every 1
+        Next, they set their desired overcollateralization ratio. For example 150%: For every 1
         ETH a user provides, the Stabilizer will add 0.5 ETH, for a total of
         150%.
       </p>
@@ -166,11 +166,11 @@ const scenes = [
     title: "User Mints USPD",
     content: (
       <p>
-        The User deposits their 1 ETH (worth $2,500) into a new Position
+        The User deposits their 1 ETH (worth e.g. $2,500) into a new Position
         Escrow. This ETH is now locked, ready to be collateralized.
       </p>
     ),
-    link: { href: "/uspd", text: "Mint USPD" },
+    link: { href: "/uspd", text: "Open the Minting Page" },
   },
   {
     id: 7,
@@ -242,7 +242,7 @@ const scenes = [
     ),
     link: {
       href: "/docs/stabilizers/liquidation",
-      text: "Read Liquidation Docs",
+      text: "Open Liquidation Docs",
     },
   },
   {
@@ -735,7 +735,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           <ChartBar
             value={
               activeSceneId < 3 ? 0 : // Scenes before 3 show 0
-              activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
+                activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
             }
             maxValue={MAX_CHART_ETH}
             color="bg-gray-500"
@@ -847,7 +847,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
           w={"25%"}
           h={"60%"}
           visible={
-            
+
             (activeSceneId >= 2 && activeSceneId < 21 && activeSceneId !== 15)
           }
         >
@@ -1158,9 +1158,9 @@ const HeroBlock = ({
     />
     <BlurFade inView={true}>
       <div className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
-        
+
         {children}
-        
+
       </div>
       <div className="mt-8 px-4 w-full max-w-3xl">
         <div className="bg-background/70 backdrop-blur-sm p-6 rounded-lg text-xl text-muted-foreground">
@@ -1172,6 +1172,7 @@ const HeroBlock = ({
           <Link href={link.href} passHref>
             <Button variant="outline" size="lg" className="hover:cursor-pointer">
               {link.text}
+              <ExternalLinkIcon />
             </Button>
           </Link>
         </div>
@@ -1244,13 +1245,22 @@ export default function HowItWorksPage() {
     <div className="bg-background text-foreground">
       {/* Scene 0: Intro */}
       <section className="h-screen w-full flex flex-col items-center justify-center text-center relative overflow-hidden">
-        <RetroGrid />
+        <AnimatedGridPattern
+          numSquares={60}
+          maxOpacity={0.4}
+          duration={2}
+          repeatDelay={1}
+          className={cn(
+            "[mask-image:radial-gradient(600px_circle_at_center,white,transparent)]",
+            "inset-x-0 inset-y-[-50%] h-[200%] skew-y-12 skew-x-3",
+          )}
+        />
+
         <AuroraText className="text-6xl md:text-8xl font-bold tracking-tighter px-4">
           How USPD Works
         </AuroraText>
         <div className="mt-4 px-4 text-xl w-full max-w-3xl">
-          Learn all about Stabilizers, Liquidity and Overcollateralization in
-          USPD through a series of interactive scroll-explainer graphics.
+          Scroll down to learn how minting USPD works, how Stabilizers provide overcollateral, how Liquidations and Overcollateralization stabilize the system.
         </div>
         <motion.div
           className="absolute bottom-40"
@@ -1263,10 +1273,12 @@ export default function HowItWorksPage() {
           }}
         >
           <ShimmerButton onClick={scrollToStart} className="shadow-2xl">
-            <span className="flex flex-row items-center text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
-              Scroll to Start{" "}
-              <ArrowBigDown className="ml-1 size-4 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
-            </span>
+            <div className="h-full flex flex-row gap-1 items-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
+              Scroll to Start
+              <span>
+                <ArrowBigDown className="size-4 transition-transform duration-300 ease-in-out group-hover:translate-y-0.5" />
+              </span>
+            </div>
           </ShimmerButton>
         </motion.div>
       </section>
