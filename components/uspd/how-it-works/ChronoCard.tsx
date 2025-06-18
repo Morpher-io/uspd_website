@@ -29,10 +29,11 @@ export function ChronoCard({
             style={{
               background:
                 "linear-gradient(to bottom, transparent, hsl(161, 100%, 38%), transparent)",
+              transformOrigin: "center",
             }}
-            initial={{ scaleY: 0, originY: 0.5 }}
-            animate={{ scaleY: 1, originY: 0.5 }}
-            exit={{ scaleY: 0, originY: 0.5 }}
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            exit={{ scaleY: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           />
         )}
