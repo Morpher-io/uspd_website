@@ -1419,7 +1419,9 @@ export default function HowItWorksPage() {
                 )}
                 {group.map((scene) => (
                   <TextBlock
-                    ref={(el) => sceneRefs.current.set(scene.id, el)}
+                    ref={(el) => {
+                      sceneRefs.current.set(scene.id, el);
+                    }}
                     key={scene.id}
                     title={scene.title}
                     sceneId={scene.id}
