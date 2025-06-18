@@ -4,44 +4,24 @@ import * as React from 'react';
 import '@rainbow-me/rainbowkit/styles.css';
 
 import {
-  darkTheme,
   getDefaultConfig,
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit';
-import {  WagmiProvider } from 'wagmi';
+import { WagmiProvider } from 'wagmi';
 import {
   mainnet,
   polygon,
   sepolia,
   baseSepolia,
-  Chain
 } from 'wagmi/chains';
 import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
 
-// Define a custom Anvil chain for development
-const anvilChain: Chain = {
-  id: 112233,
-  name: 'Anvil',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'Ethereum',
-    symbol: 'ETH',
-  },
-  rpcUrls: {
-    default: { http: ['http://localhost:8545'] },
-    public: { http: ['http://localhost:8545'] },
-  },
-  blockExplorers: {
-    default: { name: 'Local Explorer', url: 'http://localhost:8545' },
-  },
-  testnet: true,
-};
 
 // Determine which chains to use based on environment
-const chains = process.env.NODE_ENV === 'development' 
+const chains = process.env.NODE_ENV === 'development'
   ? [sepolia, baseSepolia]
   : [mainnet, polygon];
 
@@ -54,20 +34,13 @@ const config = getDefaultConfig({
 
 const queryClient = new QueryClient();
 
-
-const demoAppInfo = {
-  appName: 'USPD Token Demo',
-};
-
-
-
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider children={children} theme={darkTheme()} />
+        <RainbowKitProvider>
+          {children}
+        </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
