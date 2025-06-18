@@ -4,6 +4,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ExternalLinkIcon } from "lucide-react";
 
 interface ChronoCardProps {
   isActive: boolean;
@@ -49,6 +50,8 @@ export function ChronoCard({
             <Link href={link.href} passHref>
               <Button variant="outline" className="hover:cursor-pointer">
                 {link.text}
+
+                <ExternalLinkIcon />
               </Button>
             </Link>
           </div>
