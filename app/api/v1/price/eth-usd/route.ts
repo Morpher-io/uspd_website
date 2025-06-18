@@ -4,14 +4,13 @@ import { SigningService } from '@/lib/signing';
 import { keccak256, stringToHex } from 'viem';
 import Redis from 'ioredis';
 
-// NOTE: You will need to install ioredis: `npm install ioredis` or `yarn add ioredis`
-
 // Redis client setup
-// Make sure to set REDIS_URL or REDIS_HOST/REDIS_PORT/REDIS_PASSWORD in your environment
-const redis = new Redis(process.env.REDIS_URL || {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379,
-  password: process.env.REDIS_PASSWORD,
+// Make sure to set REDIS_HOST/REDIS_PORT/REDIS_PASSWORD in your environment
+const redis = new Redis(process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379, process.env.REDIS_HOST || 'localhost', {
+    password: process.env.REDIS_PASSWORD,
+    tls: {
+        checkServerIdentity: () => { return undefined; },
+    }
 });
 
 // Cache duration in milliseconds (5 seconds)
@@ -33,22 +32,23 @@ export async function GET() {
 
         // Fetch new price from Redis
         const priceFromRedis = await redis.hget('markets:CRYPTO_ETH', 'close');
-        
+
+        console.log({priceFromRedis})
         if (!priceFromRedis) {
             throw new Error('Failed to fetch price from Redis: key "markets:CRYPTO_ETH" with field "close" not found.');
         }
 
         const dataTimestamp = Date.now();
-        
+
         // Convert price to 18 decimals (multiply by 10^18)
         // Use a more precise conversion to avoid scientific notation issues
-        const priceInWei = BigInt(Math.round(parseFloat(priceFromRedis) * 10**PRICE_DECIMALS)).toString();
-        
+        const priceInWei = BigInt(Math.round(parseFloat(priceFromRedis) * 10 ** PRICE_DECIMALS)).toString();
+
         // Create asset pair string - this will be hashed in the contract
         const assetPairString = 'MORPHER:ETH_USD';
 
         const signingService = new SigningService();
-        
+
         // Create and sign response
         const priceResponse: PriceResponse = {
             price: priceInWei,

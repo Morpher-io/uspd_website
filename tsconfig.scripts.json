@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2018", // Target Node.js version compatibility (adjust if needed)
+    "module": "CommonJS", // Output module format for Node.js
+    "outDir": "./scripts/dist", // Output directory for compiled JS
+    "rootDir": "./scripts", // Root directory of source TS files
+    "strict": true, // Enable strict type checking
+    "esModuleInterop": true, // Allows default imports from commonjs modules
+    "skipLibCheck": true, // Skip type checking of declaration files
+    "forceConsistentCasingInFileNames": true, // Ensure consistent file casing
+    "moduleResolution": "node", // Use Node.js module resolution
+    "resolveJsonModule": true, // Allow importing JSON files
+    "isolatedModules": false, // Allow non-module files if needed (scripts often are)
+    "noEmit": false // Ensure files are emitted
+  },
+  "include": ["scripts/**/*.ts"], // Only include .ts files in the scripts directory
+  "exclude": ["node_modules", "scripts/dist"] // Exclude node_modules and the output directory
+}

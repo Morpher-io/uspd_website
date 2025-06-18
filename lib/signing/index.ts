@@ -37,5 +37,3 @@ export class SigningService {
         return signature;
     }
 }
-
-export const signingService = new SigningService();

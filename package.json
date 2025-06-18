@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build:ts-script": "tsc --project tsconfig.scripts.json",
+    "build:pagefind-source": "node scripts/dist/generate-pagefind-source.js",
+    "build:pagefind-index": "npx pagefind --site pagefind-source --output-subdir ../public/_pagefind",
+    "build": "next build && npm run build:ts-script && npm run build:pagefind-source && npm run build:pagefind-index",
     "start": "next start",
     "lint": "next lint"
   },
@@ -19,6 +22,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.18.1",
+    "ioredis": "^5.6.1",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.517.0",
     "mermaid": "^11.6.0",

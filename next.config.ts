@@ -7,9 +7,13 @@ const nextConfig: NextConfig = {
         config.externals.push('pino-pretty', 'lokijs', 'encoding');
         config.resolve.fallback = { fs: false }
       
+        // Add support for custom elements
+        config.module = config.module || {};
+        config.module.rules = config.module.rules || [];
         return config;
     },
     reactStrictMode: true,
+    output: "standalone"
 }
 
 
@@ -37,6 +41,7 @@ const withNextra = nextra({
             },
         },
     },
+    defaultShowCopyCode: true
 });
 
 

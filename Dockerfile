@@ -1,9 +1,9 @@
-FROM public.ecr.aws/docker/library/node:20-alpine AS base
+FROM public.ecr.aws/docker/library/node:22-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat python3 make gcc g++ musl-dev binutils autoconf automake libtool pkgconfig check-dev file patch
+RUN apk add --no-cache libc6-compat python3 make gcc g++ musl-dev binutils autoconf automake libtool pkgconfig check-dev file patch git
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
@@ -22,14 +22,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-
-# ARG NPM_BUILD_ENV=production
+ARG NPM_BUILD_ENV=production
 # RUN mv -f .env.${NPM_BUILD_ENV} .env.production && rm -f .env.development # not needed for api based trading, only one markets endpoint anyways
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
-# ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
