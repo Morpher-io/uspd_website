@@ -263,7 +263,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                 }) as Address;
 
                 if (stabilizerEscrowAddress === '0x0000000000000000000000000000000000000000') {
-                    currentTokenId = position.nextUnallocated;
+                    currentTokenId = nextUnallocatedTokenId;
                     continue;
                 }
                 

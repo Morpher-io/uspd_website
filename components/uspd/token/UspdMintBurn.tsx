@@ -1,11 +1,8 @@
 'use client'
 
-'use client'
-
 import { useState } from 'react' // Import useState
-import { useAccount, useWalletClient } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs" // Import Tabs components
 import { Card, CardContent } from "@/components/ui/card" // Import Card components
@@ -13,6 +10,7 @@ import { MintWidget } from './MintWidget' // Import new MintWidget
 import { BurnWidget } from './BurnWidget' // Import new BurnWidget
 import tokenJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import cuspdTokenJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json' // Import cUSPDToken ABI
+import { Abi } from 'viem'
 
 // This component wraps the logic previously in the page.tsx file
 export default function UspdMintBurn() {
@@ -66,17 +64,17 @@ export default function UspdMintBurn() {
                                         <TabsContent value="mint">
                                             <MintWidget
                                                 tokenAddress={uspdTokenAddress} // USPD address for balance display
-                                                tokenAbi={tokenJson.abi}
+                                                tokenAbi={tokenJson.abi as Abi}
                                                 cuspdTokenAddress={cuspdTokenAddress} // cUSPD address for minting
-                                                cuspdTokenAbi={cuspdTokenJson.abi}
+                                                cuspdTokenAbi={cuspdTokenJson.abi as Abi}
                                             />
                                         </TabsContent>
                                         <TabsContent value="burn">
                                             <BurnWidget
                                                 tokenAddress={uspdTokenAddress} // USPD address for balance display
-                                                tokenAbi={tokenJson.abi}
+                                                tokenAbi={tokenJson.abi as Abi}
                                                 cuspdTokenAddress={cuspdTokenAddress} // cUSPD address for burning
-                                                cuspdTokenAbi={cuspdTokenJson.abi}
+                                                cuspdTokenAbi={cuspdTokenJson.abi as Abi}
                                             />
                                         </TabsContent>
                                     </>

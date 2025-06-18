@@ -7,10 +7,13 @@ export interface DeploymentInfo {
     oracle: string;
     positionNFT: string;
     stabilizer: string;
+    rateContract: string;
+    reporter: string;
     token: string;
   };
   config: {
     usdcAddress: string;
+    stETHAddress: string;
     uniswapRouter: string;
     chainlinkAggregator: string;
   };

@@ -1,4 +1,3 @@
-import { Frame, Download, Globe, Sparkles, LayoutPanelLeft, Bot } from "lucide-react";
 import boxIcon from "@/public/images/ic_box.svg";
 import layerIcon from "@/public/images/ic_layer.svg";
 import axisIcon from "@/public/images/ic_axis.svg";

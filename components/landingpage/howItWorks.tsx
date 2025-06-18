@@ -1,3 +1,5 @@
+"use client";
+
 import imagePie from "@/public/images/pie.svg";
 import Image from "next/image";
 

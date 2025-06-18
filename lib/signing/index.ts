@@ -1,5 +1,5 @@
 import { privateKeyToAccount } from 'viem/accounts'
-import { keccak256, toHex, stringToHex, numberToHex, concat, encodePacked } from 'viem'
+import { keccak256, stringToHex, encodePacked } from 'viem'
 
 export class SigningService {
     private account;

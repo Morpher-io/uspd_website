@@ -1,16 +1,14 @@
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
 
 import becomeAUserImage from "@/public/images/ic_minter.svg";
 import becomeAStabilizerImage from "@/public/images/ic_stabilizer.svg";
 
-import { Button } from "@/components/ui/button";
 import { InteractiveHoverButton } from "../magicui/interactive-hover-button";
 import Link from "next/link";
 
 export function BecomeAUserStabilizerSection() {
   return (
-    <section className="border-y border-border py-6 md:py-0">
+    <section className="border-y bg-secondary border-border py-6 md:py-0">
       <div className="container x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)]  mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="flex text-center md:text-left items-center md:items-left flex-col md:p-6 md:border-r md:border-r-border">
           <div className="mb-6">
@@ -24,7 +22,7 @@ export function BecomeAUserStabilizerSection() {
             seized.
           </p>
           <div>
-            <Link href="/uspd"><InteractiveHoverButton className="border-morpher-secondary">Mint USPD (Demo)</InteractiveHoverButton></Link>
+            <Link href="/uspd"><InteractiveHoverButton className="border-morpher-secondary">Mint USPD</InteractiveHoverButton></Link>
           </div>
         </div>
         <div className="flex  text-center md:text-left items-center md:items-left flex-col md:p-6">
@@ -39,7 +37,9 @@ export function BecomeAUserStabilizerSection() {
             futures and put options.
           </p>
           <div>
-            <InteractiveHoverButton className="border-morpher-secondary">BECOME A STABILIZER</InteractiveHoverButton>
+            <Link href="/stabilizer/mint">
+              <InteractiveHoverButton className="border-morpher-secondary">Become Stabilizer</InteractiveHoverButton>
+            </Link>
           </div>
         </div>
       </div>

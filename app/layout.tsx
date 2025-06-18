@@ -8,7 +8,6 @@ import { Toaster } from "@/components/ui/sonner" // if you re-export from ui
 
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from './providers';
-import { Inter } from 'next/font/google'
 import { Barlow } from 'next/font/google';
 import type { Metadata } from 'next'
 // import { Toaster } from "react-hot-toast";
@@ -22,7 +21,6 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 
 
-const inter = Inter({ subsets: ['latin'] })
 const barlow = Barlow({ subsets: ['latin'], weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'] })
 
 export const metadata: Metadata = {
@@ -46,10 +44,9 @@ export const metadata: Metadata = {
 const navbar = (
   <Navbar
     logo={<div className='flex gap-2 items-center'><Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} /><span>USPD</span></div>}
-    children={<ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />}
+  ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
 
-  // ... Your additional navbar options
-  />
+  </Navbar>
 )
 const footer = <NextraFooter><Footer /></NextraFooter>
 
@@ -87,7 +84,7 @@ export default async function RootLayout({
           </Layout>
         </Providers>
 
-      <Toaster richColors /> 
+        <Toaster richColors />
       </body>
     </html>
   )

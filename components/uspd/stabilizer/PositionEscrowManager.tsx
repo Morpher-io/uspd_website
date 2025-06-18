@@ -404,7 +404,7 @@ export function PositionEscrowManager({
                 <div>
                     <Label>Yield Factor</Label>
                     <p className="text-md font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-20" /> : formatUnits(yieldFactor, 18, 5)}
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-20" /> : formatUnits(yieldFactor, 18)}
                     </p>
                 </div>
                 <div className="col-span-2">

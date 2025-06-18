@@ -18,8 +18,3 @@ export default {
       title: "USPD Cross-Chain (Bridge)"
   }
 }
- 
-// Custom component for italicized text
-function Italic({ children, ...props }: any) {
-  return <i {...props}>{children}</i>
-}

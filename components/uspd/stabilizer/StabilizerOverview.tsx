@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 import { StabilizerData } from '@/components/uspd/stabilizer/StabilizerData'
 import stabilizerNFTJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
+import { Abi } from 'viem'
 
 // This component wraps the logic previously in the page.tsx file
 export default function StabilizerOverview() {
@@ -28,7 +29,7 @@ export default function StabilizerOverview() {
                 {(loadedAddresses) => (
                     <StabilizerData
                         stabilizerAddress={loadedAddresses.stabilizer}
-                        stabilizerAbi={stabilizerNFTJson.abi}
+                        stabilizerAbi={stabilizerNFTJson.abi as Abi}
                     />
                 )}
             </ContractLoader>
