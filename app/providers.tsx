@@ -13,6 +13,7 @@ import {
   polygon,
   sepolia,
   baseSepolia,
+  type Chain,
 } from 'wagmi/chains';
 import {
   QueryClientProvider,
@@ -21,7 +22,7 @@ import {
 
 
 // Determine which chains to use based on environment
-const chains = process.env.NODE_ENV === 'development'
+const chains: [Chain, ...Chain[]] = process.env.NODE_ENV === 'development'
   ? [sepolia, baseSepolia]
   : [mainnet, polygon];
 
