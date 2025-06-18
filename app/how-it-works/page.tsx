@@ -1006,7 +1006,7 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
 
         {/* Arrows */}
         <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 6} />
-        <Arrow x={"25.83%"} y={"56%"} visible={activeSceneId === 7} />
+        <Arrow x={"25.83%"} y={"56%"} rotate={0} visible={activeSceneId === 7} />
         <Arrow x={"64.17%"} y={"45%"} rotate={0} visible={activeSceneId === 8} />
         <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 11} />
         <Arrow x={"50%"} y={"56%"} rotate={180} visible={activeSceneId === 15} />
