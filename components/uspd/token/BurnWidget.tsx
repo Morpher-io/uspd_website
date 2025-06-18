@@ -304,7 +304,7 @@ export function BurnWidget({
                     isLoadingPrice ||
                     !uspdAmount ||
                     parseFloat(uspdAmount) <= 0 ||
-                    (uspdBalance && parseFloat(uspdAmount) > parseFloat(formatUnits(uspdBalance as bigint, 18)))
+                    !!(uspdBalance && parseFloat(uspdAmount) > parseFloat(formatUnits(uspdBalance as bigint, 18)))
                 }
             >
                 {isLoading ? 'Burning...' : 'Burn USPD'}
