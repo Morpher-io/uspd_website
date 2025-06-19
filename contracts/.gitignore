@@ -11,6 +11,7 @@ out/*
 !out/cUSPDToken.sol
 !out/PositionEscrow.sol
 !out/IERC20.sol
+!out/ERC20.sol
 !out/StabilizerEscrow.sol
 
 # Ignores development broadcast logs
