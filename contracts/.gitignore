@@ -5,7 +5,12 @@ out/*
 !out/StabilizerNFT.sol
 !out/UspdToken.sol
 !out/PriceOracle.sol
+!out/OvercollateralizationReporter.sol
 !out/UspdCollateralizedPositionNFT.sol
+!out/cUSPDToken.sol
+!out/PositionEscrow.sol
+!out/IERC20.sol
+!out/StabilizerEscrow.sol
 
 # Ignores development broadcast logs
 !/broadcast
