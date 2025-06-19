@@ -352,7 +352,7 @@ export async function GET(
     }
     
     // --- Fetch ETH-USD Price ---
-    const internalPriceApiUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/v1/price/eth-usd`;
+    const internalPriceApiUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000'}/api/v1/price/eth-usd`;
     let ethUsdPrice = 0n;
     let ethUsdPriceDecimals = 8; // Default, should be overridden by API
     let ethUsdPriceFormatted = "N/A";
