@@ -5,6 +5,7 @@ out/*
 !out/StabilizerNFT.sol
 !out/UspdToken.sol
 !out/PriceOracle.sol
+!out/PoolSharesConversionRate.sol
 !out/OvercollateralizationReporter.sol
 !out/UspdCollateralizedPositionNFT.sol
 !out/cUSPDToken.sol
