@@ -9,10 +9,10 @@ import {
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
 import {
-  mainnet,
-  polygon,
+  // mainnet,
+  // polygon,
   sepolia,
-  baseSepolia,
+  // baseSepolia,
   type Chain,
 } from 'wagmi/chains';
 import {
@@ -22,9 +22,7 @@ import {
 
 
 // Determine which chains to use based on environment
-const chains: [Chain, ...Chain[]] = process.env.NODE_ENV === 'development'
-  ? [sepolia, baseSepolia]
-  : [mainnet, polygon];
+const chains: [Chain, ...Chain[]] = [sepolia];
 
 const config = getDefaultConfig({
   appName: 'My RainbowKit App',
