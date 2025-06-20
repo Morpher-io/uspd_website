@@ -24,7 +24,7 @@ export default function Team() {
                     <div className="flex flex-col text-xl">
 
                         <Image src={imgWilly} alt="Willy" />
-                        <div className="text-2xl font-bold uppercase my-4">Willy Woo, GP</div>
+                        <div className="text-2xl font-bold uppercase my-4">Willy Woo, Advisor</div>
                         <div>Managing Partner</div>
                         <div className="text-morpher-secondary">CMCC Global &amp; Crest</div>
                         <div>Pioneer of on-chain analysis</div>
