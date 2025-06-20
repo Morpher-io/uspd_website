@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table"
@@ -22,6 +23,17 @@ import { readContract as viewReadContract } from 'wagmi/actions' // Renamed to a
 
 // The primary chain for liquidity and reporting, defaulting to Sepolia.
 const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11155111;
+
+// List of mainnet chain IDs to determine if this is a testnet deployment.
+const MAINNET_CHAIN_IDS = [
+    1, // Ethereum Mainnet
+    10, // OP Mainnet
+    56, // BNB Mainnet
+    137, // Polygon Mainnet
+    324, // zkSync Era Mainnet
+    42161, // Arbitrum One
+];
+const isTestnet = !MAINNET_CHAIN_IDS.includes(liquidityChainId);
 
 // Solidity's type(uint256).max
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
@@ -443,7 +455,10 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     return (
         <Card>
             <CardHeader>
-                <CardTitle>System & Token Overview</CardTitle>
+                <div className="flex items-start justify-between">
+                    <CardTitle>System & Token Overview</CardTitle>
+                    {isTestnet && <Badge variant="outline">Testnet</Badge>}
+                </div>
                 <CardDescription>
                     Live statistics from the Overcollateralization Reporter contract.
                     {lastUpdated && !isLoadingPrice && <span className="block text-xs text-muted-foreground mt-1">Last updated: {lastUpdated.toLocaleTimeString()}</span>}
