@@ -9,7 +9,7 @@ const DynamicLottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 import chart1Animation from "@/public/documents/Chart-USPD-1.json";
 import chart2Animation from "@/public/documents/Chart-USPD-2.json";
-import SystemCollateralizationDisplay from "../uspd/reporter/SystemCollateralizationDisplay";
+import LandingPageStats from "../uspd/reporter/LandingPageStats";
 
 export default function HowItWorks() {
     return (
@@ -36,7 +36,7 @@ export default function HowItWorks() {
                         </div>
 
                         <div className="flex-1">
-                        <SystemCollateralizationDisplay />
+                        <LandingPageStats />
                         </div>
                     </div>
                 </div>
