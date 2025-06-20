@@ -9,6 +9,7 @@ const DynamicLottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 import chart1Animation from "@/public/documents/Chart-USPD-1.json";
 import chart2Animation from "@/public/documents/Chart-USPD-2.json";
+import SystemCollateralizationDisplay from "../uspd/reporter/SystemCollateralizationDisplay";
 
 export default function HowItWorks() {
     return (
@@ -32,6 +33,10 @@ export default function HowItWorks() {
                             <div className="text-xl text-muted-foreground">
                                 ETH can be redeemed from the smart contract by burning a corresponding amount of USPD. A fee of 10 basis points is charged on deposits and redemptions and put into an insurance fund. USPD cannot be frozen or seized. Its smart contract is not ownable or upgradeable. All ETH held by the smart contract is automatically converted into stETH to provide ~4% annual yield.
                             </div>
+                        </div>
+
+                        <div className="flex-1">
+                        <SystemCollateralizationDisplay />
                         </div>
                     </div>
                 </div>
