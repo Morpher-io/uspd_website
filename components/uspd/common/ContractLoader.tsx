@@ -6,24 +6,27 @@ import Link from 'next/link'
 import { getContractAddresses } from '@/lib/contracts'
 
 interface ContractLoaderProps {
-  contractKeys: string[] // Changed from contractKey: string
-  children: (addresses: Record<string, `0x${string}`>) => React.ReactNode // Changed signature
+  contractKeys: string[]
+  children: (addresses: Record<string, `0x${string}`>) => React.ReactNode
   backLink?: string
+  chainId?: number // Optional chainId prop
 }
 
-export function ContractLoader({ contractKeys, children, backLink }: ContractLoaderProps) {
-  const chainId = useChainId()
+export function ContractLoader({ contractKeys, children, backLink, chainId: propChainId }: ContractLoaderProps) {
+  const hookChainId = useChainId()
+  const effectiveChainId = propChainId ?? hookChainId // Use propChainId if available, otherwise fall back to hookChainId
+
   const [loadedAddresses, setLoadedAddresses] = useState<Record<string, `0x${string}`> | null>(null)
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    async function loadContracts() { // Renamed function
+    async function loadContracts() {
       setIsLoading(true)
       setDeploymentError(null)
       setLoadedAddresses(null)
 
-      if (!chainId) {
+      if (!effectiveChainId) {
         setDeploymentError("Chain ID not available.")
         setIsLoading(false)
         return
@@ -35,9 +38,9 @@ export function ContractLoader({ contractKeys, children, backLink }: ContractLoa
       }
 
       try {
-        const deploymentConfig = await getContractAddresses(chainId)
+        const deploymentConfig = await getContractAddresses(effectiveChainId)
         if (!deploymentConfig) {
-          setDeploymentError(`No deployment found for chain ID ${chainId}`)
+          setDeploymentError(`No deployment found for chain ID ${effectiveChainId}`)
           setIsLoading(false)
           return
         }
@@ -57,7 +60,7 @@ export function ContractLoader({ contractKeys, children, backLink }: ContractLoa
         }
 
         if (!allKeysFound) {
-          setDeploymentError(`Contract address(es) not found for key(s): ${missingKeys.join(', ')} on chain ID ${chainId}`)
+          setDeploymentError(`Contract address(es) not found for key(s): ${missingKeys.join(', ')} on chain ID ${effectiveChainId}`)
           setIsLoading(false)
           return
         }
@@ -72,7 +75,7 @@ export function ContractLoader({ contractKeys, children, backLink }: ContractLoa
     }
     
     loadContracts()
-  }, [chainId, contractKeys]) // Depend on contractKeys array
+  }, [effectiveChainId, contractKeys]) // Depend on the effectiveChainId
 
   if (isLoading) {
     return (
@@ -99,7 +102,7 @@ export function ContractLoader({ contractKeys, children, backLink }: ContractLoa
     )
   }
 
-  if (!loadedAddresses) { // Check loadedAddresses map
+  if (!loadedAddresses) {
     return (
       <div className="flex flex-col items-center gap-4">
         <Alert variant="destructive">
