@@ -26,13 +26,15 @@ interface BurnWidgetProps {
     tokenAbi: Abi
     cuspdTokenAddress: `0x${string}` // cUSPDToken address (for burning)
     cuspdTokenAbi: Abi
+    isLocked?: boolean
 }
 
 export function BurnWidget({
     tokenAddress,
     tokenAbi,
     cuspdTokenAddress,
-    cuspdTokenAbi
+    cuspdTokenAbi,
+    isLocked = false
 }: BurnWidgetProps) {
     const [stEthAmount, setStEthAmount] = useState('') // Estimated stETH return
     const [uspdAmount, setUspdAmount] = useState('') // User input USPD amount
@@ -268,6 +270,7 @@ export function BurnWidget({
                 setAmount={setUspdAmount}
                 balance={uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0'}
                 onMax={handleMaxUspd}
+                readOnly={isLocked}
             />
              {sharesToBurn > 0 && (
                 <div className="text-xs text-muted-foreground text-right -mt-2">
@@ -300,6 +303,7 @@ export function BurnWidget({
                 className="w-full"
                 onClick={handleBurn}
                 disabled={
+                    isLocked ||
                     isLoading ||
                     isLoadingPrice ||
                     !uspdAmount ||

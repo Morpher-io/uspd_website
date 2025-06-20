@@ -49,6 +49,7 @@ export function TokenDisplay({
               size="sm" 
               onClick={onMax}
               className="text-xs h-8"
+              disabled={readOnly}
             >
               MAX
             </Button>

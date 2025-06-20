@@ -23,9 +23,10 @@ interface MintWidgetProps {
     tokenAbi: Abi
     cuspdTokenAddress: `0x${string}` // cUSPDToken address (for minting)
     cuspdTokenAbi: Abi
+    isLocked?: boolean
 }
 
-export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTokenAbi }: MintWidgetProps) {
+export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTokenAbi, isLocked = false }: MintWidgetProps) {
     const [ethAmount, setEthAmount] = useState('')
     const [uspdAmount, setUspdAmount] = useState('') // Estimated amount
     const [error, setError] = useState<string | null>(null)
@@ -170,6 +171,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 setAmount={setEthAmount}
                 balance={ethBalance ? ethBalance.formatted : '0'}
                 onMax={handleMaxEth}
+                readOnly={isLocked}
             />
 
             <div className="flex justify-center">
@@ -197,6 +199,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 className="w-full"
                 onClick={handleMint}
                 disabled={
+                    isLocked ||
                     isLoading ||
                     isLoadingPrice ||
                     !ethAmount ||
