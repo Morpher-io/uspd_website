@@ -1,5 +1,3 @@
-
-
 import { Footer as NextraFooter, Layout, Navbar } from 'nextra-theme-docs'
 import { Footer } from '@/components/Footer';
 import { Head } from 'nextra/components'
@@ -16,6 +14,7 @@ import Image from 'next/image'
 
 
 import UspdLogo from "@/public/images/logo_uspd.svg";
+import NavbarStats from '@/components/uspd/reporter/NavbarStats';
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
@@ -43,7 +42,13 @@ export const metadata: Metadata = {
 
 const navbar = (
   <Navbar
-    logo={<div className='flex gap-2 items-center'><Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} /><span>USPD</span></div>}
+    logo={<div className='flex items-center'>
+      <div className='flex gap-2 items-center'>
+        <Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />
+        <span>USPD</span>
+      </div>
+      <NavbarStats />
+    </div>}
   ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
 
   </Navbar>
@@ -89,6 +94,3 @@ export default async function RootLayout({
     </html>
   )
 }
-
-
-
