@@ -19,7 +19,9 @@ import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
 import stabilizerNftAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 import stabilizerEscrowAbiJson from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json' // For StabilizerEscrow interactions
 import { readContract as viewReadContract } from 'wagmi/actions' // Renamed to avoid conflict
-// Removed: import { config as wagmiConfig } from '@/wagmi' 
+
+// The primary chain for liquidity and reporting, defaulting to Sepolia.
+const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11155111;
 
 // Solidity's type(uint256).max
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
@@ -70,7 +72,7 @@ function formatBigIntToFixed(value: bigint | undefined | null, decimals: number,
 function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddress, stabilizerNftAddress }: SystemDataDisplayProps) {
     const { address: userAddress } = useAccount();
     const { data: walletClient } = useWalletClient();
-    const chainId = useChainId();
+    const connectedChainId = useChainId();
     const config = useConfig(); // Get config from WagmiProvider context
 
     // Price and general stats state
@@ -133,6 +135,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         abi: reporterAbiJson.abi,
         functionName: 'getSystemCollateralizationRatio',
         args: priceResponseForContract ? [priceResponseForContract] : undefined,
+        chainId: liquidityChainId,
         query: {
             enabled: !!reporterAddress && !!priceResponseForContract,
         }
@@ -148,6 +151,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         abi: reporterAbiJson.abi,
         functionName: 'totalEthEquivalentAtLastSnapshot',
         args: [],
+        chainId: liquidityChainId,
         query: {
             enabled: !!reporterAddress,
         }
@@ -163,6 +167,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         abi: reporterAbiJson.abi,
         functionName: 'yieldFactorAtLastSnapshot',
         args: [],
+        chainId: liquidityChainId,
         query: {
             enabled: !!reporterAddress,
         }
@@ -182,6 +187,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         address: uspdTokenAddress,
         abi: uspdTokenAbiJson.abi,
         functionName: 'totalSupply',
+        chainId: liquidityChainId,
         query: { enabled: !!uspdTokenAddress }
     });
     const { data: userUspdBalanceData, isLoading: isLoadingUserUspdBalance } = useReadContract({
@@ -189,12 +195,14 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         abi: uspdTokenAbiJson.abi,
         functionName: 'balanceOf',
         args: [userAddress!],
+        chainId: liquidityChainId,
         query: { enabled: !!uspdTokenAddress && !!userAddress }
     });
     const { data: cuspdTotalSupplyData, isLoading: isLoadingCuspdTotalSupply } = useReadContract({
         address: cuspdTokenAddress,
         abi: cuspdTokenAbiJson.abi,
         functionName: 'totalSupply',
+        chainId: liquidityChainId,
         query: { enabled: !!cuspdTokenAddress }
     });
     const { data: userCuspdBalanceData, isLoading: isLoadingUserCuspdBalance } = useReadContract({
@@ -202,6 +210,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         abi: cuspdTokenAbiJson.abi,
         functionName: 'balanceOf',
         args: [userAddress!],
+        chainId: liquidityChainId,
         query: { enabled: !!cuspdTokenAddress && !!userAddress }
     });
 
@@ -231,6 +240,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                 address: stabilizerNftAddress,
                 abi: stabilizerNftAbiJson.abi,
                 functionName: 'lowestUnallocatedId',
+                chainId: liquidityChainId,
             }) as bigint;
 
             for (let i = 0; i < MAX_STABILIZERS_TO_CHECK && currentTokenId !== BigInt(0); i++) {
@@ -239,6 +249,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     abi: stabilizerNftAbiJson.abi,
                     functionName: 'positions',
                     args: [currentTokenId],
+                    chainId: liquidityChainId,
                 }) as [bigint, bigint, bigint, bigint, bigint]; // Array of 5 bigints
 
                 // position[0] is minCollateralRatio
@@ -260,6 +271,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     abi: stabilizerNftAbiJson.abi,
                     functionName: 'stabilizerEscrows',
                     args: [currentTokenId],
+                    chainId: liquidityChainId,
                 }) as Address;
 
                 if (stabilizerEscrowAddress === '0x0000000000000000000000000000000000000000') {
@@ -271,6 +283,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                     address: stabilizerEscrowAddress,
                     abi: stabilizerEscrowAbiJson.abi,
                     functionName: 'unallocatedStETH',
+                    chainId: liquidityChainId,
                 }) as bigint;
 
                 if (stabilizerStEthAvailable > BigInt(0)) {
@@ -374,6 +387,11 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
             toast.error("Wallet client is not available.");
             return;
         }
+        if (connectedChainId !== liquidityChainId) {
+            setAddTokenMessage("Please switch to the correct network in your wallet to add this token.");
+            toast.error("Wrong network. Cannot add token.");
+            return;
+        }
         try {
             const success = await walletClient.request({
                 method: 'wallet_watchAsset',
@@ -407,13 +425,13 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
             .catch(() => toast.error(`Failed to copy ${label}`));
     };
 
-    const renderAddressCell = (address: Address, label: string) => (
+    const renderAddressCell = (address: Address, label: string, targetChainId: number) => (
         <div className="flex items-center gap-2">
             <span className="truncate font-mono text-xs">{address}</span>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(address, `${label} Address`)}>
                 <Copy className="h-3 w-3" />
             </Button>
-            <Link href={getBlockExplorerUrl(chainId, address)} target="_blank" rel="noopener noreferrer">
+            <Link href={getBlockExplorerUrl(targetChainId, address)} target="_blank" rel="noopener noreferrer">
                 <Button variant="ghost" size="icon" className="h-6 w-6">
                     <ExternalLink className="h-3 w-3" />
                 </Button>
@@ -494,7 +512,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                         <TableBody>
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">USPD Token Address</TableCell>
-                                <TableCell className="text-right">{renderAddressCell(uspdTokenAddress, "USPD Token")}</TableCell>
+                                <TableCell className="text-right">{renderAddressCell(uspdTokenAddress, "USPD Token", liquidityChainId)}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">USPD Total Supply</TableCell>
@@ -512,7 +530,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                             )}
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">cUSPD Token Address</TableCell>
-                                <TableCell className="text-right">{renderAddressCell(cuspdTokenAddress, "cUSPD Token")}</TableCell>
+                                <TableCell className="text-right">{renderAddressCell(cuspdTokenAddress, "cUSPD Token", liquidityChainId)}</TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">cUSPD Total Supply</TableCell>
@@ -534,7 +552,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                         <Button
                             variant="outline"
                             onClick={handleAddTokenToWallet}
-                            disabled={!walletClient || !uspdTokenAddress}
+                            disabled={!walletClient || !uspdTokenAddress || connectedChainId !== liquidityChainId}
                         >
                             Add USPD to Wallet
                         </Button>
@@ -567,7 +585,7 @@ export default function SystemCollateralizationDisplay() {
     return (
         <div className="w-full flex flex-col items-center mt-4">
             <div className="w-full"> {/* Constrain width similar to other components */}
-                <ContractLoader contractKeys={contractKeysToLoad} backLink="/uspd">
+                <ContractLoader contractKeys={contractKeysToLoad} backLink="/uspd" chainId={liquidityChainId}>
                     {(loadedAddresses) => {
                         const reporterAddress = loadedAddresses["reporter"];
                         const uspdTokenAddress = loadedAddresses["uspdToken"];
@@ -579,7 +597,7 @@ export default function SystemCollateralizationDisplay() {
                             return (
                                 <Alert variant="destructive">
                                     <AlertDescription className='text-center'>
-                                        One or more critical contract addresses failed to load.
+                                        One or more critical contract addresses failed to load for the reporting chain. Please ensure you have the correct network configuration.
                                     </AlertDescription>
                                 </Alert>
                             );

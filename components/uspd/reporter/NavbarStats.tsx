@@ -9,6 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import reporterAbiJson from '@/contracts/out/OvercollateralizationReporter.sol/OvercollateralizationReporter.json'
 import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 
+// The primary chain for liquidity and reporting, defaulting to Sepolia.
+const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11155111;
+
 // Solidity's type(uint256).max
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
 
@@ -90,6 +93,7 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
         abi: reporterAbiJson.abi,
         functionName: 'getSystemCollateralizationRatio',
         args: priceResponseForContract ? [priceResponseForContract] : undefined,
+        chainId: liquidityChainId,
         query: {
             enabled: !!reporterAddress && !!priceResponseForContract,
         }
@@ -105,6 +109,7 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
         address: uspdTokenAddress,
         abi: uspdTokenAbiJson.abi,
         functionName: 'totalSupply',
+        chainId: liquidityChainId,
         query: { enabled: !!uspdTokenAddress }
     });
 
@@ -140,7 +145,7 @@ export default function NavbarStats() {
     const contractKeysToLoad = ["reporter", "uspdToken"];
 
     return (
-        <ContractLoader contractKeys={contractKeysToLoad}>
+        <ContractLoader contractKeys={contractKeysToLoad} chainId={liquidityChainId}>
             {(loadedAddresses) => {
                 const reporterAddress = loadedAddresses["reporter"];
                 const uspdTokenAddress = loadedAddresses["uspdToken"];
