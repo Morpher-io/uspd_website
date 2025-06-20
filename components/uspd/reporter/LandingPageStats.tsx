@@ -326,7 +326,7 @@ export default function LandingPageStats() {
 
                 if (!reporterAddress || !uspdTokenAddress || !stabilizerNftAddress) {
                     return (
-                        <Card>
+                        <Card className='w-full'>
                             <CardHeader><CardTitle>Live System Stats</CardTitle></CardHeader>
                             <CardContent>
                                 <Alert variant="destructive">
