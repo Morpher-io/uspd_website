@@ -21,7 +21,7 @@ export default function HowItWorks() {
                         How it Works
                     </h1>
 
-                    <div className="flex-row flex gap-8 mt-12 items-center">
+                    <div className="flex-col xl:flex-row flex gap-8 mt-12 items-center">
                         <div className="">
                             <Image src={imagePie} alt="How USPD works" />
                         </div>
@@ -35,8 +35,8 @@ export default function HowItWorks() {
                             </div>
                         </div>
 
-                        <div className="flex-1">
-                        <LandingPageStats />
+                        <div className="flex-1 w-full">
+                            <LandingPageStats />
                         </div>
                     </div>
                 </div>
@@ -47,16 +47,16 @@ export default function HowItWorks() {
                         <div className="mb-6 text-lg text-muted-foreground">
                             USPD remains stable during crypto bull markets. Rising ETH prices generate excess collateral. Excess collateral covers short losses.
                         </div>
-                        
+
                         <div>
                             <DynamicLottie animationData={chart1Animation} />
                         </div>
                     </div>
                     <div className="flex flex-col md:p-6">
                         <div className="mb-6 text-lg text-muted-foreground">
-                        USPD remains stable during crypto bear markets. Falling ETH prices generate short profits. Short profits top up collateral.
+                            USPD remains stable during crypto bear markets. Falling ETH prices generate short profits. Short profits top up collateral.
                         </div>
-                        
+
                         <div>
                             <DynamicLottie animationData={chart2Animation} />
                         </div>

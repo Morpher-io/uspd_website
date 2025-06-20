@@ -5,40 +5,40 @@ export default {
     display: 'hidden'
 
   },
-  docs: {
-    // type: 'page',
-    title: 'Documentation',
-
-  },
   "how-it-works": {
     // type: 'page',
     type: 'page',
     title: 'How USPD Works',
 
   },
-  docshref: {
+  swap: {
     type: 'page',
-    title: 'Documentation',
-    href:"/docs"
+    title: 'Mint/Burn',
+    href:"/uspd"
 
   },
-  demo: {
-    title: 'Demos',
+  docshref: {
+    title: 'Documentation',
     type: 'menu',
     items: {
       about: {
-        title: 'Minting/Burning',
-        href: '/uspd'
+        title: 'About USPD',
+        href: '/docs'
       },
       stabilizer: {
-        title: 'Stabilizer',
+        title: 'Become Stabilizer',
         href: '/stabilizer'
       },
-      position: {
-        title: 'Position',
-        href: '/position'
+      liquidation: {
+        title: 'Understand Liquidations',
+        href: '/docs/economics'
       }
     }
-  }
+  },
+  docs: {
+    // type: 'page',
+    title: 'Documentation',
+
+  },
 
 }

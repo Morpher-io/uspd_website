@@ -102,7 +102,6 @@ function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNf
     const [isLoadingPrice, setIsLoadingPrice] = useState(true);
     const [priceError, setPriceError] = useState<string | null>(null);
 
-    const [totalMintableEth, setTotalMintableEth] = useState<bigint | null>(null);
     const [mintableUspdValue, setMintableUspdValue] = useState<bigint | null>(null);
     const [isLoadingMintableCapacity, setIsLoadingMintableCapacity] = useState(false);
     const [mintableCapacityError, setMintableCapacityError] = useState<string | null>(null);
@@ -175,7 +174,6 @@ function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNf
         if (!stabilizerNftAddress || !priceData) return;
         setIsLoadingMintableCapacity(true);
         setMintableCapacityError(null);
-        setTotalMintableEth(null);
         setMintableUspdValue(null);
 
         let currentTotalEthCanBeBacked = BigInt(0);
@@ -233,8 +231,6 @@ function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNf
                 }
                 currentTokenId = nextUnallocatedTokenId;
             }
-
-            setTotalMintableEth(currentTotalEthCanBeBacked);
 
             if (currentTotalEthCanBeBacked > BigInt(0) && priceData?.price && typeof priceData?.decimals === 'number') {
                 const ethPriceBigInt = BigInt(priceData.price);

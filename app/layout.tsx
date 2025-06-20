@@ -47,7 +47,9 @@ const navbar = (
         <Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />
         <span>USPD</span>
       </div>
-      <NavbarStats />
+      <div className='hidden lg:block'>
+        <NavbarStats />
+      </div>
     </div>}
   ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
 

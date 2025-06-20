@@ -23,7 +23,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NPM_BUILD_ENV=production
-# RUN mv -f .env.${NPM_BUILD_ENV} .env.production && rm -f .env.development # not needed for api based trading, only one markets endpoint anyways
+RUN mv -f .env.${NPM_BUILD_ENV} .env.production && rm -f .env.development 
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry

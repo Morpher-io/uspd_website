@@ -33,7 +33,6 @@ export async function GET() {
         // Fetch new price from Redis
         const priceFromRedis = await redis.hget('markets:CRYPTO_ETH', 'close');
 
-        console.log({priceFromRedis})
         if (!priceFromRedis) {
             throw new Error('Failed to fetch price from Redis: key "markets:CRYPTO_ETH" with field "close" not found.');
         }
