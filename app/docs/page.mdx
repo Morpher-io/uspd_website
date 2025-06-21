@@ -2,6 +2,10 @@
 title: "USPD Documentation"
 description: "Comprehensive guide to the USPD stablecoin system"
 ---
+import LandingPageStats from '@/components/uspd/reporter/LandingPageStats'
+import { ReporterContractLink } from '@/components/uspd/reporter/ReporterContractLink'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 # USPD Documentation
 
@@ -11,11 +15,24 @@ USPD is a decentralized, permissionless stablecoin with on-chain proof of reserv
 
 ### 1. Decentralized Stability
 
-USPD achieves price stability through a system of decentralized stabilizers rather than relying on centralized reserves. This approach ensures:
+USPD achieves price stability through a system of decentralized stabilizers rather than relying on centralized reserves. This approach ensures full transparency through on-chain verification. You can see the live system status below, fetched directly from the blockchain.
 
-- Full transparency through on-chain verification
-- Permissionless participation
-- Robust stability mechanism
+<div className="not-prose my-6">
+  <LandingPageStats />
+</div>
+
+<div className="my-6">
+  <ReporterContractLink />
+</div>
+
+For a visual, step-by-step explanation of how the system works, check out our interactive guide.
+
+<div className="not-prose my-6">
+    <Button asChild>
+        <Link href="/how-it-works">Explore How It Works</Link>
+    </Button>
+</div>
+
 
 ### 2. Stabilizer System
 
@@ -33,67 +50,27 @@ The stabilizer system consists of:
 - Dynamic overcollateralization
 - Liquidation mechanisms
 
+To dive deeper into the economic incentives and liquidation processes that keep the system stable, read our [Economics documentation](/docs/economics).
+
 ### 3. Collateralization Model
 
-Every USPD token is backed by at least 110% of its value in ETH, ensuring:
-- Strong price stability
-- Protection against market volatility
-- Incentives for stabilizers
+Every USPD token is backed by a surplus of ETH collateral. The minimum collateralization ratio is 125%, which is the liquidation threshold for the first and most senior stabilizer (ID 1). For each subsequent stabilizer, this threshold decreases by 0.5% (e.g., 124.5% for ID 2, 124% for ID 3). This mechanism incentivizes early participation and ensures robust overcollateralization across the network, protecting the system against market volatility.
 
 ## Key Features
 
-### Permissionless Design
-- Anyone can become a stabilizer
-- No central authority controls the system
-- Transparent rules enforced by smart contracts
+USPD is designed from the ground up to be a truly decentralized and censorship-resistant stablecoin.
 
-### On-Chain Proof of Reserves
-- All collateral visible on-chain
-- Real-time verification of backing
-- No off-chain dependencies
+- **Self-Issued & Non-Custodial**: Users mint USPD by locking their own ETH as collateral. You always maintain control over your assets.
+- **Non-Freezable**: The USPD token contract has no functionality to freeze or seize your funds. What you own is yours.
+- **Permissionless**: Anyone can mint USPD or become a stabilizer without requiring permission from any central entity.
+- **Independent of Traditional Finance**: USPD's value is backed by on-chain ETH, not by funds held in a bank account or by US treasuries. This insulates it from risks within the traditional banking system.
 
-### Dynamic Stabilization
-- Automatic collateral allocation
-- Market-responsive stabilization
-- Efficient capital utilization
+## Get Started with USPD
 
-## Getting Started
+Ready to experience a truly decentralized stablecoin? You can mint your first USPD now.
 
-### For Users
-- [Mint and Burn USPD](/docs/users/getting-started)
-- [Understanding Price Stability](/docs/users/price-stability)
-- [Trading USPD](/docs/users/trading)
-
-### For Stabilizers
-- [Becoming a Stabilizer](/docs/stabilizers)
-- [Managing Collateral](/docs/stabilizers/add-collateral)
-- [Understanding Liquidations](/docs/stabilizers/liquidation)
-
-## Technical Architecture
-
-```mermaid
-graph LR
-    A[USPD Token Contract] --- B[Stabilizer NFTs]
-    B --- C[Position NFTs]
-    D[Price Oracle] --- A
-    D --- B
-    D --- C
-```
-
-The system comprises three main components:
-1. **USPD Token Contract**: Manages token minting, burning, and overall system coordination
-2. **Stabilizer NFTs**: Represents stabilizer positions and manages collateral
-3. **Position NFTs**: Tracks allocated collateral and user positions
-
-## Security Considerations
-
-- Minimum 110% collateralization ratio
-- Automated liquidation system
-- Emergency fund for system stability
-- Regular security audits
-
-## Next Steps
-
-- Explore the [Technical Documentation](/docs/technical)
-- Learn about [Stabilizer Mechanics](/docs/stabilizers)
-- Understand [Risk Management](/docs/risk)
+<div className="not-prose my-6">
+    <Button asChild>
+        <Link href="/uspd">Mint USPD</Link>
+    </Button>
+</div>
