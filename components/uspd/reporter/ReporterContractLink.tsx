@@ -24,7 +24,7 @@ export function ReporterContractLink() {
                 return (
                     <>
                         <p>
-                            The core of this transparency is the <code>OvercollateralizationReporter</code> smart contract. You can inspect its state and verify the system's health directly on Etherscan.
+                            The core of this transparency is the <code>OvercollateralizationReporter</code> smart contract. You can inspect its state and verify the system&apos;s health directly on Etherscan.
                         </p>
                         <Button asChild variant="outline" className="mt-4">
                             <a href={reporterUrl} target="_blank" rel="noopener noreferrer">

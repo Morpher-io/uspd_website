@@ -1,6 +1,6 @@
 import { Steps } from 'nextra/components'
 
-# USPD System Description
+# USPD Architecture
 
 ## Overview
 
@@ -22,7 +22,7 @@ This document provides a technical and economic overview of the USPD system, tar
 *   **Stabilizers:** Entities that provide stETH collateral to the system to ensure overcollateralization. They are incentivized by earning fees from running leveraged, delta-neutral trading strategies. Each stabilizer position is represented by a `StabilizerNFT`.
 *   **Liquidators:** A crucial part of the system. Actors who monitor for undercollateralized stabilizer positions and initiate liquidations to maintain system solvency, earning a reward in the process. The economics of liquidation are detailed in the [Economics documentation](/docs/economics).
 *   **Keepers/Signers:** Off-chain actors running the USPD price oracle, which provides a real-time ETH/USD price. To ensure reliability, this price is cross-referenced with on-chain sources like Chainlink and the WETH/USDC Uniswap pool on mainnet. The price is invalidated if it deviates by more than 5% from these on-chain sources.
-*   **Owner/Upgrader:** The contracts are upgradeable using the UUPS proxy pattern. The ownership, which allows for upgrades, is managed by a secure address (e.g., a multisig). There is a defined path for renouncing ownership to make contracts immutable, as described in the [contracts documentation](/docs/contracts).
+*   **Owner/Upgrader:** The contracts are upgradeable using the UUPS proxy pattern. The ownership, which allows for upgrades, is managed by a secure address (e.g., a multisig). There is a defined path for renouncing ownership to make contracts immutable, as described in the [contracts documentation](/docs/uspd/contracts).
 
 ## Token Structure: cUSPD vs USPD
 
@@ -239,7 +239,7 @@ graph LR
 *   **Yield Dependency:** The yield mechanism relies on Lido continuing to generate staking rewards.
     *   *Mitigation:* Lido is a mature protocol, but this is an external dependency.
 *   **Centralization Risks:** The ability to upgrade contracts via the UUPS proxy pattern is a powerful privilege.
-    *   *Mitigation:* This power is managed by a secure address (e.g., a multisig with a timelock). The system is designed with a path to renounce this upgradeability, which would make the contracts immutable. This process is detailed in our [contracts documentation](/docs/contracts). The security of oracle signer keys is also critical.
+    *   *Mitigation:* This power is managed by a secure address (e.g., a multisig with a timelock). The system is designed with a path to renounce this upgradeability, which would make the contracts immutable. This process is detailed in our [contracts documentation](/docs/uspd/contracts). The security of oracle signer keys is also critical.
 *   **Gas Costs:** The allocation/unallocation loops in `StabilizerNFT` could consume significant gas, potentially limiting the number of positions processed in one transaction or making mint/burn operations expensive during high activity.
     *   *Mitigation:* Gas optimizations in loops, potential for off-chain matching or alternative allocation mechanisms in future versions. `MIN_GAS` checks provide a basic safeguard against running out of gas mid-loop.
 *   **Liquidation Mechanism Design:** The liquidation mechanism is designed to be profitable for liquidators and fair to stabilizers, while preventing cascading failures. Front-running risks during liquidations must be considered.

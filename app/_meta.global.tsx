@@ -23,7 +23,7 @@ export default {
     items: {
       about: {
         title: 'About USPD',
-        href: '/docs'
+        href: '/docs/uspd'
       },
       stabilizer: {
         title: 'Become Stabilizer',
@@ -38,6 +38,16 @@ export default {
   docs: {
     // type: 'page',
     title: 'Documentation',
+
+  },
+  uspd: {
+    // type: 'page',
+    title: 'Mint/Burn',
+
+  },
+  stabilizer: {
+    // type: 'page',
+    title: 'Become Stabilizer',
 
   },
 
