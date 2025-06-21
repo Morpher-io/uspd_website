@@ -8,6 +8,7 @@ import "../../lib/openzeppelin-contracts/contracts/access/Ownable.sol"; // To co
  * @title MockStETH
  * @dev Minimal ERC20 implementation with a rebase function to simulate stETH yield.
  * Balances are adjusted proportionally when rebase is called.
+ * Also mocks `getPooledEthByShares` for yield calculation tests.
  */
 contract MockStETH is ERC20, Ownable {
     address[] private _holders;
@@ -15,17 +16,29 @@ contract MockStETH is ERC20, Ownable {
 
     uint256 public constant REBASE_PRECISION = 1e18;
 
-    constructor() ERC20("Mock Staked Ether", "mstETH") Ownable(msg.sender) {}
+    // --- For getPooledEthByShares Mocking ---
+    uint256 public pooledEthPerSharePrecision;
+    bool public shouldReturnZeroForShares = false;
+
+    constructor() ERC20("Mock Staked Ether", "mstETH") Ownable(msg.sender) {
+        // Initially, 1 share is worth 1 ETH (at 1e18 precision)
+        pooledEthPerSharePrecision = REBASE_PRECISION;
+    }
 
     /**
      * @dev Simulates a rebase event by adjusting all balances proportionally
-     *      to match a new total supply.
+     *      to match a new total supply. Also updates the mock value for `getPooledEthByShares`.
      * @param _newTotalSupply The target total supply after the rebase.
      */
     function rebase(uint256 _newTotalSupply) external onlyOwner {
         uint256 oldTotalSupply = totalSupply();
         require(oldTotalSupply > 0, "MockStETH: Cannot rebase with zero total supply");
         require(_newTotalSupply >= oldTotalSupply, "MockStETH: New total supply must be >= old total supply");
+
+        // Update the rate for getPooledEthByShares
+        if (oldTotalSupply > 0) {
+            pooledEthPerSharePrecision = (pooledEthPerSharePrecision * _newTotalSupply) / oldTotalSupply;
+        }
 
         if (_newTotalSupply == oldTotalSupply) {
             return; // No change
@@ -52,6 +65,25 @@ contract MockStETH is ERC20, Ownable {
                 }
             }
         }
+    }
+
+    /**
+     * @dev Mocks the stETH function to get the ETH value of a given number of shares.
+     * @param _sharesAmount The amount of shares to query.
+     * @return The equivalent amount of ETH.
+     */
+    function getPooledEthByShares(uint256 _sharesAmount) external view returns (uint256) {
+        if (shouldReturnZeroForShares) {
+            return 0;
+        }
+        return (_sharesAmount * pooledEthPerSharePrecision) / REBASE_PRECISION;
+    }
+
+    /**
+     * @dev Test helper to force getPooledEthByShares to return 0 for revert testing.
+     */
+    function setShouldReturnZeroForShares(bool _shouldReturnZero) external {
+        shouldReturnZeroForShares = _shouldReturnZero;
     }
 
     // --- Internal bookkeeping for rebase iteration ---

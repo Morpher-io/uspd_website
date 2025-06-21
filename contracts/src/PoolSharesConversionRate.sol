@@ -13,19 +13,23 @@ pragma solidity ^0.8.20;
  *                                            
  *    https://uspd.io
  *                                               
- *    This contract increases the yield in lockstep with stETH by depositing 
- *    a small amount of stETH and calculating the yield factor
+ *    This contract calculates the yield factor of stETH by tracking the amount
+ *    of ETH that corresponds to a fixed number of stETH shares over time.
  */
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
-import "./interfaces/ILido.sol";
+
+// Minimal interface for stETH to get the pooled ETH value for shares.
+interface IStETH {
+    function getPooledEthByShares(uint256 _sharesAmount) external view returns (uint256);
+}
 
 /**
  * @title PoolSharesConversionRate
- * @dev On L1: Tracks the yield factor of stETH based on its balance changes since deployment.
- *      An initial amount of stETH is transferred to this contract *during* deployment via Lido staking.
+ * @dev On L1: Tracks the yield factor of stETH by comparing the current ETH value of a fixed number of shares
+ *      to its value at deployment time. This method is secure against arbitrary token transfers to the contract.
  * @dev On L2: Stores a yield factor that can be updated by an authorized role, typically reflecting L1's factor.
  */
 contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
@@ -35,18 +39,18 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
     /**
      * @dev The stETH token contract being tracked (only relevant on L1).
      */
-    address public immutable override stETH;
+    address public immutable stETH;
 
     /**
-     * @dev On L1: The initial balance of stETH held by this contract at the end of deployment.
-     *      On L2: Not directly used for calculation; _yieldFactor is updated externally.
+     * @dev On L1: The initial ETH equivalent for 1e18 shares of stETH at deployment.
+     *      On L2: Not used for calculation; _yieldFactor is updated externally.
      */
-    uint256 public immutable override initialStEthBalance;
+    uint256 public immutable initialEthEquivalentPerShare;
 
 
     /**
      * @dev Stores the current yield factor.
-     *      On L1, this is implicitly defined by stETH balance changes relative to initialStEthBalance.
+     *      On L1, this is implicitly defined by stETH's share value changes.
      *      On L2, this is explicitly set by an updater role.
      */
     uint256 internal _yieldFactor;
@@ -61,11 +65,8 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
     uint256 public constant override FACTOR_PRECISION = 1e18;
 
     // --- Errors ---
-    error InitialBalanceZero();
+    error InitialRateZero();
     error StEthAddressZero();
-    error LidoAddressZero();
-    error NoEthSent();
-    error LidoSubmitFailed();
     error YieldFactorDecreaseNotAllowed();
     error NotL2Chain();
     error NotL1Chain();
@@ -75,37 +76,28 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
     /**
      * @dev Sets up the contract based on the chain ID.
      * @param _stETHAddress The address of the stETH token contract (used on L1).
-     * @param _lidoAddress The address of the Lido staking pool contract (used on L1).
      * @param _admin The address to grant DEFAULT_ADMIN_ROLE and YIELD_FACTOR_UPDATER_ROLE (on L2).
      * Requirements for L1 deployment:
      * - `_stETHAddress` cannot be the zero address.
-     * - `_lidoAddress` cannot be the zero address.
-     * - `msg.value` (ETH sent during deployment) must be greater than zero.
-     * - The Lido submit call must succeed and result in a non-zero stETH balance.
+     * - The initial call to `getPooledEthByShares` must return a non-zero value.
      */
-    constructor(address _stETHAddress, address _lidoAddress, address _admin) payable {
+    constructor(address _stETHAddress, address _admin) {
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         if (block.chainid == MAINNET_CHAIN_ID) {
             if (_stETHAddress == address(0)) revert StEthAddressZero();
-            if (_lidoAddress == address(0)) revert LidoAddressZero();
-            if (msg.value == 0) revert NoEthSent();
 
             stETH = _stETHAddress;
 
-            try ILido(_lidoAddress).submit{value: msg.value}(address(0)) {}
-            catch {
-                revert LidoSubmitFailed();
-            }
+            uint256 initialRate = IStETH(_stETHAddress).getPooledEthByShares(FACTOR_PRECISION);
+            if (initialRate == 0) revert InitialRateZero();
             
-            uint256 balance = IERC20(stETH).balanceOf(address(this));
-            if (balance == 0) revert InitialBalanceZero(); // This check remains important
-            initialStEthBalance = balance;
+            initialEthEquivalentPerShare = initialRate;
             // _yieldFactor on L1 is implicitly calculated by getYieldFactor()
         } else {
             // L2 deployment
             stETH = address(0); // Not used on L2
-            initialStEthBalance = 0; // Not used on L2
+            initialEthEquivalentPerShare = 0; // Not used on L2
             _yieldFactor = FACTOR_PRECISION; // Start with a 1:1 factor on L2
             _grantRole(YIELD_FACTOR_UPDATER_ROLE, _admin); // Admin can initially update on L2
         }
@@ -122,12 +114,12 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
      */
     function getYieldFactor() external view override returns (uint256 yieldFactor) {
         if (block.chainid == MAINNET_CHAIN_ID) {
-            uint256 initialBalance = initialStEthBalance;
-            if (initialBalance == 0) { // Should not happen due to constructor checks on L1
-                revert InitialBalanceZero(); // Revert if invariant is broken
-            }
-            uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
-            return (currentBalance * FACTOR_PRECISION) / initialBalance;
+            uint256 initialRate = initialEthEquivalentPerShare;
+            // This should be impossible on L1 due to constructor check, but as a safeguard:
+            if (initialRate == 0) revert InitialRateZero();
+            
+            uint256 currentRate = IStETH(stETH).getPooledEthByShares(FACTOR_PRECISION);
+            return (currentRate * FACTOR_PRECISION) / initialRate;
         } else {
             // On L2, return the stored _yieldFactor
             return _yieldFactor;
