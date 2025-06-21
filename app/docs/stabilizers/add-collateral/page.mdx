@@ -24,20 +24,20 @@ For a detailed explanation of how this collateral is allocated, see the [USPD Ar
 
 ### Checking Current Collateral
 
-It is crucial to monitor your position's collateralization ratio to ensure it stays above its unique liquidation threshold (starting at 125% for NFT ID 1).
+It is crucial to monitor your position's collateralization ratio. To be safe from liquidation by any other stabilizer, you must keep your ratio above **125%**. If your ratio falls below this level, the owner of Stabilizer NFT #1 can liquidate your position. If it falls further, other stabilizers with lower-priority NFTs can also initiate liquidation.
 
 ```mermaid
 graph TD
     A[Check Position] --> B{Collateral Ratio}
-    B -->|Above Liquidation Threshold| C[Safe Zone]
-    B -->|At or Below Threshold| D[Danger Zone]
+    B -->|Above 125%| C[Safe Zone]
+    B -->|At or Below 125%| D[Danger Zone]
     C --> E[Can Withdraw Excess Collateral]
     D --> F[Risk of Liquidation]
 ```
 
 ### Withdrawing Excess Collateral
 
-If the price of ETH increases, your position's collateralization ratio will rise. This may allow you to withdraw the excess stETH collateral while still maintaining a ratio safely above your liquidation threshold.
+If the price of ETH increases, your position's collateralization ratio will rise. This may allow you to withdraw the excess stETH collateral while still maintaining a ratio safely above the 125% liquidation threshold.
 
 1.  Calculate your current collateralization ratio.
 2.  Determine the maximum amount of collateral you can withdraw.
@@ -46,13 +46,13 @@ If the price of ETH increases, your position's collateralization ratio will rise
 ## Best Practices
 
 1.  **Regular Monitoring**: Check your position's health frequently, especially during volatile market periods.
-2.  **Buffer Maintenance**: Keep a healthy safety buffer above your position's specific liquidation threshold.
+2.  **Buffer Maintenance**: Keep a healthy safety buffer above the 125% liquidation threshold to protect against sudden price drops.
 3.  **Price Awareness**: Monitor ETH price movements and their impact on your collateral value.
 4.  **Gas Optimization**: Consider gas fees when adding or withdrawing collateral to optimize costs.
 
 ## Safety Considerations
 
--   Never let your collateralization ratio approach your position's liquidation threshold.
+-   Never let your collateralization ratio approach the 125% threshold.
 -   Maintain additional collateral in reserve to add quickly during market downturns.
 -   Monitor gas prices for optimal transaction timing.
 

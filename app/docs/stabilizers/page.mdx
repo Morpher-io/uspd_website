@@ -39,11 +39,11 @@ sequenceDiagram
 
 ### Key Concepts
 
-1.  **Overcollateralization**: Every USPD token is backed by more than its value in stETH. The minimum collateralization ratio required to avoid liquidation starts at **125%**.
+1.  **Overcollateralization**: Every USPD token is backed by more than its value in stETH. To avoid liquidation, a Stabilizer's position must remain above the liquidation threshold, which is at minimum **125%**.
 
 2.  **Priority System**: Stabilizers are utilized for new USPD mints based on their NFT ID, with lower IDs having priority for capital allocation.
 
-3.  **Dynamic Liquidation Threshold**: The liquidation threshold is not fixed. It starts at 125% for Stabilizer NFT #1 and decreases by 0.5% for each subsequent NFT (e.g., 124.5% for #2, 124% for #3).
+3.  **Hierarchical Liquidation Rights**: The right to liquidate an undercollateralized position is granted to other Stabilizer NFT owners. The threshold at which they can act depends on their own NFT ID. The owner of Stabilizer NFT #1 can initiate a liquidation if another position falls below 125%, the owner of NFT #2 can act at 124.5%, and so on. This creates a hierarchy of enforcement within the system.
 
 ### Collateralization Process
 
@@ -64,9 +64,10 @@ Anyone can become a stabilizer by minting a Stabilizer NFT. This is a permission
 ### Rewards
 -   Potential to earn fees from providing stability to the system.
 -   Ability to extract excess collateral as the price of ETH rises, creating leveraged opportunities.
+-   Right to liquidate other undercollateralized positions and earn a reward.
 
 ### Risks
--   Your position can be liquidated if its collateralization ratio falls below its specific threshold.
+-   Your position can be liquidated if its collateralization ratio falls below the 125% threshold.
 -   Exposure to market volatility and the price of ETH.
 
 ## Related Topics
