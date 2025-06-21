@@ -2,71 +2,75 @@
 title: "USPD Stabilizers"
 description: "Understanding USPD Stabilizers - Core Mechanism for USPD's Stability"
 ---
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 # USPD Stabilizers
 
-Stabilizers are the backbone of USPD's stability mechanism, providing the overcollateralization that ensures USPD maintains its 1:1 USD peg. This document explains how stabilizers work and their role in the USPD ecosystem.
+Stabilizers are the backbone of the USPD ecosystem, providing the essential overcollateralization that ensures USPD maintains its 1:1 peg to the US Dollar. This document provides a high-level overview of how stabilizers work and their role in the system.
 
 ## What is a Stabilizer?
 
-A stabilizer is represented by an NFT (ERC721 token) that allows holders to provide ETH collateral to the USPD system. These stabilizers play a crucial role in maintaining USPD's stability by ensuring that all USPD tokens are overcollateralized.
+A stabilizer position is represented by a **Stabilizer NFT** (an ERC721 token). Owning one of these NFTs allows you to provide stETH collateral to the USPD system, participate in the stabilization process, and earn rewards.
+
+For a detailed technical explanation of the entire process, from minting an NFT to capital allocation, please refer to the full system documentation.
+
+<div className="not-prose my-6">
+    <Button asChild>
+        <Link href="/docs/architecture">View USPD Architecture</Link>
+    </Button>
+</div>
 
 ## How Stabilizers Work
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant USPD
+    participant USPD System
     participant Stabilizer
-    participant Position
+    participant PositionEscrow
 
-    User->>USPD: Mint USPD with ETH
-    USPD->>Stabilizer: Request allocation
-    Stabilizer->>Position: Create/Update Position
-    Position-->>Stabilizer: Position NFT
-    Stabilizer-->>USPD: Allocation complete
-    USPD-->>User: Receive USPD tokens
+    User->>USPD System: Mint USPD with ETH
+    USPD System->>Stabilizer: Request collateral allocation
+    Stabilizer->>PositionEscrow: Provide stETH collateral
+    PositionEscrow-->>USPD System: Confirm collateral received
+    USPD System-->>User: Receive USPD tokens
 ```
 
 ### Key Concepts
 
-1. **Overcollateralization**: Every USPD token is backed by more than 100% of its value in ETH. The minimum collateralization ratio is 110%.
+1.  **Overcollateralization**: Every USPD token is backed by more than its value in stETH. The minimum collateralization ratio required to avoid liquidation starts at **125%**.
 
-2. **Priority System**: Stabilizers are processed in order of their NFT ID, with lower IDs having priority for capital allocation.
+2.  **Priority System**: Stabilizers are utilized for new USPD mints based on their NFT ID, with lower IDs having priority for capital allocation.
 
-3. **Dynamic Collateral Management**: As ETH price fluctuates:
-   - Rising ETH price → Increased overcollateralization
-   - Falling ETH price → Decreased overcollateralization
+3.  **Dynamic Liquidation Threshold**: The liquidation threshold is not fixed. It starts at 125% for Stabilizer NFT #1 and decreases by 0.5% for each subsequent NFT (e.g., 124.5% for #2, 124% for #3).
 
 ### Collateralization Process
 
-When a user mints USPD:
+When a user mints USPD, they provide ETH as the base collateral. The system then taps into the available Stabilizer capital, allocating additional stETH from one or more Stabilizers to ensure the new USPD is overcollateralized above the required threshold.
 
-1. User provides ETH as collateral
-2. System searches for available stabilizer capital
-3. Stabilizers provide additional ETH to reach >110% collateralization
-4. A Position NFT is created tracking the allocation
+## Become a Stabilizer
 
-## Position Management
+Anyone can become a stabilizer by minting a Stabilizer NFT. This is a permissionless process that allows you to participate directly in securing the USPD ecosystem.
 
-Stabilizers receive a Position NFT (UspdCollateralizedPositionNFT) representing their stake in the system. This position must maintain:
-
-- Minimum 110% collateralization ratio
-- Active monitoring of ETH price fluctuations
-- Proper risk management
+<div className="not-prose my-6">
+    <Button asChild>
+        <Link href="/stabilizer/mint">Mint a Stabilizer NFT</Link>
+    </Button>
+</div>
 
 ## Risk and Rewards
 
 ### Rewards
-- Extract excess collateral when ETH price rises
-- Earn from providing stability to the system
+-   Potential to earn fees from providing stability to the system.
+-   Ability to extract excess collateral as the price of ETH rises, creating leveraged opportunities.
 
 ### Risks
-- Position can be liquidated if collateralization falls below 110%
-- Market volatility exposure
+-   Your position can be liquidated if its collateralization ratio falls below its specific threshold.
+-   Exposure to market volatility and the price of ETH.
 
 ## Related Topics
 
-- [Adding Collateral](/docs/stabilizers/add-collateral)
-- [Liquidation Process](/docs/stabilizers/liquidation)
-- [Managing Positions](/docs/stabilizers/manage-positions)
+-   [Adding Collateral](/docs/stabilizers/add-collateral)
+-   [Liquidation Process](/docs/stabilizers/liquidation)
+-   [Economics of USPD](/docs/economics)
