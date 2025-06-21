@@ -166,7 +166,7 @@ graph LR
 
 ### Stabilizer Setup
 
-1.  An entity wishing to become a Stabilizer acquires a `StabilizerNFT` (minted by an admin/MINTER_ROLE).
+1.  An entity wishing to become a Stabilizer mints a new `StabilizerNFT`. This is a permissionless action and can be performed by anyone.
 2.  The `StabilizerNFT` contract automatically deploys dedicated `StabilizerEscrow` and `PositionEscrow` clones for this NFT.
 3.  The Stabilizer deposits collateral (ETH or stETH) into their `StabilizerEscrow` via the `StabilizerNFT`'s `addUnallocatedFundsEth` or `addUnallocatedFundsStETH` functions. ETH deposits are automatically staked into stETH via Lido within the `StabilizerEscrow`.
 4.  The Stabilizer can set a minimum desired collateralization ratio for their position using `StabilizerNFT.setMinCollateralizationRatio` to manage their own risk, which must be above the system's liquidation threshold for their NFT.
