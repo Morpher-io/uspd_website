@@ -83,7 +83,8 @@ function copyToClipboard(text: string, label: string) {
 function renderAddressCell(address: Address, label: string, targetChainId: number) {
     return (
         <div className="flex items-center justify-end gap-2">
-            <span className="truncate font-mono text-xs">{address}</span>
+            <span className="truncate font-mono text-xs block sm:hidden">{address.substring(0,5)}...</span>
+            <span className="truncate font-mono text-xs hidden sm:block">{address}</span>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(address, `${label} Address`)}>
                 <Copy className="h-3 w-3" />
             </Button>
