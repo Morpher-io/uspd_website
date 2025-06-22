@@ -90,8 +90,9 @@ contract OvercollateralizationReporterTest is Test {
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
 
         // Deploy RateContract
-        vm.deal(admin, 0.001 ether);
-        rateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
+        // Mint some mock stETH so that total supply is > 0 for rebase tests.
+        mockStETH.mint(admin, 100 ether);
+        rateContract = new PoolSharesConversionRate(address(mockStETH), admin);
 
         // Deploy StabilizerNFT Implementation
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
@@ -459,20 +460,8 @@ contract OvercollateralizationReporterTest is Test {
     }
 
     function test_GetSystemCollateralizationRatio_Revert_ZeroCurrentYieldFactor() public {
-        // Make rateContract.getYieldFactor() return 0.
-        // The rateContract's initialStEthBalance is non-zero from its constructor (0.001 ether).
-        // We set its current stETH balance to 0 using stdStore.
-        // So, getYieldFactor = (currentBalance * FACTOR_PRECISION) / initialBalance
-        //                    = (0 * FACTOR_PRECISION) / initialStEthBalance = 0.
-
-        uint256 rateContractStEthBalanceSlot = stdstore
-            .target(address(mockStETH))
-            .sig(mockStETH.balanceOf.selector) // or "_balances(address)"
-            .with_key(address(rateContract))
-            .find();
-        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
-
-        assertEq(mockStETH.balanceOf(address(rateContract)), 0, "RateContract stETH balance should be 0");
+        // Force rateContract.getYieldFactor() to return 0 by configuring the mock.
+        mockStETH.setShouldReturnZeroForShares(true);
         assertEq(rateContract.getYieldFactor(), 0, "Pre-condition: Yield factor should be 0");
 
         cuspdToken.mint(user1, 100 * 1e18); // Have some cUSPD supply
@@ -480,6 +469,9 @@ contract OvercollateralizationReporterTest is Test {
 
         vm.expectRevert("Reporter: Current yield factor is zero");
         reporter.getSystemCollateralizationRatio(price);
+
+        // Cleanup mock state
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     function test_GetSystemCollateralizationRatio_ZeroLiabilityValueUSD_DueToTruncation() public {
@@ -490,15 +482,16 @@ contract OvercollateralizationReporterTest is Test {
         cuspdToken.mint(user1, 1); // Mint 1 share of cUSPD
         assertEq(cuspdToken.totalSupply(), 1, "cUSPD total supply should be 1");
 
-        // 2. Make rateContract.getYieldFactor() return 1
-        // initialStEthBalance in rateContract is from 0.001 ether deposit.
-        // We need currentStEthBalance in rateContract to be initialStEthBalance / 1e18 = (0.001 ether) / 1e18 = 1 wei.
-        // Find the storage slot for _balances[address(rateContract)] in mockStETH
-        uint256 balanceSlot = stdstore.target(address(mockStETH)).sig(mockStETH.balanceOf.selector).with_key(address(rateContract)).find();
-        vm.store(address(mockStETH), bytes32(balanceSlot), bytes32(uint256(1))); // Set balance to 1 wei
+        // 2. Make rateContract.getYieldFactor() return a very small number (e.g., 1000)
+        //    so that liability calculation truncates to zero.
+        //    getYieldFactor = mockStETH.pooledEthPerSharePrecision. We set this directly.
+        uint256 rateSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.pooledEthPerSharePrecision.selector)
+            .find();
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(uint256(1000)));
 
-        assertEq(mockStETH.balanceOf(address(rateContract)), 1, "MockStETH balance of rateContract should be 1 wei");
-        assertEq(rateContract.getYieldFactor(), 1000, "Yield factor should be 1");
+        assertEq(rateContract.getYieldFactor(), 1000, "Yield factor should be 1000");
 
 
         // 3. Have some collateral in the reporter
@@ -508,7 +501,7 @@ contract OvercollateralizationReporterTest is Test {
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
 
-        // Liability = (1 * 1) / 1e18 = 0
+        // Liability = (1 * 1000) / 1e18 = 0
         uint256 ratio = reporter.getSystemCollateralizationRatio(price);
         assertEq(ratio, type(uint256).max, "Ratio should be max if liabilityValueUSD is zero due to truncation");
     }
@@ -654,18 +647,16 @@ contract OvercollateralizationReporterTest is Test {
     }
 
     function test_ResetCollateralSnapshot_Revert_ZeroCurrentYieldFactor() public {
-        // Make rateContract.getYieldFactor() return 0
-        uint256 rateContractStEthBalanceSlot = stdstore
-            .target(address(mockStETH))
-            .sig(mockStETH.balanceOf.selector)
-            .with_key(address(rateContract))
-            .find();
-        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        // Force rateContract.getYieldFactor() to return 0 by configuring the mock.
+        mockStETH.setShouldReturnZeroForShares(true);
         assertEq(rateContract.getYieldFactor(), 0, "Pre-condition: Yield factor should be 0");
 
         vm.prank(admin);
         vm.expectRevert("Reporter: Cannot reset with zero yield factor");
         reporter.resetCollateralSnapshot(100 ether);
+
+        // Cleanup mock state
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     function test_ResetCollateralSnapshot_Revert_NotAdmin() public {
@@ -715,7 +706,6 @@ contract OvercollateralizationReporterTest is Test {
     // --- updateRateContract ---
     function test_UpdateRateContract_Success_Admin() public {
         address oldRateContractAddr = address(reporter.rateContract());
-        vm.deal(address(this), 0.001 ether);
         // Deploy a new mock/instance for the rate contract
         PoolSharesConversionRate newRateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
         address newRateContractAddr = address(newRateContract);
@@ -736,7 +726,6 @@ contract OvercollateralizationReporterTest is Test {
     }
 
     function test_UpdateRateContract_Revert_NotAdmin() public {
-        vm.deal(address(this), 0.001 ether);
         PoolSharesConversionRate newRateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
         address newRateContractAddr = address(newRateContract);
 
