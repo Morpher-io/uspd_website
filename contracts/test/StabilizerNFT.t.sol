@@ -111,11 +111,7 @@ contract StabilizerNFTTest is Test {
 
         // Deploy RateContract (can use mocks if preferred) - Needs ETH deposit
         vm.deal(address(this), 0.001 ether);
-        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(
-            address(mockStETH),
-            address(mockLido),
-            address(this)
-        );
+        rateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
 
         // 2. Deploy Implementations
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();

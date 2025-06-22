@@ -87,9 +87,7 @@ contract PositionEscrowTest is
 
         // Deploy RateContract
         vm.deal(admin, INITIAL_RATE_DEPOSIT);
-        rateContract = new PoolSharesConversionRate{
-            value: INITIAL_RATE_DEPOSIT
-        }(address(mockStETH), address(mockLido), address(this));
+        rateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
 
         // Deploy PositionEscrow Implementation
         PositionEscrow escrowImpl = new PositionEscrow();

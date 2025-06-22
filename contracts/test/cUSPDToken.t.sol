@@ -113,7 +113,7 @@ contract cUSPDTokenTest is Test {
 
         // Deploy RateContract
         vm.deal(admin, 0.001 ether);
-        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
+        rateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
 
         // Deploy StabilizerNFT Implementation
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
