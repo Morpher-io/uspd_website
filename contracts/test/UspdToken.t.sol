@@ -200,7 +200,6 @@ contract USPDTokenTest is Test {
         // Deploy Mocks & Rate Contract
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
-        vm.deal(address(this), 0.001 ether); // Fund for rate contract deployment
         rateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
 
         // Deploy StabilizerNFT (Implementation + Proxy, NO Init yet)
@@ -346,17 +345,12 @@ contract USPDTokenTest is Test {
 
     function testBalanceOf_ZeroIfYieldFactorIsZero() public {
         address user = makeAddr("user");
-        // Make rateContract.getYieldFactor() return 0
-        // This is done by setting the stETH balance of the rateContract to 0.
-        uint256 rateContractStEthBalanceSlot = stdstore
-            .target(address(mockStETH))
-            .sig(mockStETH.balanceOf.selector)
-            .with_key(address(rateContract))
-            .find();
-        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        _setYieldFactorZero();
         
-        assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test");
         assertEq(uspdToken.balanceOf(user), 0, "balanceOf should be 0 if yield factor is zero");
+
+        // Cleanup
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     // --- totalSupply Tests ---
@@ -400,62 +394,46 @@ contract USPDTokenTest is Test {
     }
 
     function testTotalSupply_ZeroIfYieldFactorIsZero() public {
-        uint256 rateContractStEthBalanceSlot = stdstore
-            .target(address(mockStETH))
-            .sig(mockStETH.balanceOf.selector)
-            .with_key(address(rateContract))
-            .find();
-        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
+        _setYieldFactorZero();
         
-        assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test");
         assertEq(uspdToken.totalSupply(), 0, "totalSupply should be 0 if yield factor is zero");
+
+        // Cleanup
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     // --- Yield Factor Tests ---
 
     // Helper function to make rateContract.getYieldFactor() return 0
     function _setYieldFactorZero() private {
-        // Set the stETH balance of the rateContract to 0.
-        // The rateContract initially receives 0.001 ether worth of stETH in setUp.
-        uint256 currentRateContractStEthBalance = mockStETH.balanceOf(address(rateContract));
-        if (currentRateContractStEthBalance > 0) {
-            vm.prank(address(this)); // 'this' is the owner of MockStETH
-            mockStETH.adminBurn(address(rateContract), currentRateContractStEthBalance);
-        }
-        assertEq(mockStETH.balanceOf(address(rateContract)), 0, "MockStETH balance of rateContract should be 0");
+        // The new way to make yield factor zero is to configure the mock to return 0 for getPooledEthByShares.
+        mockStETH.setShouldReturnZeroForShares(true);
         assertEq(rateContract.getYieldFactor(), 0, "Yield factor should be 0 for this test setup");
     }
 
     // Helper function to create a very high yield factor
     // such that a small uspdAmount results in 0 sharesToTransfer
     function _setHighYieldFactor() private {
-        // initialStEthBalance in rateContract is 0.001 ether (1e15 wei)
-        // To make yieldFactor very large, we need currentBalance to be very large.
-        // yieldFactor = (currentBalance * FACTOR_PRECISION) / initialBalance
-        // If we want shares = (uspdAmount * FACTOR_PRECISION) / yieldFactor to be < 1 for uspdAmount = 1 wei
-        // then yieldFactor > uspdAmount * FACTOR_PRECISION
-        // yieldFactor > 1 * 1e18
-        // (currentBalance * 1e18) / 1e15 > 1e18
-        // currentBalance * 1e3 > 1e18
-        // currentBalance > 1e15
-        // Let's set currentBalance to something like 1e18 * 1e18 to ensure yieldFactor is huge.
-        
-        // First, ensure the current balance is known (or zero it out)
-        uint256 currentRateContractStEthBalance = mockStETH.balanceOf(address(rateContract));
-        if (currentRateContractStEthBalance > 0) {
-            vm.prank(address(this)); // 'this' is the owner of MockStETH
-            mockStETH.adminBurn(address(rateContract), currentRateContractStEthBalance);
-        }
+        // In the new RateContract, yieldFactor = currentRate / initialRate.
+        // In tests, initialRate is FACTOR_PRECISION.
+        // currentRate comes from mockStETH.getPooledEthByShares, which is controlled by pooledEthPerSharePrecision.
+        // So, yieldFactor == pooledEthPerSharePrecision.
+        // To make shares = (uspdAmount * FACTOR_PRECISION) / yieldFactor < 1 for uspdAmount = 1,
+        // we need yieldFactor > FACTOR_PRECISION.
+        uint256 highYieldFactor = uspdToken.FACTOR_PRECISION() * 2;
 
-        // Set a very large balance for rateContract in mockStETH
-        uint256 veryLargeBalance = 1e18 * 1e18; // Extremely large balance
-        vm.prank(address(this)); // 'this' can be considered the "minter" in this test context
-        mockStETH.mint(address(rateContract), veryLargeBalance); // Use public mint
+        // Find the storage slot for pooledEthPerSharePrecision in mockStETH
+        uint256 rateSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.pooledEthPerSharePrecision.selector)
+            .find();
         
-        assertEq(mockStETH.balanceOf(address(rateContract)), veryLargeBalance, "MockStETH balance of rateContract not set to very large value");
-
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        assertTrue(yieldFactor > uspdToken.FACTOR_PRECISION() * 100, "Yield factor should be very high"); // Check it's significantly high
+        // Store the new high value
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(highYieldFactor));
+        
+        uint256 newYieldFactor = rateContract.getYieldFactor();
+        assertEq(newYieldFactor, highYieldFactor, "Yield factor was not set to a high value");
+        assertTrue(newYieldFactor > uspdToken.FACTOR_PRECISION(), "Yield factor should be very high");
     }
 
 
@@ -491,6 +469,9 @@ contract USPDTokenTest is Test {
         vm.prank(sender);
         vm.expectRevert(USPD.InvalidYieldFactor.selector);
         uspdToken.transfer(receiver, 100 * 1e18);
+
+        // Cleanup
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     function testTransfer_Revert_AmountTooSmallForHighYield() public {
@@ -509,6 +490,10 @@ contract USPDTokenTest is Test {
         vm.prank(sender);
         vm.expectRevert(USPD.AmountTooSmall.selector);
         uspdToken.transfer(receiver, 1); // 1 wei of USPD, should result in 0 shares
+
+        // Cleanup
+        uint256 rateSlot = stdstore.target(address(mockStETH)).sig(mockStETH.pooledEthPerSharePrecision.selector).find();
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(mockStETH.REBASE_PRECISION()));
     }
 
     function testTransfer_Success_ZeroAmount() public {
@@ -549,6 +534,9 @@ contract USPDTokenTest is Test {
 
         _setYieldFactorZero();
         assertEq(uspdToken.allowance(owner, spender), 100 * 1e18, "Allowance should be 100 * 1e18, even if yield factor is zero");
+
+        // Cleanup
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     function testApprove_Success_ZeroYieldFactor() public {
@@ -558,6 +546,9 @@ contract USPDTokenTest is Test {
 
         vm.prank(owner);
         uspdToken.approve(spender, 100 * 1e18);
+
+        // Cleanup
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     // --- TransferFrom Tests ---
@@ -597,6 +588,9 @@ contract USPDTokenTest is Test {
         vm.prank(spender);
         vm.expectRevert(USPD.InvalidYieldFactor.selector);
         uspdToken.transferFrom(owner, receiver, 100 * 1e18);
+
+        // Cleanup
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     function testTransferFrom_Revert_AmountTooSmallForHighYield() public {
@@ -619,6 +613,10 @@ contract USPDTokenTest is Test {
         vm.prank(spender);
         vm.expectRevert(USPD.AmountTooSmall.selector);
         uspdToken.transferFrom(owner, receiver, 1); // 1 wei of USPD
+
+        // Cleanup
+        uint256 rateSlot = stdstore.target(address(mockStETH)).sig(mockStETH.pooledEthPerSharePrecision.selector).find();
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(mockStETH.REBASE_PRECISION()));
     }
 
     function testTransferFrom_Success_ZeroAmount() public {
@@ -956,6 +954,9 @@ contract USPDTokenTest is Test {
         vm.prank(relayer);
         vm.expectRevert(USPD.InvalidYieldFactor.selector);
         uspdToken.lockForBridging(100e18, 10);
+
+        // Cleanup
+        mockStETH.setShouldReturnZeroForShares(false);
     }
 
     function testLockForBridging_Revert_AmountTooSmallForHighYield() public {
@@ -975,6 +976,10 @@ contract USPDTokenTest is Test {
         vm.prank(relayer);
         vm.expectRevert(USPD.AmountTooSmall.selector);
         uspdToken.lockForBridging(1, 10); // 1 wei USPD
+
+        // Cleanup
+        uint256 rateSlot = stdstore.target(address(mockStETH)).sig(mockStETH.pooledEthPerSharePrecision.selector).find();
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(mockStETH.REBASE_PRECISION()));
     }
 
     function testUnlockFromBridging_Revert_BridgeEscrowNotSet() public {
