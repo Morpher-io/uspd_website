@@ -201,11 +201,7 @@ contract USPDTokenTest is Test {
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
         vm.deal(address(this), 0.001 ether); // Fund for rate contract deployment
-        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(
-            address(mockStETH),
-            address(mockLido),
-            address(this)
-        );
+        rateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
 
         // Deploy StabilizerNFT (Implementation + Proxy, NO Init yet)
         StabilizerNFT stabilizerNFTImpl = new StabilizerNFT();
