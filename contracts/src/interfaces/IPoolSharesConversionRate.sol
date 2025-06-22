@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-
-
 /**
  * @title IPoolSharesConversionRate Interface
  * @dev Interface for the contract responsible for tracking the stETH yield factor.
+ *      On L1, it calculates yield based on the change in value of stETH shares.
+ *      On L2, it stores a yield factor that can be updated by an authorized role.
  */
 interface IPoolSharesConversionRate {
     /**
      * @notice Calculates the current yield factor based on stETH rebasing.
-     * @dev The factor represents the growth since the initial deposit, scaled by FACTOR_PRECISION.
+     * @dev The factor represents the growth of stETH's value since deployment, scaled by FACTOR_PRECISION.
      *      A factor of 1 * FACTOR_PRECISION means no yield yet.
      *      A factor of 1.05 * FACTOR_PRECISION means 5% yield.
      * @return yieldFactor The current yield factor, scaled by FACTOR_PRECISION.
@@ -37,15 +36,15 @@ interface IPoolSharesConversionRate {
      */
     function updateL2YieldFactor(uint256 newYieldFactor) external;
 
-     /**
-     * @notice Returns the initial stETH balance deposited into the contract.
-     * @return balance The initial balance.
+    /**
+     * @notice On L1, returns the initial ETH equivalent for 1e18 shares of stETH at deployment.
+     * @return rate The initial rate.
      */
-    function initialStEthBalance() external view returns (uint256 balance);
+    function initialEthEquivalentPerShare() external view returns (uint256 rate);
 
-     /**
+    /**
      * @notice Returns the address of the stETH token being tracked.
-     * @return tokenInstance The IERC20 instance of the stETH token.
+     * @return tokenAddress The address of the stETH token.
      */
-    function stETH() external view returns (address tokenInstance);
+    function stETH() external view returns (address tokenAddress);
 }
