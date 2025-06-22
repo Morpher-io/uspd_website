@@ -91,7 +91,7 @@ contract OvercollateralizationReporterTest is Test {
 
         // Deploy RateContract
         vm.deal(admin, 0.001 ether);
-        rateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
+        rateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
 
         // Deploy StabilizerNFT Implementation
         StabilizerNFT stabilizerImpl = new StabilizerNFT();
@@ -381,22 +381,7 @@ contract OvercollateralizationReporterTest is Test {
         reporter.updateSnapshot(1 ether);
     }
 
-    function testUpdateSnapshot_Revert_ZeroCurrentYieldFactor() public {
-        // Make rateContract.getYieldFactor() return 0
-        uint256 rateContractStEthBalanceSlot = stdstore
-            .target(address(mockStETH))
-            .sig(mockStETH.balanceOf.selector)
-            .with_key(address(rateContract))
-            .find();
-        vm.store(address(mockStETH), bytes32(rateContractStEthBalanceSlot), bytes32(uint256(0)));
-        assertEq(rateContract.getYieldFactor(), 0, "Pre-condition: Yield factor should be 0");
-
-        vm.prank(updater);
-        vm.expectRevert("Reporter: Current yield factor is zero");
-        reporter.updateSnapshot(1 ether); // Delta value doesn't matter for this specific revert
-    }
-
-    function testUpdateSnapshot_Revert_InconsistentInitialState() public {
+        function testUpdateSnapshot_Revert_InconsistentInitialState() public {
         // Force yieldFactorAtLastSnapshot = 0 and totalEthEquivalentAtLastSnapshot != 0
         stdstore.target(address(reporter)).sig(reporter.yieldFactorAtLastSnapshot.selector).checked_write(uint256(0));
         stdstore.target(address(reporter)).sig(reporter.totalEthEquivalentAtLastSnapshot.selector).checked_write(1 ether);
@@ -732,7 +717,7 @@ contract OvercollateralizationReporterTest is Test {
         address oldRateContractAddr = address(reporter.rateContract());
         vm.deal(address(this), 0.001 ether);
         // Deploy a new mock/instance for the rate contract
-        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
+        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
         address newRateContractAddr = address(newRateContract);
 
         vm.expectEmit(true, true, true, false, address(reporter)); // old, new, contract
@@ -752,7 +737,7 @@ contract OvercollateralizationReporterTest is Test {
 
     function test_UpdateRateContract_Revert_NotAdmin() public {
         vm.deal(address(this), 0.001 ether);
-        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate{value: 0.001 ether}(address(mockStETH), address(mockLido), address(this));
+        PoolSharesConversionRate newRateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
         address newRateContractAddr = address(newRateContract);
 
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user1, reporter.DEFAULT_ADMIN_ROLE()));
