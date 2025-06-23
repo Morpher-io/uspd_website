@@ -181,6 +181,11 @@ contract PriceOracle is
             revert PriceSourceUnavailable("Chainlink Oracle Stale");
         }
 
+        //price check against negative values, it cannot be negative here.
+        if(answer < 0) {
+            return 0;
+        }
+
         return (1e18 * answer) / 1e8; //converted to 18 digits
     }
 
