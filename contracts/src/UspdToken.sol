@@ -150,9 +150,16 @@ contract USPDToken is
      */
     function transfer(address to, uint256 uspdAmount) public virtual override returns (bool) {
         uint256 yieldFactor = rateContract.getYieldFactor();
-        if (yieldFactor == 0) revert InvalidYieldFactor();
+        if (yieldFactor == 0) {
+            revert InvalidYieldFactor();
+        }
+        if(uspdAmount == 0) {
+            revert AmountTooSmall();
+        }
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
-        if (sharesToTransfer == 0 && uspdAmount > 0) revert AmountTooSmall();
+        if (sharesToTransfer == 0 && uspdAmount > 0) {
+            revert AmountTooSmall();  
+        } 
 
         cuspdToken.executeTransfer(msg.sender, to, sharesToTransfer);
         return true; // Assuming executeTransfer does not return bool or reverts on failure
@@ -176,7 +183,9 @@ contract USPDToken is
         uint256 yieldFactor = rateContract.getYieldFactor();
         if (yieldFactor == 0) revert InvalidYieldFactor();
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
-        if (sharesToTransfer == 0 && uspdAmount > 0) revert AmountTooSmall();
+        if (sharesToTransfer == 0 && uspdAmount > 0) { 
+            revert AmountTooSmall();
+        }
 
         // Use the inherited _spendAllowance from ERC20.sol to check and update the allowance.
         // _spendAllowance will revert if allowance is insufficient and emit an Approval event.

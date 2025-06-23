@@ -496,7 +496,7 @@ contract USPDTokenTest is Test {
         vm.store(address(mockStETH), bytes32(rateSlot), bytes32(mockStETH.REBASE_PRECISION()));
     }
 
-    function testTransfer_Success_ZeroAmount() public {
+    function testTransfer_Revert_ZeroAmount() public {
         address sender = makeAddr("sender");
         address receiver = makeAddr("receiver");
         uint256 mintAmountEth = 1 ether;
@@ -509,8 +509,9 @@ contract USPDTokenTest is Test {
 
         uint256 initialSenderBalance = uspdToken.balanceOf(sender);
 
+        vm.expectRevert(USPD.AmountTooSmall.selector);
         vm.prank(sender);
-        assertTrue(uspdToken.transfer(receiver, 0), "Transfer of 0 amount should succeed");
+        uspdToken.transfer(receiver, 0);
         assertEq(uspdToken.balanceOf(sender), initialSenderBalance, "Sender balance should not change for 0 amount transfer");
     }
 
