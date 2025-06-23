@@ -79,22 +79,22 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
 
     // --- External Functions ---
 
-    /**
-     * @notice Acknowledges the addition of stETH collateral to the pool.
-     * @param totalStEthAmount The total amount of stETH added in this transaction (user + stabilizer).
-     * @dev Callable only by STABILIZER_ROLE (StabilizerNFT) during allocation, or potentially
-     *      EXCESSCOLLATERALMANAGER_ROLE if the owner adds collateral directly (requires stETH transfer beforehand).
-     *      This function primarily serves as a hook/event emitter.
-     */
-    function addCollateral(uint256 totalStEthAmount)
-        external
-        override
-        onlyRole(STABILIZER_ROLE)
-    {
-        if (totalStEthAmount == 0) revert ZeroAmount(); // Must add some collateral
+    // /**
+    //  * @notice Acknowledges the addition of stETH collateral to the pool.
+    //  * @param totalStEthAmount The total amount of stETH added in this transaction (user + stabilizer).
+    //  * @dev Callable only by STABILIZER_ROLE (StabilizerNFT) during allocation, or potentially
+    //  *      EXCESSCOLLATERALMANAGER_ROLE if the owner adds collateral directly (requires stETH transfer beforehand).
+    //  *      This function primarily serves as a hook/event emitter.
+    //  */
+    // function addCollateral(uint256 totalStEthAmount)
+    //     external
+    //     override
+    //     onlyRole(STABILIZER_ROLE)
+    // {
+    //     if (totalStEthAmount == 0) revert ZeroAmount(); // Must add some collateral
 
-        emit CollateralAdded(totalStEthAmount);
-    }
+    //     emit CollateralAdded(totalStEthAmount);
+    // }
 
     /**
      * @notice Receives user's ETH, stakes it via Lido, and acknowledges stabilizer's stETH contribution.

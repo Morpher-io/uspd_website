@@ -33,7 +33,7 @@ interface IPositionEscrow is IERC20Errors, IAccessControl {
     function backedPoolShares() external view returns (uint256);
 
     // --- External Functions ---
-    function addCollateral(uint256 totalStEthAmount) external; // Simplified signature
+    // function addCollateral(uint256 totalStEthAmount) external; // Simplified signature
     function addCollateralFromStabilizer(uint256 stabilizerStEthAmount) external payable; // New function
     function addCollateralEth() external payable; // Add ETH collateral directly
     function addCollateralStETH(uint256 stETHAmount) external; // Add stETH collateral directly

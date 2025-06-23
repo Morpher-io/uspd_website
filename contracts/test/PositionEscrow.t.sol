@@ -349,17 +349,17 @@ contract PositionEscrowTest is
     // II. Access Control Tests
     // =============================================
 
-    function test_addCollateral_revert_notStabilizerRole() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector,
-                otherUser,
-                positionEscrow.STABILIZER_ROLE()
-            )
-        );
-        vm.prank(otherUser);
-        positionEscrow.addCollateral(1 ether);
-    }
+    // function test_addCollateral_revert_notStabilizerRole() public {
+    //     vm.expectRevert(
+    //         abi.encodeWithSelector(
+    //             IAccessControl.AccessControlUnauthorizedAccount.selector,
+    //             otherUser,
+    //             positionEscrow.STABILIZER_ROLE()
+    //         )
+    //     );
+    //     vm.prank(otherUser);
+    //     positionEscrow.addCollateral(1 ether);
+    // }
 
     function test_addCollateralFromStabilizer_revert_notStabilizerRole()
         public
@@ -426,20 +426,20 @@ contract PositionEscrowTest is
     // III. addCollateral Tests
     // =============================================
 
-    function test_addCollateral_success() public {
-        uint256 amount = 1 ether;
-        vm.expectEmit(true, false, false, true, address(positionEscrow));
-        emit IPositionEscrow.CollateralAdded(amount);
-        vm.prank(admin); // Has STABILIZER_ROLE
-        positionEscrow.addCollateral(amount);
-        // Note: This function doesn't check balance, just emits event.
-    }
+    // function test_addCollateral_success() public {
+    //     uint256 amount = 1 ether;
+    //     vm.expectEmit(true, false, false, true, address(positionEscrow));
+    //     emit IPositionEscrow.CollateralAdded(amount);
+    //     vm.prank(admin); // Has STABILIZER_ROLE
+    //     positionEscrow.addCollateral(amount);
+    //     // Note: This function doesn't check balance, just emits event.
+    // }
 
-    function test_addCollateral_revert_zeroAmount() public {
-        vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
-        vm.prank(admin);
-        positionEscrow.addCollateral(0);
-    }
+    // function test_addCollateral_revert_zeroAmount() public {
+    //     vm.expectRevert(IPositionEscrow.ZeroAmount.selector);
+    //     vm.prank(admin);
+    //     positionEscrow.addCollateral(0);
+    // }
 
     // =============================================
     // IV. addCollateralFromStabilizer Tests
