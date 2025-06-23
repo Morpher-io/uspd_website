@@ -71,7 +71,7 @@ contract BridgeEscrowTest is Test {
         // 1. Deploy PriceOracle
         PriceOracle oracleImpl = new PriceOracle();
         bytes memory initDataOracle = abi.encodeWithSelector(
-            PriceOracle.initialize.selector, 500, 300, USDC_MAINNET, UNISWAP_ROUTER_MAINNET, CHAINLINK_ETH_USD_MAINNET, deployer
+            PriceOracle.initialize.selector, 500, 120, USDC_MAINNET, UNISWAP_ROUTER_MAINNET, CHAINLINK_ETH_USD_MAINNET, deployer
         );
         ERC1967Proxy oracleProxy = new ERC1967Proxy(address(oracleImpl), initDataOracle);
         priceOracle = PriceOracle(payable(address(oracleProxy)));

@@ -540,7 +540,6 @@ contract PriceOracleTest is Test {
     }
 
     function testSetMaxDeviationPercentage_Revert_NotAdmin() public {
-        vm.prank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
@@ -548,6 +547,8 @@ contract PriceOracleTest is Test {
                 priceOracle.DEFAULT_ADMIN_ROLE()
             )
         );
+        vm.prank(user1);
+
         priceOracle.setMaxDeviationPercentage(400);
     }
 
@@ -572,7 +573,6 @@ contract PriceOracleTest is Test {
     }
 
     function testSetPriceStalenessPeriod_Revert_NotAdmin() public {
-        vm.prank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
@@ -580,6 +580,7 @@ contract PriceOracleTest is Test {
                 priceOracle.DEFAULT_ADMIN_ROLE()
             )
         );
+        vm.prank(user1);
         priceOracle.setPriceStalenessPeriod(60);
     }
 

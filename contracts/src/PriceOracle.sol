@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.20;
+pragma solidity 0.8.29;
 
 import "./interfaces/IPriceOracle.sol";
 import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
@@ -314,7 +314,7 @@ contract PriceOracle is
         uint256 morpherPrice,
         uint256 chainlinkPrice,
         uint256 uniswapPrice
-    ) internal view returns (bool) {
+    ) internal view virtual returns (bool) {
         // Calculate max allowed deviation
         uint256 maxDeviation = (morpherPrice * config.maxPriceDeviation) /
             10000;

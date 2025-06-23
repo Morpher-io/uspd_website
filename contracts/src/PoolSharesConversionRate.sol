@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.29;
 
 /***
  *     /$$   /$$  /$$$$$$  /$$$$$$$  /$$$$$$$ 
@@ -137,9 +137,10 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
         if (block.chainid == MAINNET_CHAIN_ID) {
             revert NotL2Chain(); // This function is for L2s only
         }
-        if (newYieldFactor < _yieldFactor) {
-            revert YieldFactorDecreaseNotAllowed();
-        }
+        // allowing slashing on mainchain RES-08
+        // if (newYieldFactor < _yieldFactor) {
+        //     revert YieldFactorDecreaseNotAllowed();
+        // }
         uint256 oldYieldFactor = _yieldFactor;
         _yieldFactor = newYieldFactor;
         emit YieldFactorUpdated(oldYieldFactor, newYieldFactor);

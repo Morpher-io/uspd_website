@@ -105,7 +105,7 @@ contract cUSPDTokenTest is Test {
         // Deploy PriceOracle (Implementation + Proxy + Init)
         PriceOracle oracleImpl = new PriceOracle();
         bytes memory oracleInitData = abi.encodeWithSelector(
-            PriceOracle.initialize.selector, 500, 3600, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, admin
+            PriceOracle.initialize.selector, 500, 120, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, admin
         );
         ERC1967Proxy oracleProxy = new ERC1967Proxy(address(oracleImpl), oracleInitData);
         priceOracle = PriceOracle(payable(address(oracleProxy)));

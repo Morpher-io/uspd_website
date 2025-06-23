@@ -72,7 +72,7 @@ contract PositionEscrowTest is
         bytes memory oracleInitData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
             500,
-            3600,
+            120,
             address(0xdead),
             address(0xbeef),
             address(0xcafe),

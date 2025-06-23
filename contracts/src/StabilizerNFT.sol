@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.29;
 
 /***
  *     /$$   /$$  /$$$$$$  /$$$$$$$  /$$$$$$$ 
@@ -252,8 +252,6 @@ contract StabilizerNFT is
             nextAllocated: 0
         });
 
-        _safeMint(to, tokenId);
-        emit StabilizerPositionCreated(tokenId, to);
 
         // --- Deploy Clones using EIP-1167 ---
         require(stabilizerEscrowImplementation != address(0), "StabilizerEscrow impl not set");
@@ -289,6 +287,10 @@ contract StabilizerNFT is
         // Grant the new PositionEscrow clone the role needed to call back
         _grantRole(POSITION_ESCROW_ROLE, positionEscrowClone);
 
+        //checks effects interaction pattern - interaction through safeMint comes last
+        emit StabilizerPositionCreated(tokenId, to);
+        _safeMint(to, tokenId);
+        
         return tokenId;
     }
 

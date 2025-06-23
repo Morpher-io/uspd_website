@@ -123,7 +123,7 @@ contract USPDTokenTest is Test {
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
             500,                // 5% max deviation
-            300,               // 5 minute staleness period
+            120,               // 5 minute staleness period
             USDC,              // USDC address
             UNISWAP_ROUTER,    // Uniswap router
             CHAINLINK_ETH_USD, // Chainlink ETH/USD feed

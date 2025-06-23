@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../../../src/PriceOracle.sol";
+import "../../src/PriceOracle.sol";
 
 contract TestPriceOracle is PriceOracle {
     /**

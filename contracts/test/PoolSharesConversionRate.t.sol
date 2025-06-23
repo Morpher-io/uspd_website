@@ -167,18 +167,19 @@ contract PoolSharesConversionRateTest is Test {
         rateContract.updateL2YieldFactor(newFactor);
     }
 
-    function testUpdateL2YieldFactor_Revert_DecreaseNotAllowed() public {
-        vm.chainId(10); // Arbitrary L2 chain ID
-        address admin = address(this);
-        PoolSharesConversionRate l2RateContract = new PoolSharesConversionRate(address(0), admin);
+    // explicitely allowing slashing on mainchain to be carried over to other chains
+    // function testUpdateL2YieldFactor_Revert_DecreaseNotAllowed() public {
+    //     vm.chainId(10); // Arbitrary L2 chain ID
+    //     address admin = address(this);
+    //     PoolSharesConversionRate l2RateContract = new PoolSharesConversionRate(address(0), admin);
 
-        uint256 initialFactor = l2RateContract.getYieldFactor(); // Should be FACTOR_PRECISION
-        uint256 decreasedFactor = initialFactor - 1;
+    //     uint256 initialFactor = l2RateContract.getYieldFactor(); // Should be FACTOR_PRECISION
+    //     uint256 decreasedFactor = initialFactor - 1;
 
-        vm.prank(admin);
-        vm.expectRevert(PoolSharesConversionRate.YieldFactorDecreaseNotAllowed.selector);
-        l2RateContract.updateL2YieldFactor(decreasedFactor);
-    }
+    //     vm.prank(admin);
+    //     vm.expectRevert(PoolSharesConversionRate.YieldFactorDecreaseNotAllowed.selector);
+    //     l2RateContract.updateL2YieldFactor(decreasedFactor);
+    // }
 
     function testUpdateL2YieldFactor_Revert_AccessControl() public {
         vm.chainId(10); // Arbitrary L2 chain ID

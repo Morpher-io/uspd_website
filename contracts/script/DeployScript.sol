@@ -118,7 +118,7 @@ contract DeployScript is Script {
 
     // Configuration for PriceOracle (used in deployOracleProxy)
     uint256 public maxPriceDeviation = 500; // 5%
-    uint256 public priceStalenessPeriod = 3600; // 1 hour
+    uint256 public priceStalenessPeriod = 120; // 2 minutes
     
     // Network-specific addresses to be set by derived contracts
     address public usdcAddress;
