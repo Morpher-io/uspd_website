@@ -27,6 +27,7 @@ error InvalidDecimals(uint8 expected, uint8 actual);
 error PriceSourceUnavailable(string source);
 error StaleAttestation(uint lastTimestamp, uint providedTimestamp);
 error InvalidAssetPair(bytes32 expected, bytes32 actual);
+error ZeroAddressProvided(string field);
 
 contract PriceOracle is
     IPriceOracle,
@@ -83,6 +84,11 @@ contract PriceOracle is
         address _chainlinkAggregator,
         address _admin
     ) public initializer {
+        if (_usdcAddress == address(0)) revert ZeroAddressProvided("USDC");
+        if (_uniswapRouter == address(0)) revert ZeroAddressProvided("Uniswap Router");
+        if (_chainlinkAggregator == address(0)) revert ZeroAddressProvided("Chainlink Aggregator");
+        if (_admin == address(0)) revert ZeroAddressProvided("Admin");
+
         __Pausable_init();
         __AccessControl_init();
         __UUPSUpgradeable_init(); // <-- Initialize UUPSUpgradeable

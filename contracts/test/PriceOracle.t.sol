@@ -127,6 +127,46 @@ contract PriceOracleTest is Test {
         );
     }
 
+    function testInitialize_Revert_ZeroUsdcAddress() public {
+        PriceOracle implementation = new PriceOracle();
+        bytes memory initData = abi.encodeWithSelector(
+            PriceOracle.initialize.selector,
+            500, 300, address(0), UNISWAP_ROUTER, CHAINLINK_ETH_USD, owner
+        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.ZeroAddressProvided.selector, "USDC"));
+        new ERC1967Proxy(address(implementation), initData);
+    }
+
+    function testInitialize_Revert_ZeroUniswapRouter() public {
+        PriceOracle implementation = new PriceOracle();
+        bytes memory initData = abi.encodeWithSelector(
+            PriceOracle.initialize.selector,
+            500, 300, USDC, address(0), CHAINLINK_ETH_USD, owner
+        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.ZeroAddressProvided.selector, "Uniswap Router"));
+        new ERC1967Proxy(address(implementation), initData);
+    }
+
+    function testInitialize_Revert_ZeroChainlinkAggregator() public {
+        PriceOracle implementation = new PriceOracle();
+        bytes memory initData = abi.encodeWithSelector(
+            PriceOracle.initialize.selector,
+            500, 300, USDC, UNISWAP_ROUTER, address(0), owner
+        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.ZeroAddressProvided.selector, "Chainlink Aggregator"));
+        new ERC1967Proxy(address(implementation), initData);
+    }
+
+    function testInitialize_Revert_ZeroAdmin() public {
+        PriceOracle implementation = new PriceOracle();
+        bytes memory initData = abi.encodeWithSelector(
+            PriceOracle.initialize.selector,
+            500, 300, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, address(0)
+        );
+        vm.expectRevert(abi.encodeWithSelector(PriceOracle.ZeroAddressProvided.selector, "Admin"));
+        new ERC1967Proxy(address(implementation), initData);
+    }
+
     function testUnauthorizedSigner() public {
         // Create a new private key and address for unauthorized signer
         uint256 unauthorizedPrivateKey = 0xb33f;
