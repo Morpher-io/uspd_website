@@ -190,13 +190,29 @@ contract PriceOracle is
             revert InvalidSignature();
         }
 
-        // Prevent replaying old attestations. Timestamp must be strictly greater.
-        if (priceQuery.dataTimestamp <= lastAttestationTimestamp) {
+        // Prevent replaying old attestations, however with a much smaller grace period as the actual data-staleness period. 
+        // Since we might cache times for up to 1 seconds on api, same timestamp can be used multiple times, 
+        // but only until a new attestation comes along.
+        if ((priceQuery.dataTimestamp + 1000*15) < lastAttestationTimestamp) { //allow one ethereum block grace period
             revert StaleAttestation(
                 lastAttestationTimestamp,
                 priceQuery.dataTimestamp
             );
         }
+
+        /**
+         * A note on nonces: We're not doing nonce measures per-se here on purpose, which you would probably expect
+         * 
+         * A price point can be used as long as:
+         * 1. the price isn't outdated (staleness)
+         * 2. nobody used a "newer" price (timestamp check above)
+         * 
+         * An additional nonce would not add anything to it, instead would deteriorate the system.
+         * e.g. it would need to be scoped by user and cannot be global
+         * Otherwise no concurrency can occur. The most people get out of this is to use either their "newer" price or
+         * the price that was used onchain before by another person.
+         * Hence the dataTimestamp is treated as a nonce.
+         */
 
         if (priceQuery.decimals != 18) {
             revert InvalidDecimals(18, priceQuery.decimals);

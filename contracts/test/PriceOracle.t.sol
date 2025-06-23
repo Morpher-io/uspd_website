@@ -246,13 +246,12 @@ contract PriceOracleTest is Test {
         priceOracle.attestationService(query1);
         assertEq(priceOracle.lastAttestationTimestamp(), firstTimestamp, "Last timestamp not updated correctly");
 
-        // 2. Second call with the SAME timestamp fails
+        // 2. Second call with the SAME timestamp works
         IPriceOracle.PriceAttestationQuery memory query2 = _createSignedQuery(2001 ether, firstTimestamp, signerPrivateKey);
-        vm.expectRevert(abi.encodeWithSelector(StaleAttestation.selector, firstTimestamp, firstTimestamp));
         priceOracle.attestationService(query2);
 
         // 3. Third call with an OLDER timestamp fails
-        uint256 oldTimestamp = firstTimestamp - 1000; // 1 sec older
+        uint256 oldTimestamp = firstTimestamp - 1000*20; // 20 sec older
         IPriceOracle.PriceAttestationQuery memory query3 = _createSignedQuery(2002 ether, oldTimestamp, signerPrivateKey);
         vm.expectRevert(abi.encodeWithSelector(StaleAttestation.selector, firstTimestamp, oldTimestamp));
         priceOracle.attestationService(query3);
