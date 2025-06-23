@@ -130,6 +130,11 @@ contract PriceOracle is
             (uint sqrtPriceX96, , , , , , ) = uniswapPoolState.slot0();
             return ((sqrtPriceX96 / 2 ** 96) ** 2) * 1e12; //scaling it to 18 decimals from 6 decimals from the usdc
         }
+
+        /**
+         * There is no staleness check for uniswap - the price is the price, if nobody is trading it, so be it.
+         */
+         
         return 0;
     }
 
