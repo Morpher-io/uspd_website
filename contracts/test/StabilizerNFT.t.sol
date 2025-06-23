@@ -93,7 +93,7 @@ contract StabilizerNFTTest is Test {
         // --- Mock Oracle Dependencies ---
         // Mock Chainlink call
         int mockPriceAnswer = 2000 * 1e8;
-        uint256 mockTimestamp = block.timestamp;
+        uint256 mockTimestamp = 1745837835; //warping later to this timestamp;
         bytes memory mockChainlinkReturn = abi.encode(uint80(1), mockPriceAnswer, uint256(mockTimestamp), uint256(mockTimestamp), uint80(1));
         vm.mockCall(CHAINLINK_ETH_USD, abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector), mockChainlinkReturn);
 

@@ -142,9 +142,16 @@ contract PriceOracle is
             /* uint80 roundID */,
             int answer,
             /*uint startedAt*/,
-            /*uint timeStamp*/,
+            uint timeStamp,
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData();
+        
+        // chainlink price staleness check. On mainchain their heartbeat is 60 minutes (or 0.5%), it should _never_ be older than 60 minutes.
+        // our oracle simply errors out if price is older than that
+        if(block.timestamp - timeStamp >= 60*60) {
+            revert PriceSourceUnavailable("Chainlink Oracle Stale");
+        }
+
         return (1e18 * answer) / 1e8; //converted to 18 digits
     }
 
