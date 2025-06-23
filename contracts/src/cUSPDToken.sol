@@ -262,16 +262,11 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * @dev See {ERC20-_burn}.
      * Requires that the caller has the `BURNER_ROLE`.
      *
-     * IMPORTANT: This function is intended for L2 bridging mechanisms only.
-     * The BURNER_ROLE should be granted exclusively to the BridgeEscrow contract on L2s
-     * to burn shares that are being bridged away to other chains. It should never be
-     * assigned to an EOA or other external contract on L1.
-     * This function is disabled on L1 (Mainnet) and its primary testnet (Sepolia).
+     * IMPORTANT: This function is used by the StabilizerNFT on L1 for burning shares during
+     * redemption, and by the BridgeEscrow on L2s to burn shares that are being bridged away.
+     * The BURNER_ROLE should be granted exclusively to these system contracts.
      */
     function burn(uint256 amount) external onlyRole(BURNER_ROLE) {
-        if (block.chainid == 1 || block.chainid == 11155111) {
-            revert UnsupportedChainId();
-        }
         _burn(msg.sender, amount);
     }
 

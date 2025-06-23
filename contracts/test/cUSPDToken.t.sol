@@ -640,24 +640,40 @@ contract cUSPDTokenTest is Test {
         assertEq(cuspdToken.totalSupply(), mintAmount, "L2 total supply mismatch after mint");
     }
 
-    function testBurn_Revert_OnMainnet() public {
+    function testBurn_Success_OnMainnet() public {
         vm.chainId(1); // Set to Mainnet
         address burner = makeAddr("burner");
         cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), burner);
 
+        // Mint some tokens to the burner first. Since mint() is L2-only, use the internal helper.
+        uint256 initialAmount = 200 ether;
+        TestableCUSPD(payable(address(cuspdToken))).mintInternal(burner, initialAmount);
+        assertEq(cuspdToken.balanceOf(burner), initialAmount, "Setup mint failed");
+
+        uint256 burnAmount = 75 ether;
         vm.prank(burner);
-        vm.expectRevert(cUSPDToken.UnsupportedChainId.selector);
-        cuspdToken.burn(100 ether);
+        cuspdToken.burn(burnAmount);
+
+        assertEq(cuspdToken.balanceOf(burner), initialAmount - burnAmount, "Mainnet burn failed");
+        assertEq(cuspdToken.totalSupply(), initialAmount - burnAmount, "Mainnet total supply mismatch after burn");
     }
 
-    function testBurn_Revert_OnSepolia() public {
+    function testBurn_Success_OnSepolia() public {
         vm.chainId(11155111); // Set to Sepolia
         address burner = makeAddr("burner");
         cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), burner);
 
+        // Mint some tokens to the burner first. Since mint() is L2-only, use the internal helper.
+        uint256 initialAmount = 200 ether;
+        TestableCUSPD(payable(address(cuspdToken))).mintInternal(burner, initialAmount);
+        assertEq(cuspdToken.balanceOf(burner), initialAmount, "Setup mint failed");
+
+        uint256 burnAmount = 75 ether;
         vm.prank(burner);
-        vm.expectRevert(cUSPDToken.UnsupportedChainId.selector);
-        cuspdToken.burn(100 ether);
+        cuspdToken.burn(burnAmount);
+
+        assertEq(cuspdToken.balanceOf(burner), initialAmount - burnAmount, "Sepolia burn failed");
+        assertEq(cuspdToken.totalSupply(), initialAmount - burnAmount, "Sepolia total supply mismatch after burn");
     }
 
     function testBurn_Success_OnL2() public {
