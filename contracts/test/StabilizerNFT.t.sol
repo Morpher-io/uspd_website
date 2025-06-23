@@ -21,7 +21,7 @@ import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 // Mocks & Interfaces
 import "./mocks/MockStETH.sol";
 import "./mocks/MockLido.sol";
-import "../src/PriceOracle.sol"; // Using actual for attestations if needed later
+import "./mocks/TestPriceOracle.sol";
 import "../src/PoolSharesConversionRate.sol";
 import "../src/StabilizerEscrow.sol"; // Import Escrow
 import "../src/InsuranceEscrow.sol"; // Import Escrow
@@ -35,7 +35,7 @@ contract StabilizerNFTTest is Test {
     // --- Mocks ---
     MockStETH internal mockStETH;
     MockLido internal mockLido;
-    PriceOracle internal priceOracle; // Using actual for now, can be mocked if needed
+    TestPriceOracle internal priceOracle; // Using TestPriceOracle to bypass deviation checks
     PoolSharesConversionRate internal rateContract; // Mock or actual if needed
 
     // --- Contracts Under Test & Dependencies ---
@@ -72,12 +72,12 @@ contract StabilizerNFTTest is Test {
         // 1. Deploy Mocks & Dependencies
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
-        // Deploy PriceOracle implementation and proxy
-        PriceOracle oracleImpl = new PriceOracle();
+        // Deploy TestPriceOracle implementation and proxy
+        TestPriceOracle oracleImpl = new TestPriceOracle();
         bytes memory oracleInitData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
             500, // 5% max deviation
-            120, // 1 hour staleness period
+            120, // 2 minute staleness period
             USDC, // Real USDC address
             UNISWAP_ROUTER, // Real Uniswap router
             CHAINLINK_ETH_USD, // Real Chainlink ETH/USD feed
@@ -87,7 +87,7 @@ contract StabilizerNFTTest is Test {
             address(oracleImpl),
             oracleInitData
         );
-        priceOracle = PriceOracle(payable(address(oracleProxy)));
+        priceOracle = TestPriceOracle(payable(address(oracleProxy)));
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer); // Grant signer role
 
         // --- Mock Oracle Dependencies ---
@@ -180,10 +180,6 @@ contract StabilizerNFTTest is Test {
         // 9. Setup roles
         stabilizerNFT.grantRole(stabilizerNFT.MINTER_ROLE(), owner);
         cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), address(stabilizerNFT));
-
-        // Set a high price deviation percentage for the oracle globally for tests
-        // vm.prank(owner);
-        // priceOracle.setMaxDeviationPercentage(100000); // 1000%
 
         vm.warp(1745837835); //warp for the price attestation service to a meaningful timestamp
     }
