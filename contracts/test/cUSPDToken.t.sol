@@ -603,17 +603,83 @@ contract cUSPDTokenTest is Test {
         cuspdToken.updateRateContract(address(0));
     }
 
-
     // =============================================
-    // V. ERC20 Standard Tests (Placeholder)
-    // =============================================
-
-    // =============================================
-    // VI. ERC20Permit Tests (Placeholder)
+    // V. Bridging Mint/Burn Tests
     // =============================================
 
+    function testMint_Revert_OnMainnet() public {
+        vm.chainId(1); // Set to Mainnet
+        address minter = makeAddr("minter");
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), minter);
+
+        vm.prank(minter);
+        vm.expectRevert(cUSPDToken.UnsupportedChainId.selector);
+        cuspdToken.mint(user1, 100 ether);
+    }
+
+    function testMint_Revert_OnSepolia() public {
+        vm.chainId(11155111); // Set to Sepolia
+        address minter = makeAddr("minter");
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), minter);
+
+        vm.prank(minter);
+        vm.expectRevert(cUSPDToken.UnsupportedChainId.selector);
+        cuspdToken.mint(user1, 100 ether);
+    }
+
+    function testMint_Success_OnL2() public {
+        vm.chainId(10); // Set to an arbitrary L2 chain ID
+        address minter = makeAddr("minter");
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), minter);
+
+        uint256 mintAmount = 100 ether;
+        vm.prank(minter);
+        cuspdToken.mint(user1, mintAmount);
+
+        assertEq(cuspdToken.balanceOf(user1), mintAmount, "L2 mint failed");
+        assertEq(cuspdToken.totalSupply(), mintAmount, "L2 total supply mismatch after mint");
+    }
+
+    function testBurn_Revert_OnMainnet() public {
+        vm.chainId(1); // Set to Mainnet
+        address burner = makeAddr("burner");
+        cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), burner);
+
+        vm.prank(burner);
+        vm.expectRevert(cUSPDToken.UnsupportedChainId.selector);
+        cuspdToken.burn(100 ether);
+    }
+
+    function testBurn_Revert_OnSepolia() public {
+        vm.chainId(11155111); // Set to Sepolia
+        address burner = makeAddr("burner");
+        cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), burner);
+
+        vm.prank(burner);
+        vm.expectRevert(cUSPDToken.UnsupportedChainId.selector);
+        cuspdToken.burn(100 ether);
+    }
+
+    function testBurn_Success_OnL2() public {
+        vm.chainId(10); // Set to an arbitrary L2 chain ID
+        address burner = makeAddr("burner");
+        cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), burner);
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), address(this)); // Grant minter role to test contract for setup
+
+        uint256 initialAmount = 200 ether;
+        cuspdToken.mint(burner, initialAmount); // Mint some tokens to the burner first
+        assertEq(cuspdToken.balanceOf(burner), initialAmount, "Setup mint failed");
+
+        uint256 burnAmount = 75 ether;
+        vm.prank(burner);
+        cuspdToken.burn(burnAmount);
+
+        assertEq(cuspdToken.balanceOf(burner), initialAmount - burnAmount, "L2 burn failed");
+        assertEq(cuspdToken.totalSupply(), initialAmount - burnAmount, "L2 total supply mismatch after burn");
+    }
+
     // =============================================
-    // VII. Fallback Test
+    // VI. Fallback Test
     // =============================================
     function testReceive_Reverts() public {
         vm.expectRevert("cUSPD: Direct ETH transfers not allowed");

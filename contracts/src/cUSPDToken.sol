@@ -243,6 +243,12 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * the total supply.
      * @dev Emits a {Transfer} event with `from` set to the zero address.
      * Requires that the caller has the `MINTER_ROLE`.
+     *
+     * IMPORTANT: This function is intended for L2 bridging mechanisms only.
+     * The MINTER_ROLE should be granted exclusively to the BridgeEscrow contract on L2s
+     * to mint shares that represent USPD bridged from other chains. It should never be
+     * assigned to an EOA or other external contract on L1.
+     * This function is disabled on L1 (Mainnet) and its primary testnet (Sepolia).
      */
     function mint(address account, uint256 amount) external onlyRole(MINTER_ROLE) {
         if (block.chainid == 1 || block.chainid == 11155111) {
@@ -255,9 +261,15 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * @notice Destroys `amount` tokens from the caller.
      * @dev See {ERC20-_burn}.
      * Requires that the caller has the `BURNER_ROLE`.
+     *
+     * IMPORTANT: This function is intended for L2 bridging mechanisms only.
+     * The BURNER_ROLE should be granted exclusively to the BridgeEscrow contract on L2s
+     * to burn shares that are being bridged away to other chains. It should never be
+     * assigned to an EOA or other external contract on L1.
+     * This function is disabled on L1 (Mainnet) and its primary testnet (Sepolia).
      */
     function burn(uint256 amount) external onlyRole(BURNER_ROLE) {
-        if (block.chainid == 1 && block.chainid == 11155111) {
+        if (block.chainid == 1 || block.chainid == 11155111) {
             revert UnsupportedChainId();
         }
         _burn(msg.sender, amount);
