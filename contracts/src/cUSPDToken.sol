@@ -132,7 +132,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         // 5. Determine actual shares minted based on actual ETH allocated
         uint256 actualPoolSharesMinted;
         if (result.allocatedEth == 0) {
-             actualPoolSharesMinted = 0;
+            //  actualPoolSharesMinted = 0; //not necessary
         } else if (result.allocatedEth >= ethForAllocation) {
             actualPoolSharesMinted = targetPoolSharesToMint;
         } else {

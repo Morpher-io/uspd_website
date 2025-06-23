@@ -78,7 +78,7 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
         rateContract = IPoolSharesConversionRate(_rateContract);
         cuspdToken = IcUSPDToken(_cuspdToken);
 
-        totalEthEquivalentAtLastSnapshot = 0;
+        // totalEthEquivalentAtLastSnapshot = 0; //not necessary, default 0 anyways
         yieldFactorAtLastSnapshot = FACTOR_PRECISION;
     }
 
@@ -105,7 +105,7 @@ contract OvercollateralizationReporter is Initializable, AccessControlUpgradeabl
         uint256 projectedOldEthValue;
         if (oldYieldFactor == 0) {
              require(oldEthSnapshot == 0, "Reporter: Inconsistent initial state");
-             projectedOldEthValue = 0;
+            //  projectedOldEthValue = 0; //not necessary
         } else if (currentYieldFactor == oldYieldFactor) {
             projectedOldEthValue = oldEthSnapshot;
         } else {

@@ -69,7 +69,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         lido = _lidoAddress; // Store Lido address
         rateContract = _rateContractAddress;
         oracle = _oracleAddress;
-        backedPoolShares = 0;
+        // backedPoolShares = 0; //default 0 anyways
 
         // Grant roles
         _grantRole(DEFAULT_ADMIN_ROLE, _stabilizerNFT);
@@ -111,7 +111,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         uint256 userEthAmount = msg.value;
         if (userEthAmount == 0 && stabilizerStEthAmount == 0) revert ZeroAmount(); // Must add something
 
-        uint256 userStEthReceived = 0;
+        uint256 userStEthReceived; //default 0
         if (userEthAmount > 0) {
             // Stake User's ETH via Lido - stETH is minted directly to this contract
             try ILido(lido).submit{value: userEthAmount}(address(0)) returns (uint256 receivedStEth) {
@@ -137,7 +137,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         uint256 ethAmount = msg.value;
         if (ethAmount == 0) revert ZeroAmount();
 
-        uint256 stEthReceived = 0;
+        uint256 stEthReceived; //default = 0;
         try ILido(lido).submit{value: ethAmount}(address(0)) returns (uint256 received) {
             stEthReceived = received;
             if (stEthReceived == 0) revert TransferFailed(); // Lido submit should return > 0 stETH
@@ -328,7 +328,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         uint256 ethAmount = msg.value;
         if (ethAmount == 0) return; // Do nothing if no ETH sent
 
-        uint256 stEthReceived = 0;
+        uint256 stEthReceived; //default = 0;
         try ILido(lido).submit{value: ethAmount}(address(0)) returns (uint256 received) {
             stEthReceived = received;
             if (stEthReceived == 0) revert TransferFailed(); // Lido submit should return > 0 stETH

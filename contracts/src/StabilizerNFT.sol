@@ -290,7 +290,7 @@ contract StabilizerNFT is
         //checks effects interaction pattern - interaction through safeMint comes last
         emit StabilizerPositionCreated(tokenId, to);
         _safeMint(to, tokenId);
-        
+
         return tokenId;
     }
 
@@ -381,8 +381,8 @@ contract StabilizerNFT is
         positionEscrow.modifyAllocation(-int256(cuspdSharesToLiquidate));
 
         // Declare variables needed outside the payout scope
-        uint256 stEthPaidToLiquidator = 0;
-        uint256 stEthRemovedFromPosition = 0;
+        uint256 stEthPaidToLiquidator; //default = 0;
+        uint256 stEthRemovedFromPosition; //default = 0;
 
         // Scope for payout logic to reduce stack pressure
         {
@@ -518,8 +518,8 @@ contract StabilizerNFT is
 
         uint256 currentId = lowestUnallocatedId;
         uint256 remainingEth = msg.value;
-        result.allocatedEth = 0;
-        result.totalEthEquivalentAdded = 0;
+        // result.allocatedEth; //default = 0;
+        // result.totalEthEquivalentAdded; //default = 0;
 
         while (currentId != 0 && remainingEth > 0) {
             // Check remaining gas
@@ -806,7 +806,7 @@ contract StabilizerNFT is
         // Modify allocation based on the shares for *this slice* before further calculations or collateral removal
         positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate));
 
-        uint256 amountWithdrawnFromInsuranceThisSlice = 0;
+        uint256 amountWithdrawnFromInsuranceThisSlice; //default = 0;
 
         if (stEthCollateralForSliceAtCurrentRatio >= userStEthParValueForSlice) {
             // Position slice is sufficiently collateralized (or over) to cover user's par value.
@@ -869,8 +869,8 @@ contract StabilizerNFT is
 
         uint256 currentId = highestAllocatedId;
         uint256 remainingPoolShares = poolSharesToUnallocate;
-        uint256 totalUserStEthReturned = 0;
-        uint256 totalEthEquivalentRemovedAggregate = 0;
+        uint256 totalUserStEthReturned; //default = 0;
+        uint256 totalEthEquivalentRemovedAggregate; //default = 0;
 
         while (currentId != 0 && remainingPoolShares > 0) {
             if (gasleft() < MIN_GAS) break;
