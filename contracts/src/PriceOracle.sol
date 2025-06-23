@@ -206,13 +206,15 @@ contract PriceOracle is
         return signer;
     }
 
+
+
     function attestationService(
         PriceAttestationQuery calldata priceQuery
-    ) public payable returns (PriceResponse memory) {
+    ) public payable whenNotPaused returns (PriceResponse memory) {
         //custom error message
-        if (paused()) {
-            revert OraclePaused();
-        }
+        // if (paused()) {
+        //     revert OraclePaused();
+        // }
 
         if (priceQuery.assetPair != ETH_USD_ASSET_PAIR) {
             revert InvalidAssetPair(ETH_USD_ASSET_PAIR, priceQuery.assetPair);
@@ -344,6 +346,13 @@ contract PriceOracle is
 
     function unpause() external onlyRole(PAUSER_ROLE) {
         _unpause();
+    }
+
+
+    function _requireNotPaused() internal view override virtual {
+        if (paused()) {
+            revert OraclePaused();
+        }
     }
 
     function setMaxDeviationPercentage(
