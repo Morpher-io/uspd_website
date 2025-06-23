@@ -77,7 +77,7 @@ contract StabilizerNFTTest is Test {
         bytes memory oracleInitData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
             500, // 5% max deviation
-            3600, // 1 hour staleness period
+            120, // 1 hour staleness period
             USDC, // Real USDC address
             UNISWAP_ROUTER, // Real Uniswap router
             CHAINLINK_ETH_USD, // Real Chainlink ETH/USD feed
@@ -182,8 +182,8 @@ contract StabilizerNFTTest is Test {
         cuspdToken.grantRole(cuspdToken.BURNER_ROLE(), address(stabilizerNFT));
 
         // Set a high price deviation percentage for the oracle globally for tests
-        vm.prank(owner);
-        priceOracle.setMaxDeviationPercentage(100000); // 1000%
+        // vm.prank(owner);
+        // priceOracle.setMaxDeviationPercentage(100000); // 1000%
 
         vm.warp(1745837835); //warp for the price attestation service to a meaningful timestamp
     }
