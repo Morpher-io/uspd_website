@@ -26,6 +26,7 @@ error OraclePaused();
 error InvalidDecimals(uint8 expected, uint8 actual);
 error PriceSourceUnavailable(string source);
 error StaleAttestation(uint lastTimestamp, uint providedTimestamp);
+error InvalidAssetPair(bytes32 expected, bytes32 actual);
 
 contract PriceOracle is
     IPriceOracle,
@@ -37,6 +38,7 @@ contract PriceOracle is
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant SIGNER_ROLE = keccak256("SIGNER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
+    bytes32 public constant ETH_USD_ASSET_PAIR = keccak256("MORPHER:ETH_USD");
     uint256 public constant PRICE_PRECISION = 1e18;
     uint256 public maxDeviationPercentage = 500; // 5% = 500 basis points
 
@@ -188,6 +190,10 @@ contract PriceOracle is
         //custom error message
         if (paused()) {
             revert OraclePaused();
+        }
+
+        if (priceQuery.assetPair != ETH_USD_ASSET_PAIR) {
+            revert InvalidAssetPair(ETH_USD_ASSET_PAIR, priceQuery.assetPair);
         }
 
         address signer = verifySignature(

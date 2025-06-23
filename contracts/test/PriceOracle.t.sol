@@ -53,18 +53,19 @@ contract PriceOracleTest is Test {
         priceOracle = PriceOracle(address(proxy));
     }
 
-    // --- Helper Function ---
-    function _createSignedQuery(
+    // --- Helper Functions ---
+    function _createSignedQueryWithAssetPair(
         uint256 price,
         uint256 timestamp,
-        uint256 pKey
+        uint256 pKey,
+        bytes32 assetPair
     ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
         IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
             .PriceAttestationQuery({
                 price: price,
                 decimals: 18,
                 dataTimestamp: timestamp,
-                assetPair: keccak256("MORPHER:ETH_USD"),
+                assetPair: assetPair,
                 signature: bytes("")
             });
         
@@ -77,6 +78,14 @@ contract PriceOracleTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pKey, prefixedHash);
         query.signature = abi.encodePacked(r, s, v);
         return query;
+    }
+
+    function _createSignedQuery(
+        uint256 price,
+        uint256 timestamp,
+        uint256 pKey
+    ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
+        return _createSignedQueryWithAssetPair(price, timestamp, pKey, priceOracle.ETH_USD_ASSET_PAIR());
     }
 
     function testInitialSetup() public {
@@ -123,34 +132,7 @@ contract PriceOracleTest is Test {
         uint256 unauthorizedPrivateKey = 0xb33f;
 
         // Create price attestation signed by unauthorized signer
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
-            .PriceAttestationQuery({
-                price: 2000 ether,
-                decimals: 18,
-                dataTimestamp: block.timestamp * 1000, // Convert to milliseconds
-                assetPair: keccak256("MORPHER:ETH_USD"),
-                signature: bytes("")
-            });
-
-        // Create and sign message
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                query.price,
-                query.decimals,
-                query.dataTimestamp,
-                query.assetPair
-            )
-        );
-
-        // Prefix the hash with Ethereum Signed Message
-        bytes32 prefixedHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            unauthorizedPrivateKey,
-            prefixedHash
-        );
-        query.signature = abi.encodePacked(r, s, v);
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(2000 ether, block.timestamp * 1000, unauthorizedPrivateKey);
 
         // Expect revert when using unauthorized signature
         vm.expectRevert(InvalidSignature.selector);
@@ -162,32 +144,49 @@ contract PriceOracleTest is Test {
         priceOracle.grantRole(priceOracle.PAUSER_ROLE(), owner);
         priceOracle.pause();
 
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
-            .PriceAttestationQuery({
-                price: 2000 ether,
-                decimals: 18,
-                dataTimestamp: block.timestamp * 1000, // Current time in ms
-                assetPair: keccak256("MORPHER:ETH_USD"),
-                signature: bytes("") // Signature doesn't matter as it should revert before
-            });
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(2000 ether, block.timestamp * 1000, signerPrivateKey);
 
         vm.expectRevert(OraclePaused.selector);
         priceOracle.attestationService(query);
     }
 
+    function testAttestationService_Revert_InvalidAssetPair() public {
+        // Grant signer role
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        // Create a query with an invalid asset pair
+        bytes32 invalidAssetPair = keccak256("MORPHER:BTC_USD");
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQueryWithAssetPair(
+            2000 ether,
+            block.timestamp * 1000,
+            signerPrivateKey,
+            invalidAssetPair
+        );
+
+        // Expect revert with the custom error
+        vm.expectRevert(abi.encodeWithSelector(
+            InvalidAssetPair.selector,
+            priceOracle.ETH_USD_ASSET_PAIR(),
+            invalidAssetPair
+        ));
+        priceOracle.attestationService(query);
+    }
+
     function testAttestationService_InvalidDecimals() public {
+        // Grant signer role
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
         // Create price attestation with invalid decimals
         IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
             .PriceAttestationQuery({
                 price: 2000 ether,
                 decimals: 8, // Invalid decimals
                 dataTimestamp: block.timestamp * 1000,
-                assetPair: keccak256("MORPHER:ETH_USD"),
+                assetPair: priceOracle.ETH_USD_ASSET_PAIR(),
                 signature: bytes("")
             });
         
         // Sign the message
-        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), vm.addr(0x123)); // Dummy signer
         bytes32 messageHash = keccak256(
             abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)
         );
@@ -195,7 +194,7 @@ contract PriceOracleTest is Test {
             abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            0x123, // private key for vm.addr(0x123)
+            signerPrivateKey,
             prefixedHash
         );
         query.signature = abi.encodePacked(r, s, v);
@@ -206,31 +205,11 @@ contract PriceOracleTest is Test {
     }
 
     function testAttestationService_StalePriceData() public {
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
         (/*uint256 maxDeviation*/, uint256 stalenessPeriod) = priceOracle.config();
         uint256 staleTimestamp = (block.timestamp - stalenessPeriod - 1) * 1000; // One second too old, in ms
 
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
-            .PriceAttestationQuery({
-                price: 2000 ether,
-                decimals: 18,
-                dataTimestamp: staleTimestamp,
-                assetPair: keccak256("MORPHER:ETH_USD"),
-                signature: bytes("")
-            });
-
-        // Sign the message
-        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), vm.addr(0x123)); // Dummy signer
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)
-        );
-        bytes32 prefixedHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            0x123, // private key for vm.addr(0x123)
-            prefixedHash
-        );
-        query.signature = abi.encodePacked(r, s, v);
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(2000 ether, staleTimestamp, signerPrivateKey);
 
         vm.expectRevert(abi.encodeWithSelector(PriceDataTooOld.selector, staleTimestamp, block.timestamp));
         priceOracle.attestationService(query);
@@ -324,20 +303,8 @@ contract PriceOracleTest is Test {
         vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
 
 
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
-            .PriceAttestationQuery({
-                price: 2000 ether,
-                decimals: 18,
-                dataTimestamp: block.timestamp * 1000,
-                assetPair: keccak256("MORPHER:ETH_USD"),
-                signature: bytes("")
-            });
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(2000 ether, block.timestamp * 1000, signerPrivateKey);
         
-        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
-        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
-        query.signature = abi.encodePacked(r, s, v);
-
         vm.expectRevert(abi.encodeWithSelector(PriceSourceUnavailable.selector, "Chainlink"));
         priceOracle.attestationService(query);
 
@@ -419,20 +386,8 @@ contract PriceOracleTest is Test {
         address wethAddress = priceOracle.uniswapRouter().WETH();
         vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(address(0)));
 
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
-            .PriceAttestationQuery({
-                price: 2000 ether, // Morpher price
-                decimals: 18,
-                dataTimestamp: block.timestamp * 1000,
-                assetPair: keccak256("MORPHER:ETH_USD"),
-                signature: bytes("")
-            });
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(2000 ether, block.timestamp * 1000, signerPrivateKey);
         
-        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
-        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
-        query.signature = abi.encodePacked(r, s, v);
-
         vm.expectRevert(abi.encodeWithSelector(PriceSourceUnavailable.selector, "Uniswap V3"));
         priceOracle.attestationService(query);
         vm.clearMockedCalls();
@@ -473,20 +428,8 @@ contract PriceOracleTest is Test {
         // Get the actual Uniswap price that will be calculated by the oracle from the mock
         uint256 actualUniswapPriceFromMock = priceOracle.getUniswapV3WethUsdcPrice();
 
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
-            .PriceAttestationQuery({
-                price: morpherPrice,
-                decimals: 18,
-                dataTimestamp: block.timestamp * 1000,
-                assetPair: keccak256("MORPHER:ETH_USD"),
-                signature: bytes("")
-            });
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(morpherPrice, block.timestamp * 1000, signerPrivateKey);
         
-        bytes32 messageHash = keccak256(abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair));
-        bytes32 prefixedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
-        query.signature = abi.encodePacked(r, s, v);
-
         vm.expectRevert(abi.encodeWithSelector(PriceDeviationTooHigh.selector, morpherPrice, chainlinkPriceVal, actualUniswapPriceFromMock));
         priceOracle.attestationService(query);
         vm.clearMockedCalls();
