@@ -53,6 +53,32 @@ contract PriceOracleTest is Test {
         priceOracle = PriceOracle(address(proxy));
     }
 
+    // --- Helper Function ---
+    function _createSignedQuery(
+        uint256 price,
+        uint256 timestamp,
+        uint256 pKey
+    ) internal view returns (IPriceOracle.PriceAttestationQuery memory) {
+        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
+            .PriceAttestationQuery({
+                price: price,
+                decimals: 18,
+                dataTimestamp: timestamp,
+                assetPair: keccak256("MORPHER:ETH_USD"),
+                signature: bytes("")
+            });
+        
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)
+        );
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pKey, prefixedHash);
+        query.signature = abi.encodePacked(r, s, v);
+        return query;
+    }
+
     function testInitialSetup() public {
         // Verify initialization parameters
         assertEq(
@@ -210,29 +236,51 @@ contract PriceOracleTest is Test {
         priceOracle.attestationService(query);
     }
 
+    function testAttestationService_Revert_StaleTimestamp() public {
+        vm.chainId(10); // Test on L2 to avoid L1 deviation checks
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        // 1. First call is successful
+        uint256 firstTimestamp = block.timestamp * 1000;
+        IPriceOracle.PriceAttestationQuery memory query1 = _createSignedQuery(2000 ether, firstTimestamp, signerPrivateKey);
+        priceOracle.attestationService(query1);
+        assertEq(priceOracle.lastAttestationTimestamp(), firstTimestamp, "Last timestamp not updated correctly");
+
+        // 2. Second call with the SAME timestamp fails
+        IPriceOracle.PriceAttestationQuery memory query2 = _createSignedQuery(2001 ether, firstTimestamp, signerPrivateKey);
+        vm.expectRevert(abi.encodeWithSelector(StaleAttestation.selector, firstTimestamp, firstTimestamp));
+        priceOracle.attestationService(query2);
+
+        // 3. Third call with an OLDER timestamp fails
+        uint256 oldTimestamp = firstTimestamp - 1000; // 1 sec older
+        IPriceOracle.PriceAttestationQuery memory query3 = _createSignedQuery(2002 ether, oldTimestamp, signerPrivateKey);
+        vm.expectRevert(abi.encodeWithSelector(StaleAttestation.selector, firstTimestamp, oldTimestamp));
+        priceOracle.attestationService(query3);
+
+        // 4. Fourth call with a NEWER timestamp succeeds
+        vm.warp(block.timestamp + 10);
+        uint256 newTimestamp = block.timestamp * 1000;
+        IPriceOracle.PriceAttestationQuery memory query4 = _createSignedQuery(2003 ether, newTimestamp, signerPrivateKey);
+        priceOracle.attestationService(query4);
+        assertEq(priceOracle.lastAttestationTimestamp(), newTimestamp, "Last timestamp not updated on second successful call");
+
+        vm.chainId(1); // Reset chainId
+    }
+
     function testAttestationService_L2Behavior() public {
         vm.chainId(10); // Set to a non-mainnet chain ID (e.g., Optimism)
 
         // Grant signer role
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
 
-        IPriceOracle.PriceAttestationQuery memory query = IPriceOracle
-            .PriceAttestationQuery({
-                price: 2100 ether,
-                decimals: 18,
-                dataTimestamp: block.timestamp * 1000,
-                assetPair: keccak256("MORPHER:ETH_USD"),
-                signature: bytes("")
-            });
-        
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(query.price, query.decimals, query.dataTimestamp, query.assetPair)
-        );
-        bytes32 prefixedHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, prefixedHash);
-        query.signature = abi.encodePacked(r, s, v);
+        // Set a lastAttestationTimestamp to ensure the new query must be newer
+        uint256 initialTimestamp = (block.timestamp - 10) * 1000;
+        priceOracle.attestationService(_createSignedQuery(2000 ether, initialTimestamp, signerPrivateKey));
+        assertEq(priceOracle.lastAttestationTimestamp(), initialTimestamp);
+
+        // Create the new query
+        uint256 newTimestamp = block.timestamp * 1000;
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(2100 ether, newTimestamp, signerPrivateKey);
 
         // On L2, attestationService should return the price directly without deviation checks
         IPriceOracle.PriceResponse memory response = priceOracle.attestationService(query);
@@ -240,6 +288,7 @@ contract PriceOracleTest is Test {
         assertEq(response.price, query.price, "L2 price mismatch");
         assertEq(response.decimals, query.decimals, "L2 decimals mismatch");
         assertEq(response.timestamp, query.dataTimestamp, "L2 timestamp mismatch");
+        assertEq(priceOracle.lastAttestationTimestamp(), newTimestamp, "L2 lastAttestationTimestamp was not updated");
 
         vm.chainId(1); // Reset chainId for subsequent tests
     }

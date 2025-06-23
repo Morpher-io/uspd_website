@@ -25,6 +25,7 @@ error InvalidSignature();
 error OraclePaused();
 error InvalidDecimals(uint8 expected, uint8 actual);
 error PriceSourceUnavailable(string source);
+error StaleAttestation(uint lastTimestamp, uint providedTimestamp);
 
 contract PriceOracle is
     IPriceOracle,
@@ -47,6 +48,7 @@ contract PriceOracle is
     // Storage variables
     address public usdcAddress;
     address public priceProvider;
+    uint256 public lastAttestationTimestamp;
 
     PriceConfig public config;
 
@@ -188,11 +190,19 @@ contract PriceOracle is
             revert InvalidSignature();
         }
 
+        // Prevent replaying old attestations. Timestamp must be strictly greater.
+        if (priceQuery.dataTimestamp <= lastAttestationTimestamp) {
+            revert StaleAttestation(
+                lastAttestationTimestamp,
+                priceQuery.dataTimestamp
+            );
+        }
+
         if (priceQuery.decimals != 18) {
             revert InvalidDecimals(18, priceQuery.decimals);
         }
 
-        // Check timestamp staleness
+        // Check timestamp staleness against current block time
         if (
             priceQuery.dataTimestamp <=
             1000 * (block.timestamp - config.priceStalenessPeriod)
@@ -231,6 +241,9 @@ contract PriceOracle is
                 );
             }
         }
+
+        // Update the last timestamp after all checks have passed
+        lastAttestationTimestamp = priceQuery.dataTimestamp;
 
         return
             PriceResponse(
