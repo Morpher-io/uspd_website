@@ -1458,6 +1458,7 @@ contract StabilizerNFTTest is Test {
 
         // --- Fund InsuranceEscrow ---
         // insuranceFundingForFullPayout = 1.05 ether
+
         mockStETH.mint(address(insuranceEscrow), 1.05 ether);
         assertEq(insuranceEscrow.getStEthBalance(), 1.05 ether, "InsuranceEscrow initial funding failed");
 
@@ -1468,8 +1469,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup Liquidator (user2) ---
         uint256 sharesToLiquidate = initialSharesInPosition; // Liquidate all shares
-        vm.prank(owner); // Admin has MINTER_ROLE on cUSPD
+        vm.startPrank(owner); // Admin has MINTER_ROLE on cUSPD
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), owner);
+        vm.chainId(2);
         cuspdToken.mint(user2, sharesToLiquidate); // Mint cUSPD to liquidator
+        vm.chainId(1);
         vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate); // Liquidator approves StabilizerNFT
         vm.stopPrank();
@@ -1553,8 +1557,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup Liquidator (user2) ---
         uint256 sharesToLiquidate = initialSharesInPosition; // Liquidate all shares
-        vm.prank(owner); 
+        vm.startPrank(owner); 
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), owner);
+        vm.chainId(2);
         cuspdToken.mint(user2, sharesToLiquidate); 
+        vm.chainId(1);
         vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate); 
         vm.stopPrank();
@@ -1637,8 +1644,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup Liquidator (user2) ---
         uint256 sharesToLiquidate = initialSharesInPosition; // Liquidate all shares
-        vm.prank(owner); 
+        vm.startPrank(owner); 
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), owner);
+        vm.chainId(2);
         cuspdToken.mint(user2, sharesToLiquidate); 
+        vm.chainId(1);
         vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), sharesToLiquidate); 
         vm.stopPrank();
@@ -2514,8 +2524,12 @@ contract StabilizerNFTTest is Test {
         uint256 initialSharesInPosition = positionEscrow.backedPoolShares();
 
         // --- Setup Liquidator (user2) ---
-        vm.prank(owner); // Admin mints shares to liquidator
+        vm.startPrank(owner); // Admin mints shares to liquidator
+        cuspdToken.grantRole(cuspdToken.MINTER_ROLE(), owner);
+        vm.chainId(2);
         cuspdToken.mint(user2, initialSharesInPosition); // Liquidator gets enough shares
+        vm.chainId(1);
+        vm.stopPrank();
         vm.startPrank(user2);
         cuspdToken.approve(address(stabilizerNFT), initialSharesInPosition);
         vm.stopPrank();

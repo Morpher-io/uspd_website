@@ -431,7 +431,9 @@ contract OvercollateralizationReporterTest is Test {
         reporter.updateSnapshot(int256(initialEthSnapshot));
 
         uint256 cuspdTotalSupply = 50000 * 1e18; // 50,000 cUSPD shares
+        vm.chainId(2);
         cuspdToken.mint(user1, cuspdTotalSupply); // Assumes MINTER_ROLE granted to address(this)
+        vm.chainId(1);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18); // ETH price = $2000
 
@@ -463,8 +465,9 @@ contract OvercollateralizationReporterTest is Test {
         // Force rateContract.getYieldFactor() to return 0 by configuring the mock.
         mockStETH.setShouldReturnZeroForShares(true);
         assertEq(rateContract.getYieldFactor(), 0, "Pre-condition: Yield factor should be 0");
-
+        vm.chainId(2);
         cuspdToken.mint(user1, 100 * 1e18); // Have some cUSPD supply
+        vm.chainId(1);
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
 
         vm.expectRevert("Reporter: Current yield factor is zero");
@@ -479,7 +482,9 @@ contract OvercollateralizationReporterTest is Test {
         // totalShares = 1, currentYieldFactor = 1. Then (1*1)/1e18 = 0.
 
         // 1. Set cUSPD total supply to 1
+        vm.chainId(2);
         cuspdToken.mint(user1, 1); // Mint 1 share of cUSPD
+        vm.chainId(1);
         assertEq(cuspdToken.totalSupply(), 1, "cUSPD total supply should be 1");
 
         // 2. Make rateContract.getYieldFactor() return a very small number (e.g., 1000)
@@ -517,8 +522,9 @@ contract OvercollateralizationReporterTest is Test {
         assertEq(reporter.yieldFactorAtLastSnapshot(), 0, "Yield factor at last snapshot should be 0");
         assertEq(reporter.totalEthEquivalentAtLastSnapshot(), 10 ether, "Total ETH at last snapshot should be 10 ether");
 
-
+        vm.chainId(2);
         cuspdToken.mint(user1, 100 * 1e18); // Have some cUSPD supply
+        vm.chainId(1);
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
 
         // If yieldSnapshot is 0, ratio should be 0 (line 133)
@@ -531,7 +537,9 @@ contract OvercollateralizationReporterTest is Test {
         // Reporter is initialized with totalEthEquivalentAtLastSnapshot = 0.
         assertEq(reporter.totalEthEquivalentAtLastSnapshot(), 0, "Pre-condition: Total ETH snapshot should be 0");
 
+        vm.chainId(2);
         cuspdToken.mint(user1, 100 * 1e18); // Have some cUSPD supply
+        vm.chainId(1);
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
 
         // If estimatedCurrentCollateralStEth is 0, ratio should be 0 (line 137)
@@ -543,7 +551,9 @@ contract OvercollateralizationReporterTest is Test {
         uint256 initialEthSnapshot = 10 ether;
         vm.prank(updater);
         reporter.updateSnapshot(int256(initialEthSnapshot));
+        vm.chainId(2); //minting is not possible on mainchain
         cuspdToken.mint(user1, 100 * 1e18);
+        vm.chainId(1);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e8); // Price with 8 decimals
         price.decimals = 8; // Force different decimals
@@ -556,7 +566,9 @@ contract OvercollateralizationReporterTest is Test {
         uint256 initialEthSnapshot = 10 ether;
         vm.prank(updater);
         reporter.updateSnapshot(int256(initialEthSnapshot));
+        vm.chainId(2); //minting is not possible on mainchain
         cuspdToken.mint(user1, 100 * 1e18);
+        vm.chainId(1);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(0); // Zero price
 
@@ -576,7 +588,9 @@ contract OvercollateralizationReporterTest is Test {
         reporter.updateSnapshot(int256(initialEthSnapshot));
 
         uint256 cuspdTotalSupply = 25000 * 1e18; // $25,000 liability
+        vm.chainId(2);
         cuspdToken.mint(user1, cuspdTotalSupply);
+        vm.chainId(1);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
         uint256 expectedRatio = 8000; // (20000 / 25000) * 100
@@ -595,7 +609,9 @@ contract OvercollateralizationReporterTest is Test {
         reporter.updateSnapshot(int256(initialEthSnapshot));
 
         uint256 cuspdTotalSupply = 20000 * 1e18; // $20,000 liability
+        vm.chainId(2);
         cuspdToken.mint(user1, cuspdTotalSupply);
+        vm.chainId(1);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
         uint256 expectedRatio = 10000;
@@ -614,7 +630,9 @@ contract OvercollateralizationReporterTest is Test {
         reporter.updateSnapshot(int256(initialEthSnapshot));
 
         uint256 cuspdTotalSupply = 10000 * 1e18; // $10,000 liability
+        vm.chainId(2);
         cuspdToken.mint(user1, cuspdTotalSupply);
+        vm.chainId(1);
 
         IPriceOracle.PriceResponse memory price = createPriceResponse(2000 * 1e18);
         uint256 expectedRatio = 20000;

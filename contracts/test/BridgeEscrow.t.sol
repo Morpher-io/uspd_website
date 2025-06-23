@@ -135,8 +135,10 @@ contract BridgeEscrowTest is Test {
 
         // 10. Initial mint for users/adapters
         // Deployer (admin) mints cUSPD directly
+        vm.chainId(L2_CHAIN_ID);
         cUSPD.mint(tokenAdapter, 1_000_000 * FACTOR_PRECISION);
         cUSPD.mint(user1, 1_000_000 * FACTOR_PRECISION);
+        vm.chainId(MAINNET_CHAIN_ID);
     }
 
     function _setupOracleMocks() internal {
@@ -229,8 +231,9 @@ contract BridgeEscrowTest is Test {
         // So, for this unit test to pass, BridgeEscrow needs the cUSPD balance.
         // This is typically achieved by USPDToken.lockForBridging transferring shares to BridgeEscrow.
         // For this isolated unit test, we'll directly mint to BridgeEscrow.
+        vm.chainId(L2_CHAIN_ID);
         cUSPD.mint(address(bridgeEscrow), sharesLocked);
-
+        vm.chainId(MAINNET_CHAIN_ID);
 
         uint256 sharesToRelease = 150 * FACTOR_PRECISION;
         uint256 uspdAmountToRelease = sharesToRelease;
@@ -428,7 +431,6 @@ contract BridgeEscrowTest is Test {
             abi.encodeWithSelector(cUSPDToken.burn.selector, expectedShares),
             1 // times
         );
-
 
         vm.prank(tokenAdapter);
         uspdToken.lockForBridging(uspdToLock, targetL1Chain);
