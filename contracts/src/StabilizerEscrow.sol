@@ -161,8 +161,9 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     }
 
 
-    // --- Fallback ---
-    // Accept ETH transfers directly (e.g., if StabilizerNFT sends back ETH during unallocation)
-    // Note: This ETH is NOT automatically staked. Use deposit() for staking.
-    receive() external payable {}
+    // fix RES-USPD-NFT02
+    // // --- Fallback ---
+    // // Accept ETH transfers directly (e.g., if StabilizerNFT sends back ETH during unallocation)
+    // // Note: This ETH is NOT automatically staked. Use deposit() for staking.
+    // receive() external payable {}
 }
