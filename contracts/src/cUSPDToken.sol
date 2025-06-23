@@ -62,6 +62,9 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
     // Payout event tracks stETH returned during burn
     event Payout(address indexed to, uint256 sharesBurned, uint256 stEthAmount, uint256 price); // Renamed from ethAmount
 
+    error UnsupportedChainId();
+
+
 
     // --- Constructor ---
     constructor(
@@ -83,9 +86,8 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         stabilizer = IStabilizerNFT(_stabilizer);
         rateContract = IPoolSharesConversionRate(_rateContract);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(MINTER_ROLE, _admin); // Grant MINTER_ROLE to admin
-        _grantRole(BURNER_ROLE, _admin); // Grant BURNER_ROLE to admin
+        //will be renounced according to https://uspd.io/docs/uspd/contracts#phased-role-management--decentralization-plan
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin); 
         _grantRole(UPDATER_ROLE, _admin);
     }
 
@@ -243,6 +245,9 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * Requires that the caller has the `MINTER_ROLE`.
      */
     function mint(address account, uint256 amount) external onlyRole(MINTER_ROLE) {
+        if (block.chainid == 1 || block.chainid == 11155111) {
+            revert UnsupportedChainId();
+        }
         _mint(account, amount);
     }
 
@@ -252,6 +257,9 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
      * Requires that the caller has the `BURNER_ROLE`.
      */
     function burn(uint256 amount) external onlyRole(BURNER_ROLE) {
+        if (block.chainid == 1 && block.chainid == 11155111) {
+            revert UnsupportedChainId();
+        }
         _burn(msg.sender, amount);
     }
 
