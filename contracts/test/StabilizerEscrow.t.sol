@@ -319,17 +319,14 @@ contract StabilizerEscrowTest is Test {
 
 
     // --- Test receive() Fallback ---
-    // we do not accept direct ETH deposits RES-USPD-NFT02
-    // function test_Receive_AcceptsEth() public {
-    //     uint256 initialEthBalance = address(escrow).balance;
-    //     uint256 sendAmount = 0.1 ether;
-    //     vm.deal(user1, sendAmount);
 
-    //     vm.prank(user1);
-    //     (bool success, ) = address(escrow).call{value: sendAmount}("");
-    //     assertTrue(success, "ETH transfer failed");
+    function test_Receive_RevertsDirectEthDeposit() public {
+        uint256 sendAmount = 0.1 ether;
+        vm.deal(user1, sendAmount);
 
-    //     assertEq(address(escrow).balance, initialEthBalance + sendAmount, "Escrow ETH balance mismatch");
-    //     assertEq(mockStETH.balanceOf(address(escrow)), INITIAL_DEPOSIT, "stETH balance should not change on direct ETH receive");
-    // }
+        vm.prank(user1);
+        vm.expectRevert(); // Expect a revert with no data as there is no receive/fallback
+        (bool success, ) = address(escrow).call{value: sendAmount}("");
+        assertFalse(success, "Direct ETH transfer should have failed but succeeded");
+    }
 }
