@@ -28,20 +28,24 @@ error PriceSourceUnavailable(string source);
 error StaleAttestation(uint lastTimestamp, uint providedTimestamp);
 error InvalidAssetPair(bytes32 expected, bytes32 actual);
 error ZeroAddressProvided(string field);
+error MaxDeviationTooHigh(uint256 provided, uint256 maxAllowed);
+error StalenessPeriodTooHigh(uint256 provided, uint256 maxAllowed);
 
 contract PriceOracle is
     IPriceOracle,
     Initializable,
     PausableUpgradeable,
     AccessControlUpgradeable,
-    UUPSUpgradeable 
+    UUPSUpgradeable
 {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant SIGNER_ROLE = keccak256("SIGNER_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
-    bytes32 public constant ETH_USD_ASSET_PAIR = keccak256("MORPHER:ETH_USD");
+    bytes32 public constant ETH_USD_ASSET_PAIR =
+        keccak256("MORPHER:ETH_USD");
     uint256 public constant PRICE_PRECISION = 1e18;
-    uint256 public maxDeviationPercentage = 500; // 5% = 500 basis points
+    uint256 public constant MAX_DEVIATION_BPS = 500; // 5%
+    uint256 public constant MAX_STALENESS_PERIOD_SECONDS = 120; // 2 minutes
 
     struct PriceConfig {
         uint256 maxPriceDeviation;
@@ -85,9 +89,20 @@ contract PriceOracle is
         address _admin
     ) public initializer {
         if (_usdcAddress == address(0)) revert ZeroAddressProvided("USDC");
-        if (_uniswapRouter == address(0)) revert ZeroAddressProvided("Uniswap Router");
-        if (_chainlinkAggregator == address(0)) revert ZeroAddressProvided("Chainlink Aggregator");
+        if (_uniswapRouter == address(0))
+            revert ZeroAddressProvided("Uniswap Router");
+        if (_chainlinkAggregator == address(0))
+            revert ZeroAddressProvided("Chainlink Aggregator");
         if (_admin == address(0)) revert ZeroAddressProvided("Admin");
+        if (_maxPriceDeviation > MAX_DEVIATION_BPS) {
+            revert MaxDeviationTooHigh(_maxPriceDeviation, MAX_DEVIATION_BPS);
+        }
+        if (_priceStalenessPeriod > MAX_STALENESS_PERIOD_SECONDS) {
+            revert StalenessPeriodTooHigh(
+                _priceStalenessPeriod,
+                MAX_STALENESS_PERIOD_SECONDS
+            );
+        }
 
         __Pausable_init();
         __AccessControl_init();
@@ -106,7 +121,8 @@ contract PriceOracle is
 
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override(AccessControlUpgradeable) returns (bool) { // Removed UUPSUpgradeable
+    ) public view override(AccessControlUpgradeable) returns (bool) {
+        // Removed UUPSUpgradeable
         return super.supportsInterface(interfaceId);
     }
 
@@ -142,7 +158,7 @@ contract PriceOracle is
         /**
          * There is no staleness check for uniswap - the price is the price, if nobody is trading it, so be it.
          */
-         
+
         return 0;
     }
 
@@ -158,10 +174,10 @@ contract PriceOracle is
             uint timeStamp,
             /*uint80 answeredInRound*/
         ) = dataFeed.latestRoundData();
-        
+
         // chainlink price staleness check. On mainchain their heartbeat is 60 minutes (or 0.5%), it should _never_ be older than 60 minutes.
         // our oracle simply errors out if price is older than that
-        if(block.timestamp - timeStamp >= 60*60) {
+        if (block.timestamp - timeStamp >= 60 * 60) {
             revert PriceSourceUnavailable("Chainlink Oracle Stale");
         }
 
@@ -214,10 +230,11 @@ contract PriceOracle is
             revert InvalidSignature();
         }
 
-        // Prevent replaying old attestations, however with a much smaller grace period as the actual data-staleness period. 
-        // Since we might cache times for up to 1 seconds on api, same timestamp can be used multiple times, 
+        // Prevent replaying old attestations, however with a much smaller grace period as the actual data-staleness period.
+        // Since we might cache times for up to 1 seconds on api, same timestamp can be used multiple times,
         // but only until a new attestation comes along.
-        if ((priceQuery.dataTimestamp + 1000*15) < lastAttestationTimestamp) { //allow one ethereum block grace period
+        if ((priceQuery.dataTimestamp + 1000 * 15) < lastAttestationTimestamp) {
+            //allow one ethereum block grace period
             revert StaleAttestation(
                 lastAttestationTimestamp,
                 priceQuery.dataTimestamp
@@ -226,11 +243,11 @@ contract PriceOracle is
 
         /**
          * A note on nonces: We're not doing nonce measures per-se here on purpose, which you would probably expect
-         * 
+         *
          * A price point can be used as long as:
          * 1. the price isn't outdated (staleness)
          * 2. nobody used a "newer" price (timestamp check above)
-         * 
+         *
          * An additional nonce would not add anything to it, instead would deteriorate the system.
          * e.g. it would need to be scoped by user and cannot be global
          * Otherwise no concurrency can occur. The most people get out of this is to use either their "newer" price or
@@ -332,6 +349,24 @@ contract PriceOracle is
     function setMaxDeviationPercentage(
         uint256 _maxDeviationPercentage
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_maxDeviationPercentage > MAX_DEVIATION_BPS) {
+            revert MaxDeviationTooHigh(
+                _maxDeviationPercentage,
+                MAX_DEVIATION_BPS
+            );
+        }
         config.maxPriceDeviation = _maxDeviationPercentage;
+    }
+
+    function setPriceStalenessPeriod(
+        uint256 _priceStalenessPeriod
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_priceStalenessPeriod > MAX_STALENESS_PERIOD_SECONDS) {
+            revert StalenessPeriodTooHigh(
+                _priceStalenessPeriod,
+                MAX_STALENESS_PERIOD_SECONDS
+            );
+        }
+        config.priceStalenessPeriod = _priceStalenessPeriod;
     }
 }

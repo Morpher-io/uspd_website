@@ -38,7 +38,7 @@ contract PriceOracleTest is Test {
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
             500, // 5% max deviation
-            300, // 5 minute staleness period
+            120, // 2 minute staleness period
             USDC, // USDC address
             UNISWAP_ROUTER, // Uniswap router
             CHAINLINK_ETH_USD, // Chainlink ETH/USD feed
@@ -131,7 +131,7 @@ contract PriceOracleTest is Test {
         PriceOracle implementation = new PriceOracle();
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500, 300, address(0), UNISWAP_ROUTER, CHAINLINK_ETH_USD, owner
+            500, 120, address(0), UNISWAP_ROUTER, CHAINLINK_ETH_USD, owner
         );
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressProvided.selector, "USDC"));
         new ERC1967Proxy(address(implementation), initData);
@@ -141,7 +141,7 @@ contract PriceOracleTest is Test {
         PriceOracle implementation = new PriceOracle();
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500, 300, USDC, address(0), CHAINLINK_ETH_USD, owner
+            500, 120, USDC, address(0), CHAINLINK_ETH_USD, owner
         );
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressProvided.selector, "Uniswap Router"));
         new ERC1967Proxy(address(implementation), initData);
@@ -151,7 +151,7 @@ contract PriceOracleTest is Test {
         PriceOracle implementation = new PriceOracle();
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500, 300, USDC, UNISWAP_ROUTER, address(0), owner
+            500, 120, USDC, UNISWAP_ROUTER, address(0), owner
         );
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressProvided.selector, "Chainlink Aggregator"));
         new ERC1967Proxy(address(implementation), initData);
@@ -161,9 +161,54 @@ contract PriceOracleTest is Test {
         PriceOracle implementation = new PriceOracle();
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500, 300, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, address(0)
+            500, 120, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, address(0)
         );
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressProvided.selector, "Admin"));
+        new ERC1967Proxy(address(implementation), initData);
+    }
+
+    function testInitialize_Revert_MaxDeviationTooHigh() public {
+        PriceOracle implementation = new PriceOracle();
+        uint256 invalidDeviation = priceOracle.MAX_DEVIATION_BPS() + 1;
+        bytes memory initData = abi.encodeWithSelector(
+            PriceOracle.initialize.selector,
+            invalidDeviation, // > 5%
+            120, // valid staleness
+            USDC,
+            UNISWAP_ROUTER,
+            CHAINLINK_ETH_USD,
+            owner
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MaxDeviationTooHigh.selector,
+                invalidDeviation,
+                priceOracle.MAX_DEVIATION_BPS()
+            )
+        );
+        new ERC1967Proxy(address(implementation), initData);
+    }
+
+    function testInitialize_Revert_StalenessPeriodTooHigh() public {
+        PriceOracle implementation = new PriceOracle();
+        uint256 invalidStaleness = priceOracle
+            .MAX_STALENESS_PERIOD_SECONDS() + 1;
+        bytes memory initData = abi.encodeWithSelector(
+            PriceOracle.initialize.selector,
+            500, // valid deviation
+            invalidStaleness, // > 2 minutes
+            USDC,
+            UNISWAP_ROUTER,
+            CHAINLINK_ETH_USD,
+            owner
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StalenessPeriodTooHigh.selector,
+                invalidStaleness,
+                priceOracle.MAX_STALENESS_PERIOD_SECONDS()
+            )
+        );
         new ERC1967Proxy(address(implementation), initData);
     }
 
@@ -473,6 +518,69 @@ contract PriceOracleTest is Test {
         vm.expectRevert(abi.encodeWithSelector(PriceDeviationTooHigh.selector, morpherPrice, chainlinkPriceVal, actualUniswapPriceFromMock));
         priceOracle.attestationService(query);
         vm.clearMockedCalls();
+    }
+
+    function testSetMaxDeviationPercentage_Success() public {
+        uint256 newDeviation = 400; // 4%
+        priceOracle.setMaxDeviationPercentage(newDeviation);
+        (uint256 maxDeviation, ) = priceOracle.config();
+        assertEq(maxDeviation, newDeviation, "Max deviation not updated");
+    }
+
+    function testSetMaxDeviationPercentage_Revert_TooHigh() public {
+        uint256 invalidDeviation = priceOracle.MAX_DEVIATION_BPS() + 1;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MaxDeviationTooHigh.selector,
+                invalidDeviation,
+                priceOracle.MAX_DEVIATION_BPS()
+            )
+        );
+        priceOracle.setMaxDeviationPercentage(invalidDeviation);
+    }
+
+    function testSetMaxDeviationPercentage_Revert_NotAdmin() public {
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                user1,
+                priceOracle.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        priceOracle.setMaxDeviationPercentage(400);
+    }
+
+    function testSetPriceStalenessPeriod_Success() public {
+        uint256 newStaleness = 60; // 1 minute
+        priceOracle.setPriceStalenessPeriod(newStaleness);
+        (, uint256 stalenessPeriod) = priceOracle.config();
+        assertEq(stalenessPeriod, newStaleness, "Staleness period not updated");
+    }
+
+    function testSetPriceStalenessPeriod_Revert_TooHigh() public {
+        uint256 invalidStaleness = priceOracle
+            .MAX_STALENESS_PERIOD_SECONDS() + 1;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StalenessPeriodTooHigh.selector,
+                invalidStaleness,
+                priceOracle.MAX_STALENESS_PERIOD_SECONDS()
+            )
+        );
+        priceOracle.setPriceStalenessPeriod(invalidStaleness);
+    }
+
+    function testSetPriceStalenessPeriod_Revert_NotAdmin() public {
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                user1,
+                priceOracle.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        priceOracle.setPriceStalenessPeriod(60);
     }
 
     function testUnpause() public {
