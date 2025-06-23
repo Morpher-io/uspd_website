@@ -344,6 +344,56 @@ contract PriceOracleTest is Test {
         vm.clearMockedCalls(); // Clear mocks for subsequent tests
     }
 
+    function testAttestationService_L1_ChainlinkStale() public {
+        // Ensure we are on L1
+        vm.chainId(1);
+
+        // Grant signer role
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        // Mock UNISWAP_ROUTER.WETH() call
+        vm.mockCall(
+            UNISWAP_ROUTER,
+            abi.encodeWithSelector(IUniswapV2Router01.WETH.selector),
+            abi.encode(WETH_ADDRESS)
+        );
+
+        // Mock Chainlink to return a stale price (older than 60 minutes)
+        int mockPriceAnswer = 2000 * 1e8;
+        uint256 staleTimestamp = block.timestamp - 3601; // 60 minutes and 1 second ago
+        bytes memory mockChainlinkReturn = abi.encode(
+            uint80(1), // roundId
+            mockPriceAnswer, // answer
+            staleTimestamp, // startedAt
+            staleTimestamp, // updatedAt (this is the one that matters)
+            uint80(1) // answeredInRound
+        );
+        vm.mockCall(
+            CHAINLINK_ETH_USD,
+            abi.encodeWithSelector(
+                AggregatorV3Interface.latestRoundData.selector
+            ),
+            mockChainlinkReturn
+        );
+
+        // Mock Uniswap V3 to return a valid price (so it doesn't revert for Uniswap)
+        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+        address wethAddress = priceOracle.uniswapRouter().WETH(); // Get WETH from router
+        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640); // Example pool
+        vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
+        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000; // Approx 2000 USD/ETH
+        bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
+        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
+
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(2000 ether, block.timestamp * 1000, signerPrivateKey);
+
+        // The revert should happen inside getChainlinkDataFeedLatestAnswer, which is called by attestationService
+        vm.expectRevert(abi.encodeWithSelector(PriceSourceUnavailable.selector, "Chainlink Oracle Stale"));
+        priceOracle.attestationService(query);
+
+        vm.clearMockedCalls(); // Clear mocks for subsequent tests
+    }
+
     function testAttestationService_L1_UniswapV3Unavailable() public {
         vm.chainId(1);
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
