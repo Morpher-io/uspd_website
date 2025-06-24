@@ -64,6 +64,7 @@ contract PriceOracle is
 
     IUniswapV2Router02 public uniswapRouter;
     AggregatorV3Interface internal dataFeed;
+    address public uniswapV3Factory;
 
     //chainlink aggregator: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
     //uniswapRouter02: 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
@@ -86,6 +87,7 @@ contract PriceOracle is
         address _usdcAddress,
         address _uniswapRouter,
         address _chainlinkAggregator,
+        address _uniswapV3Factory,
         address _admin
     ) public initializer {
         if (_usdcAddress == address(0)) revert ZeroAddressProvided("USDC");
@@ -93,6 +95,8 @@ contract PriceOracle is
             revert ZeroAddressProvided("Uniswap Router");
         if (_chainlinkAggregator == address(0))
             revert ZeroAddressProvided("Chainlink Aggregator");
+        if (_uniswapV3Factory == address(0))
+            revert ZeroAddressProvided("Uniswap V3 Factory");
         if (_admin == address(0)) revert ZeroAddressProvided("Admin");
         if (_maxPriceDeviation > MAX_DEVIATION_BPS) {
             revert MaxDeviationTooHigh(_maxPriceDeviation, MAX_DEVIATION_BPS);
@@ -117,6 +121,7 @@ contract PriceOracle is
         usdcAddress = _usdcAddress;
         uniswapRouter = IUniswapV2Router02(_uniswapRouter);
         dataFeed = AggregatorV3Interface(_chainlinkAggregator);
+        uniswapV3Factory = _uniswapV3Factory;
     }
 
     function supportsInterface(
@@ -139,9 +144,7 @@ contract PriceOracle is
     }
 
     function getUniswapV3WethUsdcPrice() public view returns (uint) {
-        IUniswapV3Factory factory = IUniswapV3Factory(
-            0x1F98431c8aD98523631AE4a59f267346ea31F984
-        );
+        IUniswapV3Factory factory = IUniswapV3Factory(uniswapV3Factory);
         address uniswapV3PoolWethUSDC = factory.getPool(
             uniswapRouter.WETH(),
             usdcAddress,
