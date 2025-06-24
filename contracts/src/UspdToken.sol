@@ -110,7 +110,10 @@ contract USPDToken is
 
         // Refund any leftover ETH to the original caller
         if (leftoverEth > 0) {
-            payable(msg.sender).transfer(leftoverEth);
+            // Using a low-level call to forward all gas and avoid issues with
+            // contracts that have complex receive/fallback functions.
+            (bool success, ) = msg.sender.call{value: leftoverEth}("");
+            require(success, "USPD: ETH refund failed");
         }
         // Note: SharesMinted event is emitted by cUSPDToken
     }
