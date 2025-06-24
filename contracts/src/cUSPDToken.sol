@@ -146,13 +146,13 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
             emit SharesMinted(msg.sender, to, result.allocatedEth, actualPoolSharesMinted);
         }
 
-        // 7. Calculate leftover ETH and return it
+        // 7. Calculate leftover ETH and refund it to the caller (USPDToken).
         leftoverEth = msg.value - result.allocatedEth;
-        // Removed direct transfer: if (leftoverEth > 0) { payable(msg.sender).transfer(leftoverEth); }
-        if (leftoverEth > 0) { 
-            payable(msg.sender).transfer(leftoverEth); 
+        if (leftoverEth > 0) {
+            (bool success, ) = msg.sender.call{value: leftoverEth}("");
+            require(success, "cUSPD: ETH refund failed");
         }
-        // The caller (USPDToken) will handle the refund.
+        // The caller (USPDToken) will handle the subsequent refund to the original user.
     }
 
     /**
