@@ -44,6 +44,7 @@ contract PositionEscrowTest is
     uint256 internal constant FACTOR_PRECISION = 1e18;
     uint256 internal constant INITIAL_RATE_DEPOSIT = 0.001 ether;
     uint256 internal constant DEFAULT_MIN_RATIO = 110; // 110%
+    address public constant UNISWAP_V3_FACTORY_MAINNET = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
 
     // --- Signer for Price Oracle ---
     uint256 internal signerPrivateKey;
@@ -76,6 +77,7 @@ contract PositionEscrowTest is
             address(0xdead),
             address(0xbeef),
             address(0xcafe),
+            UNISWAP_V3_FACTORY_MAINNET,
             admin
         );
         ERC1967Proxy oracleProxy = new ERC1967Proxy(

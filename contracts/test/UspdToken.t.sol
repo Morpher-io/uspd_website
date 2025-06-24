@@ -69,6 +69,7 @@ contract USPDTokenTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant UNISWAP_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address public constant CHAINLINK_ETH_USD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant UNISWAP_V3_FACTORY_MAINNET = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
 
     function createSignedPriceAttestation(
         uint256 timestamp
@@ -127,6 +128,7 @@ contract USPDTokenTest is Test {
             USDC,              // USDC address
             UNISWAP_ROUTER,    // Uniswap router
             CHAINLINK_ETH_USD, // Chainlink ETH/USD feed
+            UNISWAP_V3_FACTORY_MAINNET,
             address(this)      // Admin address
         );
         

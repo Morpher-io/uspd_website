@@ -18,6 +18,7 @@ contract PriceOracleTest is Test {
         0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address public constant WETH_ADDRESS = 
         0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant UNISWAP_V3_FACTORY_MAINNET = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
 
     address public owner;
     address public user1;
@@ -42,6 +43,7 @@ contract PriceOracleTest is Test {
             USDC, // USDC address
             UNISWAP_ROUTER, // Uniswap router
             CHAINLINK_ETH_USD, // Chainlink ETH/USD feed
+            UNISWAP_V3_FACTORY_MAINNET,
             owner // Admin address
         );
 
@@ -131,7 +133,7 @@ contract PriceOracleTest is Test {
         PriceOracle implementation = new PriceOracle();
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500, 120, address(0), UNISWAP_ROUTER, CHAINLINK_ETH_USD, owner
+            500, 120, address(0), UNISWAP_ROUTER, CHAINLINK_ETH_USD, UNISWAP_V3_FACTORY_MAINNET, owner
         );
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressProvided.selector, "USDC"));
         new ERC1967Proxy(address(implementation), initData);
@@ -141,7 +143,7 @@ contract PriceOracleTest is Test {
         PriceOracle implementation = new PriceOracle();
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500, 120, USDC, address(0), CHAINLINK_ETH_USD, owner
+            500, 120, USDC, address(0), CHAINLINK_ETH_USD, UNISWAP_V3_FACTORY_MAINNET, owner
         );
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressProvided.selector, "Uniswap Router"));
         new ERC1967Proxy(address(implementation), initData);
@@ -151,7 +153,7 @@ contract PriceOracleTest is Test {
         PriceOracle implementation = new PriceOracle();
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500, 120, USDC, UNISWAP_ROUTER, address(0), owner
+            500, 120, USDC, UNISWAP_ROUTER, address(0), UNISWAP_V3_FACTORY_MAINNET, owner
         );
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressProvided.selector, "Chainlink Aggregator"));
         new ERC1967Proxy(address(implementation), initData);
@@ -161,7 +163,7 @@ contract PriceOracleTest is Test {
         PriceOracle implementation = new PriceOracle();
         bytes memory initData = abi.encodeWithSelector(
             PriceOracle.initialize.selector,
-            500, 120, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, address(0)
+            500, 120, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, UNISWAP_V3_FACTORY_MAINNET, address(0)
         );
         vm.expectRevert(abi.encodeWithSelector(ZeroAddressProvided.selector, "Admin"));
         new ERC1967Proxy(address(implementation), initData);
@@ -177,6 +179,7 @@ contract PriceOracleTest is Test {
             USDC,
             UNISWAP_ROUTER,
             CHAINLINK_ETH_USD,
+            UNISWAP_V3_FACTORY_MAINNET,
             owner
         );
         vm.expectRevert(
@@ -200,6 +203,7 @@ contract PriceOracleTest is Test {
             USDC,
             UNISWAP_ROUTER,
             CHAINLINK_ETH_USD,
+            UNISWAP_V3_FACTORY_MAINNET,
             owner
         );
         vm.expectRevert(

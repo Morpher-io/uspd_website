@@ -26,7 +26,9 @@ contract DeployScriptTestnet is DeployScript {
     address internal constant TESTNET_UNISWAP_ROUTER_ADDRESS = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D; // Placeholder or actual Sepolia V2
     address internal constant TESTNET_CHAINLINK_AGGREGATOR_ADDRESS = 0x694AA1769357215DE4FAC081bf1f309aDC325306; // ETH/USD on Sepolia
     address internal constant TESTNET_LIDO_ADDRESS = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Example Sepolia Lido/stETH
-    address internal constant TESTNET_STETH_ADDRESS = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Example Sepolia Lido/stETH
+    address internal constant TESTNET_STETH_ADDRESS = 0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af; // Example Sepolia Lido/stETH   
+    address internal constant TESTNET_UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984; // Uniswap factory
+
     uint256 internal constant TESTNET_INITIAL_RATE_CONTRACT_DEPOSIT = 0.001 ether;
     string internal constant TESTNET_BASE_URI = "https://testnet.uspd.io/api/stabilizer/metadata/";
     // address internal constant TESTNET_ORACLE_SIGNER_ADDRESS = 0xYourTestnetOracleSignerAddress; // Example if needed
@@ -62,6 +64,7 @@ contract DeployScriptTestnet is DeployScript {
             stETHAddress = TESTNET_STETH_ADDRESS;
             initialRateContractDeposit = TESTNET_INITIAL_RATE_CONTRACT_DEPOSIT;
             baseURI = TESTNET_BASE_URI;
+            uniswapFactory = TESTNET_UNISWAP_FACTORY;
             // If oracleSignerAddress needs to be different for testnets, set it here:
             // oracleSignerAddress = 0xYourTestnetOracleSignerAddress; 
             console2.log("Testnet configuration applied.");

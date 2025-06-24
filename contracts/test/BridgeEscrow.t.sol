@@ -54,7 +54,8 @@ contract BridgeEscrowTest is Test {
     address public constant CHAINLINK_ETH_USD_MAINNET = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address public constant WETH_MAINNET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant UNISWAP_V3_FACTORY_MAINNET = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
-    address public constant MOCK_UNISWAP_POOL_MAINNET = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
+    address public constant MOCK_UNISWAP_POOL_MAINNET = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);    
+
 
 
     function setUp() public {
@@ -71,7 +72,7 @@ contract BridgeEscrowTest is Test {
         // 1. Deploy PriceOracle
         PriceOracle oracleImpl = new PriceOracle();
         bytes memory initDataOracle = abi.encodeWithSelector(
-            PriceOracle.initialize.selector, 500, 120, USDC_MAINNET, UNISWAP_ROUTER_MAINNET, CHAINLINK_ETH_USD_MAINNET, deployer
+            PriceOracle.initialize.selector, 500, 120, USDC_MAINNET, UNISWAP_ROUTER_MAINNET, CHAINLINK_ETH_USD_MAINNET, UNISWAP_V3_FACTORY_MAINNET, deployer
         );
         ERC1967Proxy oracleProxy = new ERC1967Proxy(address(oracleImpl), initDataOracle);
         priceOracle = PriceOracle(payable(address(oracleProxy)));

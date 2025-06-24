@@ -72,6 +72,18 @@ contract StabilizerNFTTest is Test {
         // 1. Deploy Mocks & Dependencies
         mockStETH = new MockStETH();
         mockLido = new MockLido(address(mockStETH));
+        
+        // Mock Uniswap V3 calls
+        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+        address wethAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
+        vm.mockCall(UNISWAP_ROUTER, abi.encodeWithSelector(IUniswapV2Router01.WETH.selector), abi.encode(wethAddress));
+        vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
+        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000; // Approx 2000 USD/ETH
+        bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
+        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
+        // --- End Oracle Mocks ---
+
         // Deploy TestPriceOracle implementation and proxy
         TestPriceOracle oracleImpl = new TestPriceOracle();
         bytes memory oracleInitData = abi.encodeWithSelector(
@@ -81,6 +93,7 @@ contract StabilizerNFTTest is Test {
             USDC, // Real USDC address
             UNISWAP_ROUTER, // Real Uniswap router
             CHAINLINK_ETH_USD, // Real Chainlink ETH/USD feed
+            uniswapV3Factory,
             owner // Admin address
         );
         ERC1967Proxy oracleProxy = new ERC1967Proxy(
@@ -97,16 +110,7 @@ contract StabilizerNFTTest is Test {
         bytes memory mockChainlinkReturn = abi.encode(uint80(1), mockPriceAnswer, uint256(mockTimestamp), uint256(mockTimestamp), uint80(1));
         vm.mockCall(CHAINLINK_ETH_USD, abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector), mockChainlinkReturn);
 
-        // Mock Uniswap V3 calls
-        address uniswapV3Factory = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
-        address wethAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-        address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
-        vm.mockCall(UNISWAP_ROUTER, abi.encodeWithSelector(IUniswapV2Router01.WETH.selector), abi.encode(wethAddress));
-        vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
-        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000; // Approx 2000 USD/ETH
-        bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
-        vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
-        // --- End Oracle Mocks ---
+        
 
 
         // Deploy RateContract (can use mocks if preferred) - Needs ETH deposit

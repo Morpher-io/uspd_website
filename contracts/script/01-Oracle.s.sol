@@ -51,6 +51,7 @@ contract DeployOracleScript is DeployScript {
                 usdcAddress,
                 uniswapRouter, // Can be 0x0 for chains without Uniswap v2/v3 source
                 chainlinkAggregator, // Can be 0x0 for chains without Chainlink source
+                uniswapFactory,
                 deployer // admin for PriceOracle
             )
         );

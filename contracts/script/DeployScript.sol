@@ -36,6 +36,7 @@ contract DeployScript is Script {
     address internal constant MAINNET_CHAINLINK_AGGREGATOR_ADDRESS = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419; // ETH/USD
     address internal constant MAINNET_LIDO_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address internal constant MAINNET_STETH_ADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // Same as Lido for stETH
+    address internal constant MAINNET_UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984; // uniswap v3 factory
     uint256 internal constant MAINNET_INITIAL_RATE_CONTRACT_DEPOSIT = 0.001 ether;
     string internal constant MAINNET_BASE_URI = "https://uspd.io/api/stabilizer/metadata/";
 
@@ -123,6 +124,7 @@ contract DeployScript is Script {
     // Network-specific addresses to be set by derived contracts
     address public usdcAddress;
     address public uniswapRouter;
+    address public uniswapFactory;
     address public chainlinkAggregator;
     address public lidoAddress; 
     address public stETHAddress; 
@@ -130,8 +132,8 @@ contract DeployScript is Script {
     string public baseURI; // For StabilizerNFT metadata (L1 specific value)
 
     function generateSalt(string memory identifier) internal pure returns (bytes32) {
-        // Salt is derived from a fixed prefix (USPD) and the identifier string.
-        return keccak256(abi.encodePacked(bytes4(0x55535044), identifier));
+        // Salt is derived from a fixed prefix (USPD) and the version and the identifier string.
+        return keccak256(abi.encodePacked(bytes4(0x55535044), uint(1), identifier));
     }
 
     function setUp() virtual public {
@@ -149,6 +151,7 @@ contract DeployScript is Script {
         stETHAddress = MAINNET_STETH_ADDRESS;
         initialRateContractDeposit = MAINNET_INITIAL_RATE_CONTRACT_DEPOSIT;
         baseURI = MAINNET_BASE_URI;
+        uniswapFactory = MAINNET_UNISWAP_FACTORY;
         // oracleSignerAddress is already set to a default, can be overridden by testnet scripts
 
         // Special handling for local development (Anvil/Hardhat)

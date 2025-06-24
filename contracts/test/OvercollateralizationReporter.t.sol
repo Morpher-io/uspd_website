@@ -61,6 +61,7 @@ contract OvercollateralizationReporterTest is Test {
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant UNISWAP_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address public constant CHAINLINK_ETH_USD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant UNISWAP_V3_FACTORY_MAINNET = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
 
     //https://book.getfoundry.sh/reference/forge-std/std-storage
     using stdStorage for StdStorage;
@@ -83,7 +84,7 @@ contract OvercollateralizationReporterTest is Test {
         // Deploy PriceOracle
         PriceOracle oracleImpl = new PriceOracle();
         bytes memory oracleInitData = abi.encodeWithSelector(
-            PriceOracle.initialize.selector, 500, 120, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, admin
+            PriceOracle.initialize.selector, 500, 120, USDC, UNISWAP_ROUTER, CHAINLINK_ETH_USD, UNISWAP_V3_FACTORY_MAINNET, admin
         );
         ERC1967Proxy oracleProxy = new ERC1967Proxy(address(oracleImpl), oracleInitData);
         priceOracle = PriceOracle(payable(address(oracleProxy)));
