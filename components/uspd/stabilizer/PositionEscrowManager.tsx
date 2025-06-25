@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useWriteContract, useAccount, useReadContracts, useWatchContractEvent, useReadContract } from 'wagmi' // Import useWatchContractEvent
-import { parseEther, formatUnits, Address, Abi } from 'viem'
+import { parseEther, formatUnits, Address, Abi, isAddress } from 'viem'
 import { IPriceOracle } from '@/types/contracts'
-import { formatDisplayBalance } from "./utils"
+import { formatDisplayBalance, getRatioColorClass } from "./utils"
 import { AddressWithCopy } from "@/components/uspd/common/AddressWithCopy"
 import { BalanceWithTooltip } from "@/components/uspd/common/BalanceWithTooltip"
+import { cn } from "@/lib/utils"
 
 // Import necessary ABIs
 import positionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json'
@@ -46,6 +47,8 @@ export function PositionEscrowManager({
     const [isAddingDirectCollateral, setIsAddingDirectCollateral] = useState(false)
     const [isWithdrawingExcess, setIsWithdrawingExcess] = useState(false)
     const [addDirectAmount, setAddDirectAmount] = useState<string>('')
+    const [withdrawAmount, setWithdrawAmount] = useState<string>('')
+    const [withdrawRecipient, setWithdrawRecipient] = useState<Address>('0x')
 
     // Escrow address and data
     const [positionEscrowAddress, setPositionEscrowAddress] = useState<Address | null>(null)
@@ -62,6 +65,13 @@ export function PositionEscrowManager({
 
     const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
+
+    // Pre-populate recipient address with connected user's address
+    useEffect(() => {
+        if (address) {
+            setWithdrawRecipient(address)
+        }
+    }, [address])
 
     // --- Fetch Addresses ---
     const { data: fetchedPositionEscrowAddress, isLoading: isLoadingPositionAddr, refetch: refetchPositionAddr } = useReadContract({
@@ -326,6 +336,45 @@ export function PositionEscrowManager({
         }
     }
 
+    const calculateWithdrawableAmount = (targetRatio: number): bigint => {
+        if (!priceData || backedPoolShares === 0n || yieldFactor === 0n || allocatedStEthBalance === 0n) {
+            return 0n;
+        }
+
+        try {
+            const FACTOR_PRECISION = 10n ** 18n;
+            const PRICE_DECIMALS = 10n ** BigInt(priceData.decimals);
+            const stEthPrice = BigInt(priceData.price);
+            const targetRatioScaled = BigInt(targetRatio * 100); // e.g., 125 -> 12500
+
+            // Liability in USPD (18 decimals)
+            const liabilityInUSPD = (backedPoolShares * yieldFactor) / FACTOR_PRECISION;
+            if (liabilityInUSPD === 0n) return allocatedStEthBalance; // Can withdraw everything if no liability
+
+            // Current collateral value in USD (18 decimals)
+            const currentCollateralValueUSD = (allocatedStEthBalance * stEthPrice) / PRICE_DECIMALS;
+
+            // Target collateral value in USD (18 decimals)
+            const targetCollateralValueUSD = (liabilityInUSPD * targetRatioScaled) / 10000n;
+
+            // Excess collateral in USD
+            const excessCollateralUSD = currentCollateralValueUSD - targetCollateralValueUSD;
+
+            if (excessCollateralUSD <= 0n) {
+                return 0n;
+            }
+
+            // Convert excess USD value back to stETH wei
+            const withdrawableStEth = (excessCollateralUSD * PRICE_DECIMALS) / stEthPrice;
+
+            // Ensure we don't try to withdraw more than we have
+            return withdrawableStEth > allocatedStEthBalance ? allocatedStEthBalance : withdrawableStEth;
+        } catch (e) {
+            console.error("Error calculating withdrawable amount:", e);
+            return 0n;
+        }
+    };
+
     const handleWithdrawExcess = async () => {
         try {
             setError(null)
@@ -333,16 +382,28 @@ export function PositionEscrowManager({
             setIsWithdrawingExcess(true)
 
             if (!positionEscrowAddress) {
-                setError('Position Escrow address not found')
-                setIsWithdrawingExcess(false)
-                return
+                setError('Position Escrow address not found');
+                return;
+            }
+            if (!isAddress(withdrawRecipient)) {
+                setError('Invalid recipient address');
+                return;
+            }
+            if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+                setError('Invalid withdrawal amount');
+                return;
+            }
+
+            const amountToRemove = parseEther(withdrawAmount);
+            if (amountToRemove > allocatedStEthBalance) {
+                setError('Withdrawal amount exceeds position balance.');
+                return;
             }
 
             const freshPriceData = await fetchPriceData()
             if (!freshPriceData) {
-                setError('Failed to fetch price data for withdrawal')
-                setIsWithdrawingExcess(false)
-                return
+                setError('Failed to fetch price data for withdrawal');
+                return;
             }
 
             const priceQuery: IPriceOracle.PriceAttestationQueryStruct = {
@@ -358,10 +419,11 @@ export function PositionEscrowManager({
                 address: positionEscrowAddress,
                 abi: positionEscrowAbi.abi,
                 functionName: 'removeExcessCollateral',
-                args: [address as Address, priceQuery]
+                args: [withdrawRecipient, amountToRemove, priceQuery]
             })
 
-            setSuccess(`Successfully initiated withdrawal of excess collateral from Position Escrow for Stabilizer #${tokenId}`)
+            setSuccess(`Successfully initiated withdrawal of ${withdrawAmount} stETH from Position Escrow for Stabilizer #${tokenId}`)
+            setWithdrawAmount('')
             refetchAllPositionData()
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -379,6 +441,8 @@ export function PositionEscrowManager({
     if (isLoadingPositionAddr || isLoadingStEthAddr || isLoadingRateAddr || (isLoadingPositionEscrowData && !!positionEscrowAddress)) {
         return <div className="p-4 border rounded-lg"><p>Loading position data...</p></div>;
     }
+
+    const targetRatios = [160, 140, 125];
 
     return (
         <div className="space-y-4 p-4 border rounded-lg">
@@ -439,9 +503,6 @@ export function PositionEscrowManager({
                 </div>
             </div>
 
-            {/* Set Min Ratio Slider */}
-            {/* CollateralRatioSlider removed from here */}
-
             {/* Add/Withdraw Direct/Excess */}
             <div className="pt-4 border-t">
                 <Label htmlFor={`add-direct-${tokenId}`}>Add Direct Collateral (ETH)</Label>
@@ -466,22 +527,56 @@ export function PositionEscrowManager({
                     </Button>
                 </div>
             </div>
-            <div className="pt-2">
-                <Label htmlFor={`withdraw-excess-${tokenId}`}>Withdraw Excess Collateral (stETH)</Label>
-                <div className="flex gap-2 mt-1">
-                    <Button
-                        onClick={handleWithdrawExcess}
-                        // Disable based on calculated ratio vs 125%
-                        disabled={isWithdrawingExcess || isLoadingPrice || currentCollateralRatio <= 125}
-                        className="whitespace-nowrap h-9 w-full"
-                        variant="outline"
-                        size="sm"
-                    >
-                        {isWithdrawingExcess ? 'Withdrawing...' : 'Withdraw Excess'}
-                    </Button>
+            <div className="pt-4 border-t mt-4 space-y-2">
+                <h5 className="font-semibold">Withdraw Excess Collateral (stETH)</h5>
+                <div>
+                    <Label htmlFor={`withdraw-recipient-${tokenId}`}>Recipient Address</Label>
+                    <Input
+                        id={`withdraw-recipient-${tokenId}`}
+                        value={withdrawRecipient}
+                        onChange={(e) => setWithdrawRecipient(e.target.value as Address)}
+                        className="h-9 font-mono text-xs"
+                    />
                 </div>
-                {/* Displaying the specific min ratio here might require fetching it again or passing it down */}
-                <p className="text-xs text-muted-foreground mt-1">Requires current ratio &gt; 125%</p>
+                <div>
+                    <Label htmlFor={`withdraw-amount-${tokenId}`}>Amount to Withdraw</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">Set amount to leave ratio at:</span>
+                        {targetRatios.map(ratio => (
+                            <Button
+                                key={ratio}
+                                size="xs"
+                                className={cn("text-white", getRatioColorClass(ratio))}
+                                onClick={() => {
+                                    const amount = calculateWithdrawableAmount(ratio);
+                                    setWithdrawAmount(formatUnits(amount, 18));
+                                }}
+                                disabled={isLoadingPrice}
+                            >
+                                {ratio}%
+                            </Button>
+                        ))}
+                    </div>
+                    <Input
+                        id={`withdraw-amount-${tokenId}`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.0 stETH"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        className="h-9 mt-2"
+                    />
+                </div>
+                <Button
+                    onClick={handleWithdrawExcess}
+                    disabled={isWithdrawingExcess || isLoadingPrice || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || !isAddress(withdrawRecipient)}
+                    className="whitespace-nowrap h-9 w-full"
+                    variant="outline"
+                >
+                    {isWithdrawingExcess ? 'Withdrawing...' : 'Withdraw Excess stETH'}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">Withdrawal is only possible if the final collateral ratio remains above 125%.</p>
             </div>
 
             {/* Error/Success Messages */}

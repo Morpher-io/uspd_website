@@ -38,3 +38,9 @@ export function formatDisplayBalance(value: bigint | undefined, decimals: number
     // Use toFixed(5) and then parseFloat to remove trailing zeros, then toLocaleString for formatting
     return parseFloat(num.toFixed(5)).toLocaleString('en-US')
 }
+
+export function getRatioColorClass(ratio: number): string {
+  if (ratio >= 160) return "bg-green-500 hover:bg-green-600"
+  if (ratio >= 140) return "bg-yellow-500 hover:bg-yellow-600"
+  return "bg-red-500 hover:bg-red-600"
+}
