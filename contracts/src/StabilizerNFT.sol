@@ -631,7 +631,8 @@ contract StabilizerNFT is
 
         // Return any unallocated ETH to cUSPD token
         if (remainingEth > 0) {
-            payable(msg.sender).transfer(remainingEth);
+            (bool success, ) = msg.sender.call{value: remainingEth}("");
+            require(success, "StabilizerNFT: ETH transfer failed");
         }
 
         return result;

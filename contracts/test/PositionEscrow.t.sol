@@ -745,9 +745,9 @@ contract PositionEscrowTest is
         // Calculate expected excess
         // Liability Value = 1000e18 * 1e18 / 1e18 = 1000e18 USD
         // Target Value = 1000e18 * 110 / 100 = 1100e18 USD
-        // Target stETH = 1100e18 * 1e18 / 2000e18 = 0.55 ether
-        // Excess = 1.5 - 0.55 = 0.95 ether
-        uint256 expectedExcess = 0.95 ether;
+        // Target stETH = 1250e18 * 1e18 / 2000e18 = 0.625 ether
+        // Excess = 1.5 - 0.625 = 0.875 ether
+        uint256 expectedExcess = 0.875 ether;
 
         IPriceOracle.PriceAttestationQuery
             memory query = createSignedPriceAttestation(
@@ -1035,7 +1035,7 @@ contract PositionEscrowTest is
         uint256 initialStEth = 1.5 ether;
         uint256 shares = 1000 ether;
         uint256 price = 2000 ether;
-        uint256 expectedExcess = 0.95 ether;
+        uint256 expectedExcess = 0.7 ether;
 
         // Setup state
         mockStETH.mint(address(positionEscrow), initialStEth);
