@@ -60,34 +60,41 @@ export function StabilizerNFTItem({
       <CardHeader>
         <CardTitle>Stabilizer #{tokenId}</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left side: NFT Image */}
-        <div className="flex flex-col items-center justify-start">
-          {isLoadingMetadata ? (
-            <Skeleton className="w-[300px] h-[300px] rounded-md border" />
-          ) : metadata?.image ? (
-            <Image 
-              src={metadata.image} 
-              alt={metadata.name || `Stabilizer NFT #${tokenId}`}
-              width={300}
-              height={300}
-              className="rounded-md border"
-              priority // Prioritize loading image for the NFT in view
+      <CardContent className="flex flex-col gap-6">
+        {/* Top Row: Image and Unallocated Funds */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left side: NFT Image */}
+          <div className="flex flex-col items-center justify-start">
+            {isLoadingMetadata ? (
+              <Skeleton className="w-[300px] h-[300px] rounded-md border" />
+            ) : metadata?.image ? (
+              <Image 
+                src={metadata.image} 
+                alt={metadata.name || `Stabilizer NFT #${tokenId}`}
+                width={300}
+                height={300}
+                className="rounded-md border"
+                priority // Prioritize loading image for the NFT in view
+              />
+            ) : (
+              <div className="w-[300px] h-[300px] rounded-md border bg-muted flex items-center justify-center">
+                <p className="text-muted-foreground">Image not available</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right side: Unallocated Funds */}
+          <div className="flex flex-col justify-start">
+            <StabilizerEscrowManager
+              tokenId={tokenId}
+              stabilizerAddress={stabilizerAddress}
+              stabilizerAbi={stabilizerAbi}
             />
-          ) : (
-            <div className="w-[300px] h-[300px] rounded-md border bg-muted flex items-center justify-center">
-              <p className="text-muted-foreground">Image not available</p>
-            </div>
-          )}
+          </div>
         </div>
 
-        {/* Right side: Management Components */}
-        <div className="space-y-6">
-          <StabilizerEscrowManager
-            tokenId={tokenId}
-            stabilizerAddress={stabilizerAddress}
-            stabilizerAbi={stabilizerAbi}
-          />
+        {/* Bottom Row: Position Management (Full Width) */}
+        <div className="space-y-6 border-t pt-6">
           <PositionEscrowManager
             tokenId={tokenId}
             stabilizerAddress={stabilizerAddress}

@@ -379,7 +379,7 @@ export function PositionEscrowManager({
 
     return (
         <div className="space-y-4 p-4 border rounded-lg">
-            <h4 className="font-semibold text-lg">Allocated Position Details</h4>
+            <h4 className="font-semibold text-lg">Position Management</h4>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
                     <Label>Collateral (stETH)</Label>
