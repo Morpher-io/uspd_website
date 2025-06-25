@@ -61,7 +61,7 @@ export function StabilizerNFTItem({
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {/* Top Row: Image and Unallocated Funds */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-[auto,1fr] gap-6">
           {/* Left side: NFT Image */}
           <div className="flex flex-col items-center justify-start">
             {isLoadingMetadata ? (
@@ -80,6 +80,9 @@ export function StabilizerNFTItem({
                 <p className="text-muted-foreground">Image not available</p>
               </div>
             )}
+            <p className="text-xs text-muted-foreground mt-4 max-w-xs text-center">
+              This is your Stabilizer NFT. As a standard ERC-721 token, it is fully transferable and can be traded on marketplaces like OpenSea and Blur.
+            </p>
           </div>
 
           {/* Right side: Unallocated Funds */}
