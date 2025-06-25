@@ -31,7 +31,7 @@ export default function HowItWorks() {
                                 Deposit ETH to get equivalent USPD. Redeem ETH by burning USPD. USPD can be minted by depositing ETH into the smart contract. Depositors receive USPD proportionally to the USD value of their deposited ETH.
                             </div>
                             <div className="text-xl text-muted-foreground">
-                                ETH can be redeemed from the smart contract by burning a corresponding amount of USPD. A fee of 10 basis points is charged on deposits and redemptions and put into an insurance fund. USPD cannot be frozen or seized. Its smart contract is not ownable or upgradeable. All ETH held by the smart contract is automatically converted into stETH to provide ~4% annual yield.
+                                ETH can be redeemed from the smart contract by burning a corresponding amount of USPD. USPD cannot be frozen or seized. Its smart contract is not ownable or upgradeable. All ETH held by the smart contract is automatically converted into stETH which is used to yield USPD in lockstep with the stETH yield.
                             </div>
                         </div>
 
