@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useWriteContract, useReadContract, useWatchContractEvent } from 'wagmi' // Import useWatchContractEvent
 import { parseEther, formatEther, Address, Abi } from 'viem'
+import CollateralRatioSlider from "./CollateralRatioSlider"
 
 // Import necessary ABIs
 import stabilizerEscrowAbi from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json'
@@ -324,6 +325,12 @@ export function StabilizerEscrowManager({
                     <AlertDescription>{success}</AlertDescription>
                 </Alert>
             )}
+
+            <CollateralRatioSlider
+                tokenId={tokenId}
+                stabilizerAddress={stabilizerAddress}
+                stabilizerAbi={stabilizerAbi}
+            />
         </div>
     )
 }

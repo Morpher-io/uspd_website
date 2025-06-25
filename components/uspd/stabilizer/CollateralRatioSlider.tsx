@@ -101,17 +101,22 @@ export default function CollateralRatioSlider({
 
   return (
     <div className="space-y-4 pt-4 border-t border-border">
-      <div className="flex justify-between items-center">
-        <Label>Min Collateralization Ratio</Label>
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            "px-2 py-1 rounded text-xs font-medium text-white",
-            getColorClass(ratio / 100) // Pass display value to util
-          )}>
-            {getRiskLevel(ratio / 100)} {/* Pass display value to util */}
-          </span>
-          <span className="font-semibold">{(ratio / 100).toFixed(2)}%</span> {/* Display formatted ratio */}
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <Label>Minting Over-Collateralization</Label>
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "px-2 py-1 rounded text-xs font-medium text-white",
+              getColorClass(ratio / 100) // Pass display value to util
+            )}>
+              {getRiskLevel(ratio / 100)} {/* Pass display value to util */}
+            </span>
+            <span className="font-semibold">{(ratio / 100).toFixed(2)}%</span> {/* Display formatted ratio */}
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          This sets the extra collateral added from unallocated funds when a user mints USPD. At 125%, an additional 0.25 ETH is allocated for every 1 ETH of value minted. This applies only to new allocations.
+        </p>
       </div>
       
       <div className="relative pt-1">

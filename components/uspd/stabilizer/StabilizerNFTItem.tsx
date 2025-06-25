@@ -7,7 +7,6 @@ import type { Abi } from 'viem'
 // Import the sub-components
 import { StabilizerEscrowManager } from './StabilizerEscrowManager'
 import { PositionEscrowManager } from './PositionEscrowManager'
-import CollateralRatioSlider from "./CollateralRatioSlider"
 
 interface StabilizerNFTItemProps {
   tokenId: number
@@ -61,10 +60,10 @@ export function StabilizerNFTItem({
         <CardTitle>Stabilizer #{tokenId}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {/* Top Section: Image, Unallocated Funds, and Slider */}
+        {/* Top Row: Image and Unallocated Funds */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* NFT Image */}
-          <div className="md:col-start-1 md:row-start-1 flex flex-col items-center justify-start">
+          {/* Left side: NFT Image */}
+          <div className="flex flex-col items-center justify-start">
             {isLoadingMetadata ? (
               <Skeleton className="w-[300px] h-[300px] rounded-md border" />
             ) : metadata?.image ? (
@@ -83,21 +82,12 @@ export function StabilizerNFTItem({
             )}
           </div>
 
-          {/* Unallocated Funds */}
-          <div className="md:col-start-2 md:row-start-1 md:row-span-2 flex flex-col justify-start">
+          {/* Right side: Unallocated Funds */}
+          <div className="flex flex-col justify-start">
             <StabilizerEscrowManager
               tokenId={tokenId}
               stabilizerAddress={stabilizerAddress}
               stabilizerAbi={stabilizerAbi}
-            />
-          </div>
-
-          {/* Collateral Ratio Slider */}
-          <div className="md:col-start-1 md:row-start-2">
-            <CollateralRatioSlider
-                tokenId={tokenId}
-                stabilizerAddress={stabilizerAddress}
-                stabilizerAbi={stabilizerAbi}
             />
           </div>
         </div>
