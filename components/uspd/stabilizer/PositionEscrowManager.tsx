@@ -280,13 +280,13 @@ export function PositionEscrowManager({
         }
     }
 
-    const calculateWithdrawableAmount = (targetRatioPercent: number): bigint => {
+    const calculateWithdrawableAmount = (targetRatioBps: number): bigint => {
         if (!priceData || backedPoolShares === 0n || yieldFactor === 0n || allocatedStEthBalance === 0n) return 0n;
         try {
             const FACTOR_PRECISION = 10n ** 18n;
             const PRICE_DECIMALS = 10n ** BigInt(priceData.decimals);
             const stEthPrice = BigInt(priceData.price);
-            const targetRatioScaled = BigInt(targetRatioPercent * 100);
+            const targetRatioScaled = BigInt(Math.round(targetRatioBps)); // Use integer basis points directly
 
             const liabilityInUSPD = (backedPoolShares * yieldFactor) / FACTOR_PRECISION;
             if (liabilityInUSPD === 0n) return allocatedStEthBalance;
@@ -307,7 +307,7 @@ export function PositionEscrowManager({
 
     // Update withdraw amount when slider changes
     useEffect(() => {
-        const amount = calculateWithdrawableAmount(targetWithdrawRatio / 100);
+        const amount = calculateWithdrawableAmount(targetWithdrawRatio); // Pass basis points directly
         setWithdrawAmount(formatUnits(amount, 18));
     }, [targetWithdrawRatio, allocatedStEthBalance, backedPoolShares, yieldFactor, priceData]);
 
