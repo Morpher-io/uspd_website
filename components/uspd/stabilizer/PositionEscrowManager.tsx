@@ -278,26 +278,26 @@ export function PositionEscrowManager({
         address: positionEscrowAddress!,
         abi: positionEscrowAbi.abi,
         eventName: 'CollateralAdded',
-        onLogs(_logs) { refetchAllPositionData(); }
+        onLogs() { refetchAllPositionData(); }
     });
     useWatchContractEvent({
         address: positionEscrowAddress!,
         abi: positionEscrowAbi.abi,
         eventName: 'CollateralRemoved',
-        onLogs(_logs) { refetchAllPositionData(); }
+        onLogs() { refetchAllPositionData(); }
     });
     useWatchContractEvent({
         address: positionEscrowAddress!,
         abi: positionEscrowAbi.abi,
         eventName: 'AllocationModified',
-        onLogs(_logs) { refetchAllPositionData(); }
+        onLogs() { refetchAllPositionData(); }
     });
     useWatchContractEvent({
         address: stabilizerAddress,
         abi: stabilizerAbi,
         eventName: 'MinCollateralRatioUpdated',
         args: { tokenId: BigInt(tokenId) },
-        onLogs(_logs) { refetchAllPositionData(); }
+        onLogs() { refetchAllPositionData(); }
     });
 
     // --- Interaction Handlers ---
