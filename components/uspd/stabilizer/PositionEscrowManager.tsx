@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { useWriteContract, useAccount, useReadContracts, useWatchContractEvent, useReadContract } from 'wagmi' // Import useWatchContractEvent
+import { useWriteContract, useAccount, useReadContracts, useWatchContractEvent, useReadContract, useConfig } from 'wagmi'
+import { waitForTransactionReceipt } from 'wagmi/actions'
 import { parseEther, formatUnits, Address, Abi, isAddress } from 'viem'
 import { IPriceOracle } from '@/types/contracts'
 import { formatDisplayBalance, getColorClass, getRiskLevel } from "./utils"
@@ -74,6 +75,7 @@ export function PositionEscrowManager({
 
     const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
+    const config = useConfig()
 
     // Pre-populate recipient address with connected user's address
     useEffect(() => {
@@ -300,13 +302,14 @@ export function PositionEscrowManager({
             if (!addDirectAmount || parseFloat(addDirectAmount) <= 0) throw new Error('Please enter a valid amount to add');
             if (!positionEscrowAddress) throw new Error('Position Escrow address not found');
             
-            await writeContractAsync({
+            const hash = await writeContractAsync({
                 address: positionEscrowAddress,
                 abi: positionEscrowAbi.abi,
                 functionName: 'addCollateralEth',
                 args: [],
                 value: parseEther(addDirectAmount)
             });
+            await waitForTransactionReceipt(config, { hash });
             setSuccess(`Successfully added ${addDirectAmount} ETH directly to Position Escrow for Stabilizer #${tokenId}`);
             setAddDirectAmount('');
             refetchAllPositionData();
@@ -326,12 +329,13 @@ export function PositionEscrowManager({
             const amountToApprove = parseEther(addStEthAmount);
             if (amountToApprove > userStEthBalance) throw new Error('Amount exceeds your stETH balance.');
 
-            await writeContractAsync({
+            const hash = await writeContractAsync({
                 address: stEthAddress,
                 abi: ierc20Abi.abi,
                 functionName: 'approve',
                 args: [positionEscrowAddress, amountToApprove]
             });
+            await waitForTransactionReceipt(config, { hash });
             setSuccess(`Successfully approved ${addStEthAmount} stETH for spending.`);
             refetchUserStEthData();
         } catch (err: any) {
@@ -350,12 +354,13 @@ export function PositionEscrowManager({
             const amountToAdd = parseEther(addStEthAmount);
             if (amountToAdd > userStEthBalance) throw new Error('Amount exceeds your stETH balance.');
 
-            await writeContractAsync({
+            const hash = await writeContractAsync({
                 address: positionEscrowAddress,
                 abi: positionEscrowAbi.abi,
                 functionName: 'addCollateralStETH',
                 args: [amountToAdd]
             });
+            await waitForTransactionReceipt(config, { hash });
             setSuccess(`Successfully added ${addStEthAmount} stETH to the position.`);
             setAddStEthAmount('');
             refetchAllPositionData();
@@ -419,12 +424,13 @@ export function PositionEscrowManager({
                 signature: freshPriceData.signature
             };
 
-            await writeContractAsync({
+            const hash = await writeContractAsync({
                 address: positionEscrowAddress,
                 abi: positionEscrowAbi.abi,
                 functionName: 'removeExcessCollateral',
                 args: [withdrawRecipient, amountToRemove, priceQuery]
             });
+            await waitForTransactionReceipt(config, { hash });
             setSuccess(`Successfully initiated withdrawal of ${withdrawAmount} stETH`);
             setWithdrawAmount('');
             refetchAllPositionData();
