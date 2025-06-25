@@ -61,10 +61,10 @@ export function StabilizerNFTItem({
         <CardTitle>Stabilizer #{tokenId}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {/* Top Row: Image and Unallocated Funds */}
+        {/* Top Section: Image, Unallocated Funds, and Slider */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left side: NFT Image */}
-          <div className="flex flex-col items-center justify-start">
+          {/* NFT Image */}
+          <div className="md:col-start-1 md:row-start-1 flex flex-col items-center justify-start">
             {isLoadingMetadata ? (
               <Skeleton className="w-[300px] h-[300px] rounded-md border" />
             ) : metadata?.image ? (
@@ -83,12 +83,21 @@ export function StabilizerNFTItem({
             )}
           </div>
 
-          {/* Right side: Unallocated Funds */}
-          <div className="flex flex-col justify-start">
+          {/* Unallocated Funds */}
+          <div className="md:col-start-2 md:row-start-1 md:row-span-2 flex flex-col justify-start">
             <StabilizerEscrowManager
               tokenId={tokenId}
               stabilizerAddress={stabilizerAddress}
               stabilizerAbi={stabilizerAbi}
+            />
+          </div>
+
+          {/* Collateral Ratio Slider */}
+          <div className="md:col-start-1 md:row-start-2">
+            <CollateralRatioSlider
+                tokenId={tokenId}
+                stabilizerAddress={stabilizerAddress}
+                stabilizerAbi={stabilizerAbi}
             />
           </div>
         </div>
@@ -99,11 +108,6 @@ export function StabilizerNFTItem({
             tokenId={tokenId}
             stabilizerAddress={stabilizerAddress}
             stabilizerAbi={stabilizerAbi}
-          />
-          <CollateralRatioSlider
-              tokenId={tokenId}
-              stabilizerAddress={stabilizerAddress}
-              stabilizerAbi={stabilizerAbi}
           />
         </div>
       </CardContent>
