@@ -61,7 +61,7 @@ export function StabilizerNFTItem({
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         {/* Top Row: Image and Unallocated Funds */}
-        <div className="grid grid-cols-1 md:grid-cols-[auto,1fr] gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left side: NFT Image */}
           <div className="flex flex-col items-center justify-start">
             {isLoadingMetadata ? (
