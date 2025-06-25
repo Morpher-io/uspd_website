@@ -63,7 +63,7 @@ export function StabilizerNFTItem({
         {/* Top Row: Image and Unallocated Funds */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left side: NFT Image */}
-          <div className="flex flex-col items-center justify-start">
+          <div className="p-4 border rounded-lg flex flex-col items-center justify-start h-full">
             {isLoadingMetadata ? (
               <Skeleton className="w-[300px] h-[300px] rounded-md border" />
             ) : metadata?.image ? (
