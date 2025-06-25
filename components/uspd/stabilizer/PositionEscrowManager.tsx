@@ -77,6 +77,11 @@ export function PositionEscrowManager({
     const { writeContractAsync } = useWriteContract()
     const config = useConfig()
 
+    const addStEthAmountInWei = useMemo(() => {
+        try { return parseEther(addStEthAmount || '0') } catch { return 0n }
+    }, [addStEthAmount]);
+    const needsApproval = stEthAllowance < addStEthAmountInWei;
+
     // Pre-populate recipient address with connected user's address
     useEffect(() => {
         if (address) {
@@ -447,11 +452,6 @@ export function PositionEscrowManager({
 
     const canWithdraw = currentCollateralRatio > 125;
     const maxSliderValue = Math.floor(currentCollateralRatio * 100);
-
-    const addStEthAmountInWei = useMemo(() => {
-        try { return parseEther(addStEthAmount || '0') } catch { return 0n }
-    }, [addStEthAmount]);
-    const needsApproval = stEthAllowance < addStEthAmountInWei;
 
     return (
         <div className="space-y-4 p-4 border rounded-lg">
