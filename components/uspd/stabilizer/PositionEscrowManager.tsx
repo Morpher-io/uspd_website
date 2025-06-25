@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useWriteContract, useAccount, useReadContracts, useWatchContractEvent, useReadContract } from 'wagmi' // Import useWatchContractEvent
-import { parseEther, formatEther, formatUnits, Address, Abi } from 'viem'
+import { parseEther, formatUnits, Address, Abi } from 'viem'
 import { IPriceOracle } from '@/types/contracts'
+import { formatDisplayBalance } from "./utils"
+import { AddressWithCopy } from "@/components/uspd/common/AddressWithCopy"
 
 // Import necessary ABIs
 import positionEscrowAbi from '@/contracts/out/PositionEscrow.sol/PositionEscrow.json'
@@ -384,7 +386,7 @@ export function PositionEscrowManager({
                 <div>
                     <Label>Collateral (stETH)</Label>
                     <p className="text-md font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-24" /> : `${formatEther(allocatedStEthBalance)} stETH`}
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-24" /> : `${formatDisplayBalance(allocatedStEthBalance)} stETH`}
                     </p>
                 </div>
                 <div>
@@ -398,25 +400,25 @@ export function PositionEscrowManager({
                 <div>
                     <Label>Liability (cUSPD Shares)</Label>
                     <p className="text-md font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-24" /> : `${formatUnits(backedPoolShares, 18)} cUSPD`}
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-24" /> : `${formatDisplayBalance(backedPoolShares)} cUSPD`}
                     </p>
                 </div>
                 <div>
                     <Label>Yield Factor</Label>
                     <p className="text-md font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-20" /> : formatUnits(yieldFactor, 18)}
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-20" /> : formatDisplayBalance(yieldFactor)}
                     </p>
                 </div>
                 <div className="col-span-2">
                     <Label>Liability (USPD Equivalent from Shares)</Label>
                     <p className="text-md font-semibold">
-                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-28" /> : `${formatUnits((backedPoolShares * yieldFactor) / BigInt(1e18), 18)} USPD`}
+                        {isLoadingPositionEscrowData && positionEscrowAddress ? <Skeleton className="h-5 w-28" /> : `${formatDisplayBalance((backedPoolShares * yieldFactor) / BigInt(1e18))} USPD`}
                     </p>
                 </div>
                 
                 <div className="col-span-2">
                     <Label>Position Escrow Address</Label>
-                    <p className="text-xs truncate">{positionEscrowAddress ?? 'Loading...'}</p>
+                    <AddressWithCopy address={positionEscrowAddress} />
                 </div>
             </div>
 

@@ -1,3 +1,5 @@
+import { formatUnits } from 'viem'
+
 // Utility functions for risk level and color
 export function getRiskLevel(ratio: number): string {
   if (ratio >= 150) return "Low Risk"
@@ -22,4 +24,17 @@ export function getColorBarWidths() {
     yellow: "w-[27%]",
     green: "w-[66%]"
   }
+}
+
+export function formatDisplayBalance(value: bigint | undefined, decimals: number = 18): string {
+    if (value === undefined || value === null) {
+        return '0.00'
+    }
+    const num = parseFloat(formatUnits(value, decimals))
+    if (num === 0) return '0.00'
+    if (num > 0 && num < 0.00001) {
+        return '< 0.00001'
+    }
+    // Use toFixed(5) and then parseFloat to remove trailing zeros, then toLocaleString for formatting
+    return parseFloat(num.toFixed(5)).toLocaleString('en-US')
 }

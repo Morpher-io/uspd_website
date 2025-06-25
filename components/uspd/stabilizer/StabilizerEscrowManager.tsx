@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useWriteContract, useReadContract, useWatchContractEvent } from 'wagmi' // Import useWatchContractEvent
-import { parseEther, formatEther, Address, Abi } from 'viem'
+import { parseEther, formatUnits, Address, Abi } from 'viem'
 import CollateralRatioSlider from "./CollateralRatioSlider"
+import { formatDisplayBalance } from "./utils"
+import { AddressWithCopy } from "@/components/uspd/common/AddressWithCopy"
 
 // Import necessary ABIs
 import stabilizerEscrowAbi from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json'
@@ -244,12 +246,12 @@ export function StabilizerEscrowManager({
                     <Label>stETH Balance</Label>
                     <p className="text-lg font-semibold">
                         {/* Show loading only when address is known but balance isn't */}
-                        {stabilizerEscrowAddress && isLoadingBalance ? 'Fetching...' : `${formatEther(unallocatedStEthBalance)} stETH`}
+                        {stabilizerEscrowAddress && isLoadingBalance ? 'Fetching...' : `${formatDisplayBalance(unallocatedStEthBalance)} stETH`}
                     </p>
                 </div>
                 <div>
                     <Label>Escrow Address</Label>
-                    <p className="text-xs truncate">{stabilizerEscrowAddress ?? 'Loading...'}</p>
+                    <AddressWithCopy address={stabilizerEscrowAddress} />
                 </div>
             </div>
 
@@ -284,7 +286,7 @@ export function StabilizerEscrowManager({
                         variant="link"
                         size="sm"
                         className="h-auto p-0 text-xs"
-                        onClick={() => setWithdrawAmount(formatEther(unallocatedStEthBalance))}
+                        onClick={() => setWithdrawAmount(formatUnits(unallocatedStEthBalance, 18))}
                         disabled={unallocatedStEthBalance === BigInt(0)}
                     >
                         Max
@@ -296,8 +298,8 @@ export function StabilizerEscrowManager({
                         type="number"
                         step="0.01"
                         min="0"
-                        max={formatEther(unallocatedStEthBalance)}
-                        placeholder={`Max: ${formatEther(unallocatedStEthBalance)}`}
+                        max={formatUnits(unallocatedStEthBalance, 18)}
+                        placeholder={`Max: ${formatDisplayBalance(unallocatedStEthBalance)}`}
                         value={withdrawAmount}
                         onChange={(e) => setWithdrawAmount(e.target.value)}
                         className="h-9"
