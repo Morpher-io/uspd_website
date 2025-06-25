@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -278,26 +278,26 @@ export function PositionEscrowManager({
         address: positionEscrowAddress!,
         abi: positionEscrowAbi.abi,
         eventName: 'CollateralAdded',
-        onLogs(logs) { refetchAllPositionData(); }
+        onLogs(_logs) { refetchAllPositionData(); }
     });
     useWatchContractEvent({
         address: positionEscrowAddress!,
         abi: positionEscrowAbi.abi,
         eventName: 'CollateralRemoved',
-        onLogs(logs) { refetchAllPositionData(); }
+        onLogs(_logs) { refetchAllPositionData(); }
     });
     useWatchContractEvent({
         address: positionEscrowAddress!,
         abi: positionEscrowAbi.abi,
         eventName: 'AllocationModified',
-        onLogs(logs) { refetchAllPositionData(); }
+        onLogs(_logs) { refetchAllPositionData(); }
     });
     useWatchContractEvent({
         address: stabilizerAddress,
         abi: stabilizerAbi,
         eventName: 'MinCollateralRatioUpdated',
         args: { tokenId: BigInt(tokenId) },
-        onLogs(logs) { refetchAllPositionData(); }
+        onLogs(_logs) { refetchAllPositionData(); }
     });
 
     // --- Interaction Handlers ---
@@ -318,8 +318,12 @@ export function PositionEscrowManager({
             setSuccess(`Successfully added ${addDirectAmount} ETH directly to Position Escrow for Stabilizer #${tokenId}`);
             setAddDirectAmount('');
             refetchAllPositionData();
-        } catch (err: any) {
-            setError(err.message || 'Failed to add direct collateral');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to add direct collateral');
+            } else {
+                setError('An unknown error occurred');
+            }
         } finally {
             setIsAddingDirectCollateral(false);
         }
@@ -343,8 +347,12 @@ export function PositionEscrowManager({
             await waitForTransactionReceipt(config, { hash });
             setSuccess(`Successfully approved ${addStEthAmount} stETH for spending.`);
             refetchUserStEthData();
-        } catch (err: any) {
-            setError(err.message || 'Failed to approve stETH');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to approve stETH');
+            } else {
+                setError('An unknown error occurred');
+            }
         } finally {
             setIsApprovingStEth(false);
         }
@@ -369,14 +377,18 @@ export function PositionEscrowManager({
             setSuccess(`Successfully added ${addStEthAmount} stETH to the position.`);
             setAddStEthAmount('');
             refetchAllPositionData();
-        } catch (err: any) {
-            setError(err.message || 'Failed to add stETH');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to add stETH');
+            } else {
+                setError('An unknown error occurred');
+            }
         } finally {
             setIsAddingStEth(false);
         }
     };
 
-    const calculateWithdrawableAmount = (targetRatioBps: number): bigint => {
+    const calculateWithdrawableAmount = useCallback((targetRatioBps: number): bigint => {
         if (!priceData || backedPoolShares === 0n || yieldFactor === 0n || allocatedStEthBalance === 0n) return 0n;
         try {
             const FACTOR_PRECISION = 10n ** 18n;
@@ -399,13 +411,13 @@ export function PositionEscrowManager({
             console.error("Error calculating withdrawable amount:", e);
             return 0n;
         }
-    };
+    }, [allocatedStEthBalance, backedPoolShares, priceData, yieldFactor]);
 
     // Update withdraw amount when slider changes
     useEffect(() => {
         const amount = calculateWithdrawableAmount(targetWithdrawRatio); // Pass basis points directly
         setWithdrawAmount(formatUnits(amount, 18));
-    }, [targetWithdrawRatio, allocatedStEthBalance, backedPoolShares, yieldFactor, priceData]);
+    }, [targetWithdrawRatio, calculateWithdrawableAmount]);
 
     const handleWithdrawExcess = async () => {
         try {
@@ -439,8 +451,12 @@ export function PositionEscrowManager({
             setSuccess(`Successfully initiated withdrawal of ${withdrawAmount} stETH`);
             setWithdrawAmount('');
             refetchAllPositionData();
-        } catch (err: any) {
-            setError(err.message || 'Failed to withdraw excess collateral');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'Failed to withdraw excess collateral');
+            } else {
+                setError('An unknown error occurred');
+            }
         } finally {
             setIsWithdrawingExcess(false);
         }
