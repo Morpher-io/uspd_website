@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -51,6 +51,13 @@ export function PositionEscrowManager({
     const [withdrawAmount, setWithdrawAmount] = useState<string>('')
     const [withdrawRecipient, setWithdrawRecipient] = useState<Address>('0x')
     const [targetWithdrawRatio, setTargetWithdrawRatio] = useState(12500) // In basis points (e.g. 125.00% = 12500)
+    
+    // State for adding stETH
+    const [addStEthAmount, setAddStEthAmount] = useState<string>('');
+    const [isApprovingStEth, setIsApprovingStEth] = useState(false);
+    const [isAddingStEth, setIsAddingStEth] = useState(false);
+    const [userStEthBalance, setUserStEthBalance] = useState<bigint>(0n);
+    const [stEthAllowance, setStEthAllowance] = useState<bigint>(0n);
 
     // Escrow address and data
     const [positionEscrowAddress, setPositionEscrowAddress] = useState<Address | null>(null)
@@ -165,6 +172,35 @@ export function PositionEscrowManager({
         }
     })
 
+    // --- Fetch User's stETH Balance and Allowance ---
+    const { data: userStEthData, isLoading: isLoadingUserStEthData, refetch: refetchUserStEthData } = useReadContracts({
+        allowFailure: true,
+        contracts: [
+            { // Fetch user's stETH balance
+                address: stEthAddress!,
+                abi: ierc20Abi.abi,
+                functionName: 'balanceOf',
+                args: [address!],
+            },
+            { // Fetch user's stETH allowance for the PositionEscrow
+                address: stEthAddress!,
+                abi: ierc20Abi.abi,
+                functionName: 'allowance',
+                args: [address!, positionEscrowAddress!],
+            }
+        ],
+        query: {
+            enabled: !!address && !!stEthAddress && !!positionEscrowAddress,
+        }
+    });
+
+    useEffect(() => {
+        if (userStEthData) {
+            setUserStEthBalance(userStEthData[0]?.status === 'success' ? userStEthData[0].result as bigint : 0n);
+            setStEthAllowance(userStEthData[1]?.status === 'success' ? userStEthData[1].result as bigint : 0n);
+        }
+    }, [userStEthData]);
+
     // Update state with fetched Position Escrow data and Yield Factor
     useEffect(() => {
         if (positionEscrowData) {
@@ -227,6 +263,7 @@ export function PositionEscrowManager({
         refetchRateAddr();    // Refetch rate contract address
         refetchPositionEscrowData(); // Refetch balance/shares/yield
         fetchPriceData();
+        refetchUserStEthData();
     }
 
     // --- Event Listeners ---
@@ -279,6 +316,55 @@ export function PositionEscrowManager({
             setIsAddingDirectCollateral(false);
         }
     }
+
+    const handleApproveStEth = async () => {
+        try {
+            setError(null); setSuccess(null); setIsApprovingStEth(true);
+            if (!addStEthAmount || parseFloat(addStEthAmount) <= 0) throw new Error('Invalid amount');
+            if (!positionEscrowAddress || !stEthAddress) throw new Error('Contracts not ready');
+
+            const amountToApprove = parseEther(addStEthAmount);
+            if (amountToApprove > userStEthBalance) throw new Error('Amount exceeds your stETH balance.');
+
+            await writeContractAsync({
+                address: stEthAddress,
+                abi: ierc20Abi.abi,
+                functionName: 'approve',
+                args: [positionEscrowAddress, amountToApprove]
+            });
+            setSuccess(`Successfully approved ${addStEthAmount} stETH for spending.`);
+            refetchUserStEthData();
+        } catch (err: any) {
+            setError(err.message || 'Failed to approve stETH');
+        } finally {
+            setIsApprovingStEth(false);
+        }
+    };
+
+    const handleAddStEth = async () => {
+        try {
+            setError(null); setSuccess(null); setIsAddingStEth(true);
+            if (!addStEthAmount || parseFloat(addStEthAmount) <= 0) throw new Error('Invalid amount');
+            if (!positionEscrowAddress) throw new Error('Position Escrow not ready');
+
+            const amountToAdd = parseEther(addStEthAmount);
+            if (amountToAdd > userStEthBalance) throw new Error('Amount exceeds your stETH balance.');
+
+            await writeContractAsync({
+                address: positionEscrowAddress,
+                abi: positionEscrowAbi.abi,
+                functionName: 'addCollateralStETH',
+                args: [amountToAdd]
+            });
+            setSuccess(`Successfully added ${addStEthAmount} stETH to the position.`);
+            setAddStEthAmount('');
+            refetchAllPositionData();
+        } catch (err: any) {
+            setError(err.message || 'Failed to add stETH');
+        } finally {
+            setIsAddingStEth(false);
+        }
+    };
 
     const calculateWithdrawableAmount = (targetRatioBps: number): bigint => {
         if (!priceData || backedPoolShares === 0n || yieldFactor === 0n || allocatedStEthBalance === 0n) return 0n;
@@ -356,6 +442,11 @@ export function PositionEscrowManager({
     const canWithdraw = currentCollateralRatio > 125;
     const maxSliderValue = Math.floor(currentCollateralRatio * 100);
 
+    const addStEthAmountInWei = useMemo(() => {
+        try { return parseEther(addStEthAmount || '0') } catch { return 0n }
+    }, [addStEthAmount]);
+    const needsApproval = stEthAllowance < addStEthAmountInWei;
+
     return (
         <div className="space-y-4 p-4 border rounded-lg">
             <h4 className="font-semibold text-lg">Position Management</h4>
@@ -404,6 +495,54 @@ export function PositionEscrowManager({
                     <Input id={`add-direct-${tokenId}`} type="number" step="0.01" min="0" placeholder="0.1 ETH" value={addDirectAmount} onChange={(e) => setAddDirectAmount(e.target.value)} className="h-9" />
                     <Button onClick={handleAddCollateralDirect} disabled={isAddingDirectCollateral || !addDirectAmount} className="whitespace-nowrap h-9" size="sm">
                         {isAddingDirectCollateral ? 'Adding...' : 'Add Direct'}
+                    </Button>
+                </div>
+            </div>
+
+            <div className="pt-4 border-t mt-4">
+                <div className="flex justify-between items-center">
+                    <Label htmlFor={`add-steth-${tokenId}`}>Add Direct Collateral (stETH)</Label>
+                    <span className="text-xs text-muted-foreground">
+                        Balance: {isLoadingUserStEthData ? '...' : formatDisplayBalance(userStEthBalance)}
+                    </span>
+                </div>
+                <div className="flex gap-2 mt-1">
+                    <Input
+                        id={`add-steth-${tokenId}`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.1 stETH"
+                        value={addStEthAmount}
+                        onChange={(e) => setAddStEthAmount(e.target.value)}
+                        className="h-9"
+                    />
+                    <Button
+                        variant="link"
+                        size="sm"
+                        className="h-9 p-2 text-xs"
+                        onClick={() => setAddStEthAmount(formatUnits(userStEthBalance, 18))}
+                        disabled={userStEthBalance === 0n}
+                    >
+                        Max
+                    </Button>
+                </div>
+                <div className="flex gap-2 mt-2">
+                    <Button
+                        onClick={handleApproveStEth}
+                        disabled={isApprovingStEth || !needsApproval || isAddingStEth || addStEthAmountInWei === 0n}
+                        className="whitespace-nowrap h-9 w-full"
+                        size="sm"
+                    >
+                        {isApprovingStEth ? 'Approving...' : `Approve`}
+                    </Button>
+                    <Button
+                        onClick={handleAddStEth}
+                        disabled={isAddingStEth || needsApproval || isApprovingStEth || addStEthAmountInWei === 0n}
+                        className="whitespace-nowrap h-9 w-full"
+                        size="sm"
+                    >
+                        {isAddingStEth ? 'Adding...' : 'Add stETH'}
                     </Button>
                 </div>
             </div>
