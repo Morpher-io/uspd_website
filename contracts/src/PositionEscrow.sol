@@ -23,7 +23,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
 
     // --- Constants ---
-    uint256 public constant MINIMUM_COLLATERAL_RATIO = 11000; // 110.00%
+    uint256 public constant MINIMUM_COLLATERAL_RATIO = 12500; // 125.00%
 
     // --- State Variables ---
     address public override stabilizerNFTContract; // The controller/manager (also gets STABILIZER_ROLE)
