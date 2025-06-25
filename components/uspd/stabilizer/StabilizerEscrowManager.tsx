@@ -10,6 +10,7 @@ import { parseEther, formatUnits, Address, Abi } from 'viem'
 import CollateralRatioSlider from "./CollateralRatioSlider"
 import { formatDisplayBalance } from "./utils"
 import { AddressWithCopy } from "@/components/uspd/common/AddressWithCopy"
+import { BalanceWithTooltip } from "@/components/uspd/common/BalanceWithTooltip"
 
 // Import necessary ABIs
 import stabilizerEscrowAbi from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json'
@@ -245,8 +246,11 @@ export function StabilizerEscrowManager({
                 <div>
                     <Label>stETH Balance</Label>
                     <p className="text-lg font-semibold">
-                        {/* Show loading only when address is known but balance isn't */}
-                        {stabilizerEscrowAddress && isLoadingBalance ? 'Fetching...' : `${formatDisplayBalance(unallocatedStEthBalance)} stETH`}
+                        {stabilizerEscrowAddress && isLoadingBalance ? (
+                            'Fetching...'
+                        ) : (
+                            <BalanceWithTooltip value={unallocatedStEthBalance} unit="stETH" />
+                        )}
                     </p>
                 </div>
                 <div>
