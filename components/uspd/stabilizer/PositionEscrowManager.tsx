@@ -452,8 +452,8 @@ export function PositionEscrowManager({
                 <div className="flex gap-2 mt-1">
                     <Button
                         onClick={handleWithdrawExcess}
-                        // Disable based on calculated ratio vs 110%
-                        disabled={isWithdrawingExcess || isLoadingPrice || currentCollateralRatio <= 110}
+                        // Disable based on calculated ratio vs 125%
+                        disabled={isWithdrawingExcess || isLoadingPrice || currentCollateralRatio <= 125}
                         className="whitespace-nowrap h-9 w-full"
                         variant="outline"
                         size="sm"
@@ -462,7 +462,7 @@ export function PositionEscrowManager({
                     </Button>
                 </div>
                 {/* Displaying the specific min ratio here might require fetching it again or passing it down */}
-                <p className="text-xs text-muted-foreground mt-1">Requires current ratio &gt; 110%</p>
+                <p className="text-xs text-muted-foreground mt-1">Requires current ratio &gt; 125%</p>
             </div>
 
             {/* Error/Success Messages */}

@@ -13,9 +13,13 @@ export function getColorClass(ratio: number): string {
 
 // Calculate the width percentages for the color bars based on the risk thresholds
 export function getColorBarWidths() {
+  // The slider range is now 125% to 200%, a 75-point range.
+  // Red: 125-130 (5 points, ~7%)
+  // Yellow: 130-150 (20 points, ~27%)
+  // Green: 150-200 (50 points, ~66%)
   return {
-    red: "w-[22%]",    // 110-130 range (20% of 90-point range)
-    yellow: "w-[22%]", // 130-150 range (20% of 90-point range)
-    green: "w-[56%]"   // 150-200 range (50% of 90-point range)
+    red: "w-[7%]",
+    yellow: "w-[27%]",
+    green: "w-[66%]"
   }
 }

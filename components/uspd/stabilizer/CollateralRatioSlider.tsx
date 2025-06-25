@@ -21,7 +21,7 @@ export default function CollateralRatioSlider({
   stabilizerAddress,
   stabilizerAbi
 }: CollateralRatioSliderProps) {
-  const [ratio, setRatio] = useState<number>(11000) // Default to min possible (110.00% = 11000)
+  const [ratio, setRatio] = useState<number>(12500) // Default to min possible (125.00% = 12500)
   const [fetchedRatio, setFetchedRatio] = useState<number | null>(null) // Store the fetched ratio
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -122,7 +122,7 @@ export default function CollateralRatioSlider({
         </div>
         <Slider
           value={[ratio]} // ratio state is scaled
-          min={11000}     // 110.00% scaled
+          min={12500}     // 125.00% scaled
           max={20000}     // 200.00% scaled (contract allows up to 100000)
           step={100}      // 1% step (100 for scaled value)
           onValueChange={(value) => setRatio(value[0])} // value[0] will be scaled
@@ -131,7 +131,7 @@ export default function CollateralRatioSlider({
       </div>
       
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>110.00% (Min)</span> {/* Updated label */}
+        <span>125.00% (Min)</span> {/* Updated label */}
         
         <span>200.00%</span> {/* Updated label */}
       </div>
