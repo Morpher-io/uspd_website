@@ -22,6 +22,15 @@ contract DeploySystemCoreScript is DeployScript {
         stabilizerEscrowImplAddress = _readAddressFromDeployment(".contracts.stabilizerEscrowImpl");
         positionEscrowImplAddress = _readAddressFromDeployment(".contracts.positionEscrowImpl");
 
+        // Load addresses of contracts deployed by this script, in case of resume
+        stabilizerImplAddress = _readAddressFromDeployment(".contracts.stabilizerImpl");
+        stabilizerProxyAddress = _readAddressFromDeployment(".contracts.stabilizer");
+        cuspdTokenAddress = _readAddressFromDeployment(".contracts.cuspdToken");
+        uspdTokenAddress = _readAddressFromDeployment(".contracts.uspdToken");
+        reporterImplAddress = _readAddressFromDeployment(".contracts.reporterImpl");
+        reporterAddress = _readAddressFromDeployment(".contracts.reporter");
+        insuranceEscrowAddress = _readAddressFromDeployment(".contracts.insuranceEscrow");
+
         require(oracleProxyAddress != address(0), "Oracle proxy not found in deployment file");
         require(rateContractAddress != address(0), "Rate contract not found in deployment file");
         require(stabilizerEscrowImplAddress != address(0), "StabilizerEscrow impl not found in deployment file");
@@ -32,6 +41,10 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function deployStabilizerNFTImplementation() internal {
+        if (stabilizerImplAddress != address(0)) {
+            console2.log("StabilizerNFT implementation already deployed at:", stabilizerImplAddress);
+            return;
+        }
         console2.log("Deploying StabilizerNFT implementation...");
         bytes memory bytecode = type(StabilizerNFT).creationCode;
         stabilizerImplAddress = createX.deployCreate2(STABILIZER_IMPL_SALT, bytecode);
@@ -39,6 +52,10 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function deployStabilizerNFTProxy_NoInit() internal {
+        if (stabilizerProxyAddress != address(0)) {
+            console2.log("StabilizerNFT UUPS proxy already deployed at:", stabilizerProxyAddress);
+            return;
+        }
         console2.log("Deploying StabilizerNFT UUPS proxy (no init)...");
         require(stabilizerImplAddress != address(0), "StabilizerNFT implementation not deployed");
         stabilizerProxyAddress = deployUUPSProxy_NoInit(STABILIZER_PROXY_SALT, stabilizerImplAddress); // Uses helper from DeployScript
@@ -46,6 +63,10 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function deployCUSPDToken() internal {
+        if (cuspdTokenAddress != address(0)) {
+            console2.log("cUSPDToken already deployed at:", cuspdTokenAddress);
+            return;
+        }
         console2.log("Deploying cUSPDToken...");
         require(oracleProxyAddress != address(0), "Oracle proxy not deployed");
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
@@ -67,6 +88,10 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function deployUspdToken() internal {
+        if (uspdTokenAddress != address(0)) {
+            console2.log("USPDToken already deployed at:", uspdTokenAddress);
+            return;
+        }
         console2.log("Deploying USPDToken (view layer)...");
         require(cuspdTokenAddress != address(0), "cUSPD token not deployed");
         require(rateContractAddress != address(0), "Rate contract not deployed");
@@ -86,6 +111,10 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function deployReporterImplementation() internal {
+        if (reporterImplAddress != address(0)) {
+            console2.log("OvercollateralizationReporter implementation already deployed at:", reporterImplAddress);
+            return;
+        }
         console2.log("Deploying OvercollateralizationReporter implementation...");
         bytes memory bytecode = type(OvercollateralizationReporter).creationCode;
         reporterImplAddress = createX.deployCreate2{value: 0}(REPORTER_IMPL_SALT, bytecode);
@@ -93,6 +122,10 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function deployReporterProxy() internal {
+        if (reporterAddress != address(0)) {
+            console2.log("OvercollateralizationReporter proxy already deployed at:", reporterAddress);
+            return;
+        }
         console2.log("Deploying OvercollateralizationReporter proxy...");
         require(reporterImplAddress != address(0), "Reporter implementation not deployed");
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
@@ -112,6 +145,10 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function deployInsuranceEscrow() internal {
+        if (insuranceEscrowAddress != address(0)) {
+            console2.log("InsuranceEscrow already deployed at:", insuranceEscrowAddress);
+            return;
+        }
         console2.log("Deploying InsuranceEscrow...");
         require(stETHAddress != address(0), "stETH address not set for InsuranceEscrow");
         require(stabilizerProxyAddress != address(0), "StabilizerNFT proxy not deployed (owner for InsuranceEscrow)");
@@ -125,6 +162,10 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function initializeStabilizerNFTProxy() internal {
+        if (stabilizerProxyAddress != address(0) && StabilizerNFT(payable(stabilizerProxyAddress)).owner() != address(0)) {
+            console2.log("StabilizerNFT proxy already initialized.");
+            return;
+        }
         console2.log("Initializing StabilizerNFT proxy at:", stabilizerProxyAddress);
         require(stabilizerProxyAddress != address(0), "Stabilizer proxy not deployed");
         require(cuspdTokenAddress != address(0), "cUSPD Token not deployed");
