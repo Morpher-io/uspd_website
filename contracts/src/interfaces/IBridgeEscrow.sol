@@ -50,4 +50,10 @@ interface IBridgeEscrow {
         uint256 uspdAmountIntended,
         uint256 l2YieldFactor
     ) external;
+
+    /**
+     * @notice Recovers cUSPD tokens accidentally sent to this contract.
+     * @param to The address to send the recovered tokens to.
+     */
+    function recoverExcessShares(address to) external;
 }

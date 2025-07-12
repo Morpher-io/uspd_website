@@ -182,29 +182,32 @@ contract BridgeEscrowTest is Test {
 
     function test_Unit_EscrowShares_L2_Success_BurnsShares() public {
         vm.chainId(L2_CHAIN_ID); // Switch to L2 context
-        uint256 sharesToBridge = 100 * FACTOR_PRECISION;
-        uint256 uspdAmount = sharesToBridge;
+        uint256 sharesBridgedIn = 200 * FACTOR_PRECISION;
+        
+        // Setup: Simulate shares were bridged TO this L2, populating totalBridgedInShares
+        _asUspdToken(uspdTokenAddress).releaseShares(user1, sharesBridgedIn, MAINNET_CHAIN_ID, sharesBridgedIn, FACTOR_PRECISION);
+        assertEq(bridgeEscrow.totalBridgedInShares(), sharesBridgedIn);
+
+        uint256 sharesToBridgeOut = 100 * FACTOR_PRECISION;
+        uint256 uspdAmount = sharesToBridgeOut;
         uint256 targetChainIdL1 = MAINNET_CHAIN_ID;
 
-        // On L2, BridgeEscrow receives shares from USPDToken (which got them from TokenAdapter)
-        // and then BridgeEscrow burns them.
-        cUSPD.mint(address(bridgeEscrow), sharesToBridge); // Ensure BridgeEscrow has shares to burn
-        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), sharesToBridge, "Pre-burn balance incorrect");
+        // On L2, escrowing shares for bridging OUT means BridgeEscrow will burn them.
+        // The shares are transferred to BridgeEscrow before `escrowShares` is called.
+        cUSPD.mint(address(bridgeEscrow), sharesToBridgeOut);
+        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), sharesToBridgeOut, "Pre-burn balance incorrect");
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetChainIdL1, sharesToBridge, uspdAmount, FACTOR_PRECISION);
+        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetChainIdL1, sharesToBridgeOut, uspdAmount, FACTOR_PRECISION);
 
-        // Expect cUSPD.burn to be called
-        // Real cUSPDToken's burn burns from msg.sender (BridgeEscrow)
         vm.expectCall(
             address(cUSPD),
-            abi.encodeWithSelector(cUSPDToken.burn.selector, sharesToBridge)
+            abi.encodeWithSelector(cUSPDToken.burn.selector, sharesToBridgeOut)
         );
 
-        _asUspdToken(uspdTokenAddress).escrowShares(sharesToBridge, targetChainIdL1, uspdAmount, FACTOR_PRECISION, tokenAdapter);
+        _asUspdToken(uspdTokenAddress).escrowShares(sharesToBridgeOut, targetChainIdL1, uspdAmount, FACTOR_PRECISION, tokenAdapter);
 
-        assertEq(bridgeEscrow.totalBridgedOutShares(), sharesToBridge, "L2 totalBridgedOutShares mismatch (net outflow)");
-        assertEq(bridgeEscrow.bridgedOutSharesPerChain(targetChainIdL1), sharesToBridge, "L2 bridgedOutSharesPerChain mismatch");
+        assertEq(bridgeEscrow.totalBridgedInShares(), sharesBridgedIn - sharesToBridgeOut, "L2 totalBridgedInShares mismatch");
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0, "Shares not burned from BridgeEscrow on L2");
     }
 
@@ -216,6 +219,16 @@ contract BridgeEscrowTest is Test {
     function test_Unit_EscrowShares_Revert_ZeroAmount() public {
         vm.expectRevert(BridgeEscrow.InvalidAmount.selector);
         _asUspdToken(uspdTokenAddress).escrowShares(0, L2_CHAIN_ID, 0, FACTOR_PRECISION, tokenAdapter);
+    }
+
+    function test_Unit_EscrowShares_L2_Revert_InsufficientBridgedInShares() public {
+        vm.chainId(L2_CHAIN_ID);
+        // No shares bridged in yet, so totalBridgedInShares is 0.
+        uint256 sharesToBridgeOut = 100 * FACTOR_PRECISION;
+        cUSPD.mint(address(bridgeEscrow), sharesToBridgeOut); // Still need shares to attempt burn
+
+        vm.expectRevert(BridgeEscrow.InsufficientBridgedInShares.selector);
+        _asUspdToken(uspdTokenAddress).escrowShares(sharesToBridgeOut, MAINNET_CHAIN_ID, sharesToBridgeOut, FACTOR_PRECISION, tokenAdapter);
     }
 
     // --- releaseShares Tests ---
@@ -253,22 +266,9 @@ contract BridgeEscrowTest is Test {
 
     function test_Unit_ReleaseShares_L2_Success_MintsShares() public {
         vm.chainId(L2_CHAIN_ID);
-        uint256 sharesBridgedOutL2 = 200 * FACTOR_PRECISION; // Shares that were "sent" from this L2
-        uint256 uspdAmountBridgedOutL2 = sharesBridgedOutL2;
-        uint256 sourceChainIdL1 = MAINNET_CHAIN_ID; // Coming from L1
-
-        // Simulate shares having been bridged out from this L2.
-        // For escrowShares on L2 to succeed (as it burns shares from itself),
-        // BridgeEscrow must first hold these shares.
-        cUSPD.mint(address(bridgeEscrow), sharesBridgedOutL2); // Mint shares to BridgeEscrow
-        
-        vm.prank(uspdTokenAddress);
-        bridgeEscrow.escrowShares(sharesBridgedOutL2, sourceChainIdL1, uspdAmountBridgedOutL2, FACTOR_PRECISION, tokenAdapter);
-        // Now, totalBridgedOutShares and bridgedOutSharesPerChain[MAINNET_CHAIN_ID] are sharesBridgedOutL2,
-        // and the sharesBridgedOutL2 amount has been burned from BridgeEscrow's balance.
-
         uint256 sharesToReleaseOnL2 = 150 * FACTOR_PRECISION;
         uint256 uspdAmountToRelease = sharesToReleaseOnL2;
+        uint256 sourceChainIdL1 = MAINNET_CHAIN_ID; // Coming from L1
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
         emit IBridgeEscrow.SharesUnlockedFromBridge(user1, sourceChainIdL1, sharesToReleaseOnL2, uspdAmountToRelease, FACTOR_PRECISION);
@@ -280,10 +280,10 @@ contract BridgeEscrowTest is Test {
         );
 
         uint256 user1BalanceBefore = cUSPD.balanceOf(user1);
+        uint256 bridgedInBefore = bridgeEscrow.totalBridgedInShares();
         _asUspdToken(uspdTokenAddress).releaseShares(user1, sharesToReleaseOnL2, sourceChainIdL1, uspdAmountToRelease, FACTOR_PRECISION);
 
-        assertEq(bridgeEscrow.totalBridgedOutShares(), sharesBridgedOutL2 - sharesToReleaseOnL2, "L2 totalBridgedOutShares after release mismatch");
-        assertEq(bridgeEscrow.bridgedOutSharesPerChain(sourceChainIdL1), sharesBridgedOutL2 - sharesToReleaseOnL2, "L2 bridgedOutSharesPerChain after release mismatch");
+        assertEq(bridgeEscrow.totalBridgedInShares(), bridgedInBefore + sharesToReleaseOnL2, "L2 totalBridgedInShares after release mismatch");
         assertEq(cUSPD.balanceOf(user1), user1BalanceBefore + sharesToReleaseOnL2, "User1 did not receive minted shares on L2");
     }
 
@@ -331,6 +331,64 @@ contract BridgeEscrowTest is Test {
         // If per-chain check passed (e.g. per-chain = 150, total = 100), then total check would fail.
         // This state (per-chain > total) should not be reachable.
 
+    }
+
+    // --- recoverExcessShares Tests ---
+    function test_Unit_RecoverExcessShares_L1_Success() public {
+        vm.chainId(MAINNET_CHAIN_ID);
+        uint256 lockedShares = 100 * FACTOR_PRECISION;
+        cUSPD.mint(address(bridgeEscrow), lockedShares); // Simulate transfer for locking
+        _asUspdToken(uspdTokenAddress).escrowShares(lockedShares, L2_CHAIN_ID, lockedShares, FACTOR_PRECISION, tokenAdapter);
+        
+        uint256 excessShares = 50 * FACTOR_PRECISION;
+        cUSPD.mint(address(bridgeEscrow), excessShares); // Accidentally sent shares
+
+        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares + excessShares, "BridgeEscrow should have locked + excess shares");
+
+        uint256 recipientBefore = cUSPD.balanceOf(user2);
+        _asUspdToken(uspdTokenAddress).recoverExcessShares(user2);
+
+        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares, "BridgeEscrow should have only locked shares after recovery");
+        assertEq(cUSPD.balanceOf(user2), recipientBefore + excessShares, "Recipient did not receive excess shares");
+    }
+
+    function test_Unit_RecoverExcessShares_L2_Success() public {
+        vm.chainId(L2_CHAIN_ID);
+        uint256 bridgedInShares = 100 * FACTOR_PRECISION;
+        _asUspdToken(uspdTokenAddress).releaseShares(user1, bridgedInShares, MAINNET_CHAIN_ID, bridgedInShares, FACTOR_PRECISION);
+        
+        uint256 excessShares = 50 * FACTOR_PRECISION;
+        cUSPD.mint(address(bridgeEscrow), excessShares); // Accidentally sent shares
+
+        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), excessShares, "BridgeEscrow should have excess shares on L2");
+
+        uint256 recipientBefore = cUSPD.balanceOf(user2);
+        _asUspdToken(uspdTokenAddress).recoverExcessShares(user2);
+
+        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0, "BridgeEscrow should have no excess shares after L2 recovery");
+        assertEq(cUSPD.balanceOf(user2), recipientBefore + excessShares, "Recipient did not receive excess shares on L2");
+    }
+
+    function test_Unit_RecoverExcessShares_NoExcess() public {
+        vm.chainId(MAINNET_CHAIN_ID);
+        uint256 lockedShares = 100 * FACTOR_PRECISION;
+        // The shares for locking are transferred by USPDToken, so BridgeEscrow's balance should equal totalBridgedOutShares.
+        // For this test, we mint them directly to simulate the state after a lock.
+        cUSPD.mint(address(bridgeEscrow), lockedShares);
+        _asUspdToken(uspdTokenAddress).escrowShares(lockedShares, L2_CHAIN_ID, lockedShares, FACTOR_PRECISION, tokenAdapter);
+        
+        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares);
+        
+        uint256 recipientBefore = cUSPD.balanceOf(user2);
+        _asUspdToken(uspdTokenAddress).recoverExcessShares(user2);
+        
+        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares, "Balance should be unchanged");
+        assertEq(cUSPD.balanceOf(user2), recipientBefore, "Recipient balance should be unchanged");
+    }
+
+    function test_Unit_RecoverExcessShares_Revert_NotUspdToken() public {
+        vm.expectRevert(BridgeEscrow.CallerNotUspdToken.selector);
+        bridgeEscrow.recoverExcessShares(user1);
     }
 
     // --- Receive ETH Test ---
@@ -400,73 +458,54 @@ contract BridgeEscrowTest is Test {
 
      function test_Integration_LockViaUSPDToken_L2_BurnsSharesInEscrow() public {
         vm.chainId(L2_CHAIN_ID); // Operate on L2
-        uint256 uspdToLock = 100 * FACTOR_PRECISION;
-        // uint256 expectedShares = uspdToLock; // Will be recalculated
         uint256 targetL1Chain = MAINNET_CHAIN_ID;
 
-        // Set a specific L2 yield factor different from the default 1e18
-        // Grant deployer YIELD_FACTOR_UPDATER_ROLE on the rateContract as it was deployed as L1 type
-        rateContract.grantRole(rateContract.YIELD_FACTOR_UPDATER_ROLE(), deployer);
-        uint256 l2YieldFactor = (105 * FACTOR_PRECISION) / 100; // 1.05 * FACTOR_PRECISION (e.g., 5% yield)
-        vm.prank(deployer); // Deployer (admin) calls updateL2YieldFactor
-        rateContract.updateL2YieldFactor(l2YieldFactor);
-        assertEq(rateContract.getYieldFactor(), l2YieldFactor, "L2 yield factor not updated");
+        // Setup: Bridge shares TO L2 first to populate totalBridgedInShares
+        uint256 initialUspdIn = 200 * FACTOR_PRECISION;
+        vm.prank(tokenAdapter);
+        uspdToken.unlockFromBridging(user1, initialUspdIn, FACTOR_PRECISION, targetL1Chain);
+        uint256 initialSharesIn = initialUspdIn; // Assume YF=1
+        assertEq(bridgeEscrow.totalBridgedInShares(), initialSharesIn);
+        uint256 user1_L2_balance_after_unlock = cUSPD.balanceOf(user1);
 
-        uint256 expectedShares = (uspdToLock * FACTOR_PRECISION) / l2YieldFactor;
+        // Now, lock shares to bridge FROM L2 back to L1
+        uint256 uspdToLock = 100 * FACTOR_PRECISION;
+        uint256 expectedSharesToBurn = uspdToLock; // YF=1
 
+        // For this integration test, tokenAdapter needs the shares to lock.
+        // We'll transfer them from user1 who just received them.
+        vm.prank(user1);
+        cUSPD.transfer(tokenAdapter, expectedSharesToBurn);
 
-        // On L2, USPDToken.lockForBridging will transfer shares from tokenAdapter to BridgeEscrow.
-        // Then BridgeEscrow.escrowShares will burn these shares from itself.
-        // Initial cUSPD for tokenAdapter is handled in setUp.
-
-        assertEq(cUSPD.balanceOf(tokenAdapter), 1_000_000 * FACTOR_PRECISION);
+        assertEq(cUSPD.balanceOf(tokenAdapter), (1_000_000 * FACTOR_PRECISION) + expectedSharesToBurn);
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0);
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
-        // The last parameter of SharesLockedForBridging is the yield factor of the source chain (L2 in this case)
-        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetL1Chain, expectedShares, uspdToLock, l2YieldFactor);
+        emit IBridgeEscrow.SharesLockedForBridging(tokenAdapter, targetL1Chain, expectedSharesToBurn, uspdToLock, FACTOR_PRECISION);
 
-        // Expect burn call from BridgeEscrow on shares it now holds
         vm.expectCall(
             address(cUSPD),
-            abi.encodeWithSelector(cUSPDToken.burn.selector, expectedShares),
+            abi.encodeWithSelector(cUSPDToken.burn.selector, expectedSharesToBurn),
             1 // times
         );
 
         vm.prank(tokenAdapter);
         uspdToken.lockForBridging(uspdToLock, targetL1Chain);
 
-        assertEq(bridgeEscrow.totalBridgedOutShares(), expectedShares, "L2 totalBridgedOutShares (net outflow) incorrect");
-        assertEq(bridgeEscrow.bridgedOutSharesPerChain(targetL1Chain), expectedShares, "L2 bridgedOutSharesPerChain (net outflow) incorrect");
+        assertEq(bridgeEscrow.totalBridgedInShares(), initialSharesIn - expectedSharesToBurn, "L2 totalBridgedInShares incorrect after lock");
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0, "BridgeEscrow should have burned its shares on L2");
-        assertEq(cUSPD.balanceOf(tokenAdapter), (1_000_000 * FACTOR_PRECISION) - expectedShares, "TokenAdapter shares not reduced on L2 lock");
-        // Total supply of cUSPD on L2 should decrease
+        assertEq(cUSPD.balanceOf(tokenAdapter), 1_000_000 * FACTOR_PRECISION, "TokenAdapter shares not reduced on L2 lock");
     }
 
     function test_Integration_UnlockViaUSPDToken_L2_MintsSharesToRecipient() public {
         vm.chainId(L2_CHAIN_ID);
 
-        // Grant deployer YIELD_FACTOR_UPDATER_ROLE on the rateContract and set initial L2 yield factor
-        rateContract.grantRole(rateContract.YIELD_FACTOR_UPDATER_ROLE(), deployer);
-        vm.prank(deployer);
-        rateContract.updateL2YieldFactor(FACTOR_PRECISION); // Set to 1e18 for this test's setup
-        assertEq(rateContract.getYieldFactor(), FACTOR_PRECISION, "L2 yield factor setup failed for unlock test");
-
         uint256 uspdIntendedFromL1 = 100 * FACTOR_PRECISION;
         uint256 sharesToMintOnL2 = uspdIntendedFromL1; // Assuming yield factor 1 from L1 message
         uint256 sourceL1Chain = MAINNET_CHAIN_ID;
-
-        // Simulate that shares were previously "sent" from this L2 to L1,
-        // so BridgeEscrow's accounting reflects this.
-        // This means totalBridgedOutShares and bridgedOutSharesPerChain[L1_CHAIN_ID] should be positive.
-        // We can achieve this by calling lockForBridging first.
-        uint256 initialOutflowShares = 200 * FACTOR_PRECISION;
-        vm.prank(tokenAdapter);
-        uspdToken.lockForBridging(initialOutflowShares, sourceL1Chain);
-        // Now bridgeEscrow.totalBridgedOutShares = initialOutflowShares
-        // bridgeEscrow.bridgedOutSharesPerChain(sourceL1Chain) = initialOutflowShares
-
-        assertEq(cUSPD.balanceOf(user1), 1_000_000 * FACTOR_PRECISION, "User1 pre-balance");
+        
+        uint256 bridgedInBefore = bridgeEscrow.totalBridgedInShares();
+        uint256 user1BalanceBefore = cUSPD.balanceOf(user1);
 
         vm.expectEmit(true, true, true, true, address(bridgeEscrow));
         emit IBridgeEscrow.SharesUnlockedFromBridge(user1, sourceL1Chain, sharesToMintOnL2, uspdIntendedFromL1, FACTOR_PRECISION);
@@ -481,8 +520,7 @@ contract BridgeEscrowTest is Test {
         vm.prank(tokenAdapter); // Relayer/TokenAdapter calls unlockFromBridging
         uspdToken.unlockFromBridging(user1, uspdIntendedFromL1, FACTOR_PRECISION, sourceL1Chain);
 
-        assertEq(bridgeEscrow.totalBridgedOutShares(), initialOutflowShares - sharesToMintOnL2, "L2 totalBridgedOutShares (net outflow) incorrect after unlock");
-        assertEq(bridgeEscrow.bridgedOutSharesPerChain(sourceL1Chain), initialOutflowShares - sharesToMintOnL2, "L2 bridgedOutSharesPerChain (net outflow) incorrect after unlock");
-        assertEq(cUSPD.balanceOf(user1), (1_000_000 * FACTOR_PRECISION) + sharesToMintOnL2, "User1 did not receive minted shares on L2");
+        assertEq(bridgeEscrow.totalBridgedInShares(), bridgedInBefore + sharesToMintOnL2, "L2 totalBridgedInShares incorrect after unlock");
+        assertEq(cUSPD.balanceOf(user1), user1BalanceBefore + sharesToMintOnL2, "User1 did not receive minted shares on L2");
     }
 }
