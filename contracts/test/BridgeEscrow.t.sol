@@ -357,7 +357,7 @@ contract BridgeEscrowTest is Test {
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares + excessShares, "BridgeEscrow should have locked + excess shares");
 
         uint256 recipientBefore = cUSPD.balanceOf(user2);
-        _asUspdToken(uspdTokenAddress).recoverExcessShares(user2);
+        bridgeEscrow.recoverExcessShares(user2); // Can be called by anyone
 
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares, "BridgeEscrow should have only locked shares after recovery");
         assertEq(cUSPD.balanceOf(user2), recipientBefore + excessShares, "Recipient did not receive excess shares");
@@ -374,7 +374,7 @@ contract BridgeEscrowTest is Test {
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), excessShares, "BridgeEscrow should have excess shares on L2");
 
         uint256 recipientBefore = cUSPD.balanceOf(user2);
-        _asUspdToken(uspdTokenAddress).recoverExcessShares(user2);
+        bridgeEscrow.recoverExcessShares(user2); // Can be called by anyone
 
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0, "BridgeEscrow should have no excess shares after L2 recovery");
         assertEq(cUSPD.balanceOf(user2), recipientBefore + excessShares, "Recipient did not receive excess shares on L2");
@@ -391,15 +391,27 @@ contract BridgeEscrowTest is Test {
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares);
         
         uint256 recipientBefore = cUSPD.balanceOf(user2);
-        _asUspdToken(uspdTokenAddress).recoverExcessShares(user2);
+        bridgeEscrow.recoverExcessShares(user2); // Can be called by anyone
         
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares, "Balance should be unchanged");
         assertEq(cUSPD.balanceOf(user2), recipientBefore, "Recipient balance should be unchanged");
     }
 
-    function test_Unit_RecoverExcessShares_Revert_NotUspdToken() public {
-        vm.expectRevert(BridgeEscrow.CallerNotUspdToken.selector);
-        bridgeEscrow.recoverExcessShares(user1);
+    function test_Unit_RecoverExcessShares_CanBeCalledByAnyone() public {
+        // This test ensures that any address can call recoverExcessShares.
+        // It's a positive test case now, not a revert case.
+        vm.chainId(MAINNET_CHAIN_ID);
+        uint256 excessShares = 50 * FACTOR_PRECISION;
+        cUSPD.mintInternal(address(bridgeEscrow), excessShares); // Accidentally sent shares
+
+        uint256 recipientBefore = cUSPD.balanceOf(user2);
+
+        // Call from user1, a random address
+        vm.prank(user1);
+        bridgeEscrow.recoverExcessShares(user2);
+
+        assertEq(cUSPD.balanceOf(address(bridgeEscrow)), 0, "BridgeEscrow should have no shares after recovery");
+        assertEq(cUSPD.balanceOf(user2), recipientBefore + excessShares, "Recipient did not receive excess shares");
     }
 
     // --- Receive ETH Test ---

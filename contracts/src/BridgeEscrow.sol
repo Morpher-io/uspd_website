@@ -167,15 +167,15 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
 
     /**
      * @notice Recovers cUSPD tokens accidentally sent to this contract.
-     * @dev Can only be called by the trusted USPDToken contract.
+     * @dev This function is callable by anyone. This introduces a risk of front-running:
+     *      if someone accidentally sends tokens, another user could call this function
+     *      to claim the excess tokens before the original sender. The recipient of the
+     *      recovered tokens is specified by the `to` parameter.
      *      On L1, excess is calculated as balance minus shares locked for bridging.
      *      On L2, excess is calculated as balance minus shares minted by the bridge.
      * @param to The address to send the recovered tokens to.
      */
     function recoverExcessShares(address to) external nonReentrant {
-        if (msg.sender != uspdTokenAddress) {
-            revert CallerNotUspdToken();
-        }
         if (to == address(0)) {
             revert ZeroAddress();
         }
