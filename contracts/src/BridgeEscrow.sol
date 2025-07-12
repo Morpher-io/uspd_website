@@ -171,8 +171,8 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
      *      if someone accidentally sends tokens, another user could call this function
      *      to claim the excess tokens before the original sender. The recipient of the
      *      recovered tokens is specified by the `to` parameter.
-     *      On L1, excess is calculated as balance minus shares locked for bridging.
-     *      On L2, excess is calculated as balance minus shares minted by the bridge.
+     *      On L1, excess is calculated as balance minus shares locked for bridging (`totalBridgedOutShares`).
+     *      On L2, the contract should not hold any shares, so its entire cUSPD balance is considered excess.
      * @param to The address to send the recovered tokens to.
      */
     function recoverExcessShares(address to) external nonReentrant {
@@ -184,7 +184,8 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
         if (block.chainid == MAINNET_CHAIN_ID) {
             trackedShares = totalBridgedOutShares;
         } else {
-            trackedShares = totalBridgedInShares;
+            // On L2, BridgeEscrow should never hold shares. Any balance is considered excess.
+            trackedShares = 0;
         }
 
         uint256 balance = cUSPDToken.balanceOf(address(this));
