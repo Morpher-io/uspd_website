@@ -22,6 +22,17 @@ import "../lib/uniswap-v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../lib/uniswap-v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
 import "../lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
+contract TestableCUSPD is cUSPDToken {
+    constructor(
+        string memory name, string memory symbol, address _oracle, address _stabilizer,
+        address _rateContract, address _admin
+    ) cUSPDToken(name, symbol, _oracle, _stabilizer, _rateContract, _admin) {}
+
+    // Expose internal mint function for test setup
+    function mintInternal(address account, uint256 amount) public {
+        _mint(account, amount);
+    }
+}
 
 contract BridgeEscrowTest is Test {
     // --- Constants ---
@@ -30,7 +41,7 @@ contract BridgeEscrowTest is Test {
     uint256 constant FACTOR_PRECISION = 1e18;
 
     // --- State Variables ---
-    cUSPDToken internal cUSPD; // Real cUSPDToken
+    TestableCUSPD internal cUSPD; // Real cUSPDToken
     PoolSharesConversionRate internal rateContract; // Real PoolSharesConversionRate
     USPDToken internal uspdToken; // Real USPDToken
     BridgeEscrow internal bridgeEscrow;
@@ -112,7 +123,7 @@ contract BridgeEscrowTest is Test {
 
 
         // 5. Deploy cUSPDToken (Real)
-        cUSPD = new cUSPDToken("Core USPD", "cUSPD", address(priceOracle), address(stabilizerNFT), address(rateContract), deployer);
+        cUSPD = new TestableCUSPD("Core USPD", "cUSPD", address(priceOracle), address(stabilizerNFT), address(rateContract), deployer);
 
         // 6. Deploy USPDToken (Real)
         uspdToken = new USPDToken("USPD Token", "USPD", address(cUSPD), address(rateContract), deployer);
@@ -337,11 +348,11 @@ contract BridgeEscrowTest is Test {
     function test_Unit_RecoverExcessShares_L1_Success() public {
         vm.chainId(MAINNET_CHAIN_ID);
         uint256 lockedShares = 100 * FACTOR_PRECISION;
-        cUSPD.mint(address(bridgeEscrow), lockedShares); // Simulate transfer for locking
+        cUSPD.mintInternal(address(bridgeEscrow), lockedShares); // Simulate transfer for locking
         _asUspdToken(uspdTokenAddress).escrowShares(lockedShares, L2_CHAIN_ID, lockedShares, FACTOR_PRECISION, tokenAdapter);
         
         uint256 excessShares = 50 * FACTOR_PRECISION;
-        cUSPD.mint(address(bridgeEscrow), excessShares); // Accidentally sent shares
+        cUSPD.mintInternal(address(bridgeEscrow), excessShares); // Accidentally sent shares
 
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares + excessShares, "BridgeEscrow should have locked + excess shares");
 
@@ -374,7 +385,7 @@ contract BridgeEscrowTest is Test {
         uint256 lockedShares = 100 * FACTOR_PRECISION;
         // The shares for locking are transferred by USPDToken, so BridgeEscrow's balance should equal totalBridgedOutShares.
         // For this test, we mint them directly to simulate the state after a lock.
-        cUSPD.mint(address(bridgeEscrow), lockedShares);
+        cUSPD.mintInternal(address(bridgeEscrow), lockedShares);
         _asUspdToken(uspdTokenAddress).escrowShares(lockedShares, L2_CHAIN_ID, lockedShares, FACTOR_PRECISION, tokenAdapter);
         
         assertEq(cUSPD.balanceOf(address(bridgeEscrow)), lockedShares);
@@ -466,7 +477,7 @@ contract BridgeEscrowTest is Test {
         uspdToken.unlockFromBridging(user1, initialUspdIn, FACTOR_PRECISION, targetL1Chain);
         uint256 initialSharesIn = initialUspdIn; // Assume YF=1
         assertEq(bridgeEscrow.totalBridgedInShares(), initialSharesIn);
-        uint256 user1_L2_balance_after_unlock = cUSPD.balanceOf(user1);
+        // uint256 user1_L2_balance_after_unlock = cUSPD.balanceOf(user1);
 
         // Now, lock shares to bridge FROM L2 back to L1
         uint256 uspdToLock = 100 * FACTOR_PRECISION;
