@@ -19,6 +19,7 @@ pragma solidity 0.8.29;
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
+import "./interfaces/IRewardsYieldBooster.sol";
 
 // Minimal interface for stETH to get the pooled ETH value for shares.
 interface IStETH {
@@ -47,17 +48,23 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
      */
     uint256 public immutable initialEthEquivalentPerShare;
 
-
     /**
-     * @dev Stores the current yield factor.
-     *      On L1, this is implicitly defined by stETH's share value changes.
-     *      On L2, this is explicitly set by an updater role.
+     * @dev On L2, this stores the yield factor set by an updater role.
+     *      On L1, this is not used for calculation.
      */
     uint256 internal _yieldFactor;
+
+    /**
+     * @dev The address of the RewardsYieldBooster contract for querying surplus yield.
+     */
+    IRewardsYieldBooster public rewardsYieldBooster;
 
     // --- Roles ---
     bytes32 public constant YIELD_FACTOR_UPDATER_ROLE = keccak256("YIELD_FACTOR_UPDATER_ROLE");
 
+    // --- Events ---
+    event YieldFactorUpdated(uint256 oldYieldFactor, uint256 newYieldFactor);
+    event RewardsYieldBoosterUpdated(address indexed oldBooster, address indexed newBooster);
 
     /**
      * @dev The precision factor used for yield calculations (e.g., 1e18).
@@ -113,17 +120,25 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
      * @return yieldFactor The current yield factor, scaled by FACTOR_PRECISION.
      */
     function getYieldFactor() external view override returns (uint256 yieldFactor) {
+        uint256 baseYield;
         if (block.chainid == MAINNET_CHAIN_ID || block.chainid == MAINNET_TEST_CHAIN_ID) {
             uint256 initialRate = initialEthEquivalentPerShare;
             // This should be impossible on L1 due to constructor check, but as a safeguard:
             if (initialRate == 0) revert InitialRateZero();
-            
+
             uint256 currentRate = IStETH(stETH).getPooledEthByShares(FACTOR_PRECISION);
-            return (currentRate * FACTOR_PRECISION) / initialRate;
+            baseYield = (currentRate * FACTOR_PRECISION) / initialRate;
         } else {
-            // On L2, return the stored _yieldFactor
-            return _yieldFactor;
+            // On L2, return the stored _yieldFactor as the base
+            baseYield = _yieldFactor;
         }
+
+        // Add surplus yield if the booster contract is set
+        if (address(rewardsYieldBooster) != address(0)) {
+            return baseYield + rewardsYieldBooster.getSurplusYield();
+        }
+
+        return baseYield;
     }
 
     /**
@@ -144,5 +159,15 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
         uint256 oldYieldFactor = _yieldFactor;
         _yieldFactor = newYieldFactor;
         emit YieldFactorUpdated(oldYieldFactor, newYieldFactor);
+    }
+
+    /**
+     * @notice Sets the address of the RewardsYieldBooster contract.
+     * @param _boosterAddress The address of the new booster contract.
+     * @dev Callable only by admin.
+     */
+    function setRewardsYieldBooster(address _boosterAddress) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit RewardsYieldBoosterUpdated(address(rewardsYieldBooster), _boosterAddress);
+        rewardsYieldBooster = IRewardsYieldBooster(_boosterAddress);
     }
 }
