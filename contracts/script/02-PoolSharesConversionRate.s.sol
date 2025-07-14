@@ -25,22 +25,20 @@ contract DeployPoolSharesConversionRateScript is DeployScript {
         // Get the bytecode of PoolSharesConversionRate with constructor arguments
         bytes memory bytecode = abi.encodePacked(
             type(PoolSharesConversionRate).creationCode,
-            abi.encode(stETHAddress, lidoAddress, deployer) // stETH, Lido, admin (deployer)
+            abi.encode(stETHAddress, deployer) // stETH, Lido, admin (deployer)
         );
 
         // Deploy using CREATE2, sending initial ETH value to the constructor
         // initialRateContractDeposit is set by DeployScript.setUp() or overridden by testnet script
-        uint256 depositValue = initialRateContractDeposit; 
+        // uint256 depositValue = initialRateContractDeposit; 
         
-        rateContractAddress = createX.deployCreate2{value: depositValue}(
+        rateContractAddress = createX.deployCreate2(
             RATE_CONTRACT_SALT,
             bytecode
         );
 
         console2.log("PoolSharesConversionRate deployed at:", rateContractAddress);
-        if (depositValue > 0) {
-            console2.log("Initial ETH deposit to PoolSharesConversionRate:", depositValue);
-        }
+       
     }
 
     function run() public {

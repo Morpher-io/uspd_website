@@ -133,7 +133,7 @@ contract DeployScript is Script {
 
     function generateSalt(string memory identifier) internal pure returns (bytes32) {
         // Salt is derived from a fixed prefix (USPD) and the version and the identifier string.
-        return keccak256(abi.encodePacked(bytes4(0x55535044), uint(1), identifier));
+        return keccak256(abi.encodePacked(bytes4(0x55535044), uint(2), identifier));
     }
 
     function setUp() virtual public {

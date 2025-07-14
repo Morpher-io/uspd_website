@@ -13,8 +13,7 @@ pragma solidity 0.8.29;
  *                                            
  *    https://uspd.io
  *                                               
- *    This contract calculates the yield factor of stETH by tracking the amount
- *    of ETH that corresponds to a fixed number of stETH shares over time.
+ *    This contract calculates the yield factor
  */
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -35,6 +34,7 @@ interface IStETH {
 contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
     // --- State Variables ---
     uint256 public constant MAINNET_CHAIN_ID = 1;
+    uint256 public constant MAINNET_TEST_CHAIN_ID = 11155111; //the one with the liquidity anyways, not an L2
 
     /**
      * @dev The stETH token contract being tracked (only relevant on L1).
@@ -84,7 +84,7 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
     constructor(address _stETHAddress, address _admin) {
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
-        if (block.chainid == MAINNET_CHAIN_ID) {
+        if (block.chainid == MAINNET_CHAIN_ID || block.chainid == MAINNET_TEST_CHAIN_ID) {
             if (_stETHAddress == address(0)) revert StEthAddressZero();
 
             stETH = _stETHAddress;
@@ -113,7 +113,7 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
      * @return yieldFactor The current yield factor, scaled by FACTOR_PRECISION.
      */
     function getYieldFactor() external view override returns (uint256 yieldFactor) {
-        if (block.chainid == MAINNET_CHAIN_ID) {
+        if (block.chainid == MAINNET_CHAIN_ID || block.chainid == MAINNET_TEST_CHAIN_ID) {
             uint256 initialRate = initialEthEquivalentPerShare;
             // This should be impossible on L1 due to constructor check, but as a safeguard:
             if (initialRate == 0) revert InitialRateZero();
@@ -134,7 +134,7 @@ contract PoolSharesConversionRate is IPoolSharesConversionRate, AccessControl {
      * @param newYieldFactor The new yield factor to set.
      */
     function updateL2YieldFactor(uint256 newYieldFactor) external onlyRole(YIELD_FACTOR_UPDATER_ROLE) {
-        if (block.chainid == MAINNET_CHAIN_ID) {
+        if (block.chainid == MAINNET_CHAIN_ID || block.chainid == MAINNET_TEST_CHAIN_ID) {
             revert NotL2Chain(); // This function is for L2s only
         }
         // allowing slashing on mainchain RES-08

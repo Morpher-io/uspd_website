@@ -162,7 +162,7 @@ contract DeploySystemCoreScript is DeployScript {
     }
 
     function initializeStabilizerNFTProxy() internal {
-        if (stabilizerProxyAddress != address(0) && StabilizerNFT(payable(stabilizerProxyAddress)).owner() != address(0)) {
+        if (stabilizerProxyAddress != address(0) && address(StabilizerNFT(payable(stabilizerProxyAddress)).insuranceEscrow()) != address(0)) {
             console2.log("StabilizerNFT proxy already initialized.");
             return;
         }
