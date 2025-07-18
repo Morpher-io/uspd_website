@@ -212,21 +212,17 @@ contract RewardsYieldBoosterTest is Test {
         rewardsYieldBooster.boostYield{value: 1 ether}(priceQuery);
     }
 
-    function testIntegration_BoostYieldWithMultipleHoldersAndRebase() public {
-        // 1. Setup: Create 10 users and mint USPD for them
-        uint256 STABILIZER_FUNDING = 20 ether;
-        _setupStabilizer(makeAddr("stabilizerOwner"), STABILIZER_FUNDING);
+    function _mintForMultipleUsers(
+        uint256 userCount
+    ) internal returns (address[] memory users, uint256[] memory userCuspdBalances) {
+        users = new address[](userCount);
+        userCuspdBalances = new uint256[](userCount);
+        uint256[] memory mintAmounts = new uint256[](userCount);
 
-        address[10] memory users;
-        uint256[] memory mintAmounts = new uint256[](10);
-        uint256[] memory userCuspdBalances = new uint256[](10);
-        uint256 totalMintedEth = 0;
-
-        for (uint i = 0; i < 10; i++) {
+        for (uint i = 0; i < userCount; i++) {
             users[i] = makeAddr(string(abi.encodePacked("user", toString(i))));
-            mintAmounts[i] = (i + 1) * 0.1 ether; // e.g., 0.1, 0.2, ..., 1.0 ETH
-            totalMintedEth += mintAmounts[i];
-            
+            mintAmounts[i] = (i + 1) * 0.1 ether;
+
             vm.deal(users[i], mintAmounts[i] + 0.1 ether);
             IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
 
@@ -235,10 +231,41 @@ contract RewardsYieldBoosterTest is Test {
             userCuspdBalances[i] = cuspdToken.balanceOf(users[i]);
             assertTrue(userCuspdBalances[i] > 0, "Minting failed for user");
         }
+    }
+
+    function _verifyBalances(
+        address[] memory users,
+        uint256[] memory userCuspdBalances,
+        string memory context
+    ) internal view {
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        uint256 calculatedTotalSupply = 0;
+
+        for (uint i = 0; i < users.length; i++) {
+            uint256 expectedBalance = (userCuspdBalances[i] * currentYieldFactor) / uspdToken.FACTOR_PRECISION();
+            assertEq(uspdToken.balanceOf(users[i]), expectedBalance, string.concat("User balance mismatch ", context));
+            calculatedTotalSupply += expectedBalance;
+        }
+
+        assertApproxEqAbs(
+            uspdToken.totalSupply(),
+            calculatedTotalSupply,
+            10,
+            string.concat("Sum of balances does not match total supply ", context)
+        );
+    }
+
+    function testIntegration_BoostYieldWithMultipleHoldersAndRebase() public {
+        // 1. Setup: Create 10 users and mint USPD for them
+        uint256 STABILIZER_FUNDING = 20 ether;
+        _setupStabilizer(makeAddr("stabilizerOwner"), STABILIZER_FUNDING);
+
+        (address[] memory users, uint256[] memory userCuspdBalances) = _mintForMultipleUsers(10);
 
         uint256 initialTotalSupplyUspd = uspdToken.totalSupply();
         uint256 initialTotalSupplyCuspd = cuspdToken.totalSupply();
         console.log("Initial total USPD supply:", initialTotalSupplyUspd);
+        _verifyBalances(users, userCuspdBalances, "after mint");
 
         // 2. Simulate stETH Rebase
         uint256 initialYieldFactor = rateContract.getYieldFactor();
@@ -250,24 +277,27 @@ contract RewardsYieldBoosterTest is Test {
         // 3. Check balances after rebase
         uint256 rebasedTotalSupplyUspd = uspdToken.totalSupply();
         assertTrue(rebasedTotalSupplyUspd > initialTotalSupplyUspd, "Total supply did not increase after rebase");
-        
-        for (uint i = 0; i < 10; i++) {
-            uint256 expectedBalance = (userCuspdBalances[i] * rebasedYieldFactor) / uspdToken.FACTOR_PRECISION();
-            assertEq(uspdToken.balanceOf(users[i]), expectedBalance, "User balance mismatch after rebase");
-        }
+        _verifyBalances(users, userCuspdBalances, "after rebase");
         console.log("Total USPD supply after rebase:", rebasedTotalSupplyUspd);
 
         // 4. Perform Yield Boost
         uint256 boostAmount = 1 ether;
         vm.deal(address(this), boostAmount);
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
-        
-        uint256 expectedSurplus = (boostAmount * priceQuery.price / 1e18) * uspdToken.FACTOR_PRECISION() / initialTotalSupplyCuspd;
+
+        uint256 expectedSurplus = (boostAmount * priceQuery.price / 1e18) *
+            uspdToken.FACTOR_PRECISION() /
+            initialTotalSupplyCuspd;
         vm.expectEmit(true, true, true, true, address(rewardsYieldBooster));
-        emit RewardsYieldBooster.YieldBoosted(address(this), boostAmount, (boostAmount * priceQuery.price) / 1e18, rewardsYieldBooster.surplusYieldFactor() + expectedSurplus );
+        emit RewardsYieldBooster.YieldBoosted(
+            address(this),
+            boostAmount,
+            (boostAmount * priceQuery.price) / 1e18,
+            rewardsYieldBooster.surplusYieldFactor() + expectedSurplus
+        );
 
         rewardsYieldBooster.boostYield{value: boostAmount}(priceQuery);
-        
+
         uint256 surplusYield = rewardsYieldBooster.getSurplusYield();
         assertTrue(surplusYield > 0, "Yield boost failed: surplus yield is zero");
         console.log("Surplus yield factor:", surplusYield);
@@ -275,20 +305,11 @@ contract RewardsYieldBoosterTest is Test {
         // 5. Check balances after boost
         uint256 finalYieldFactor = rateContract.getYieldFactor();
         assertEq(finalYieldFactor, rebasedYieldFactor + surplusYield, "Final yield factor is not sum of rebased and surplus");
-        
+
         uint256 boostedTotalSupplyUspd = uspdToken.totalSupply();
         assertTrue(boostedTotalSupplyUspd > rebasedTotalSupplyUspd, "Total supply did not increase after boost");
+        _verifyBalances(users, userCuspdBalances, "after boost");
         console.log("Total USPD supply after boost:", boostedTotalSupplyUspd);
-
-        uint256 calculatedTotalSupply = 0;
-        for (uint i = 0; i < 10; i++) {
-            uint256 expectedBalance = (userCuspdBalances[i] * finalYieldFactor) / uspdToken.FACTOR_PRECISION();
-            assertEq(uspdToken.balanceOf(users[i]), expectedBalance, "User balance mismatch after boost");
-            calculatedTotalSupply += expectedBalance;
-        }
-
-        // Check consistency: Sum of individual balances should be very close to totalSupply()
-        assertApproxEqAbs(boostedTotalSupplyUspd, calculatedTotalSupply, 10, "Sum of balances does not match total supply");
     }
 
     function toString(uint256 value) internal pure returns (string memory) {
