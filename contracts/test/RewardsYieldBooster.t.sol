@@ -269,7 +269,9 @@ contract RewardsYieldBoosterTest is Test {
 
         // 2. Simulate stETH Rebase
         uint256 initialYieldFactor = rateContract.getYieldFactor();
-        mockStETH.rebase(500); // Simulate a 5% yield increase (500 bps)
+        uint256 oldTotalSupply = mockStETH.totalSupply();
+        uint256 newTotalSupply = (oldTotalSupply * (10000 + 500)) / 10000; // 5% increase from 500 bps
+        mockStETH.rebase(newTotalSupply);
         uint256 rebasedYieldFactor = rateContract.getYieldFactor();
         assertTrue(rebasedYieldFactor > initialYieldFactor, "Rebase failed: yield factor did not increase");
         console.log("Yield Factor after rebase:", rebasedYieldFactor);
