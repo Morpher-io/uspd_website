@@ -34,4 +34,12 @@ interface IStabilizerNFT {
      * @dev Called by PositionEscrow contract.
      */
     function reportCollateralRemoval(uint256 stEthAmount) external;
+
+    // --- View Functions ---
+    /**
+     * @notice Returns the address of the PositionEscrow contract for a given NFT ID.
+     * @param tokenId The ID of the Stabilizer NFT.
+     * @return The address of the associated PositionEscrow.
+     */
+    function positionEscrows(uint256 tokenId) external view returns (address);
 }
