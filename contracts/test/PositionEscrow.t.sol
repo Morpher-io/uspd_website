@@ -40,6 +40,8 @@ contract PositionEscrowTest is
     // --- Contract Instance ---
     PositionEscrow internal positionEscrow;
 
+    mapping(uint256 => address) public positionEscrows;
+
     // --- Constants ---
     uint256 internal constant FACTOR_PRECISION = 1e18;
     uint256 internal constant INITIAL_RATE_DEPOSIT = 0.001 ether;

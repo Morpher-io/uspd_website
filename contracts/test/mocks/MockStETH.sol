@@ -33,7 +33,7 @@ contract MockStETH is ERC20, Ownable {
     function rebase(uint256 _newTotalSupply) external onlyOwner {
         uint256 oldTotalSupply = totalSupply();
         require(oldTotalSupply > 0, "MockStETH: Cannot rebase with zero total supply");
-        require(_newTotalSupply >= oldTotalSupply, "MockStETH: New total supply must be >= old total supply");
+        require(_newTotalSupply >= oldTotalSupply, "MockStETH: New total supply must be >= old total supply"); //it can be lower, which we should also explicitely test
 
         // Update the rate for getPooledEthByShares
         if (oldTotalSupply > 0) {
