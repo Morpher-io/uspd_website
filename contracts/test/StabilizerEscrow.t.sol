@@ -179,6 +179,33 @@ contract StabilizerEscrowTest is Test {
         escrow.deposit{value: 1 ether}();
     }
 
+    function test_Deposit_Revert_InsufficientEscrowAmount() public {
+        // --- Deploy a new escrow for this test to start with 0 balance ---
+        StabilizerEscrow escrowImpl = new StabilizerEscrow();
+        bytes memory initData = abi.encodeCall(
+            StabilizerEscrow.initialize,
+            (stabilizerNFT, 2, address(mockStETH), address(mockLido))
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(escrowImpl), initData);
+        StabilizerEscrow localEscrow = StabilizerEscrow(payable(address(proxy)));
+
+        // --- Test depositing less than the minimum ---
+        uint256 depositAmount = 0.05 ether;
+        vm.deal(stabilizerNFT, depositAmount);
+        vm.prank(stabilizerNFT);
+
+        uint256 minimumAmount = localEscrow.MINIMUM_ESCROW_AMOUNT();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StabilizerEscrow.InsufficientEscrowAmount.selector,
+                0, // currentBalance
+                depositAmount,
+                minimumAmount
+            )
+        );
+        localEscrow.deposit{value: depositAmount}();
+    }
+
     // --- Test approveAllocation() ---
 
     function test_ApproveAllocation_Success() public {

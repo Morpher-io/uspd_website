@@ -17,6 +17,7 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     // --- Errors ---
     error ZeroAddress();
     error ZeroAmount();
+    error InsufficientEscrowAmount(uint256 currentBalance, uint256 depositAmount, uint256 minimumAmount);
     // Removed InsufficientUnallocatedStETH
     // Removed InsufficientAllocatedStETH
     error InitialDepositFailed(); // Keep for constructor check if needed, though constructor doesn't deposit now
@@ -24,6 +25,7 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     error TransferFailed();
 
     // --- State Variables ---
+    uint256 public constant MINIMUM_ESCROW_AMOUNT = 0.1 ether;
     address public stabilizerNFTContract; // The controller/manager - Make immutable
     uint256 public tokenId;             // The ID of the NFT this escrow belongs to
     // stabilizerOwner removed - Owner is determined dynamically via StabilizerNFT
@@ -94,6 +96,11 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
      */
     function deposit() external payable onlyStabilizerNFT {
         if (msg.value == 0) revert ZeroAmount();
+
+        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
+        if (currentBalance + msg.value < MINIMUM_ESCROW_AMOUNT) {
+            revert InsufficientEscrowAmount(currentBalance, msg.value, MINIMUM_ESCROW_AMOUNT);
+        }
 
         // Stake additional ETH
         try ILido(lido).submit{value: msg.value}(address(0)) {}
