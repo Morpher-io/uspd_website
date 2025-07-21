@@ -190,9 +190,8 @@ contract StabilizerEscrowTest is Test {
         StabilizerEscrow localEscrow = StabilizerEscrow(payable(address(proxy)));
 
         // --- Test depositing less than the minimum ---
-        uint256 depositAmount = 0.05 ether;
+        uint256 depositAmount = 0.01 ether;
         vm.deal(stabilizerNFT, depositAmount);
-        vm.prank(stabilizerNFT);
 
         uint256 minimumAmount = localEscrow.MINIMUM_ESCROW_AMOUNT();
         vm.expectRevert(
@@ -203,6 +202,7 @@ contract StabilizerEscrowTest is Test {
                 minimumAmount
             )
         );
+        vm.prank(stabilizerNFT);
         localEscrow.deposit{value: depositAmount}();
     }
 

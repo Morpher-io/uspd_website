@@ -3221,14 +3221,14 @@ contract StabilizerNFTTest is Test {
         // Inlined: numStabilizers, fundingPerStabilizer, userEthToMint, minCollateralRatio
         // Inlined: stabilizerOwner
 
-        vm.deal(user3, (50 * 0.01 ether) + 1 ether); // Fund user3 (stabilizerOwner)
+        vm.deal(user3, (50 * 0.1 ether) + 1 ether); // Fund user3 (stabilizerOwner)
 
         uint256[] memory tokenIds = new uint256[](50); // numStabilizers = 50
 
         for (uint256 i = 0; i < 50; i++) { // numStabilizers = 50
             tokenIds[i] = stabilizerNFT.mint(user3); // stabilizerOwner = user3
             vm.prank(user3); // stabilizerOwner = user3
-            stabilizerNFT.addUnallocatedFundsEth{value: 0.01 ether}(tokenIds[i]); // fundingPerStabilizer = 0.01 ether
+            stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenIds[i]); // fundingPerStabilizer = 0.01 ether
             vm.prank(user3); // stabilizerOwner = user3
             stabilizerNFT.setMinCollateralizationRatio(tokenIds[i], 11000); // minCollateralRatio = 11000
         }
