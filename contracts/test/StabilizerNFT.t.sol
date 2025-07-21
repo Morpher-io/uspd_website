@@ -3398,4 +3398,53 @@ contract StabilizerNFTTest is Test {
         assertTrue(stabilizerNFT.lowestUnallocatedId() == tokenId2 || stabilizerNFT.highestUnallocatedId() == tokenId2, "S2 should remain in unallocated list");
     }
 
+    function testUnallocateStabilizerFunds_Revert_WhenSystemUnstable() public {
+        // --- Setup ---
+        // Mint a stabilizer and fund it
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        vm.deal(user1, 0.1 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId);
+
+        // Mint some cUSPD shares, which will allocate funds to the position
+        uint256 ethForMint = 1 ether;
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
+        vm.deal(owner, ethForMint);
+        vm.prank(owner);
+        cuspdToken.mintShares{value: ethForMint}(user1, priceQuery); // mint to user1
+
+        uint256 sharesMinted = cuspdToken.balanceOf(user1);
+        address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
+        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
+
+        // Check initial ratio is above 100%
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle.PriceResponse(2000 ether, 18, block.timestamp * 1000);
+        uint256 initialSystemRatio = reporter.getSystemCollateralizationRatio(priceResponse);
+        assertTrue(initialSystemRatio >= 11000, "Initial ratio should be >= 110%");
+
+        // --- Make system unstable ---
+        // Artificially reduce collateral to make the ratio < 100%
+        // Let's remove 0.2 ETH. New collateral will be 0.9 ETH (from 1.1 ETH).
+        // Liability is for 1 ETH mint at $2000/ETH -> $2000 liability.
+        // Collateral value is 0.9 stETH * $2000/ETH = $1800.
+        // Ratio = (1800/2000) * 10000 = 9000 (90.00%).
+        uint256 collateralToRemove = 0.2 ether;
+        vm.prank(address(positionEscrow));
+        mockStETH.transfer(address(0xdead), collateralToRemove);
+        
+        // Report the collateral removal to update the reporter
+        vm.prank(positionEscrowAddr);
+        stabilizerNFT.reportCollateralRemoval(collateralToRemove);
+
+        uint256 unstableSystemRatio = reporter.getSystemCollateralizationRatio(priceResponse);
+        assertEq(unstableSystemRatio, 9000, "System ratio should be 9000");
+        assertTrue(unstableSystemRatio < stabilizerNFT.MINIMUM_UNALLOCATE_COLLATERALIZATION_RATIO(), "System ratio should be below minimum");
+
+        // --- Action ---
+        // Attempt to burn shares, which calls unallocateStabilizerFunds internally
+        vm.prank(user1);
+        vm.expectRevert(IStabilizerNFT.SystemUnstableUnallocationNotAllowed.selector);
+        cuspdToken.burnShares(sharesMinted, payable(user1), priceQuery);
+    }
+
 } // Add closing brace for the contract here

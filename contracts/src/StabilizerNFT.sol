@@ -62,7 +62,7 @@ contract StabilizerNFT is
     bytes32 public constant POSITION_ESCROW_ROLE = keccak256("POSITION_ESCROW_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
     uint256 public constant MIN_GAS = 250000;
-    uint256 public constant MINIMUM_UNALLOCATE_COLLATERALIZATION_RATIO = 100; // e.g., 100 for 100%
+    uint256 public constant MINIMUM_UNALLOCATE_COLLATERALIZATION_RATIO = 10000; // e.g., 10000 for 100.00%
 
     struct StabilizerPosition {
         // uint256 totalEth; // Removed - Unallocated funds are now held in StabilizerEscrow
