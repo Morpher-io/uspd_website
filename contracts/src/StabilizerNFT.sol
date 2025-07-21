@@ -155,11 +155,7 @@ contract StabilizerNFT is
     event LiquidationParametersUpdated(uint256 newPayoutPercent /* Removed newThresholdPercent */);
     // OracleUpdated event removed
 
-    // --- Errors ---
-    error SystemUnstableUnallocationNotAllowed();
-    error LiquidationNotBelowSystemRatio();
-    error OvercollateralizationReporterZero();
-    error UnsupportedChainId();
+    
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor

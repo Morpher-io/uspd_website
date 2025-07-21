@@ -4,6 +4,13 @@ pragma solidity 0.8.29;
 import "./IPriceOracle.sol";
 
 interface IStabilizerNFT {
+
+    // --- Errors ---
+    error SystemUnstableUnallocationNotAllowed();
+    error LiquidationNotBelowSystemRatio();
+    error OvercollateralizationReporterZero();
+    error UnsupportedChainId();
+    
     struct AllocationResult {
         uint256 allocatedEth; // User's ETH allocated
         uint256 totalEthEquivalentAdded; // Total ETH equivalent added (user + stabilizer) for snapshot

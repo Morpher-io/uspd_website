@@ -2281,7 +2281,7 @@ contract StabilizerNFTTest is Test {
         assertEq(block.chainid, l2ChainId, "Chain ID not switched for test");
 
         // Expect the custom error
-        vm.expectRevert(StabilizerNFT.UnsupportedChainId.selector);
+        vm.expectRevert(IStabilizerNFT.UnsupportedChainId.selector);
         stabilizerNFT.mint(user1);
 
         // Switch back to L1 chain ID for subsequent tests if necessary (setUp usually handles this)
@@ -2565,7 +2565,7 @@ contract StabilizerNFTTest is Test {
         // The call to priceOracle.setMaxDeviationPercentage(100000) was removed 
         // as it's now handled globally in setUp().
         vm.prank(user2);
-        vm.expectRevert(StabilizerNFT.OvercollateralizationReporterZero.selector);
+        vm.expectRevert(IStabilizerNFT.OvercollateralizationReporterZero.selector);
         stabilizerNFT.liquidatePosition(0, positionToLiquidateTokenId, initialSharesInPosition, priceQueryLiquidation);
 
         // No further actions or assertions are needed as the function should have reverted.
@@ -3413,7 +3413,6 @@ contract StabilizerNFTTest is Test {
         vm.prank(owner);
         cuspdToken.mintShares{value: ethForMint}(user1, priceQuery); // mint to user1
 
-        uint256 sharesMinted = cuspdToken.balanceOf(user1);
         address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
 
@@ -3442,9 +3441,9 @@ contract StabilizerNFTTest is Test {
 
         // --- Action ---
         // Attempt to burn shares, which calls unallocateStabilizerFunds internally
-        vm.prank(user1);
         vm.expectRevert(IStabilizerNFT.SystemUnstableUnallocationNotAllowed.selector);
-        cuspdToken.burnShares(sharesMinted, payable(user1), priceQuery);
+        vm.prank(user1);
+        cuspdToken.burnShares(1, payable(user1), priceQuery);
     }
 
 } // Add closing brace for the contract here
