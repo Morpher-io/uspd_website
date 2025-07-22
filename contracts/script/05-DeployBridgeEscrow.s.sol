@@ -6,6 +6,7 @@ import "./DeployScript.sol"; // Import the base script
 import "../src/BridgeEscrow.sol"; // For type(BridgeEscrow)
 import "../src/cUSPDToken.sol"; 
 import "../src/PoolSharesConversionRate.sol"; 
+import "../src/UspdToken.sol";
 
 contract DeployBridgeEscrowScript is DeployScript {
     function setUp() public virtual override {
@@ -42,6 +43,11 @@ contract DeployBridgeEscrowScript is DeployScript {
         vm.startBroadcast();
 
         deployBridgeEscrow();
+
+        // Set the BridgeEscrow address in the USPDToken contract
+        console2.log("Setting BridgeEscrow address in USPDToken...");
+        USPDToken(payable(uspdTokenAddress)).setBridgeEscrowAddress(bridgeEscrowAddress);
+        console2.log("BridgeEscrow address set in USPDToken.");
 
         // L1 Chain IDs for L1 specific roles
         bool isL1 = (chainId == ETH_MAINNET_CHAIN_ID || chainId == SEPOLIA_CHAIN_ID);
