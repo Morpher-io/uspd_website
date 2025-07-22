@@ -2511,7 +2511,7 @@ contract StabilizerNFTTest is Test {
         uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
         vm.deal(user1, 0.1 ether);
         vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(positionToLiquidateTokenId);
-        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 11000);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 12500);
 
         IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.deal(owner, 1 ether);
