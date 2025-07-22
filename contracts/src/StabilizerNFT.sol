@@ -241,7 +241,7 @@ contract StabilizerNFT is
 
         positions[tokenId] = StabilizerPosition({
             // totalEth: 0, // Removed
-            minCollateralRatio: 11000, // Default 110.00%
+            minCollateralRatio: 12500, // Default 125.00%
             prevUnallocated: 0,
             nextUnallocated: 0,
             prevAllocated: 0,
@@ -958,7 +958,7 @@ contract StabilizerNFT is
         uint256 newRatio
     ) external {
         require(ownerOf(tokenId) == msg.sender, "Not token owner");
-        require(newRatio >= 11000 && newRatio <= 100000, "Ratio must be at between 110.00% and 1000%"); // Updated check
+        require(newRatio >= 12500 && newRatio <= 100000, "Ratio must be at between 125.00% and 1000%"); // Updated check
         // require(, "Ratio cannot exceed 1000.00%"); // Updated check
 
         StabilizerPosition storage pos = positions[tokenId];
