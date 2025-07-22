@@ -176,28 +176,41 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
         require(oracleResponse.price > 0, "cUSPD: Invalid oracle price");
 
-        // 2. Burn the shares from the caller (burner)
-        _burn(msg.sender, sharesAmount);
-
-        // 3. Unallocate funds via StabilizerNFT
+        // 2. Unallocate funds via StabilizerNFT. This may return less stETH than expected if it runs out of gas.
         uint256 unallocatedStEth = stabilizer.unallocateStabilizerFunds(
             sharesAmount,
             oracleResponse
         );
-
-        // 4. Emit events
-        emit SharesBurned(msg.sender, msg.sender, sharesAmount, unallocatedStEth);
-        emit Payout(to, sharesAmount, unallocatedStEth, oracleResponse.price);
+        unallocatedStEthReturned = unallocatedStEth;
 
         if (unallocatedStEth > 0) {
+            // 3. Calculate shares to burn from the actual stETH returned to avoid burning shares for un-returned collateral.
+            uint256 yieldFactor = rateContract.getYieldFactor();
+            require(yieldFactor > 0, "cUSPD: Invalid yield factor");
+
+            uint256 uspdValue = (unallocatedStEth * oracleResponse.price) / (10**uint256(oracleResponse.decimals));
+            uint256 sharesToBurn = (uspdValue * FACTOR_PRECISION) / yieldFactor;
+            require(sharesToBurn > 0, "cUSPD: No shares to burn for returned stETH");
+
+            // Safeguard: Cap at the initially requested amount in case of rounding differences.
+            if (sharesToBurn > sharesAmount) {
+                sharesToBurn = sharesAmount;
+            }
+
+            // 4. Burn the actual amount of shares that were paid for.
+            _burn(msg.sender, sharesToBurn);
+
+            // 5. Emit events with actual amounts.
+            emit SharesBurned(msg.sender, msg.sender, sharesToBurn, unallocatedStEth);
+            emit Payout(to, sharesToBurn, unallocatedStEth, oracleResponse.price);
+
+            // 6. Transfer stETH to the recipient.
             address stETHAddress = rateContract.stETH();
             require(stETHAddress != address(0), "cUSPD: Invalid stETH address from rateContract");
             require(IERC20(stETHAddress).balanceOf(address(this)) >= unallocatedStEth, "cUSPD: Insufficient stETH received");
             bool success = IERC20(stETHAddress).transfer(to, unallocatedStEth);
             require(success, "cUSPD: stETH transfer failed");
         }
-
-        return unallocatedStEth;
     }
 
     // --- Admin Functions ---
