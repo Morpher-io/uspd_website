@@ -1104,11 +1104,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
         uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(user3);
-        vm.deal(user3, 0.2 ether); // Fund user3 for this stabilizer (e.g., for 120% ratio on 1 ETH)
+        vm.deal(user3, 0.25 ether); // Fund user3 for this stabilizer (e.g., for 125% ratio on 1 ETH)
         vm.prank(user3);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(liquidatorBackingStabilizerId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(liquidatorBackingStabilizerId);
         vm.prank(user3);
-        stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12000); // 120% ratio
+        stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12500); // 125% ratio
 
         // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
         // uint256 sharesToLiquidate = initialSharesInPosition; // Inlined: Liquidator will attempt to liquidate all shares
@@ -1199,11 +1199,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
         uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(user3);
-        vm.deal(user3, 0.2 ether);
+        vm.deal(user3, 0.25 ether);
         vm.prank(user3);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(liquidatorBackingStabilizerId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(liquidatorBackingStabilizerId);
         vm.prank(user3);
-        stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12000);
+        stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12500);
 
         // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
         // Liquidator will attempt to liquidate all shares of the target position
