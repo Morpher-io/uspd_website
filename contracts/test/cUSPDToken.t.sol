@@ -282,7 +282,7 @@ contract cUSPDTokenTest is Test {
         uint256 price = 2000 ether;
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(price, block.timestamp);
 
-        // Calculate expected shares (assuming 110% ratio, 1:1 yield)
+        // Calculate expected shares (assuming 125% ratio, 1:1 yield)
         uint256 expectedShares = 2000 ether;
         uint256 expectedAllocatedEth = 1 ether;
 
@@ -301,7 +301,7 @@ contract cUSPDTokenTest is Test {
         address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
         assertApproxEqAbs(positionEscrow.backedPoolShares(), expectedShares, 1e6, "PositionEscrow backed shares mismatch");
-        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 1.1 ether, 1e15, "PositionEscrow stETH balance mismatch");
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 1.25 ether, 1e15, "PositionEscrow stETH balance mismatch");
     }
 
 
@@ -374,7 +374,7 @@ contract cUSPDTokenTest is Test {
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000);
+        stabilizerNFT.setMinCollateralizationRatio(tokenId, 12500);
 
         uint256 ethToSend = 1 ether;
         uint256 price = 2000 ether;
@@ -415,7 +415,7 @@ contract cUSPDTokenTest is Test {
         address positionEscrowAddr = stabilizerNFT.positionEscrows(tokenId);
         IPositionEscrow positionEscrow = IPositionEscrow(positionEscrowAddr);
         assertApproxEqAbs(positionEscrow.backedPoolShares(), initialShares - sharesToBurn, 1e6, "PositionEscrow backed shares mismatch after burn");
-        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 0.55 ether, 1e15, "PositionEscrow stETH balance mismatch after burn");
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), 0.625 ether, 1e15, "PositionEscrow stETH balance mismatch after burn");
     }
 
     function testBurnShares_Revert_ZeroAmount() public {
@@ -533,8 +533,9 @@ contract cUSPDTokenTest is Test {
         stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId2);
 
         // Mint shares with enough ETH to use both stabilizers for collateral.
-        // User sends 25 ETH. Stabilizer1 (2 stETH) backs 20 ETH. Stabilizer2 (0.5 stETH) backs 5 ETH.
-        uint256 ethToSend = 25 ether;
+        // With 125% ratio, each 2 ETH in a stabilizer can back 8 ETH of user funds.
+        // User sends 16 ETH, 8 for each stabilizer.
+        uint256 ethToSend = 16 ether;
         uint256 price = 2000 ether;
         IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(price, block.timestamp);
 
@@ -543,7 +544,7 @@ contract cUSPDTokenTest is Test {
         cuspdToken.mintShares{value: ethToSend}(user2, mintQuery);
 
         uint256 initialShares = cuspdToken.balanceOf(user2);
-        uint256 expectedInitialShares = (ethToSend * price) / 1 ether; // 25 * 2000 = 50000 ether
+        uint256 expectedInitialShares = (ethToSend * price) / 1 ether; // 16 * 2000 = 32000 ether
         assertApproxEqAbs(initialShares, expectedInitialShares, 1e6, "Minting failed in setup");
 
         // Verify both stabilizers were used and are in the allocated list
@@ -567,11 +568,11 @@ contract cUSPDTokenTest is Test {
         uint256 finalShares = cuspdToken.balanceOf(user2);
 
         // 1. User must have leftover shares because unallocation was partial.
-        // `tokenId2` backed 5 ETH worth of shares. `tokenId1` backed 20 ETH.
+        // `tokenId2` backed 8 ETH worth of shares. `tokenId1` backed 8 ETH.
         // Only stETH from `tokenId2` should have been returned.
-        // So only shares worth 5 ETH should be burned.
+        // So only shares worth 8 ETH should be burned.
         uint256 sharesBurned = initialShares - finalShares;
-        uint256 expectedSharesBurned = (5 ether * price) / 1 ether; // 5 * 2000 = 10000 ether
+        uint256 expectedSharesBurned = (8 ether * price) / 1 ether; // 8 * 2000 = 16000 ether
 
         assertTrue(finalShares > 0, "User should have leftover shares");
         assertApproxEqAbs(sharesBurned, expectedSharesBurned, 1e6, "Incorrect number of shares burned");
