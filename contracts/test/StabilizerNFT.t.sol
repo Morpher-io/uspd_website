@@ -2410,10 +2410,10 @@ contract StabilizerNFTTest is Test {
     function testLiquidation_PartialLiquidation_PositionRemainsAllocated() public {
         // --- Setup Position (user1) ---
         uint256 positionTokenId = stabilizerNFT.mint(user1);
-        // Fund StabilizerEscrow (e.g., 0.2 ETH for 110% on 2 ETH user funds)
-        vm.deal(user1, 0.2 ether);
-        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.2 ether}(positionTokenId);
-        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 11000); // 110%
+        // Fund StabilizerEscrow (e.g., 0.5 ETH for 125% on 2 ETH user funds)
+        vm.deal(user1, 0.5 ether);
+        vm.prank(user1); stabilizerNFT.addUnallocatedFundsEth{value: 0.5 ether}(positionTokenId);
+        vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 12500); // 125%
 
         // Mint 2 ETH worth of shares (e.g., 2000 shares at $2000/ETH)
         // uint256 totalUserEthForMint = 2 ether; // Inlined
@@ -2424,9 +2424,9 @@ contract StabilizerNFTTest is Test {
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionTokenId));
         uint256 initialTotalSharesInPosition = positionEscrow.backedPoolShares(); // Should be 4000e18
-        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 2.2e18 (2 user + 0.2 stab)
+        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 2.5e18 (2 user + 0.5 stab)
         assertEq(initialTotalSharesInPosition, 4000 ether, "Initial total shares mismatch");
-        assertEq(initialCollateralInPosition, 2.2 ether, "Initial total collateral mismatch");
+        assertEq(initialCollateralInPosition, 2.5 ether, "Initial total collateral mismatch");
 
         // Ensure it's the only allocated position for easy list checking
         assertEq(stabilizerNFT.lowestAllocatedId(), positionTokenId, "Position should be lowest allocated");
@@ -2450,8 +2450,8 @@ contract StabilizerNFTTest is Test {
         // --- Calculate Expected Payout for the partial shares ---
         // Par value of the *partial* shares at the liquidation price
         uint256 partialSharesUSDValue = (sharesToLiquidatePartially * rateContract.getYieldFactor()) / stabilizerNFT.FACTOR_PRECISION(); // Will be 2000e18
-        uint256 stEthParValueForPartialShares = (partialSharesUSDValue * (10**18)) / priceForLiquidationTest; // Approx 1.0476e18
-        uint256 expectedPayoutToLiquidator = (stEthParValueForPartialShares * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100; // Should be 1.1e18
+        uint256 stEthParValueForPartialShares = (partialSharesUSDValue * (10**18)) / priceForLiquidationTest; // Approx 1.19e18
+        uint256 expectedPayoutToLiquidator = (stEthParValueForPartialShares * stabilizerNFT.liquidationLiquidatorPayoutPercent()) / 100; // Should be 1.25e18
 
         // --- Action: Partial Liquidation ---
         uint256 liquidatorStEthBefore = mockStETH.balanceOf(user2);
