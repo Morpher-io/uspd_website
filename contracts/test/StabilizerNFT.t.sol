@@ -2143,27 +2143,27 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(id3, 12500);
 
         // IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp); //inlined
-        // uint256 userEthToDrainStabilizer = 1 ether; // Drains 0.1 ETH stabilizer at 110% //inlined
+        // uint256 userEthToDrainStabilizer = 0.4 ether; // Drains 0.1 ETH stabilizer at 125% //inlined
 
         // Allocate to ID1, ID2, ID3 in order
-        vm.deal(owner, 1 ether);
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID1
+        vm.deal(owner, 0.4 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 0.4 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID1
         
-        vm.deal(owner, 1 ether);
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user2, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID2
+        vm.deal(owner, 0.4 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 0.4 ether}(user2, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID2
         
-        vm.deal(owner, 1 ether);
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID3
+        vm.deal(owner, 0.4 ether);
+        vm.prank(owner); cuspdToken.mintShares{value: 0.4 ether}(user1, createSignedPriceAttestation(2000 ether, block.timestamp)); // Allocates to ID3
 
         // Verify initial allocated list: 1 <-> 2 <-> 3
         _verifyAllocatedListState(id1, id2, id3, "Alloc Initial");
 
         // Cannot Unallocate/Liquidate shares from ID2 (middle element)
-        // Because ID3 is always chosen first. 
-        // Shares minted to user2 were 1 ETH worth = 2000 shares at $2000/ETH price.
-        // uint256 sharesToBurnForId2 = 2000 ether; // Inlined
-        vm.prank(user2); // user2 owns the shares backed by ID2's position
-        cuspdToken.burnShares(2000 ether, payable(user2), createSignedPriceAttestation(2000 ether, block.timestamp));
+        // Because ID3 is always chosen first.
+        // Shares minted to user2 were 0.4 ETH worth = 800 shares at $2000/ETH price.
+        uint256 sharesToBurnForId2 = 800 ether; // 0.4 ETH * 2000 price / 1 yieldFactor
+        vm.prank(user2); // user2 owns the shares and initiates the burn.
+        cuspdToken.burnShares(sharesToBurnForId2, payable(user2), createSignedPriceAttestation(2000 ether, block.timestamp));
 
         // Verify allocated list is now: 1 <-> 2
         _verifyTwoElementList(id1, id2, true, "Alloc After End Remove");
