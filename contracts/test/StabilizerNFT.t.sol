@@ -3402,9 +3402,9 @@ contract StabilizerNFTTest is Test {
         // --- Setup ---
         // Mint a stabilizer and fund it
         uint256 tokenId = stabilizerNFT.mint(user1);
-        vm.deal(user1, 0.1 ether);
+        vm.deal(user1, 0.25 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(tokenId);
 
         // Mint some cUSPD shares, which will allocate funds to the position
         uint256 ethForMint = 1 ether;
