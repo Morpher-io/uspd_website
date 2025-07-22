@@ -1360,11 +1360,11 @@ contract StabilizerNFTTest is Test {
     function testLiquidation_Success_InsufficientCollateral_InsuranceCoversPartialShortfall() public {
         // --- Setup Position to be Liquidated (owned by user1) ---
         uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
-        vm.deal(user1, 0.1 ether); // Fund user1's stabilizer (e.g., for 110% initial ratio)
+        vm.deal(user1, 0.25 ether); // Fund user1's stabilizer (e.g., for 125% initial ratio)
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(positionToLiquidateTokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(positionToLiquidateTokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 11000);
+        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 12500);
 
         // User1 (via owner) mints 1 ETH worth of cUSPD shares, backed by positionToLiquidateTokenId
         vm.deal(user2, 1 ether);
@@ -1441,11 +1441,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup Position ---
         uint256 positionTokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId (expected: 1)
-        vm.deal(user1, 1 ether); // Fund StabilizerEscrow for NFT owner (user1)
+        vm.deal(user1, 0.25 ether); // Fund StabilizerEscrow for NFT owner (user1)
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(positionTokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(positionTokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 11000); // 110%
+        stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 12500); // 125%
 
         vm.deal(owner, 1 ether); // userEthForInitialAllocation = 1 ether
         vm.prank(owner);
@@ -1530,11 +1530,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup Position ---
         uint256 positionTokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId (expected: 1)
-        vm.deal(user1, 1 ether); 
+        vm.deal(user1, 0.25 ether); 
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(positionTokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(positionTokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 11000); // 110%
+        stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 12500); // 125%
 
         vm.deal(owner, 1 ether); // userEthForInitialAllocation = 1 ether
         vm.prank(owner);
@@ -1619,11 +1619,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup Position ---
         uint256 positionTokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId (expected: 1)
-        vm.deal(user1, 1 ether); 
+        vm.deal(user1, 0.25 ether); 
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 1 ether}(positionTokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(positionTokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 11000); // 110%
+        stabilizerNFT.setMinCollateralizationRatio(positionTokenId, 12500); // 125%
 
         vm.deal(owner, 1 ether); // userEthForInitialAllocation = 1 ether
         vm.prank(owner);
