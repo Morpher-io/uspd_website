@@ -172,6 +172,11 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
         require(sharesAmount > 0, "cUSPD: Shares amount must be positive");
         require(to != address(0), "cUSPD: Burn to zero address");
 
+        uint256 balance = balanceOf(msg.sender);
+        if (balance < sharesAmount) {
+            revert ERC20InsufficientBalance(msg.sender, balance, sharesAmount);
+        }
+
         // 1. Get Price Response
         IPriceOracle.PriceResponse memory oracleResponse = oracle.attestationService(priceQuery);
         require(oracleResponse.price > 0, "cUSPD: Invalid oracle price");
