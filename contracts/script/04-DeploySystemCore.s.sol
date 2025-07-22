@@ -99,7 +99,7 @@ contract DeploySystemCoreScript is DeployScript {
         bytes memory bytecode = abi.encodePacked(
             type(USPDToken).creationCode,
             abi.encode(
-                "Unified Stable Passive Dollar",
+                "United States Permissionless Dollar",
                 "USPD",
                 cuspdTokenAddress,
                 rateContractAddress,

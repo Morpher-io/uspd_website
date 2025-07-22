@@ -10,7 +10,7 @@
     "reporterImpl": "0x46cB288324a4fF8DAbAb7e0bF4757Ae931458873",
     "reporter": "0x73aD65ff903AeF3328932CD949ca1022ab1d4da7",
     "insuranceEscrow": "0x20cD5f243A9Cc7bA3E1f2C238aA7Ba75BbfDA714",
-    "bridgeEscrow": "0x987Cc3AD31f9EA620452747cB43b282D280d1d39",
+    "bridgeEscrow": "0xcE27e69fdCb167941cD0786C2b74853403161D5E",
     "stabilizerEscrowImpl": "0xfa57C54ccEcdEd64DAd29e578c82e33050f14Cda",
     "positionEscrowImpl": "0x5E17B6C71bc83c4311d89575aec9D74D78b52Ddc"
   },
@@ -24,7 +24,7 @@
   },
   "metadata": {
     "chainId": 84532,
-    "deploymentTimestamp": 1751537124,
+    "deploymentTimestamp": 1753186912,
     "deployer": "0x555350445E1f1ca212edB8cF397a383695ff7a36"
   }
 }

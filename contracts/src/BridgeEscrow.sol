@@ -15,6 +15,7 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
     // --- State Variables ---
 
     uint256 public constant MAINNET_CHAIN_ID = 1;
+    uint256 public constant TESTNET_CHAIN_ID = 11155111;
 
     IcUSPDToken public immutable cUSPDToken;
     address public immutable uspdTokenAddress; // Address of the USPDToken contract
@@ -91,7 +92,7 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
         // *before* this escrowShares function is called.
         // The `tokenAdapter` parameter identifies the contract that initiated the lock via USPDToken.
 
-        if (block.chainid == MAINNET_CHAIN_ID) {
+        if (block.chainid == MAINNET_CHAIN_ID || block.chainid == TESTNET_CHAIN_ID) {
             // L1: Shares are locked in this contract
             totalBridgedOutShares += cUSPDShareAmount;
             bridgedOutSharesPerChain[targetChainId] += cUSPDShareAmount;
@@ -134,7 +135,7 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
             revert InvalidAmount();
         }
 
-        if (block.chainid == MAINNET_CHAIN_ID) {
+        if (block.chainid == MAINNET_CHAIN_ID || block.chainid == TESTNET_CHAIN_ID) {
             // L1: Release locked shares by transferring from this contract
             if (bridgedOutSharesPerChain[sourceChainId] < cUSPDShareAmount) {
                 revert InsufficientBridgedShares();
@@ -181,7 +182,7 @@ contract BridgeEscrow is ReentrancyGuard { // Removed Ownable
         }
 
         uint256 trackedShares;
-        if (block.chainid == MAINNET_CHAIN_ID) {
+        if (block.chainid == MAINNET_CHAIN_ID || block.chainid == TESTNET_CHAIN_ID) {
             trackedShares = totalBridgedOutShares;
         } else {
             // On L2, BridgeEscrow should never hold shares. Any balance is considered excess.

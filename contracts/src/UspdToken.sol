@@ -73,7 +73,7 @@ contract USPDToken is
 
     // --- Constructor ---
     constructor(
-        string memory name, // e.g., "Unified Stable Passive Dollar"
+        string memory name, // e.g., "United States Permissionless Dollar"
         string memory symbol, // e.g., "USPD"
         address _cuspdTokenAddress,
         address _rateContractAddress,
