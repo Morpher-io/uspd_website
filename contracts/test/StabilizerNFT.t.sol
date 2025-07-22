@@ -1083,23 +1083,23 @@ contract StabilizerNFTTest is Test {
     function testLiquidation_Success_BelowThreshold_FullPayoutFromCollateral() public {
         // --- Setup Position to be Liquidated (owned by user1) ---
         uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
-        // Fund user1's stabilizer with enough for their 1 ETH mint at 110% ratio (0.1 ETH)
-        vm.deal(user1, 0.1 ether);
+        // Fund user1's stabilizer with enough for their 1 ETH mint at 125% ratio (0.25 ETH)
+        vm.deal(user1, 0.25 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(positionToLiquidateTokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(positionToLiquidateTokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 11000); // Its min ratio is 110%
+        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 12500); // Its min ratio is 125%
 
-        // Allocate to user1's position (1 ETH from user, 0.1 ETH from stabilizer = 1.1 ETH total collateral)
+        // Allocate to user1's position (1 ETH from user, 0.25 ETH from stabilizer = 1.25 ETH total collateral)
         IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.deal(owner, 1 ether); // Minter needs ETH
         vm.prank(owner);
         cuspdToken.mintShares{value: 1 ether}(user1, priceQueryOriginal); // Mint shares, allocating to user1's stabilizer
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
-        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 1.1 ETH
+        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 1.25 ETH
         uint256 initialSharesInPosition = positionEscrow.backedPoolShares(); // Should be 2000 shares (1 ETH * 2000 price / 1 yield)
-        assertEq(initialCollateralInPosition, 1.1 ether, "Initial collateral in position mismatch");
+        assertEq(initialCollateralInPosition, 1.25 ether, "Initial collateral in position mismatch");
         assertEq(initialSharesInPosition, 2000 ether, "Initial shares in position mismatch");
 
         // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
@@ -1178,23 +1178,23 @@ contract StabilizerNFTTest is Test {
     function testLiquidation_Success_BelowThreshold_RemainderToInsurance() public {
         // --- Setup Position to be Liquidated (owned by user1) ---
         uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
-        // Fund user1's stabilizer (e.g., 0.15 ETH for 1 ETH mint at 115% target ratio for position)
-        vm.deal(user1, 0.15 ether);
+        // Fund user1's stabilizer (e.g., 0.3 ETH for 1 ETH mint at 130% target ratio for position)
+        vm.deal(user1, 0.3 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.15 ether}(positionToLiquidateTokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.3 ether}(positionToLiquidateTokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 11500); // Set its min ratio to 115%
+        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 13000); // Set its min ratio to 130%
 
-        // Allocate to user1's position (1 ETH from user, 0.15 ETH from stabilizer = 1.15 ETH total collateral)
+        // Allocate to user1's position (1 ETH from user, 0.3 ETH from stabilizer = 1.3 ETH total collateral)
         IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp);
         vm.deal(owner, 1 ether); // Minter needs ETH
         vm.prank(owner);
         cuspdToken.mintShares{value: 1 ether}(user1, priceQueryOriginal);
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
-        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 1.15 ETH
+        uint256 initialCollateralInPosition = positionEscrow.getCurrentStEthBalance(); // Should be 1.3 ETH
         uint256 initialSharesInPosition = positionEscrow.backedPoolShares(); // Should be 2000 shares (1 ETH * 2000 price / 1 yield)
-        assertEq(initialCollateralInPosition, 1.15 ether, "Initial collateral in position mismatch");
+        assertEq(initialCollateralInPosition, 1.3 ether, "Initial collateral in position mismatch");
         assertEq(initialSharesInPosition, 2000 ether, "Initial shares in position mismatch");
 
         // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
@@ -1271,21 +1271,21 @@ contract StabilizerNFTTest is Test {
     function testLiquidation_Success_InsufficientCollateral_InsuranceCoversFullShortfall() public {
         // --- Setup Position to be Liquidated (owned by user1) ---
         uint256 positionToLiquidateTokenId = stabilizerNFT.mint(user1);
-        // Fund user1's stabilizer (e.g., 0.1 ETH for 1 ETH mint at 110% initial ratio)
-        vm.deal(user1, 0.1 ether);
+        // Fund user1's stabilizer (e.g., 0.25 ETH for 1 ETH mint at 125% initial ratio)
+        vm.deal(user1, 0.25 ether);
         vm.prank(user1);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(positionToLiquidateTokenId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(positionToLiquidateTokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 11000); // Its min ratio is 110%
+        stabilizerNFT.setMinCollateralizationRatio(positionToLiquidateTokenId, 12500); // Its min ratio is 125%
 
-        // Allocate to user1's position (1 ETH from user, 0.1 ETH from stabilizer = 1.1 ETH total collateral)
+        // Allocate to user1's position (1 ETH from user, 0.25 ETH from stabilizer = 1.25 ETH total collateral)
         // IPriceOracle.PriceAttestationQuery memory priceQueryOriginal = createSignedPriceAttestation(2000 ether, block.timestamp); // Inlined
         vm.deal(user2, 1 ether); // Minter needs ETH
         vm.prank(user2);
         cuspdToken.mintShares{value: 1 ether}(user2, createSignedPriceAttestation(2000 ether, block.timestamp));
 
         IPositionEscrow positionEscrow = IPositionEscrow(stabilizerNFT.positionEscrows(positionToLiquidateTokenId));
-        uint256 initialCollateralBeforeManualReduction = positionEscrow.getCurrentStEthBalance(); // Should be 1.1 ETH
+        uint256 initialCollateralBeforeManualReduction = positionEscrow.getCurrentStEthBalance(); // Should be 1.25 ETH
         uint256 initialSharesInPosition = positionEscrow.backedPoolShares(); // Should be 2000 shares
 
         // --- Artificially Lower Collateral in PositionEscrow to create insufficiency ---
