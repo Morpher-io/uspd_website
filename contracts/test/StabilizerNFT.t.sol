@@ -2368,11 +2368,11 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1); stabilizerNFT.setMinCollateralizationRatio(id3, 12500);
 
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(2000 ether, block.timestamp);
-        // uint256 userEthToDrainStabilizer = 1 ether; // Inlined: User ETH needed to drain 0.1 ETH stabilizer at 110%
+        // uint256 userEthToDrainStabilizer = 0.4 ether; // User ETH needed to drain 0.1 ETH stabilizer at 125%
 
         // Allocate to ID 1 (drains id1 from unallocated)
-        vm.deal(owner, 1 ether); // Inlined userEthToDrainStabilizer
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, priceQuery); // Inlined userEthToDrainStabilizer
+        vm.deal(owner, 0.4 ether); // Inlined userEthToDrainStabilizer
+        vm.prank(owner); cuspdToken.mintShares{value: 0.4 ether}(user1, priceQuery); // Inlined userEthToDrainStabilizer
         assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Step 1: Lowest should be ID1");
         assertEq(stabilizerNFT.highestAllocatedId(), id1, "Alloc Step 1: Highest should be ID1");
         assertEq(stabilizerNFT.lowestUnallocatedId(), id2, "Unalloc Step 1: Lowest should be ID2");
@@ -2385,8 +2385,8 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.lowestUnallocatedId(), id3, "Unalloc Step 2: Lowest should be ID3 after ID2 removal");
 
         // Allocate to ID 3 (drains id3 from unallocated)
-        vm.deal(owner, 1 ether); // Inlined userEthToDrainStabilizer
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user1, priceQuery); // Inlined userEthToDrainStabilizer
+        vm.deal(owner, 0.4 ether); // Inlined userEthToDrainStabilizer
+        vm.prank(owner); cuspdToken.mintShares{value: 0.4 ether}(user1, priceQuery); // Inlined userEthToDrainStabilizer
         assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Step 2: Lowest should be ID1");
         assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc Step 2: Highest should be ID3");
         assertEq(stabilizerNFT.lowestUnallocatedId(), 0, "Unalloc Step 2: Should be empty (or id2 if re-added too soon)");
@@ -2398,8 +2398,8 @@ contract StabilizerNFTTest is Test {
         assertEq(stabilizerNFT.lowestUnallocatedId(), id2, "Unalloc Step 3: Lowest should be ID2 after re-funding");
 
         // Allocate to ID 2 (this should insert between ID 1 and ID 3 in allocated list)
-        vm.deal(owner, 1 ether); // Inlined userEthToDrainStabilizer
-        vm.prank(owner); cuspdToken.mintShares{value: 1 ether}(user2, priceQuery); // Inlined userEthToDrainStabilizer
+        vm.deal(owner, 0.4 ether); // Inlined userEthToDrainStabilizer
+        vm.prank(owner); cuspdToken.mintShares{value: 0.4 ether}(user2, priceQuery); // Inlined userEthToDrainStabilizer
 
         assertEq(stabilizerNFT.lowestAllocatedId(), id1, "Alloc Final: Lowest should be ID1");
         assertEq(stabilizerNFT.highestAllocatedId(), id3, "Alloc Final: Highest should be ID3");
