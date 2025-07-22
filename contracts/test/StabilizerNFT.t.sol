@@ -1199,11 +1199,11 @@ contract StabilizerNFTTest is Test {
 
         // --- Setup a separate stabilizer to back the liquidator's shares (user3) ---
         uint256 liquidatorBackingStabilizerId = stabilizerNFT.mint(user3);
-        vm.deal(user3, 0.25 ether);
+        vm.deal(user3, 0.4 ether); // Increase funding to make this position more collateralized
         vm.prank(user3);
-        stabilizerNFT.addUnallocatedFundsEth{value: 0.25 ether}(liquidatorBackingStabilizerId);
+        stabilizerNFT.addUnallocatedFundsEth{value: 0.4 ether}(liquidatorBackingStabilizerId);
         vm.prank(user3);
-        stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 12500);
+        stabilizerNFT.setMinCollateralizationRatio(liquidatorBackingStabilizerId, 14000); // Set higher ratio
 
         // --- Setup Liquidator (user2) and mint their cUSPD legitimately ---
         // Liquidator will attempt to liquidate all shares of the target position
