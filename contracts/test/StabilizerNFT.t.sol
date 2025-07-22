@@ -3309,7 +3309,7 @@ contract StabilizerNFTTest is Test {
         vm.prank(user1);
         stabilizerNFT.addUnallocatedFundsEth{value: 0.1 ether}(tokenId);
         vm.prank(user1);
-        stabilizerNFT.setMinCollateralizationRatio(tokenId, 11000);
+        stabilizerNFT.setMinCollateralizationRatio(tokenId, 12500);
 
 
         // Attempt to call allocateStabilizerFunds with no ETH sent
