@@ -516,6 +516,74 @@ contract cUSPDTokenTest is Test {
         cuspdToken.burnShares(sharesToBurn, payable(recipient), burnQuery);
     }
 
+    function testBurnShares_PartialUnallocationDueToGasLimit() public {
+        // Test Purpose: Verify that if `unallocateStabilizerFunds` in StabilizerNFT
+        // runs out of gas and only partially returns stETH, the user's cUSPD shares
+        // are only partially burned, preventing loss of funds.
+
+        // Setup: Mint 2 StabilizerNFTs and fund them.
+        uint256 tokenId1 = stabilizerNFT.mint(user1);
+        vm.deal(user1, 2 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId1);
+
+        uint256 tokenId2 = stabilizerNFT.mint(user1);
+        vm.deal(user1, 2 ether);
+        vm.prank(user1);
+        stabilizerNFT.addUnallocatedFundsEth{value: 2 ether}(tokenId2);
+
+        // Mint shares with enough ETH to use both stabilizers for collateral.
+        // User sends 25 ETH. Stabilizer1 (2 stETH) backs 20 ETH. Stabilizer2 (0.5 stETH) backs 5 ETH.
+        uint256 ethToSend = 25 ether;
+        uint256 price = 2000 ether;
+        IPriceOracle.PriceAttestationQuery memory mintQuery = createSignedPriceAttestation(price, block.timestamp);
+
+        vm.deal(user2, ethToSend);
+        vm.prank(user2);
+        cuspdToken.mintShares{value: ethToSend}(user2, mintQuery);
+
+        uint256 initialShares = cuspdToken.balanceOf(user2);
+        uint256 expectedInitialShares = (ethToSend * price) / 1 ether; // 25 * 2000 = 50000 ether
+        assertApproxEqAbs(initialShares, expectedInitialShares, 1e6, "Minting failed in setup");
+
+        // Verify both stabilizers were used and are in the allocated list
+        assertEq(stabilizerNFT.highestAllocatedId(), tokenId2, "Token ID 2 should be highest allocated");
+        assertEq(stabilizerNFT.lowestAllocatedId(), tokenId1, "Token ID 1 should be lowest allocated");
+
+        // Action: User attempts to burn all shares, but we provide limited gas.
+        // `unallocateStabilizerFunds` works from highest ID down. The gas limit is
+        // chosen to be enough to process one stabilizer (tokenId2) but not enough
+        // to complete the second one (tokenId1), simulating gas exhaustion.
+        // NOTE: This gas value may be brittle and need adjustment if contracts change.
+        // A full burn of 2 stabilizers takes ~500k gas. A burn of 1 takes ~300k.
+        uint256 gasLimit = 400000;
+
+        IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(price, block.timestamp);
+
+        vm.prank(user2);
+        cuspdToken.burnShares{gas: gasLimit}(initialShares, payable(recipient), burnQuery);
+
+        // Assertions
+        uint256 finalShares = cuspdToken.balanceOf(user2);
+
+        // 1. User must have leftover shares because unallocation was partial.
+        // `tokenId2` backed 5 ETH worth of shares. `tokenId1` backed 20 ETH.
+        // Only stETH from `tokenId2` should have been returned.
+        // So only shares worth 5 ETH should be burned.
+        uint256 sharesBurned = initialShares - finalShares;
+        uint256 expectedSharesBurned = (5 ether * price) / 1 ether; // 5 * 2000 = 10000 ether
+
+        assertTrue(finalShares > 0, "User should have leftover shares");
+        assertApproxEqAbs(sharesBurned, expectedSharesBurned, 1e6, "Incorrect number of shares burned");
+
+        uint256 expectedFinalShares = expectedInitialShares - expectedSharesBurned;
+        assertApproxEqAbs(finalShares, expectedFinalShares, 1e6, "Incorrect final share balance");
+
+        // 2. The position for tokenId2 should be unallocated, but tokenId1 should still be allocated.
+        assertEq(stabilizerNFT.highestAllocatedId(), tokenId1, "Token ID 1 should be the only one left allocated");
+        assertEq(stabilizerNFT.lowestAllocatedId(), tokenId1, "Token ID 1 should be the only one left allocated");
+    }
+
     // =============================================
     // IV. Admin Functions Tests
     // =============================================
