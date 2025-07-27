@@ -337,12 +337,7 @@ contract StabilizerNFTTest is Test {
         assertEq(positionEscrow.backedPoolShares(), 0, "PositionEscrow initial shares mismatch");
         assertTrue(positionEscrow.hasRole(positionEscrow.DEFAULT_ADMIN_ROLE(), address(stabilizerNFT)), "PositionEscrow admin role mismatch");
         assertTrue(positionEscrow.hasRole(positionEscrow.STABILIZER_ROLE(), address(stabilizerNFT)), "PositionEscrow stabilizer role mismatch");
-        assertTrue(positionEscrow.hasRole(positionEscrow.EXCESSCOLLATERALMANAGER_ROLE(), expectedOwner), "PositionEscrow manager role mismatch");
-        assertEq(
-            stabilizerEscrow.stabilizerOwner(), // Use stabilizerEscrow variable
-            expectedOwner,
-            "StabilizerEscrow owner mismatch" // Updated message - REMOVE THIS CHECK
-        ); 
+        assertEq(positionEscrow.tokenId(), tokenId, "PositionEscrow tokenId mismatch");
         assertEq(
             stabilizerEscrow.stabilizerNFTContract(), // Use stabilizerEscrow variable
             address(stabilizerNFT),
