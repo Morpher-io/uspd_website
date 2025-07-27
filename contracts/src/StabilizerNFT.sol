@@ -215,7 +215,7 @@ contract StabilizerNFT is
     }
 
     function setLiquidationParameters(uint256 _payoutPercent /* Removed _thresholdPercent */) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_payoutPercent >= 100, "Payout percent must be >= 100"); // e.g. 100-120
+        require(_payoutPercent >= 105, "Payout percent must be >= 105"); // e.g. 100-120
         // require(_thresholdPercent > 100 && _thresholdPercent < 200, "Threshold percent must be > 100 and < 200"); // REMOVED
         // require(_payoutPercent <= _thresholdPercent, "Payout percent cannot exceed threshold percent"); // REMOVED
 
@@ -310,6 +310,7 @@ contract StabilizerNFT is
         require(address(insuranceEscrow) != address(0), "InsuranceEscrow not set");
         require(cuspdSharesToLiquidate > 0, "No cUSPD shares to liquidate"); // Add check for shares amount
         require(ownerOf(positionTokenId) != address(0), "Position token does not exist"); // Check target position exists
+        require(address(cuspdToken.oracle()) != address(0), "Oracle not set in cUSPDToken"); // Check cuspdToken.oracle() directly
 
         // Validate liquidatorTokenId ownership if provided
         if (liquidatorTokenId != 0) {
@@ -322,7 +323,6 @@ contract StabilizerNFT is
 
         // Inlined currentOracle
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle(cuspdToken.oracle()).attestationService(priceQuery);
-        require(address(cuspdToken.oracle()) != address(0), "Oracle not set in cUSPDToken"); // Check cuspdToken.oracle() directly
         require(priceResponse.price > 0, "Invalid oracle price");
 
         // 2. Fetch Position Data & Validate Shares Amount
