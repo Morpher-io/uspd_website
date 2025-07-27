@@ -160,7 +160,7 @@ contract PositionEscrowTest is
         );
     }
 
-    function ownerOf(uint256 _tokenId) external view override returns (address) {
+    function ownerOf(uint256 _tokenId) external view returns (address) {
         // Mock implementation for IStabilizerNFT interface.
         return nftOwners[_tokenId];
     }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.29;
 
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol"; // <-- Import Initializable
 import {AccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol"; // <-- Import AccessControlUpgradeable
 import "./interfaces/ILido.sol";
@@ -18,7 +19,6 @@ import "./PriceOracle.sol";
  */
 contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradeable { // <-- Inherit Initializable and AccessControlUpgradeable
     // --- Errors (from interface) ---
-    error NotNFTOwner();
 
     // --- Roles (defined in interface, constants here for convenience) ---
     bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
@@ -230,7 +230,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         // --- Logic ---
         // --- Implementation ---
         // 1. Validate caller is NFT owner
-        if (IStabilizerNFT(stabilizerNFTContract).ownerOf(tokenId) != msg.sender) revert NotNFTOwner();
+        if (IERC721(stabilizerNFTContract).ownerOf(tokenId) != msg.sender) revert NotNFTOwner();
 
         // 2. Validate inputs
         if (recipient == address(0)) revert ZeroAddress();
