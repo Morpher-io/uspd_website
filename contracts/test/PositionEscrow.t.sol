@@ -231,7 +231,7 @@ contract PositionEscrowTest is
             PositionEscrow.initialize,
             (
                 address(0), // Invalid StabilizerNFT address
-                stabilizerOwner,
+                1, // test tokenId
                 address(mockStETH),
                 address(mockLido),
                 address(rateContract),
@@ -277,7 +277,7 @@ contract PositionEscrowTest is
             PositionEscrow.initialize,
             (
                 admin,
-                stabilizerOwner,
+                1, // test tokenId
                 address(0), // Invalid stETH address
                 address(mockLido),
                 address(rateContract),
@@ -300,7 +300,7 @@ contract PositionEscrowTest is
             PositionEscrow.initialize,
             (
                 admin,
-                stabilizerOwner,
+                1, // test tokenId
                 address(mockStETH),
                 address(0), // Invalid Lido address
                 address(rateContract),
@@ -323,7 +323,7 @@ contract PositionEscrowTest is
             PositionEscrow.initialize,
             (
                 admin,
-                stabilizerOwner,
+                1, // test tokenId
                 address(mockStETH),
                 address(mockLido),
                 address(0), // Invalid RateContract address
@@ -346,7 +346,7 @@ contract PositionEscrowTest is
             PositionEscrow.initialize,
             (
                 admin,
-                stabilizerOwner,
+                1, // test tokenId
                 address(mockStETH),
                 address(mockLido),
                 address(rateContract),
