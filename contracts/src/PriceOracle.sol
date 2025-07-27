@@ -16,6 +16,7 @@ import "../lib/uniswap-v2-periphery/contracts/interfaces/IUniswapV2Router02.sol"
 import "forge-std/console.sol";
 
 error PriceDataTooOld(uint timestamp, uint currentTime);
+error FutureTimestampProvided(uint providedTimestamp, uint maxAllowedTimestamp);
 error PriceDeviationTooHigh(
     uint morpherPrice,
     uint chainlinkPrice,
@@ -277,6 +278,15 @@ contract PriceOracle is
             1000 * (block.timestamp - config.priceStalenessPeriod)
         ) {
             revert PriceDataTooOld(priceQuery.dataTimestamp, block.timestamp);
+        }
+
+        // Check for future timestamps, allowing a small grace period for clock drift
+        uint256 maxAllowedTimestamp = (block.timestamp + 15) * 1000; // 15s grace period
+        if (priceQuery.dataTimestamp > maxAllowedTimestamp) {
+            revert FutureTimestampProvided(
+                priceQuery.dataTimestamp,
+                maxAllowedTimestamp
+            );
         }
 
         if (block.chainid == 1) {

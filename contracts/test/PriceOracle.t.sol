@@ -304,6 +304,28 @@ contract PriceOracleTest is Test {
         priceOracle.attestationService(query);
     }
 
+    function testAttestationService_Revert_FutureTimestamp() public {
+        priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
+
+        // Timestamp 16 seconds in the future should be rejected (15s grace period)
+        uint256 futureTimestamp = (block.timestamp + 16) * 1000;
+        IPriceOracle.PriceAttestationQuery memory query = _createSignedQuery(
+            2000 ether,
+            futureTimestamp,
+            signerPrivateKey
+        );
+
+        uint256 maxAllowedTimestamp = (block.timestamp + 15) * 1000;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                FutureTimestampProvided.selector,
+                futureTimestamp,
+                maxAllowedTimestamp
+            )
+        );
+        priceOracle.attestationService(query);
+    }
+
     function testAttestationService_Revert_StaleTimestamp() public {
         vm.chainId(10); // Test on L2 to avoid L1 deviation checks
         priceOracle.grantRole(priceOracle.SIGNER_ROLE(), signer);
