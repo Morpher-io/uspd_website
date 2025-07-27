@@ -648,7 +648,11 @@ contract PositionEscrowTest is
         // uint256 stabilizerShare = totalToRemove - userShare; // 0.6 ether
 
         // Fund escrow
-        mockStETH.mint(address(positionEscrow), initialBalance);
+        mockStETH.mint(admin, initialBalance);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialBalance);
+        positionEscrow.addCollateralStETH(initialBalance);
+        vm.stopPrank();
 
         vm.expectEmit(true, true, false, true, address(positionEscrow)); // recipient is indexed
         emit IPositionEscrow.CollateralRemoved(
@@ -696,7 +700,11 @@ contract PositionEscrowTest is
         // uint256 userShare = 0.4 ether;
 
         // Fund escrow
-        mockStETH.mint(address(positionEscrow), initialBalance);
+        mockStETH.mint(admin, initialBalance);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialBalance);
+        positionEscrow.addCollateralStETH(initialBalance);
+        vm.stopPrank();
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -718,7 +726,11 @@ contract PositionEscrowTest is
         uint256 totalToRemove = 1 ether;
 
         // Fund escrow
-        mockStETH.mint(address(positionEscrow), initialBalance);
+        mockStETH.mint(admin, initialBalance);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialBalance);
+        positionEscrow.addCollateralStETH(initialBalance);
+        vm.stopPrank();
 
         // Mock transfer to fail
         vm.mockCall(
@@ -750,7 +762,11 @@ contract PositionEscrowTest is
         uint256 price = 2000 ether; // 1 stETH = 2000 USD
 
         // Setup state
-        mockStETH.mint(address(positionEscrow), initialStEth);
+        mockStETH.mint(admin, initialStEth);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth);
+        vm.stopPrank();
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
@@ -813,7 +829,11 @@ contract PositionEscrowTest is
         uint256 amountToRemove = 1 ether; // Removing 1 ETH would leave 0.5 ETH (target is 0.55)
 
         // Setup state
-        mockStETH.mint(address(positionEscrow), initialStEth);
+        mockStETH.mint(admin, initialStEth);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth);
+        vm.stopPrank();
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
@@ -850,7 +870,11 @@ contract PositionEscrowTest is
         // backedPoolShares = 0
 
         // Setup state
-        mockStETH.mint(address(positionEscrow), initialStEth);
+        mockStETH.mint(admin, initialStEth);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth);
+        vm.stopPrank();
 
         IPriceOracle.PriceAttestationQuery
             memory query = createSignedPriceAttestation(
@@ -903,7 +927,11 @@ contract PositionEscrowTest is
         // uint256 minRatio = 110; // Not needed, uses constant
 
         // Setup state
-        mockStETH.mint(address(positionEscrow), initialStEth);
+        mockStETH.mint(admin, initialStEth);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth);
+        vm.stopPrank();
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
@@ -1011,7 +1039,12 @@ contract PositionEscrowTest is
 
     function test_removeExcessCollateral_revert_zeroOraclePrice() public {
         // Setup state
-        mockStETH.mint(address(positionEscrow), 1.5 ether);
+        uint256 initialStEth = 1.5 ether;
+        mockStETH.mint(admin, initialStEth);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth);
+        vm.stopPrank();
         vm.prank(admin);
         positionEscrow.modifyAllocation(1000 ether);
 
@@ -1050,7 +1083,11 @@ contract PositionEscrowTest is
         uint256 expectedExcess = 0.7 ether;
 
         // Setup state
-        mockStETH.mint(address(positionEscrow), initialStEth);
+        mockStETH.mint(admin, initialStEth);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth);
+        vm.stopPrank();
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
@@ -1123,7 +1160,11 @@ contract PositionEscrowTest is
         uint256 shares = 1000 ether;
         uint256 price = 1000 ether; // 1 stETH = 1000 USD
 
-        mockStETH.mint(address(positionEscrow), stEthBalance);
+        mockStETH.mint(admin, stEthBalance);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), stEthBalance);
+        positionEscrow.addCollateralStETH(stEthBalance);
+        vm.stopPrank();
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
@@ -1146,7 +1187,11 @@ contract PositionEscrowTest is
         uint256 shares = 1000 ether;
         uint256 price = 1000 ether; // 1 stETH = 1000 USD
 
-        mockStETH.mint(address(positionEscrow), initialStEth);
+        mockStETH.mint(admin, initialStEth);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth);
+        vm.stopPrank();
         vm.prank(admin);
         positionEscrow.modifyAllocation(int256(shares));
 
@@ -1157,17 +1202,13 @@ contract PositionEscrowTest is
             abi.encodeWithSelector(rateContract.getYieldFactor.selector),
             abi.encode(yieldFactor)
         );
-        // Assume stETH balance also increased by 10% due to rebase
-        // Let's manually adjust the balance for clarity in calculation check
-        uint256 currentStEth = (initialStEth * 11) / 10; // 1.21 ether
-        uint256 amountToMint = currentStEth - initialStEth; // Calculate the difference needed
-        // Mint the difference to the escrow contract
-        mockStETH.mint(address(positionEscrow), amountToMint);
+        // With lockedStEth, rebases are not reflected in the collateral amount used for ratio calcs.
+        // The collateral value remains based on the principal `initialStEth`.
 
-        // Collateral Value = 1.21e18 * 1000e18 / 1e18 = 1210e18
+        // Collateral Value = 1.1e18 * 1000e18 / 1e18 = 1100e18
         // Liability Value = 1000e18 * 1.1e18 / 1e18 = 1100e18
-        // Ratio = (1210e18 * 1e18 * 10000) / (1100e18 * 1e18) = 11000
-        uint256 expectedRatio = 11000;
+        // Ratio = (1100e18 * 10000) / 1100e18 = 10000
+        uint256 expectedRatio = 10000;
 
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
             .PriceResponse(price, 18, block.timestamp * 1000);
@@ -1180,7 +1221,11 @@ contract PositionEscrowTest is
 
     function test_getCurrentStEthBalance() public {
         uint256 amount = 0.77 ether;
-        mockStETH.mint(address(positionEscrow), amount);
+        mockStETH.mint(admin, amount);
+        vm.startPrank(admin);
+        mockStETH.approve(address(positionEscrow), amount);
+        positionEscrow.addCollateralStETH(amount);
+        vm.stopPrank();
         assertEq(
             positionEscrow.getCurrentStEthBalance(),
             amount,

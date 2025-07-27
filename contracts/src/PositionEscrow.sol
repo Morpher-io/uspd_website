@@ -35,6 +35,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     uint256 public override tokenId;               // The ID of the StabilizerNFT this escrow belongs to
 
     uint256 public override backedPoolShares; // Liability tracked in pool shares
+    uint256 public lockedStEth;
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -126,6 +127,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
 
         // Total stETH added in this operation = user's converted ETH + pre-transferred stabilizer stETH
         uint256 totalStEthAdded = userStEthReceived + stabilizerStEthAmount;
+        lockedStEth += totalStEthAdded;
 
         // Emit event acknowledging the total stETH added to the pool
         emit CollateralAdded(totalStEthAdded);
@@ -147,6 +149,10 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             revert TransferFailed(); // Lido submit failed
         }
 
+        lockedStEth += stEthReceived;
+
+        lockedStEth += stEthReceived;
+
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
 
@@ -165,6 +171,8 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         // Pull stETH from the caller
         bool success = IERC20(stETH).transferFrom(msg.sender, address(this), stETHAmount);
         if (!success) revert TransferFailed(); // Check allowance and balance
+
+        lockedStEth += stETHAmount;
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stETHAmount);
@@ -206,11 +214,12 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         if (amountToRemove == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
 
-        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
-        if (amountToRemove > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amountToRemove);
+        if (amountToRemove > lockedStEth) revert ERC20InsufficientBalance(address(this), lockedStEth, amountToRemove);
 
         bool success = IERC20(stETH).transfer(recipient, amountToRemove);
         if (!success) revert TransferFailed();
+
+        lockedStEth -= amountToRemove;
 
         emit CollateralRemoved(recipient, amountToRemove); // Emit simplified event
     }
@@ -241,7 +250,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             .attestationService(priceQuery);
 
         // 3. Get current state
-        uint256 currentStEth = IERC20(stETH).balanceOf(address(this));
+        uint256 currentStEth = lockedStEth;
         uint256 currentShares = backedPoolShares;
 
         // 4. Check sufficient balance
@@ -273,6 +282,8 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         bool success = IERC20(stETH).transfer(recipient, amountToRemove);
         if (!success) revert TransferFailed();
 
+        lockedStEth -= amountToRemove;
+
         // 8. Emit event
         emit ExcessCollateralRemoved(recipient, amountToRemove);
 
@@ -293,7 +304,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             return type(uint256).max; // Indicate infinite/undefined ratio
         }
 
-        uint256 currentStEth = IERC20(stETH).balanceOf(address(this));
+        uint256 currentStEth = lockedStEth;
         if (currentStEth == 0) {
             return 0; // No collateral, ratio is zero
         }
@@ -321,7 +332,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
      * @notice Returns the current stETH balance held by this escrow.
      */
     function getCurrentStEthBalance() external view override returns (uint256 balance) {
-        return IERC20(stETH).balanceOf(address(this));
+        return lockedStEth;
     }
 
     // --- Fallback ---
