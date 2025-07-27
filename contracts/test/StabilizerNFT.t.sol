@@ -1285,9 +1285,10 @@ contract StabilizerNFTTest is Test {
 
         // --- Artificially Lower Collateral in PositionEscrow to create insufficiency ---
         // uint256 collateralActuallyInEscrow = 0.8 ether; // Inlined: Manually set actual stETH in escrow
+        uint256 collateralToReduce = initialCollateralBeforeManualReduction - 0.8 ether;
         require(0.8 ether < initialCollateralBeforeManualReduction, "Manual reduction error");
-        vm.prank(address(positionEscrow)); // Bypass access control for direct transfer
-        mockStETH.transfer(address(0xdead), initialCollateralBeforeManualReduction - 0.8 ether);
+        vm.prank(address(stabilizerNFT));
+        positionEscrow.removeCollateral(collateralToReduce, address(0xdead));
         assertEq(positionEscrow.getCurrentStEthBalance(), 0.8 ether, "Collateral in PositionEscrow not set correctly after manual reduction");
 
         // --- Fund InsuranceEscrow ---
@@ -1372,9 +1373,10 @@ contract StabilizerNFTTest is Test {
 
         // --- Artificially Lower Collateral in PositionEscrow ---
         // Manually set actual stETH in escrow to 0.8 ether
+        uint256 collateralToReduce = initialCollateralBeforeManualReduction - 0.8 ether;
         require(0.8 ether < initialCollateralBeforeManualReduction, "Manual reduction error for position");
-        vm.prank(address(positionEscrow));
-        mockStETH.transfer(address(0xdead), initialCollateralBeforeManualReduction - 0.8 ether);
+        vm.prank(address(stabilizerNFT));
+        positionEscrow.removeCollateral(collateralToReduce, address(0xdead));
         assertEq(positionEscrow.getCurrentStEthBalance(), 0.8 ether, "Collateral in PositionEscrow not set correctly after manual reduction");
 
         // --- Fund InsuranceEscrow (Partially) ---
@@ -1458,8 +1460,8 @@ contract StabilizerNFTTest is Test {
         assertEq(insuranceEscrow.getStEthBalance(), 1.05 ether, "InsuranceEscrow initial funding failed");
 
         // --- Artificially Empty Collateral in PositionEscrow ---
-        vm.prank(address(positionEscrow)); // Bypass access control for direct transfer
-        mockStETH.transfer(address(0xdead), initialCollateralInPosition); // Remove all collateral
+        vm.prank(address(stabilizerNFT));
+        positionEscrow.removeCollateral(initialCollateralInPosition, address(0xdead)); // Remove all collateral
         assertEq(positionEscrow.getCurrentStEthBalance(), 0, "PositionEscrow collateral not emptied");
 
         // --- Setup Liquidator (user2) ---
@@ -1546,8 +1548,8 @@ contract StabilizerNFTTest is Test {
         assertEq(insuranceEscrow.getStEthBalance(), 0.5 ether, "InsuranceEscrow initial partial funding failed");
 
         // --- Artificially Empty Collateral in PositionEscrow ---
-        vm.prank(address(positionEscrow)); 
-        mockStETH.transfer(address(0xdead), initialCollateralInPosition); // Remove all collateral
+        vm.prank(address(stabilizerNFT)); 
+        positionEscrow.removeCollateral(initialCollateralInPosition, address(0xdead)); // Remove all collateral
         assertEq(positionEscrow.getCurrentStEthBalance(), 0, "PositionEscrow collateral not emptied");
 
         // --- Setup Liquidator (user2) ---
@@ -1633,8 +1635,8 @@ contract StabilizerNFTTest is Test {
         assertEq(insuranceEscrow.getStEthBalance(), 0, "InsuranceEscrow should be empty for this test");
 
         // --- Artificially Empty Collateral in PositionEscrow ---
-        vm.prank(address(positionEscrow)); 
-        mockStETH.transfer(address(0xdead), initialCollateralInPosition); // Remove all collateral
+        vm.prank(address(stabilizerNFT)); 
+        positionEscrow.removeCollateral(initialCollateralInPosition, address(0xdead)); // Remove all collateral
         assertEq(positionEscrow.getCurrentStEthBalance(), 0, "PositionEscrow collateral not emptied");
 
         // --- Setup Liquidator (user2) ---
@@ -2622,9 +2624,9 @@ contract StabilizerNFTTest is Test {
         uint256 collateralToSetInPosition = (stEthParValue * 10800) / 10000; // collateralRatioToSet = 10800
 
         require(collateralToSetInPosition < initialCollateral, "Test setup: collateralToSetInPosition too high");
-        vm.prank(address(positionEscrow));
-        mockStETH.transfer(address(0xdead), initialCollateral - collateralToSetInPosition);
-        assertEq(positionEscrow.getCurrentStEthBalance(), collateralToSetInPosition, "Collateral not set correctly");
+        vm.prank(address(stabilizerNFT));
+        positionEscrow.removeCollateral(initialCollateral - collateralToSetInPosition, address(0xdead));
+        assertApproxEqAbs(positionEscrow.getCurrentStEthBalance(), collateralToSetInPosition, 1, "Collateral not set correctly");
 
         // --- Setup Liquidator (user2) ---
         // Mint dummy NFTs to ensure liquidatorsNFTId is high enough to trigger the minimum threshold.
