@@ -144,7 +144,7 @@ contract PriceOracle is
     }
 
     function getUniswapV3WethUsdcPrice() public view returns (uint) {
-        IUniswapV3Factory factory = IUniswapV3Factory(uniswapV3Factory);
+        IUniswapV3Factory factory = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
         address uniswapV3PoolWethUSDC = factory.getPool(
             uniswapRouter.WETH(),
             usdcAddress,
@@ -155,7 +155,9 @@ contract PriceOracle is
                 uniswapV3PoolWethUSDC
             );
             (uint sqrtPriceX96, , , , , , ) = uniswapPoolState.slot0();
-            return ((sqrtPriceX96 / 2 ** 96) ** 2) * 1e12; //scaling it to 18 decimals from 6 decimals from the usdc
+            uint price = (1e18 * 2**192) / (sqrtPriceX96 ** 2);
+            return price * 1e12; //we are aware that we're pruning some digits in the cents, which is ok
+            //previously wrong: its usdc/weth not weth/usdc - return ((sqrtPriceX96 / 2 ** 96) ** 2) * 1e12; //scaling it to 18 decimals from 6 decimals from the usdc
         }
 
         /**

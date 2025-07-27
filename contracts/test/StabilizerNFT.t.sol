@@ -79,7 +79,7 @@ contract StabilizerNFTTest is Test {
         address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
         vm.mockCall(UNISWAP_ROUTER, abi.encodeWithSelector(IUniswapV2Router01.WETH.selector), abi.encode(wethAddress));
         vm.mockCall(uniswapV3Factory, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, wethAddress, USDC, 3000), abi.encode(mockPoolAddress));
-        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000; // Approx 2000 USD/ETH
+        uint160 mockSqrtPriceX96 = 1771595571142960000000000000000000; // Approx 2000 USD/ETH
         bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
         vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
         // --- End Oracle Mocks ---
@@ -1999,7 +1999,7 @@ contract StabilizerNFTTest is Test {
         // Update Oracle Mocks for $900 price
         // bytes memory mockChainlinkBurnReturn = abi.encode(uint80(1), int(liquidationPrice / (10**10)), uint256(block.timestamp), uint256(block.timestamp), uint80(1)); //Inlined
         vm.mockCall(CHAINLINK_ETH_USD, abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector), abi.encode(uint80(1), int(liquidationPrice / (10**10)), uint256(block.timestamp), uint256(block.timestamp), uint80(1)));
-        uint160 sqrtPriceLiquidation = uint160(Math.sqrt(liquidationPrice / (10**12)) * (2**96));
+        uint160 sqrtPriceLiquidation = uint160(Math.sqrt((2**192 * 1e18) / (liquidationPrice * 1e6)));
         bytes memory mockSlot0BurnReturn = abi.encode(sqrtPriceLiquidation, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
         address mockPoolAddress = address(0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640);
         vm.mockCall(mockPoolAddress, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0BurnReturn);

@@ -181,7 +181,7 @@ contract USPDTokenTest is Test {
 
         // Mock the pool.slot0 call to return data yielding a price of ~2000 USD
         // sqrtPriceX96 for $2000 WETH/USDC (6 decimals) is approx 14614467034852101032872730522039888
-        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000;
+        uint160 mockSqrtPriceX96 = 1771595571142960000000000000000000;
         bytes memory mockSlot0Return = abi.encode(
             mockSqrtPriceX96, // sqrtPriceX96
             int24(0),         // tick

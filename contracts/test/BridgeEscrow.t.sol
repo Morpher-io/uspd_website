@@ -158,7 +158,7 @@ contract BridgeEscrowTest is Test {
         vm.mockCall(CHAINLINK_ETH_USD_MAINNET, abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector), mockChainlinkReturn);
         vm.mockCall(UNISWAP_ROUTER_MAINNET, abi.encodeWithSelector(IUniswapV2Router01.WETH.selector), abi.encode(WETH_MAINNET));
         vm.mockCall(UNISWAP_V3_FACTORY_MAINNET, abi.encodeWithSelector(IUniswapV3Factory.getPool.selector, WETH_MAINNET, USDC_MAINNET, 3000), abi.encode(MOCK_UNISWAP_POOL_MAINNET));
-        uint160 mockSqrtPriceX96 = 3543191142285910000000000000000000; // Approx $2000 WETH/USDC
+        uint160 mockSqrtPriceX96 = 1771595571142960000000000000000000; // Approx $2000 WETH/USDC
         bytes memory mockSlot0Return = abi.encode(mockSqrtPriceX96, int24(0), uint16(0), uint16(0), uint16(0), uint8(0), false);
         vm.mockCall(MOCK_UNISWAP_POOL_MAINNET, abi.encodeWithSelector(IUniswapV3PoolState.slot0.selector), mockSlot0Return);
     }
