@@ -151,8 +151,6 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
 
         lockedStEth += stEthReceived;
 
-        lockedStEth += stEthReceived;
-
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
 
@@ -350,6 +348,8 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         } catch {
             revert TransferFailed(); // Lido submit failed
         }
+
+        lockedStEth += stEthReceived;
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
