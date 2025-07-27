@@ -49,4 +49,6 @@ interface IStabilizerNFT {
      * @return The address of the associated PositionEscrow.
      */
     function positionEscrows(uint256 tokenId) external view returns (address);
+
+    function ownerOf(uint256 tokenId) external view returns (address);
 }
