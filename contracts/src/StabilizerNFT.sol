@@ -415,15 +415,14 @@ contract StabilizerNFT is
                     stEthRemovedFromPosition = actualBackingStEth;
                 }
 
-                if (targetPayoutToLiquidator > actualBackingStEth) { // Check if shortfall exists
-                    uint256 shortfallAmount = targetPayoutToLiquidator - actualBackingStEth;
-                    uint256 currentInsuranceBalance = insuranceEscrow.getStEthBalance();
-                    uint256 stEthFromInsurance = shortfallAmount > currentInsuranceBalance ? currentInsuranceBalance : shortfallAmount;
+                // A shortfall exists because we are in this else-block.
+                uint256 shortfallAmount = targetPayoutToLiquidator - actualBackingStEth;
+                uint256 currentInsuranceBalance = insuranceEscrow.getStEthBalance();
+                uint256 stEthFromInsurance = shortfallAmount > currentInsuranceBalance ? currentInsuranceBalance : shortfallAmount;
 
-                    if (stEthFromInsurance > 0) {
-                        insuranceEscrow.withdrawStEth(msg.sender, stEthFromInsurance);
-                        stEthPaidToLiquidator += stEthFromInsurance;
-                    }
+                if (stEthFromInsurance > 0) {
+                    insuranceEscrow.withdrawStEth(msg.sender, stEthFromInsurance);
+                    stEthPaidToLiquidator += stEthFromInsurance;
                 }
             }
         } // End of payout logic scope
