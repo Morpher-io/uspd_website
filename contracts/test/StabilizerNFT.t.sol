@@ -3099,7 +3099,7 @@ contract StabilizerNFTTest is Test {
     function testSetLiquidationParameters_Revert_PayoutTooLow() public {
         uint256 newPayoutPercent = 99; // Less than 100
         vm.prank(owner); // Owner is admin
-        vm.expectRevert("Payout percent must be >= 100");
+        vm.expectRevert("Payout percent must be >= 105");
         stabilizerNFT.setLiquidationParameters(newPayoutPercent);
     }
 
