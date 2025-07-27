@@ -16,6 +16,7 @@ interface IPositionEscrow is IERC20Errors, IAccessControl {
     error TransferFailed();
     error BelowMinimumRatio(); // For removeExcessCollateral check
     error ArithmeticError(); // For potential overflows/underflows
+    error NotNFTOwner(); // For role checks based on NFT ownership
 
     // --- Events ---
     event CollateralAdded(uint256 totalStEthAmount); // Simplified event
@@ -31,6 +32,7 @@ interface IPositionEscrow is IERC20Errors, IAccessControl {
     function rateContract() external view returns (address);
     function oracle() external view returns (address);
     function backedPoolShares() external view returns (uint256);
+    function tokenId() external view returns (uint256);
 
     // --- External Functions ---
     // function addCollateral(uint256 totalStEthAmount) external; // Simplified signature

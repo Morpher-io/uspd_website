@@ -42,6 +42,9 @@ contract PositionEscrowTest is
 
     mapping(uint256 => address) public positionEscrows;
 
+    // --- IStabilizerNFT Mock State ---
+    mapping(uint256 => address) internal nftOwners; // Mock ownerOf
+
     // --- Constants ---
     uint256 internal constant FACTOR_PRECISION = 1e18;
     uint256 internal constant INITIAL_RATE_DEPOSIT = 0.001 ether;
@@ -96,12 +99,16 @@ contract PositionEscrowTest is
         // Deploy PositionEscrow Implementation
         PositionEscrow escrowImpl = new PositionEscrow();
 
+        // Set mock owner for the test tokenId
+        uint256 testTokenId = 1;
+        nftOwners[testTokenId] = stabilizerOwner;
+
         // Prepare initialization data
         bytes memory initData = abi.encodeCall(
             PositionEscrow.initialize,
             (
                 admin, // _stabilizerNFT (test contract acts as this)
-                stabilizerOwner, // _stabilizerOwner
+                testTokenId, // _tokenId
                 address(mockStETH), // _stETHAddress
                 address(mockLido), // _lidoAddress
                 address(rateContract), // _rateContractAddress
@@ -153,6 +160,11 @@ contract PositionEscrowTest is
         );
     }
 
+    function ownerOf(uint256 _tokenId) external view returns (address) {
+        // Mock implementation for IStabilizerNFT interface.
+        return nftOwners[_tokenId];
+    }
+
     // --- End IStabilizerNFT Implementation ---
 
     // --- Helper Functions ---
@@ -200,11 +212,12 @@ contract PositionEscrowTest is
         assertEq(positionEscrow.rateContract(), address(rateContract));
         assertEq(positionEscrow.oracle(), address(priceOracle));
         assertEq(positionEscrow.backedPoolShares(), 0, "Initial backed shares should be 0");
+        assertEq(positionEscrow.tokenId(), 1, "Initial token ID should be 1");
 
         // Assert roles granted by initialize
         assertTrue(positionEscrow.hasRole(positionEscrow.DEFAULT_ADMIN_ROLE(), admin), "Admin role mismatch");
         assertTrue(positionEscrow.hasRole(positionEscrow.STABILIZER_ROLE(), admin), "Stabilizer role mismatch");
-        assertTrue(positionEscrow.hasRole(positionEscrow.EXCESSCOLLATERALMANAGER_ROLE(), stabilizerOwner), "Manager role mismatch");
+        assertFalse(positionEscrow.hasRole(keccak256("EXCESSCOLLATERALMANAGER_ROLE"), stabilizerOwner), "Manager role should not be granted");
     }
 
     // Removed test_initialize_initialState and test_initialize_roles as they are covered by testInitialize now
@@ -232,16 +245,16 @@ contract PositionEscrowTest is
         new ERC1967Proxy(address(impl), initData);
     }
 
-    function test_initialize_revert_zeroStabilizerOwner() public {
+    function test_initialize_revert_zeroTokenId() public {
         // Renamed from test_constructor_revert_zeroStabilizerOwner
         PositionEscrow impl = new PositionEscrow(); // Deploy implementation
 
-        // Prepare initialization data with zero StabilizerOwner address
+        // Prepare initialization data with zero Token ID
         bytes memory initData = abi.encodeCall(
             PositionEscrow.initialize,
             (
                 admin,
-                address(0), // Invalid StabilizerOwner address
+                0, // Invalid Token ID
                 address(mockStETH),
                 address(mockLido),
                 address(rateContract),
@@ -250,7 +263,7 @@ contract PositionEscrowTest is
         );
 
         // Expect the proxy deployment's initialization call to revert
-        vm.expectRevert(IPositionEscrow.ZeroAddress.selector);
+        vm.expectRevert(IPositionEscrow.ZeroAddress.selector); // Re-using error
         // Deploy the proxy, attempting initialization with faulty data
         new ERC1967Proxy(address(impl), initData);
     }
@@ -404,21 +417,18 @@ contract PositionEscrowTest is
         positionEscrow.removeCollateral(1 ether, payable(recipient));
     }
 
-    function test_removeExcessCollateral_revert_notManagerRole() public {
+    function test_removeExcessCollateral_revert_notNFTOwner() public {
         IPriceOracle.PriceAttestationQuery
             memory query = createSignedPriceAttestation(
                 2000 ether,
                 block.timestamp * 1000
             );
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector,
-                otherUser,
-                positionEscrow.EXCESSCOLLATERALMANAGER_ROLE()
-            )
-        );
+
+        // In setUp, tokenId 1 is owned by stabilizerOwner.
+        // We prank as otherUser to test the owner check.
+        // The mock ownerOf will return stabilizerOwner, which doesn't match otherUser.
+        vm.expectRevert(IPositionEscrow.NotNFTOwner.selector);
         vm.prank(otherUser);
-        // Add a placeholder amountToRemove (e.g., 0.1 ether) to match the function signature
         positionEscrow.removeExcessCollateral(
             payable(recipient),
             0.1 ether,
@@ -773,7 +783,7 @@ contract PositionEscrowTest is
         emit IPositionEscrow.ExcessCollateralRemoved(recipient, expectedExcess);
 
         // Action: Remove the calculated excess
-        vm.prank(stabilizerOwner); // Has EXCESSCOLLATERALMANAGER_ROLE
+        vm.prank(stabilizerOwner); // Is NFT owner
         // The call to removeExcessCollateral will trigger reportCollateralRemoval back to this test contract
         positionEscrow.removeExcessCollateral(
             payable(recipient),

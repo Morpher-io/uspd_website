@@ -272,7 +272,7 @@ contract StabilizerNFT is
         // Initialize the clone
         PositionEscrow(payable(positionEscrowClone)).initialize(
             address(this), // This StabilizerNFT contract is the controller/admin/stabilizer role holder
-            to,            // The NFT owner gets EXCESSCOLLATERALMANAGER_ROLE
+            tokenId,       // Pass the tokenId to link ownership
             stETH,         // stETH address
             lido,          // Lido address
             address(rateContract), // Rate contract address

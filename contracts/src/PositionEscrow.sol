@@ -17,10 +17,11 @@ import "./PriceOracle.sol";
  * @dev Deployed and controlled by the StabilizerNFT contract. Implements IPositionEscrow and AccessControl. Meant to be deployed as a clone.
  */
 contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradeable { // <-- Inherit Initializable and AccessControlUpgradeable
+    // --- Errors (from interface) ---
+    error NotNFTOwner();
 
     // --- Roles (defined in interface, constants here for convenience) ---
     bytes32 public constant STABILIZER_ROLE = keccak256("STABILIZER_ROLE");
-    bytes32 public constant EXCESSCOLLATERALMANAGER_ROLE = keccak256("EXCESSCOLLATERALMANAGER_ROLE");
 
     // --- Constants ---
     uint256 public constant MINIMUM_COLLATERAL_RATIO = 12500; // 125.00%
@@ -31,6 +32,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     address public override lido;                  // Lido staking pool contract (needed?) - Maybe not needed here if staking happens before transfer
     address public override rateContract;          // PoolSharesConversionRate contract
     address public override oracle;                // PriceOracle contract
+    uint256 public override tokenId;               // The ID of the StabilizerNFT this escrow belongs to
 
     uint256 public override backedPoolShares; // Liability tracked in pool shares
 
@@ -44,15 +46,15 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     /**
      * @notice Initializes the PositionEscrow contract state.
      * @param _stabilizerNFT The address of the controlling StabilizerNFT contract.
+     * @param _tokenId The ID of the StabilizerNFT this escrow is associated with.
      * @param _stETHAddress The address of the stETH token.
      * @param _lidoAddress The address of the Lido staking pool.
      * @param _rateContractAddress The address of the PoolSharesConversionRate contract.
      * @param _oracleAddress The address of the PriceOracle contract.
-     * @param _stabilizerOwner The address of the owner of the corresponding StabilizerNFT.
      */
     function initialize( // <-- Renamed from constructor
         address _stabilizerNFT,
-        address _stabilizerOwner,
+        uint256 _tokenId,
         address _stETHAddress,
         address _lidoAddress,
         address _rateContractAddress,
@@ -60,11 +62,12 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     ) external initializer { // <-- Added initializer modifier
         __AccessControl_init(); // <-- Initialize AccessControl
 
-        if (_stabilizerNFT == address(0) || _stabilizerOwner == address(0) || _stETHAddress == address(0) || _lidoAddress == address(0) || _rateContractAddress == address(0) || _oracleAddress == address(0)) {
-            revert ZeroAddress();
+        if (_stabilizerNFT == address(0) || _tokenId == 0 || _stETHAddress == address(0) || _lidoAddress == address(0) || _rateContractAddress == address(0) || _oracleAddress == address(0)) {
+            revert ZeroAddress(); // Re-using ZeroAddress for tokenId == 0 for simplicity
         }
 
         stabilizerNFTContract = _stabilizerNFT;
+        tokenId = _tokenId;
         stETH = _stETHAddress;
         lido = _lidoAddress; // Store Lido address
         rateContract = _rateContractAddress;
@@ -74,7 +77,6 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         // Grant roles
         _grantRole(DEFAULT_ADMIN_ROLE, _stabilizerNFT);
         _grantRole(STABILIZER_ROLE, _stabilizerNFT);
-        _grantRole(EXCESSCOLLATERALMANAGER_ROLE, _stabilizerOwner);
     }
 
     // --- External Functions ---
@@ -224,11 +226,13 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         address payable recipient,
         uint256 amountToRemove, // Caller specifies amount
         IPriceOracle.PriceAttestationQuery calldata priceQuery
-    ) external override onlyRole(EXCESSCOLLATERALMANAGER_ROLE) { // Role check remains
+    ) external override { // Role check moved inside
         // --- Logic ---
         // --- Implementation ---
+        // 1. Validate caller is NFT owner
+        if (IStabilizerNFT(stabilizerNFTContract).ownerOf(tokenId) != msg.sender) revert NotNFTOwner();
 
-        // 1. Validate inputs
+        // 2. Validate inputs
         if (recipient == address(0)) revert ZeroAddress();
         if (amountToRemove == 0) revert ZeroAmount();
 
