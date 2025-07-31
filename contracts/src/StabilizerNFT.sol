@@ -565,13 +565,8 @@ contract StabilizerNFT is
             // require(positionEscrowAddress != address(0), "PositionEscrow not found"); // Removed: Invariant from mint
 
             // 1. Transfer Stabilizer's stETH from StabilizerEscrow to PositionEscrow
-            // Approve this contract to pull from StabilizerEscrow
-            IStabilizerEscrow(escrowAddress).approveAllocation(toAllocate, address(this));
-            // Pull the funds
-            bool successStabilizer = IERC20(stETH).transferFrom(escrowAddress, positionEscrowAddress, toAllocate);
-            if (!successStabilizer) revert("Stabilizer stETH transfer to PositionEscrow failed");
-            // Report balance change to the escrow
-            IStabilizerEscrow(escrowAddress).updateBalance(-int256(toAllocate));
+            // This single call replaces approve, transferFrom, and updateBalance to save bytecode.
+            StabilizerEscrow(escrowAddress).withdrawForAllocation(toAllocate, positionEscrowAddress);
 
             // 2. Call PositionEscrow.addCollateralFromStabilizer
             // This sends the user's ETH (userEthShare) which gets converted to stETH inside PositionEscrow,

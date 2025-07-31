@@ -206,4 +206,26 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     function stabilizerOwner() external view returns (address) {
         return IERC721(stabilizerNFTContract).ownerOf(tokenId);
     }
+
+    /**
+     * @notice Withdraws stETH from this escrow and sends it to a recipient (e.g., PositionEscrow).
+     * @param amount The amount of stETH to withdraw.
+     * @param recipient The address to send the stETH to.
+     * @dev Callable only by StabilizerNFT. This is a single-call alternative to approve/transferFrom
+     *      to reduce bytecode size in the calling StabilizerNFT contract.
+     */
+    function withdrawForAllocation(uint256 amount, address recipient) external onlyStabilizerNFT {
+        if (amount == 0) revert ZeroAmount();
+        if (recipient == address(0)) revert ZeroAddress();
+
+        uint256 currentBalance = unallocatedStETHBalance;
+        if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount);
+
+        bool success = IERC20(stETH).transfer(recipient, amount);
+        if (!success) revert TransferFailed();
+
+        unallocatedStETHBalance -= amount;
+
+        emit BalanceUpdated(-int256(amount), unallocatedStETHBalance);
+    }
 }

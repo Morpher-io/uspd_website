@@ -345,6 +345,67 @@ contract StabilizerEscrowTest is Test {
     }
 
 
+    // --- Test withdrawForAllocation() ---
+
+    function test_WithdrawForAllocation_Success() public {
+        uint256 withdrawAmount = 0.3 ether;
+        uint256 initialEscrowBalance = escrow.unallocatedStETH();
+        uint256 initialPositionNFTBalance = mockStETH.balanceOf(positionNFT);
+
+        vm.prank(stabilizerNFT);
+        // Event is BalanceUpdated.
+        vm.expectEmit(true, false, false, true, address(escrow));
+        emit StabilizerEscrow.BalanceUpdated(-int256(withdrawAmount), initialEscrowBalance - withdrawAmount);
+
+        escrow.withdrawForAllocation(withdrawAmount, positionNFT);
+
+        assertEq(escrow.unallocatedStETH(), initialEscrowBalance - withdrawAmount, "Escrow internal balance mismatch");
+        assertEq(mockStETH.balanceOf(address(escrow)), initialEscrowBalance - withdrawAmount, "Escrow physical balance mismatch");
+        assertEq(mockStETH.balanceOf(positionNFT), initialPositionNFTBalance + withdrawAmount, "Recipient physical balance mismatch");
+    }
+
+    function test_WithdrawForAllocation_Revert_TransferFails() public {
+        uint256 withdrawAmount = 0.3 ether;
+
+        // Mock transfer to fail
+        vm.mockCall(
+            address(mockStETH),
+            abi.encodeWithSelector(mockStETH.transfer.selector, positionNFT, withdrawAmount),
+            abi.encode(false)
+        );
+
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(StabilizerEscrow.TransferFailed.selector);
+        escrow.withdrawForAllocation(withdrawAmount, positionNFT);
+    }
+
+    function test_WithdrawForAllocation_Revert_ZeroAmount() public {
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(StabilizerEscrow.ZeroAmount.selector);
+        escrow.withdrawForAllocation(0, positionNFT);
+    }
+
+    function test_WithdrawForAllocation_Revert_ZeroAddress() public {
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(StabilizerEscrow.ZeroAddress.selector);
+        escrow.withdrawForAllocation(0.1 ether, address(0));
+    }
+
+    function test_WithdrawForAllocation_Revert_InsufficientBalance() public {
+        uint256 currentBalance = escrow.unallocatedStETH();
+        uint256 amount = currentBalance + 1 wei;
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(escrow), currentBalance, amount));
+        escrow.withdrawForAllocation(amount, positionNFT);
+    }
+
+    function test_WithdrawForAllocation_Revert_NotStabilizerNFT() public {
+        vm.prank(user1);
+        vm.expectRevert("Caller is not StabilizerNFT");
+        escrow.withdrawForAllocation(0.1 ether, positionNFT);
+    }
+
+
     // --- Test receive() Fallback ---
     // we do not accept direct ETH deposits RES-USPD-NFT02 
     function test_Receive_RevertsDirectEthDeposit() public {
