@@ -18,11 +18,16 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     error ZeroAddress();
     error ZeroAmount();
     error InsufficientEscrowAmount(uint256 currentBalance, uint256 depositAmount, uint256 minimumAmount);
+    error WithdrawalWouldLeaveDust();
+    error BalanceUpdateFailed();
     // Removed InsufficientUnallocatedStETH
     // Removed InsufficientAllocatedStETH
     error InitialDepositFailed(); // Keep for constructor check if needed, though constructor doesn't deposit now
     error DepositFailed();
     error TransferFailed();
+
+    // --- Events ---
+    event BalanceUpdated(int256 delta, uint256 newBalance);
 
     // --- State Variables ---
     uint256 public constant MINIMUM_ESCROW_AMOUNT = 0.1 ether;
@@ -31,8 +36,7 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     // stabilizerOwner removed - Owner is determined dynamically via StabilizerNFT
     address public stETH;                 // stETH token contract - Make immutable
     address public lido;                  // Lido staking pool contract - Make immutable
-
-    // allocatedStETH state variable removed
+    uint256 public unallocatedStETHBalance; // Using internal balance to prevent bypass
 
     // --- Modifiers ---
     modifier onlyStabilizerNFT() {
@@ -97,17 +101,24 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     function deposit() external payable onlyStabilizerNFT {
         if (msg.value == 0) revert ZeroAmount();
 
-        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
-        if (currentBalance + msg.value < MINIMUM_ESCROW_AMOUNT) {
-            revert InsufficientEscrowAmount(currentBalance, msg.value, MINIMUM_ESCROW_AMOUNT);
+        // Check against internal balance, assuming 1:1 for check is acceptable per legacy logic
+        if (unallocatedStETHBalance + msg.value < MINIMUM_ESCROW_AMOUNT) {
+            revert InsufficientEscrowAmount(unallocatedStETHBalance, msg.value, MINIMUM_ESCROW_AMOUNT);
         }
 
-        // Stake additional ETH
-        try ILido(lido).submit{value: msg.value}(address(0)) {}
-        catch {
+        // Stake additional ETH and capture stETH received
+        uint256 stEthReceived;
+        try ILido(lido).submit{value: msg.value}(address(0)) returns (uint256 received) {
+            stEthReceived = received;
+        } catch {
             revert DepositFailed();
         }
+        if (stEthReceived == 0) revert DepositFailed(); // Ensure staking was successful
+
+        unallocatedStETHBalance += stEthReceived;
+
         emit DepositReceived(msg.value); // Emit the event
+        emit BalanceUpdated(int256(stEthReceived), unallocatedStETHBalance);
     }
 
     /**
@@ -120,7 +131,7 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
         if (amount == 0) revert ZeroAmount();
         if (positionNFTAddress == address(0)) revert ZeroAddress();
 
-        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
+        uint256 currentBalance = unallocatedStETHBalance;
         if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount);
 
         // Approve PositionNFT to pull the funds
@@ -137,8 +148,14 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
      */
     function withdrawUnallocated(uint256 amount) external onlyStabilizerNFT {
         if (amount == 0) revert ZeroAmount();
-        uint256 currentBalance = IERC20(stETH).balanceOf(address(this));
+        uint256 currentBalance = unallocatedStETHBalance;
         if (amount > currentBalance) revert ERC20InsufficientBalance(address(this), currentBalance, amount);
+
+        // Prevent withdrawing an amount that leaves dust
+        uint256 remainingBalance = currentBalance - amount;
+        if (remainingBalance > 0 && remainingBalance < MINIMUM_ESCROW_AMOUNT) {
+            revert WithdrawalWouldLeaveDust();
+        }
 
         // Fetch the current owner from the StabilizerNFT contract using the stored tokenId
         address currentOwner = IERC721(stabilizerNFTContract).ownerOf(tokenId); // Use stored tokenId
@@ -148,8 +165,11 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
         bool success = IERC20(stETH).transfer(currentOwner, amount);
         if (!success) revert TransferFailed();
 
+        unallocatedStETHBalance = remainingBalance;
+
         // Emit event (optional, could be emitted by StabilizerNFT instead)
         emit WithdrawalCompleted(currentOwner, amount);
+        emit BalanceUpdated(-int256(amount), unallocatedStETHBalance);
     }
 
     // --- View Functions ---
@@ -160,7 +180,27 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
      * @return The amount of stETH held by the escrow.
      */
     function unallocatedStETH() external view override returns (uint256) {
-        return IERC20(stETH).balanceOf(address(this));
+        return unallocatedStETHBalance;
+    }
+
+    /**
+     * @notice Updates the internal balance tracking.
+     * @param delta The change in balance (can be positive or negative).
+     * @dev Callable only by StabilizerNFT to report balance changes from stETH transfers
+     *      that happen outside this contract's direct control (e.g., direct deposit, allocation).
+     */
+    function updateBalance(int256 delta) external onlyStabilizerNFT {
+        uint256 oldBalance = unallocatedStETHBalance;
+        uint256 newBalance;
+        if (delta > 0) {
+            newBalance = oldBalance + uint256(delta);
+        } else {
+            uint256 amountToRemove = uint256(-delta);
+            if (amountToRemove > oldBalance) revert BalanceUpdateFailed();
+            newBalance = oldBalance - amountToRemove;
+        }
+        unallocatedStETHBalance = newBalance;
+        emit BalanceUpdated(delta, newBalance);
     }
 
     function stabilizerOwner() external view returns (address) {

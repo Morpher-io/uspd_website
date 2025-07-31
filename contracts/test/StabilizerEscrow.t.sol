@@ -64,8 +64,8 @@ contract StabilizerEscrowTest is Test {
         escrow.deposit{value: INITIAL_DEPOSIT}();
 
         // Check stETH balance after the deposit call
-        assertEq(mockStETH.balanceOf(address(escrow)), INITIAL_DEPOSIT, "stETH balance after initial deposit mismatch");
-        assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT, "Unallocated stETH after initial deposit mismatch"); // Check view function
+        assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT, "Unallocated stETH after initial deposit mismatch"); // Check internal balance via view function
+        assertEq(mockStETH.balanceOf(address(escrow)), INITIAL_DEPOSIT, "Physical stETH balance after initial deposit mismatch");
     }
 
     // --- Test Initializer ---
@@ -162,8 +162,8 @@ contract StabilizerEscrowTest is Test {
         escrow.deposit{value: depositAmount}();
 
         uint256 expectedTotalStETH = INITIAL_DEPOSIT + depositAmount;
-        assertEq(mockStETH.balanceOf(address(escrow)), expectedTotalStETH, "stETH balance after deposit mismatch");
         assertEq(escrow.unallocatedStETH(), expectedTotalStETH, "Unallocated stETH after deposit mismatch");
+        assertEq(mockStETH.balanceOf(address(escrow)), expectedTotalStETH, "Physical stETH balance after deposit mismatch");
     }
 
     function test_Deposit_Revert_ZeroAmount() public {
@@ -210,7 +210,7 @@ contract StabilizerEscrowTest is Test {
 
     function test_ApproveAllocation_Success() public {
         uint256 approveAmount = 0.2 ether;
-        uint256 initialBalance = mockStETH.balanceOf(address(escrow));
+        uint256 initialBalance = escrow.unallocatedStETH();
         require(approveAmount <= initialBalance, "Test setup error: approveAmount > initialBalance");
 
         vm.prank(stabilizerNFT);
@@ -219,7 +219,7 @@ contract StabilizerEscrowTest is Test {
         escrow.approveAllocation(approveAmount, positionNFT);
 
         assertEq(mockStETH.allowance(address(escrow), positionNFT), approveAmount, "stETH allowance mismatch");
-        assertEq(mockStETH.balanceOf(address(escrow)), initialBalance, "Escrow balance changed on approval");
+        assertEq(escrow.unallocatedStETH(), initialBalance, "Escrow internal balance changed on approval");
     }
 
      function test_ApproveAllocation_Revert_ZeroAmount() public {
@@ -235,7 +235,7 @@ contract StabilizerEscrowTest is Test {
     }
 
     function test_ApproveAllocation_Revert_InsufficientBalance() public {
-        uint256 currentBalance = mockStETH.balanceOf(address(escrow));
+        uint256 currentBalance = escrow.unallocatedStETH();
         uint256 amount = currentBalance + 1 wei; // Try to approve more than available
         vm.prank(stabilizerNFT);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, address(escrow), currentBalance, amount));
@@ -257,7 +257,7 @@ contract StabilizerEscrowTest is Test {
         uint256 escrowTokenId = escrow.tokenId(); // Get the actual tokenId stored in the escrow
         uint256 withdrawAmount = 0.4 ether;
         uint256 initialOwnerBalance = mockStETH.balanceOf(stabilizerOwner); // stabilizerOwner is the mock owner of escrowTokenId (set in setUp)
-        uint256 initialEscrowBalance = mockStETH.balanceOf(address(escrow));
+        uint256 initialEscrowBalance = escrow.unallocatedStETH();
 
         require(withdrawAmount <= initialEscrowBalance, "Test setup error: withdrawAmount > initialEscrowBalance");
 
@@ -276,8 +276,8 @@ contract StabilizerEscrowTest is Test {
 
         // Verify balances
         assertEq(mockStETH.balanceOf(stabilizerOwner), initialOwnerBalance + withdrawAmount, "Owner stETH balance mismatch after withdrawal");
-        assertEq(mockStETH.balanceOf(address(escrow)), initialEscrowBalance - withdrawAmount, "Escrow stETH balance mismatch after withdrawal");
         assertEq(escrow.unallocatedStETH(), initialEscrowBalance - withdrawAmount, "Unallocated stETH mismatch after withdrawal");
+        assertEq(mockStETH.balanceOf(address(escrow)), initialEscrowBalance - withdrawAmount, "Physical Escrow stETH balance mismatch after withdrawal");
     }
 
     function test_WithdrawUnallocated_Internal_Revert_ZeroAmount() public {
@@ -289,7 +289,7 @@ contract StabilizerEscrowTest is Test {
 
     function test_WithdrawUnallocated_Internal_Revert_InsufficientBalance() public {
         uint256 escrowTokenId = escrow.tokenId();
-        uint256 currentBalance = mockStETH.balanceOf(address(escrow));
+        uint256 currentBalance = escrow.unallocatedStETH();
         uint256 amount = currentBalance + 1 wei;
 
         // Mock ownerOf call (needed even for revert checks if reached)
@@ -313,20 +313,20 @@ contract StabilizerEscrowTest is Test {
 
     function test_UnallocatedStETH_MatchesBalance() public {
         // Initial check
-        assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Initial unallocated mismatch");
+        assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT, "Initial unallocated mismatch");
 
         // Deposit ETH -> stETH
         uint256 depositAmount = 0.5 ether;
         vm.deal(stabilizerNFT, depositAmount);
         vm.prank(stabilizerNFT);
         escrow.deposit{value: depositAmount}();
-        assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Unallocated mismatch after deposit");
+        assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT + depositAmount, "Unallocated mismatch after deposit");
 
         // Approve allocation (should not change balance or unallocated view)
         uint256 approveAmount = 0.2 ether;
         vm.prank(stabilizerNFT);
         escrow.approveAllocation(approveAmount, positionNFT);
-        assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Unallocated mismatch after approval");
+        assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT + depositAmount, "Unallocated mismatch after approval");
 
         // Withdraw stETH
         uint256 withdrawAmount = 0.3 ether;
@@ -341,7 +341,7 @@ contract StabilizerEscrowTest is Test {
 
         vm.prank(stabilizerNFT); // Prank as the NFT contract to allow the call
         escrow.withdrawUnallocated(withdrawAmount); // Call the function being tested
-        assertEq(escrow.unallocatedStETH(), mockStETH.balanceOf(address(escrow)), "Unallocated mismatch after withdrawal");
+        assertEq(escrow.unallocatedStETH(), INITIAL_DEPOSIT + 0.5 ether - withdrawAmount, "Unallocated mismatch after withdrawal");
     }
 
 
@@ -353,5 +353,61 @@ contract StabilizerEscrowTest is Test {
         vm.prank(user1);
         (bool success, ) = address(escrow).call{value: sendAmount}("");
         assertFalse(success, "Direct ETH transfer should have failed but succeeded");
+    }
+
+    // --- New Tests for Internal Balance Logic ---
+
+    function test_WithdrawUnallocated_Revert_LeavesDust() public {
+        uint256 initialBalance = escrow.unallocatedStETH(); // e.g., 1 ether
+        uint256 minimumAmount = escrow.MINIMUM_ESCROW_AMOUNT(); // 0.1 ether
+
+        // Attempt to withdraw an amount that leaves less than the minimum, but not zero.
+        uint256 amountToLeave = minimumAmount / 2;
+        uint256 withdrawAmount = initialBalance - amountToLeave;
+
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(StabilizerEscrow.WithdrawalWouldLeaveDust.selector);
+        escrow.withdrawUnallocated(withdrawAmount);
+    }
+
+    function test_UpdateBalance_Success_PositiveDelta() public {
+        uint256 initialBalance = escrow.unallocatedStETH();
+        int256 delta = 1 ether;
+
+        vm.prank(stabilizerNFT);
+        vm.expectEmit(true, false, false, true, address(escrow));
+        emit StabilizerEscrow.BalanceUpdated(delta, initialBalance + uint256(delta));
+        escrow.updateBalance(delta);
+
+        assertEq(escrow.unallocatedStETH(), initialBalance + uint256(delta), "Balance not increased correctly");
+    }
+
+    function test_UpdateBalance_Success_NegativeDelta() public {
+        uint256 initialBalance = escrow.unallocatedStETH();
+        int256 delta = -0.5 ether;
+        require(uint256(-delta) <= initialBalance, "Test setup error: delta too large");
+
+
+        vm.prank(stabilizerNFT);
+        vm.expectEmit(true, false, false, true, address(escrow));
+        emit StabilizerEscrow.BalanceUpdated(delta, initialBalance - uint256(-delta));
+        escrow.updateBalance(delta);
+
+        assertEq(escrow.unallocatedStETH(), initialBalance - uint256(-delta), "Balance not decreased correctly");
+    }
+
+    function test_UpdateBalance_Revert_NotStabilizerNFT() public {
+        vm.prank(user1);
+        vm.expectRevert("Caller is not StabilizerNFT");
+        escrow.updateBalance(1 ether);
+    }
+
+    function test_UpdateBalance_Revert_Underflow() public {
+        uint256 initialBalance = escrow.unallocatedStETH();
+        int256 delta = -int256(initialBalance + 1 wei);
+
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(StabilizerEscrow.BalanceUpdateFailed.selector);
+        escrow.updateBalance(delta);
     }
 }

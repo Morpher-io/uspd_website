@@ -570,6 +570,8 @@ contract StabilizerNFT is
             // Pull the funds
             bool successStabilizer = IERC20(stETH).transferFrom(escrowAddress, positionEscrowAddress, toAllocate);
             if (!successStabilizer) revert("Stabilizer stETH transfer to PositionEscrow failed");
+            // Report balance change to the escrow
+            IStabilizerEscrow(escrowAddress).updateBalance(-int256(toAllocate));
 
             // 2. Call PositionEscrow.addCollateralFromStabilizer
             // This sends the user's ETH (userEthShare) which gets converted to stETH inside PositionEscrow,
@@ -671,6 +673,9 @@ contract StabilizerNFT is
 
         // Transfer stETH from owner to Escrow
         IERC20(stETH).transferFrom(msg.sender, escrowAddress, stETHAmount);
+
+        // Report the deposit to the escrow's internal ledger
+        IStabilizerEscrow(escrowAddress).updateBalance(int256(stETHAmount));
 
         // Register position if it now has funds
         _registerUnallocatedPosition(tokenId);
@@ -844,6 +849,8 @@ contract StabilizerNFT is
         if (sliceResult.stEthReturnedToStabilizer > 0) {
             // require(stabilizerEscrows[currentId] != address(0), "StabilizerEscrow not found"); // Removed: Invariant from mint
             require(IERC20(stETH).transfer(stabilizerEscrows[currentId], sliceResult.stEthReturnedToStabilizer),"Stabilizer stETH transfer to StabilizerEscrow failed");
+            // Report the returned funds to the escrow's internal ledger
+            IStabilizerEscrow(stabilizerEscrows[currentId]).updateBalance(int256(sliceResult.stEthReturnedToStabilizer));
         }
     }
 
