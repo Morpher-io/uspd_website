@@ -594,6 +594,32 @@ contract StabilizerNFTTest is Test {
         stabilizerNFT.addUnallocatedFundsStETH(99, 1 ether); // Token 99 doesn't exist
     }
 
+    function testAddUnallocatedFundsStETH_Revert_InsufficientEscrowAmount() public {
+        uint256 tokenId = stabilizerNFT.mint(user1);
+        address escrowAddress = stabilizerNFT.stabilizerEscrows(tokenId);
+        uint256 minimumAmount = StabilizerEscrow(escrowAddress).MINIMUM_ESCROW_AMOUNT();
+        uint256 amountToAdd = minimumAmount - 1 wei;
+
+        // Setup stETH for user1
+        mockStETH.mint(user1, amountToAdd);
+
+        vm.startPrank(user1);
+        // Approve StabilizerNFT
+        mockStETH.approve(address(stabilizerNFT), amountToAdd);
+
+        // Expect revert
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StabilizerNFT.InsufficientEscrowAmount.selector,
+                0, // currentBalance
+                amountToAdd,
+                minimumAmount
+            )
+        );
+        stabilizerNFT.addUnallocatedFundsStETH(tokenId, amountToAdd);
+        vm.stopPrank();
+    }
+
     function testAllocationAndPositionNFT() public {
         // Setup
         uint256 tokenId = stabilizerNFT.mint(user1); // Mint and capture tokenId
