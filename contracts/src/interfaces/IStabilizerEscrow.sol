@@ -31,4 +31,6 @@ interface IStabilizerEscrow is IERC20Errors {
      * @return The amount of stETH held by the escrow.
      */
     function unallocatedStETH() external view returns (uint256); // Re-added view function
+
+    function updateBalance(int256 amount) external;
 }
