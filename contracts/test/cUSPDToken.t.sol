@@ -557,7 +557,7 @@ contract cUSPDTokenTest is Test {
         // to complete the second one (tokenId1), simulating gas exhaustion.
         // NOTE: This gas value may be brittle and need adjustment if contracts change.
         // A full burn of 2 stabilizers takes ~500k gas. A burn of 1 takes ~300k.
-        uint256 gasLimit = 400000;
+        uint256 gasLimit = 450000;
 
         IPriceOracle.PriceAttestationQuery memory burnQuery = createSignedPriceAttestation(price, block.timestamp);
 
