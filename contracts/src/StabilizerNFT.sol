@@ -155,7 +155,6 @@ contract StabilizerNFT is
     event LiquidationParametersUpdated(uint256 newPayoutPercent /* Removed newThresholdPercent */);
     // OracleUpdated event removed
 
-    error InsufficientEscrowAmount(uint256 currentBalance, uint256 depositAmount, uint256 minimumAmount);
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -666,17 +665,11 @@ contract StabilizerNFT is
         address escrowAddress = stabilizerEscrows[tokenId];
         // require(escrowAddress != address(0), "Escrow not found"); // Removed: Invariant from mint
 
-        uint256 currentBalance = IStabilizerEscrow(escrowAddress).unallocatedStETH();
-        uint256 minimumAmount = StabilizerEscrow(escrowAddress).MINIMUM_ESCROW_AMOUNT();
-        if (currentBalance + stETHAmount < minimumAmount) {
-            revert InsufficientEscrowAmount(currentBalance, stETHAmount, minimumAmount);
-        }
-
-        // Transfer stETH from owner to Escrow
+        // Transfer stETH from owner to Escrow first
         IERC20(stETH).transferFrom(msg.sender, escrowAddress, stETHAmount);
 
-        // Report the deposit to the escrow's internal ledger
-        IStabilizerEscrow(escrowAddress).updateBalance(int256(stETHAmount));
+        // Call escrow to check minimum and update balance
+        StabilizerEscrow(escrowAddress).checkMinimumAndUpdateBalance(stETHAmount);
 
         // Register position if it now has funds
         _registerUnallocatedPosition(tokenId);

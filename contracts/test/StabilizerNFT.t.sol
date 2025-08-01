@@ -607,10 +607,10 @@ contract StabilizerNFTTest is Test {
         // Approve StabilizerNFT
         mockStETH.approve(address(stabilizerNFT), amountToAdd);
 
-        // Expect revert
+        // Expect revert from StabilizerEscrow now
         vm.expectRevert(
             abi.encodeWithSelector(
-                StabilizerNFT.InsufficientEscrowAmount.selector,
+                StabilizerEscrow.InsufficientEscrowAmount.selector,
                 0, // currentBalance
                 amountToAdd,
                 minimumAmount

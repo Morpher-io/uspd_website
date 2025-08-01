@@ -205,6 +205,21 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
         emit BalanceUpdated(delta, newBalance);
     }
 
+    /**
+     * @notice Checks if a new deposit meets the minimum balance requirement and updates the balance.
+     * @param stETHAmount The amount of stETH being deposited.
+     * @dev Callable only by StabilizerNFT for direct stETH deposits. Reverts if the resulting
+     *      balance would be below the minimum threshold.
+     */
+    function checkMinimumAndUpdateBalance(uint256 stETHAmount) external onlyStabilizerNFT {
+        if (unallocatedStETHBalance + stETHAmount < MINIMUM_ESCROW_AMOUNT) {
+            revert InsufficientEscrowAmount(unallocatedStETHBalance, stETHAmount, MINIMUM_ESCROW_AMOUNT);
+        }
+
+        unallocatedStETHBalance += stETHAmount;
+        emit BalanceUpdated(int256(stETHAmount), unallocatedStETHBalance);
+    }
+
     function stabilizerOwner() external view returns (address) {
         return IERC721(stabilizerNFTContract).ownerOf(tokenId);
     }

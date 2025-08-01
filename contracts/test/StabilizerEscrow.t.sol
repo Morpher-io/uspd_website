@@ -180,14 +180,7 @@ contract StabilizerEscrowTest is Test {
     }
 
     function test_Deposit_Revert_InsufficientEscrowAmount() public {
-        // --- Deploy a new escrow for this test to start with 0 balance ---
-        StabilizerEscrow escrowImpl = new StabilizerEscrow();
-        bytes memory initData = abi.encodeCall(
-            StabilizerEscrow.initialize,
-            (stabilizerNFT, 2, address(mockStETH), address(mockLido))
-        );
-        ERC1967Proxy proxy = new ERC1967Proxy(address(escrowImpl), initData);
-        StabilizerEscrow localEscrow = StabilizerEscrow(payable(address(proxy)));
+        StabilizerEscrow localEscrow = _deployNewEscrow(2);
 
         // --- Test depositing less than the minimum ---
         uint256 depositAmount = 0.01 ether;
@@ -472,6 +465,46 @@ contract StabilizerEscrowTest is Test {
         escrow.updateBalance(delta);
     }
 
+    // --- New Tests for checkMinimumAndUpdateBalance ---
+
+    function test_CheckMinimumAndUpdateBalance_Success() public {
+        // Deploy a new escrow to start with 0 balance
+        StabilizerEscrow newEscrow = _deployNewEscrow(2);
+        uint256 amountToAdd = newEscrow.MINIMUM_ESCROW_AMOUNT();
+
+        vm.prank(stabilizerNFT);
+        vm.expectEmit(true, false, false, true, address(newEscrow));
+        emit StabilizerEscrow.BalanceUpdated(int256(amountToAdd), amountToAdd);
+        newEscrow.checkMinimumAndUpdateBalance(amountToAdd);
+
+        assertEq(newEscrow.unallocatedStETH(), amountToAdd, "Balance not updated correctly");
+    }
+
+    function test_CheckMinimumAndUpdateBalance_Revert_Insufficient() public {
+        // Deploy a new escrow to start with 0 balance
+        StabilizerEscrow newEscrow = _deployNewEscrow(3);
+        uint256 minimumAmount = newEscrow.MINIMUM_ESCROW_AMOUNT();
+        uint256 amountToAdd = minimumAmount - 1 wei;
+
+        vm.prank(stabilizerNFT);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StabilizerEscrow.InsufficientEscrowAmount.selector,
+                0, // currentBalance
+                amountToAdd,
+                minimumAmount
+            )
+        );
+        newEscrow.checkMinimumAndUpdateBalance(amountToAdd);
+    }
+
+    function test_CheckMinimumAndUpdateBalance_Revert_NotStabilizerNFT() public {
+        uint256 amountToAdd = escrow.MINIMUM_ESCROW_AMOUNT();
+        vm.prank(user1);
+        vm.expectRevert("Caller is not StabilizerNFT");
+        escrow.checkMinimumAndUpdateBalance(amountToAdd);
+    }
+
     // --- New Tests for withdrawExcessStEthBalance ---
 
     function test_WithdrawExcess_Success() public {
@@ -567,5 +600,18 @@ contract StabilizerEscrowTest is Test {
         vm.prank(stabilizerOwner);
         vm.expectRevert(StabilizerEscrow.TransferFailed.selector);
         escrow.withdrawExcessStEthBalance();
+    }
+
+    /**
+     * @dev Helper to deploy a new escrow for isolated tests.
+     */
+    function _deployNewEscrow(uint256 tokenId) internal returns (StabilizerEscrow) {
+        StabilizerEscrow escrowImpl = new StabilizerEscrow();
+        bytes memory initData = abi.encodeCall(
+            StabilizerEscrow.initialize,
+            (stabilizerNFT, tokenId, address(mockStETH), address(mockLido))
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(escrowImpl), initData);
+        return StabilizerEscrow(payable(address(proxy)));
     }
 }
