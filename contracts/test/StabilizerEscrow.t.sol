@@ -471,4 +471,101 @@ contract StabilizerEscrowTest is Test {
         vm.expectRevert(StabilizerEscrow.BalanceUpdateFailed.selector);
         escrow.updateBalance(delta);
     }
+
+    // --- New Tests for withdrawExcessStEthBalance ---
+
+    function test_WithdrawExcess_Success() public {
+        // 1. Setup: Mint stETH and transfer it directly to the escrow
+        uint256 excessAmount = 0.5 ether;
+        mockStETH.mint(address(escrow), excessAmount);
+
+        uint256 trackedBalanceBefore = escrow.unallocatedStETH();
+        uint256 physicalBalanceBefore = mockStETH.balanceOf(address(escrow));
+        assertEq(physicalBalanceBefore, trackedBalanceBefore + excessAmount, "Physical balance setup failed");
+
+        uint256 ownerBalanceBefore = mockStETH.balanceOf(stabilizerOwner);
+
+        // 2. Mock ownerOf call
+        vm.mockCall(
+            stabilizerNFT,
+            abi.encodeWithSelector(IERC721.ownerOf.selector, escrow.tokenId()),
+            abi.encode(stabilizerOwner)
+        );
+
+        // 3. Action: Call the function as the owner
+        vm.prank(stabilizerOwner);
+        vm.expectEmit(true, true, false, true, address(escrow));
+        emit StabilizerEscrow.ExcessWithdrawn(stabilizerOwner, excessAmount);
+        escrow.withdrawExcessStEthBalance();
+
+        // 4. Assertions
+        assertEq(escrow.unallocatedStETH(), trackedBalanceBefore, "Tracked balance should not change");
+        assertEq(mockStETH.balanceOf(address(escrow)), trackedBalanceBefore, "Physical balance should now equal tracked balance");
+        assertEq(mockStETH.balanceOf(stabilizerOwner), ownerBalanceBefore + excessAmount, "Owner did not receive excess stETH");
+    }
+
+    function test_WithdrawExcess_Revert_NotOwner() public {
+        // 1. Setup: Add some excess balance
+        mockStETH.mint(address(escrow), 0.5 ether);
+
+        // 2. Mock ownerOf call to return the actual owner
+        vm.mockCall(
+            stabilizerNFT,
+            abi.encodeWithSelector(IERC721.ownerOf.selector, escrow.tokenId()),
+            abi.encode(stabilizerOwner)
+        );
+
+        // 3. Action: Call from a non-owner address
+        vm.prank(user1);
+        vm.expectRevert(StabilizerEscrow.NotNFTOwner.selector);
+        escrow.withdrawExcessStEthBalance();
+    }
+
+    function test_WithdrawExcess_NoExcess() public {
+        uint256 trackedBalanceBefore = escrow.unallocatedStETH();
+        uint256 physicalBalanceBefore = mockStETH.balanceOf(address(escrow));
+        assertEq(physicalBalanceBefore, trackedBalanceBefore, "Test setup fail: excess exists");
+        uint256 ownerBalanceBefore = mockStETH.balanceOf(stabilizerOwner);
+
+        // Mock ownerOf call
+        vm.mockCall(
+            stabilizerNFT,
+            abi.encodeWithSelector(IERC721.ownerOf.selector, escrow.tokenId()),
+            abi.encode(stabilizerOwner)
+        );
+
+        // Action: Call as owner when there is no excess
+        vm.prank(stabilizerOwner);
+        escrow.withdrawExcessStEthBalance(); // Should not emit event, should not revert
+
+        // Assertions: Nothing should have changed
+        assertEq(escrow.unallocatedStETH(), trackedBalanceBefore, "Tracked balance should not change (no excess)");
+        assertEq(mockStETH.balanceOf(address(escrow)), physicalBalanceBefore, "Physical balance should not change (no excess)");
+        assertEq(mockStETH.balanceOf(stabilizerOwner), ownerBalanceBefore, "Owner balance should not change (no excess)");
+    }
+
+    function test_WithdrawExcess_Revert_TransferFails() public {
+        // 1. Setup: Add excess balance
+        uint256 excessAmount = 0.5 ether;
+        mockStETH.mint(address(escrow), excessAmount);
+
+        // 2. Mock ownerOf call
+        vm.mockCall(
+            stabilizerNFT,
+            abi.encodeWithSelector(IERC721.ownerOf.selector, escrow.tokenId()),
+            abi.encode(stabilizerOwner)
+        );
+
+        // 3. Mock stETH transfer to fail
+        vm.mockCall(
+            address(mockStETH),
+            abi.encodeWithSelector(mockStETH.transfer.selector, stabilizerOwner, excessAmount),
+            abi.encode(false)
+        );
+
+        // 4. Action: Call as owner
+        vm.prank(stabilizerOwner);
+        vm.expectRevert(StabilizerEscrow.TransferFailed.selector);
+        escrow.withdrawExcessStEthBalance();
+    }
 }

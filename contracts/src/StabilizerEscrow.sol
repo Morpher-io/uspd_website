@@ -20,6 +20,7 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     error InsufficientEscrowAmount(uint256 currentBalance, uint256 depositAmount, uint256 minimumAmount);
     error WithdrawalWouldLeaveDust();
     error BalanceUpdateFailed();
+    error NotNFTOwner();
     // Removed InsufficientUnallocatedStETH
     // Removed InsufficientAllocatedStETH
     error InitialDepositFailed(); // Keep for constructor check if needed, though constructor doesn't deposit now
@@ -28,6 +29,7 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
 
     // --- Events ---
     event BalanceUpdated(int256 delta, uint256 newBalance);
+    event ExcessWithdrawn(address indexed recipient, uint256 amount);
 
     // --- State Variables ---
     uint256 public constant MINIMUM_ESCROW_AMOUNT = 0.1 ether;
@@ -227,5 +229,29 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
         unallocatedStETHBalance -= amount;
 
         emit BalanceUpdated(-int256(amount), unallocatedStETHBalance);
+    }
+
+    /**
+     * @notice Allows the owner of the associated Stabilizer NFT to withdraw any stETH balance
+     *         that is in excess of the internally tracked `unallocatedStETHBalance`.
+     * @dev This serves as a recovery mechanism for stETH sent directly to the escrow via `transfer`,
+     *      bypassing the internal accounting. It does not affect the tracked balance.
+     */
+    function withdrawExcessStEthBalance() external {
+        if (msg.sender != IERC721(stabilizerNFTContract).ownerOf(tokenId)) {
+            revert NotNFTOwner();
+        }
+
+        uint256 physicalBalance = IERC20(stETH).balanceOf(address(this));
+        uint256 trackedBalance = unallocatedStETHBalance;
+
+        if (physicalBalance > trackedBalance) {
+            uint256 excessAmount = physicalBalance - trackedBalance;
+
+            bool success = IERC20(stETH).transfer(msg.sender, excessAmount);
+            if (!success) revert TransferFailed();
+
+            emit ExcessWithdrawn(msg.sender, excessAmount);
+        }
     }
 }
