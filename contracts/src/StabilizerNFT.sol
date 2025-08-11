@@ -317,7 +317,7 @@ contract StabilizerNFT is
         }
 
         // Inlined positionEscrowAddress
-        IPositionEscrow positionEscrow = IPositionEscrow(positionEscrows[positionTokenId]);
+        PositionEscrow positionEscrow = PositionEscrow(payable(positionEscrows[positionTokenId]));
         // require(address(positionEscrow) != address(0), "PositionEscrow not found for token"); // Removed: Invariant from mint
 
         // Inlined currentOracle
@@ -347,7 +347,7 @@ contract StabilizerNFT is
         }
 
         // 4. Check Liquidation Condition
-        uint256 positionCollateralRatio = positionEscrow.getCollateralizationRatio(priceResponse);
+        uint256 positionCollateralRatio = positionEscrow.syncStEthAndGetCollateralizationRatio(priceResponse);
 
         // New Check: Position's ratio must be below the system-wide collateralization ratio
         if (address(reporter) != address(0)) { // Reporter might not be set in all test environments initially

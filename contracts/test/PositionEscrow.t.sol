@@ -1464,4 +1464,53 @@ contract PositionEscrowTest is
         // Assertions
         assertEq(positionEscrow.lockedStEth(), initialAmount, "Tracked balance should not change");
     }
+
+    // =============================================
+    // XI. syncStEthAndGetCollateralizationRatio Tests
+    // =============================================
+
+    function test_syncAndGetRatio_withSurplus() public {
+        // 1. Setup initial position
+        uint256 initialStEth = 1.1 ether;
+        uint256 shares = 1000 ether; // 1000 USD liability
+        uint256 price = 1000 ether; // 1 stETH = 1000 USD
+        uint256 surplusStEth = 0.4 ether; // Yield/direct transfer
+
+        mockStETH.mint(admin, initialStEth);
+        vm.prank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth);
+        positionEscrow.modifyAllocation(int256(shares));
+
+        // 2. Create surplus
+        mockStETH.mint(address(positionEscrow), surplusStEth);
+        uint256 totalPhysicalStEth = initialStEth + surplusStEth; // 1.5 ether
+
+        assertEq(positionEscrow.lockedStEth(), initialStEth, "Pre-sync tracked balance should be initial");
+        assertEq(mockStETH.balanceOf(address(positionEscrow)), totalPhysicalStEth, "Physical balance should include surplus");
+
+        // 3. Prepare for call
+        IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
+            .PriceResponse(price, 18, block.timestamp * 1000);
+
+        // Expect sync to report the addition
+        vm.expectCall(
+            address(this), // stabilizerNFTContract is address(this)
+            abi.encodeWithSelector(this.reportCollateralAddition.selector, surplusStEth)
+        );
+
+        // 4. Action: Call the sync and get ratio function
+        uint256 ratio = positionEscrow.syncStEthAndGetCollateralizationRatio(priceResponse);
+
+        // 5. Assertions
+        // Post-sync tracked balance should equal physical balance
+        assertEq(positionEscrow.lockedStEth(), totalPhysicalStEth, "Post-sync tracked balance should match physical");
+
+        // Ratio should be calculated with the new total balance (1.5 ether)
+        // Collateral Value = 1.5 * 1000 = 1500 USD
+        // Liability Value = 1000 USD (yield factor is 1)
+        // Ratio = (1500 / 1000) * 10000 = 15000
+        uint256 expectedRatio = 15000;
+        assertEq(ratio, expectedRatio, "Ratio calculation mismatch after sync");
+    }
 }

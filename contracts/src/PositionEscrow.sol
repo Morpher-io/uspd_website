@@ -327,6 +327,17 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     }
 
     /**
+     * @notice Synchronizes the stETH balance and then gets the collateralization ratio.
+     * @param priceResponse The current valid price response for stETH/USD.
+     * @return ratio The ratio (scaled by 10000, e.g., 11000 means 110.00%).
+     * @dev This is a non-view function intended for use in transactions like liquidations.
+     */
+    function syncStEthAndGetCollateralizationRatio(IPriceOracle.PriceResponse memory priceResponse) external returns (uint256 ratio) {
+        syncStEthBalance();
+        return getCollateralizationRatio(priceResponse);
+    }
+
+    /**
      * @notice Returns the current stETH balance held by this escrow.
      */
     function getCurrentStEthBalance() external view override returns (uint256 balance) {
