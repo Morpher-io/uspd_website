@@ -330,7 +330,28 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
      * @notice Returns the current stETH balance held by this escrow.
      */
     function getCurrentStEthBalance() external view override returns (uint256 balance) {
-        return lockedStEth;
+        return IERC20(stETH).balanceOf(address(this));
+    }
+
+    /**
+     * @notice Synchronizes the internal `lockedStEth` balance with the actual stETH balance of the contract.
+     * @dev This function accounts for stETH yield or direct transfers by updating the internal ledger
+     *      and reporting the change to the StabilizerNFT contract to keep the system-wide
+     *      collateral snapshot accurate. It can be called by anyone.
+     */
+    function syncStEthBalance() external {
+        uint256 physicalBalance = IERC20(stETH).balanceOf(address(this));
+        uint256 trackedBalance = lockedStEth;
+
+        if (physicalBalance > trackedBalance) {
+            uint256 delta = physicalBalance - trackedBalance;
+            lockedStEth = physicalBalance;
+            IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(delta);
+        } else if (physicalBalance < trackedBalance) {
+            uint256 delta = trackedBalance - physicalBalance;
+            lockedStEth = physicalBalance;
+            IStabilizerNFT(stabilizerNFTContract).reportCollateralRemoval(delta);
+        }
     }
 
     // --- Fallback ---

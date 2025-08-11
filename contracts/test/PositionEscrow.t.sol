@@ -1415,4 +1415,53 @@ contract PositionEscrowTest is
         // If the call itself reverted, success would be false.
         // Since the revert happens *inside*, we rely on vm.expectRevert.
     }
+
+    // =============================================
+    // X. syncStEthBalance Tests
+    // =============================================
+
+    function test_syncStEthBalance_addition() public {
+        uint256 initialTrackedBalance = positionEscrow.lockedStEth();
+        assertEq(initialTrackedBalance, 0);
+
+        // 1. Directly transfer stETH to the contract to create a surplus
+        uint256 surplusAmount = 0.5 ether;
+        mockStETH.mint(address(positionEscrow), surplusAmount);
+
+        uint256 physicalBalance = mockStETH.balanceOf(address(positionEscrow));
+        assertEq(physicalBalance, surplusAmount);
+
+        // 2. Expect reportCollateralAddition to be called on the mock StabilizerNFT (this test contract)
+        vm.expectCall(
+            address(this), // stabilizerNFTContract is address(this)
+            abi.encodeWithSelector(this.reportCollateralAddition.selector, surplusAmount)
+        );
+
+        // 3. Action: Call sync
+        positionEscrow.syncStEthBalance();
+
+        // 4. Assertions
+        assertEq(
+            positionEscrow.lockedStEth(),
+            physicalBalance,
+            "Tracked balance should match physical after sync (addition)"
+        );
+    }
+
+    function test_syncStEthBalance_noChange() public {
+        // 1. Setup initial tracked and physical balance
+        uint256 initialAmount = 1 ether;
+        mockStETH.mint(admin, initialAmount);
+        vm.prank(admin);
+        mockStETH.approve(address(positionEscrow), initialAmount);
+        positionEscrow.addCollateralStETH(initialAmount);
+
+        // No expectCall, as nothing should be reported
+
+        // Action: Call sync when balances match
+        positionEscrow.syncStEthBalance();
+
+        // Assertions
+        assertEq(positionEscrow.lockedStEth(), initialAmount, "Tracked balance should not change");
+    }
 }
