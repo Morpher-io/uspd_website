@@ -333,8 +333,8 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
      * @dev This is a non-view function intended for use in transactions like liquidations.
      */
     function syncStEthAndGetCollateralizationRatio(IPriceOracle.PriceResponse memory priceResponse) external returns (uint256 ratio) {
-        syncStEthBalance();
-        return getCollateralizationRatio(priceResponse);
+        this.syncStEthBalance();
+        return this.getCollateralizationRatio(priceResponse);
     }
 
     /**
