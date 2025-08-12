@@ -371,22 +371,23 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
     function syncStEthBalance() external {
         uint256 physicalBalance = IERC20(stETH).balanceOf(address(this));
         uint256 expectedBalanceWithYield = this.getTrackedStEthWithYield();
+        uint256 currentYieldFactor = IPoolSharesConversionRate(rateContract).getYieldFactor();
 
         if (physicalBalance > expectedBalanceWithYield) {
             uint256 delta = physicalBalance - expectedBalanceWithYield;
             IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(delta);
 
-            // Update principal and yield factor
-            lockedStEth = physicalBalance;
-            yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
-
         } else if (physicalBalance < expectedBalanceWithYield) {
             uint256 delta = expectedBalanceWithYield - physicalBalance;
             IStabilizerNFT(stabilizerNFTContract).reportCollateralRemoval(delta);
+        }
 
-            // Update principal and yield factor
+        // Always update state to the current physical reality after reporting the difference.
+        // This is crucial to rebase the principal after yield has accrued, even if there is no surplus/deficit.
+        // We only write to storage if the state is actually changing to save gas.
+        if (lockedStEth != physicalBalance || yieldFactorAtLastUpdate != currentYieldFactor) {
             lockedStEth = physicalBalance;
-            yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
+            yieldFactorAtLastUpdate = currentYieldFactor;
         }
     }
 
