@@ -154,15 +154,11 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             revert TransferFailed(); // Lido submit failed
         }
 
-        uint256 currentTrackedStEthWithYield = this.getTrackedStEthWithYield();
-        lockedStEth = currentTrackedStEthWithYield + stEthReceived;
-        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
+        // syncStEthBalance will handle the reporting and state update.
+        this.syncStEthBalance();
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
-
-        // Report addition to StabilizerNFT
-        IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(stEthReceived);
     }
 
     /**
@@ -177,15 +173,11 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         bool success = IERC20(stETH).transferFrom(msg.sender, address(this), stETHAmount);
         if (!success) revert TransferFailed(); // Check allowance and balance
 
-        uint256 currentTrackedStEthWithYield = this.getTrackedStEthWithYield();
-        lockedStEth = currentTrackedStEthWithYield + stETHAmount;
-        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
+        // syncStEthBalance will handle the reporting and state update.
+        this.syncStEthBalance();
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stETHAmount);
-
-        // Report addition to StabilizerNFT
-        IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(stETHAmount);
     }
 
 
@@ -291,14 +283,11 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         bool success = IERC20(stETH).transfer(recipient, amountToRemove);
         if (!success) revert TransferFailed();
 
-        lockedStEth = remainingStEth; // remainingStEth was calculated from the yielded value
-        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
+        // syncStEthBalance will handle the reporting and state update.
+        this.syncStEthBalance();
 
         // 8. Emit event
         emit ExcessCollateralRemoved(recipient, amountToRemove);
-
-        // Report removal to StabilizerNFT
-        IStabilizerNFT(stabilizerNFTContract).reportCollateralRemoval(amountToRemove);
     }
 
     // --- View Functions ---
@@ -417,14 +406,10 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             revert TransferFailed(); // Lido submit failed
         }
 
-        uint256 currentTrackedStEthWithYield = this.getTrackedStEthWithYield();
-        lockedStEth = currentTrackedStEthWithYield + stEthReceived;
-        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
+        // syncStEthBalance will handle the reporting and state update.
+        this.syncStEthBalance();
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
-
-        // Report addition to StabilizerNFT
-        IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(stEthReceived);
     }
 }
