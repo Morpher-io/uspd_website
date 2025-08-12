@@ -10,8 +10,10 @@ import {IAccessControl} from "../lib/openzeppelin-contracts/contracts/access/IAc
 import "../src/PositionEscrow.sol";
 import "../src/interfaces/IPositionEscrow.sol";
 import "../src/interfaces/IStabilizerNFT.sol"; // <-- Import IStabilizerNFT
+import "../src/OvercollateralizationReporter.sol";
 
 // Mocks & Dependencies
+import "../src/interfaces/IcUSPDToken.sol"; // For mocking
 import "./mocks/MockStETH.sol";
 import "./mocks/MockLido.sol";
 import "../src/PriceOracle.sol";
@@ -39,8 +41,12 @@ contract PositionEscrowTest is
 
     // --- Contract Instance ---
     PositionEscrow internal positionEscrow;
+    OvercollateralizationReporter internal reporter;
 
     mapping(uint256 => address) public positionEscrows;
+
+    // --- Mock Addresses ---
+    address internal mockCuspdToken;
 
     // --- IStabilizerNFT Mock State ---
     mapping(uint256 => address) internal nftOwners; // Mock ownerOf
@@ -96,6 +102,21 @@ contract PositionEscrowTest is
         vm.deal(admin, INITIAL_RATE_DEPOSIT);
         rateContract = new PoolSharesConversionRate(address(mockStETH), address(this));
 
+        // Deploy OvercollateralizationReporter
+        mockCuspdToken = makeAddr("cUSPDToken");
+        OvercollateralizationReporter reporterImpl = new OvercollateralizationReporter();
+        bytes memory reporterInitData = abi.encodeCall(
+            OvercollateralizationReporter.initialize,
+            (
+                admin, // _admin
+                address(this), // _stabilizerNFTContract (this test contract)
+                address(rateContract), // _rateContract
+                mockCuspdToken // _cuspdToken
+            )
+        );
+        ERC1967Proxy reporterProxy = new ERC1967Proxy(address(reporterImpl), reporterInitData);
+        reporter = OvercollateralizationReporter(payable(address(reporterProxy)));
+
         // Deploy PositionEscrow Implementation
         PositionEscrow escrowImpl = new PositionEscrow();
 
@@ -127,18 +148,20 @@ contract PositionEscrowTest is
 
     // --- IStabilizerNFT Implementation (Dummy for Callbacks) ---
 
-    function reportCollateralAddition(
-        uint256 /* stEthAmount */
-    ) external override {
+    function reportCollateralAddition(uint256 stEthAmount) external override {
         // Mock implementation for IStabilizerNFT interface.
-        // PositionEscrow calls this; for these tests, we don't need to check specific side-effects within this mock.
+        // Forward the call to the actual reporter instance for testing.
+        if (address(reporter) != address(0) && stEthAmount > 0) {
+            reporter.updateSnapshot(int256(stEthAmount));
+        }
     }
 
-    function reportCollateralRemoval(
-        uint256 /* stEthAmount */
-    ) external override {
+    function reportCollateralRemoval(uint256 stEthAmount) external override {
         // Mock implementation for IStabilizerNFT interface.
-        // PositionEscrow calls this; for these tests, we don't need to check specific side-effects within this mock.
+        // Forward the call to the actual reporter instance for testing.
+        if (address(reporter) != address(0) && stEthAmount > 0) {
+            reporter.updateSnapshot(-int256(stEthAmount));
+        }
     }
 
     // Dummy implementations for other IStabilizerNFT functions (not called by PositionEscrow directly)
@@ -1557,5 +1580,95 @@ contract PositionEscrowTest is
         // Ratio = (1500 / 1000) * 10000 = 15000
         uint256 expectedRatio = 15000;
         assertEq(ratio, expectedRatio, "Ratio calculation mismatch after sync");
+    }
+
+    function test_syncStEthBalance_withReporter_multipleRebases() public {
+        // T0: Initial deposit
+        uint256 initialDeposit = 100 ether;
+        mockStETH.mint(otherUser, initialDeposit);
+        vm.prank(otherUser);
+        mockStETH.approve(address(positionEscrow), initialDeposit);
+
+        // Action T0
+        vm.prank(otherUser);
+        positionEscrow.addCollateralStETH(initialDeposit);
+
+        // Assert T0
+        assertEq(positionEscrow.lockedStEth(), initialDeposit, "T0: PositionEscrow principal mismatch");
+        assertEq(positionEscrow.yieldFactorAtLastUpdate(), 1 ether, "T0: PositionEscrow yield factor mismatch");
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), initialDeposit, "T0: Reporter snapshot mismatch");
+        assertEq(reporter.yieldFactorAtLastSnapshot(), 1 ether, "T0: Reporter yield factor mismatch");
+
+        // T1: First rebase (1.0 -> 1.2) and another deposit
+        uint256 yieldFactorT1 = 1.2 ether;
+        vm.mockCall(
+            address(rateContract),
+            abi.encodeWithSelector(rateContract.getYieldFactor.selector),
+            abi.encode(yieldFactorT1)
+        );
+
+        // Physically add yield to balance (20% on 100)
+        uint256 yieldT1 = 20 ether;
+        mockStETH.mint(address(positionEscrow), yieldT1);
+        
+        uint256 depositT1 = 30 ether;
+        mockStETH.mint(otherUser, depositT1);
+        vm.prank(otherUser);
+        mockStETH.approve(address(positionEscrow), depositT1);
+
+        // Action T1
+        vm.prank(otherUser);
+        positionEscrow.addCollateralStETH(depositT1);
+
+        uint256 expectedPrincipalT1 = initialDeposit + yieldT1 + depositT1; // 100 + 20 + 30 = 150
+
+        // Assert T1
+        assertEq(positionEscrow.lockedStEth(), expectedPrincipalT1, "T1: PositionEscrow principal mismatch");
+        assertEq(positionEscrow.yieldFactorAtLastUpdate(), yieldFactorT1, "T1: PositionEscrow yield factor mismatch");
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), expectedPrincipalT1, "T1: Reporter snapshot mismatch");
+        assertEq(reporter.yieldFactorAtLastSnapshot(), yieldFactorT1, "T1: Reporter yield factor mismatch");
+
+
+        // T2: Second rebase (1.2 -> 1.5) with no new deposit
+        uint256 yieldFactorT2 = 1.5 ether;
+        vm.mockCall(
+            address(rateContract),
+            abi.encodeWithSelector(rateContract.getYieldFactor.selector),
+            abi.encode(yieldFactorT2)
+        );
+
+        // Physically add yield to balance
+        // New balance = oldBalance * newFactor / oldFactor = 150 * 1.5 / 1.2 = 187.5
+        uint256 expectedPrincipalT2 = (expectedPrincipalT1 * yieldFactorT2) / yieldFactorT1;
+        uint256 yieldT2 = expectedPrincipalT2 - expectedPrincipalT1; // 37.5
+        mockStETH.mint(address(positionEscrow), yieldT2);
+
+        // Action T2
+        positionEscrow.syncStEthBalance();
+
+        // Assert T2
+        assertEq(positionEscrow.lockedStEth(), expectedPrincipalT2, "T2: PositionEscrow principal mismatch");
+        assertEq(positionEscrow.yieldFactorAtLastUpdate(), yieldFactorT2, "T2: PositionEscrow yield factor mismatch");
+        
+        // Reporter state should NOT have changed, because no surplus was reported
+        assertEq(reporter.totalEthEquivalentAtLastSnapshot(), expectedPrincipalT1, "T2: Reporter snapshot should be unchanged");
+        assertEq(reporter.yieldFactorAtLastSnapshot(), yieldFactorT1, "T2: Reporter yield factor should be unchanged");
+
+        // Now, check the reporter's view function. It should project its old state forward correctly.
+        vm.mockCall(mockCuspdToken, abi.encodeWithSelector(IcUSPDToken.totalSupply.selector), abi.encode(100 ether)); // Mock liability
+        IPriceOracle.PriceResponse memory price = IPriceOracle.PriceResponse(1000 ether, 18, 0);
+        uint256 systemRatio = reporter.getSystemCollateralizationRatio(price);
+
+        // Expected collateral value = reporterSnapshot * currentFactor / reporterFactor
+        // = 150 * 1.5 / 1.2 = 187.5
+        uint256 expectedCollateralStEth = (reporter.totalEthEquivalentAtLastSnapshot() * yieldFactorT2) / reporter.yieldFactorAtLastSnapshot();
+        assertEq(expectedCollateralStEth, expectedPrincipalT2, "Reporter collateral projection mismatch");
+
+        uint256 expectedCollateralUSD = (expectedCollateralStEth * price.price) / 1e18;
+        // Expected liability = 100 * 1.5 = 150
+        uint256 expectedLiabilityUSD = (100 ether * yieldFactorT2) / 1 ether;
+        uint256 expectedRatio = (expectedCollateralUSD * 10000) / expectedLiabilityUSD;
+
+        assertEq(systemRatio, expectedRatio, "T2: Reporter view function calculates incorrect ratio");
     }
 }
