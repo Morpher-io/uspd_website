@@ -38,6 +38,12 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     // stabilizerOwner removed - Owner is determined dynamically via StabilizerNFT
     address public stETH;                 // stETH token contract - Make immutable
     address public lido;                  // Lido staking pool contract - Make immutable
+    /**
+     * @dev This balance tracks the principal amount of unallocated stETH. It intentionally does not
+     *      account for stETH rebasing (yield) to keep the logic simple, as this escrow's balance
+     *      is not used for critical system-wide ratio calculations. The accrued yield can be
+     *      claimed by the NFT owner via `withdrawExcessStEthBalance`.
+     */
     uint256 public unallocatedStETHBalance; // Using internal balance to prevent bypass
 
     // --- Modifiers ---
@@ -249,8 +255,11 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
     /**
      * @notice Allows the owner of the associated Stabilizer NFT to withdraw any stETH balance
      *         that is in excess of the internally tracked `unallocatedStETHBalance`.
-     * @dev This serves as a recovery mechanism for stETH sent directly to the escrow via `transfer`,
-     *      bypassing the internal accounting. It does not affect the tracked balance.
+     * @dev This function is the designated mechanism to handle discrepancies between the physical
+     *      stETH balance of this contract and the tracked `unallocatedStETHBalance`. Such a
+     *      discrepancy primarily arises from stETH rebasing (yield), which is not tracked in the
+     *      internal ledger for simplicity. This function allows the NFT owner to claim this yield
+     *      or recover any other funds sent directly to the escrow.
      */
     function withdrawExcessStEthBalance() external {
         if (msg.sender != IERC721(stabilizerNFTContract).ownerOf(tokenId)) {
