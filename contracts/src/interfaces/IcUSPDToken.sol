@@ -77,4 +77,5 @@ interface IcUSPDToken is IERC20 {
     function oracle() external view returns (IPriceOracle);
     function stabilizer() external view returns (IStabilizerNFT);
     function rateContract() external view returns (IPoolSharesConversionRate);
+    function totalSupply() external view returns (uint256);
 }
