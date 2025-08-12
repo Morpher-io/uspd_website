@@ -1205,10 +1205,12 @@ contract PositionEscrowTest is
         // With lockedStEth, rebases are not reflected in the collateral amount used for ratio calcs.
         // The collateral value remains based on the principal `initialStEth`.
 
-        // Collateral Value = 1.1e18 * 1000e18 / 1e18 = 1100e18
+        // After yield, the tracked stETH principal (1.1) is projected forward.
+        // Projected StEth = 1.1e18 * (1.1e18 / 1e18) = 1.21e18
+        // Collateral Value = 1.21e18 * 1000e18 / 1e18 = 1210e18
         // Liability Value = 1000e18 * 1.1e18 / 1e18 = 1100e18
-        // Ratio = (1100e18 * 10000) / 1100e18 = 10000
-        uint256 expectedRatio = 10000;
+        // Ratio = (1210 * 10000) / 1100 = 11000
+        uint256 expectedRatio = 11000;
 
         IPriceOracle.PriceResponse memory priceResponse = IPriceOracle
             .PriceResponse(price, 18, block.timestamp * 1000);
@@ -1463,6 +1465,49 @@ contract PositionEscrowTest is
 
         // Assertions
         assertEq(positionEscrow.lockedStEth(), initialAmount, "Tracked balance should not change");
+    }
+
+    function test_syncStEthBalance_reportsOnlyNonYieldSurplus() public {
+        // 1. Setup initial position
+        uint256 initialStEth = 1 ether;
+        mockStETH.mint(admin, initialStEth);
+        vm.prank(admin);
+        mockStETH.approve(address(positionEscrow), initialStEth);
+        positionEscrow.addCollateralStETH(initialStEth); // sets lockedStEth=1, yieldFactor=1e18
+
+        // 2. Simulate yield by changing the yield factor in the rate contract
+        uint256 newYieldFactor = 1.2 ether; // 20% yield
+        vm.mockCall(
+            address(rateContract),
+            abi.encodeWithSelector(rateContract.getYieldFactor.selector),
+            abi.encode(newYieldFactor)
+        );
+
+        // 3. Simulate the physical stETH increase from yield (20%)
+        uint256 yieldAmount = 0.2 ether;
+        mockStETH.mint(address(positionEscrow), yieldAmount);
+
+        // 4. Add an additional, non-yield surplus (a direct transfer)
+        uint256 surplusAmount = 0.1 ether;
+        mockStETH.mint(address(positionEscrow), surplusAmount);
+
+        // Expected balance with yield = 1 * 1.2/1 = 1.2 ether
+        // Physical balance = 1 + 0.2 + 0.1 = 1.3 ether
+        // Delta to report = 1.3 - 1.2 = 0.1 ether (the surplus)
+
+        // 5. Expect a call reporting ONLY the surplus
+        vm.expectCall(
+            address(this), // stabilizerNFTContract is address(this)
+            abi.encodeWithSelector(this.reportCollateralAddition.selector, surplusAmount)
+        );
+
+        // 6. Action
+        positionEscrow.syncStEthBalance();
+
+        // 7. Assertions
+        uint256 expectedFinalPrincipal = initialStEth + yieldAmount + surplusAmount;
+        assertEq(positionEscrow.lockedStEth(), expectedFinalPrincipal, "Principal should be updated to full physical balance");
+        assertEq(positionEscrow.yieldFactorAtLastUpdate(), newYieldFactor, "Yield factor should be updated");
     }
 
     // =============================================

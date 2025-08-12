@@ -36,6 +36,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
 
     uint256 public override backedPoolShares; // Liability tracked in pool shares
     uint256 public lockedStEth;
+    uint256 public yieldFactorAtLastUpdate;
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -73,6 +74,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         lido = _lidoAddress; // Store Lido address
         rateContract = _rateContractAddress;
         oracle = _oracleAddress;
+        yieldFactorAtLastUpdate = IPoolSharesConversionRate(_rateContractAddress).getYieldFactor();
         // backedPoolShares = 0; //default 0 anyways
 
         // Grant roles
@@ -127,7 +129,10 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
 
         // Total stETH added in this operation = user's converted ETH + pre-transferred stabilizer stETH
         uint256 totalStEthAdded = userStEthReceived + stabilizerStEthAmount;
-        lockedStEth += totalStEthAdded;
+        
+        uint256 currentTrackedStEthWithYield = this.getTrackedStEthWithYield();
+        lockedStEth = currentTrackedStEthWithYield + totalStEthAdded;
+        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
 
         // Emit event acknowledging the total stETH added to the pool
         emit CollateralAdded(totalStEthAdded);
@@ -149,7 +154,9 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             revert TransferFailed(); // Lido submit failed
         }
 
-        lockedStEth += stEthReceived;
+        uint256 currentTrackedStEthWithYield = this.getTrackedStEthWithYield();
+        lockedStEth = currentTrackedStEthWithYield + stEthReceived;
+        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
@@ -170,7 +177,9 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         bool success = IERC20(stETH).transferFrom(msg.sender, address(this), stETHAmount);
         if (!success) revert TransferFailed(); // Check allowance and balance
 
-        lockedStEth += stETHAmount;
+        uint256 currentTrackedStEthWithYield = this.getTrackedStEthWithYield();
+        lockedStEth = currentTrackedStEthWithYield + stETHAmount;
+        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stETHAmount);
@@ -212,12 +221,14 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         if (amountToRemove == 0) revert ZeroAmount();
         if (recipient == address(0)) revert ZeroAddress();
 
-        if (amountToRemove > lockedStEth) revert ERC20InsufficientBalance(address(this), lockedStEth, amountToRemove);
+        uint256 currentTrackedStEthWithYield = this.getTrackedStEthWithYield();
+        if (amountToRemove > currentTrackedStEthWithYield) revert ERC20InsufficientBalance(address(this), currentTrackedStEthWithYield, amountToRemove);
 
         bool success = IERC20(stETH).transfer(recipient, amountToRemove);
         if (!success) revert TransferFailed();
 
-        lockedStEth -= amountToRemove;
+        lockedStEth = currentTrackedStEthWithYield - amountToRemove;
+        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
 
         emit CollateralRemoved(recipient, amountToRemove); // Emit simplified event
     }
@@ -248,7 +259,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             .attestationService(priceQuery);
 
         // 3. Get current state
-        uint256 currentStEth = lockedStEth;
+        uint256 currentStEth = this.getTrackedStEthWithYield();
         uint256 currentShares = backedPoolShares;
 
         // 4. Check sufficient balance
@@ -280,7 +291,8 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         bool success = IERC20(stETH).transfer(recipient, amountToRemove);
         if (!success) revert TransferFailed();
 
-        lockedStEth -= amountToRemove;
+        lockedStEth = remainingStEth; // remainingStEth was calculated from the yielded value
+        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
 
         // 8. Emit event
         emit ExcessCollateralRemoved(recipient, amountToRemove);
@@ -302,7 +314,7 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             return type(uint256).max; // Indicate infinite/undefined ratio
         }
 
-        uint256 currentStEth = lockedStEth;
+        uint256 currentStEth = this.getTrackedStEthWithYield();
         if (currentStEth == 0) {
             return 0; // No collateral, ratio is zero
         }
@@ -324,6 +336,23 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         ratio = (collateralValueUSD * 10000) / liabilityValueUSD;
 
         return ratio;
+    }
+
+    /**
+     * @notice Calculates the current tracked stETH balance including yield.
+     * @return The projected stETH balance.
+     */
+    function getTrackedStEthWithYield() public view returns (uint256) {
+        // This function is public to allow for easier testing and external verification if needed.
+        uint256 currentYieldFactor = IPoolSharesConversionRate(rateContract).getYieldFactor();
+        uint256 lastYieldFactor = yieldFactorAtLastUpdate;
+        uint256 principal = lockedStEth;
+
+        if (lastYieldFactor == 0 || currentYieldFactor == 0 || lastYieldFactor == currentYieldFactor) {
+            return principal;
+        }
+
+        return (principal * currentYieldFactor) / lastYieldFactor;
     }
 
     /**
@@ -352,16 +381,23 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
      */
     function syncStEthBalance() external {
         uint256 physicalBalance = IERC20(stETH).balanceOf(address(this));
-        uint256 trackedBalance = lockedStEth;
+        uint256 expectedBalanceWithYield = this.getTrackedStEthWithYield();
 
-        if (physicalBalance > trackedBalance) {
-            uint256 delta = physicalBalance - trackedBalance;
-            lockedStEth = physicalBalance;
+        if (physicalBalance > expectedBalanceWithYield) {
+            uint256 delta = physicalBalance - expectedBalanceWithYield;
             IStabilizerNFT(stabilizerNFTContract).reportCollateralAddition(delta);
-        } else if (physicalBalance < trackedBalance) {
-            uint256 delta = trackedBalance - physicalBalance;
+
+            // Update principal and yield factor
             lockedStEth = physicalBalance;
+            yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
+
+        } else if (physicalBalance < expectedBalanceWithYield) {
+            uint256 delta = expectedBalanceWithYield - physicalBalance;
             IStabilizerNFT(stabilizerNFTContract).reportCollateralRemoval(delta);
+
+            // Update principal and yield factor
+            lockedStEth = physicalBalance;
+            yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
         }
     }
 
@@ -381,7 +417,9 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
             revert TransferFailed(); // Lido submit failed
         }
 
-        lockedStEth += stEthReceived;
+        uint256 currentTrackedStEthWithYield = this.getTrackedStEthWithYield();
+        lockedStEth = currentTrackedStEthWithYield + stEthReceived;
+        yieldFactorAtLastUpdate = IPoolSharesConversionRate(rateContract).getYieldFactor();
 
         // Emit event acknowledging the stETH added to the pool
         emit CollateralAdded(stEthReceived);
