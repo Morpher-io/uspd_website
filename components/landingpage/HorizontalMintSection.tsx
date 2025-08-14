@@ -13,6 +13,13 @@ import { Alert, AlertDescription } from '../ui/alert'
 import { Input } from "@/components/ui/input"
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
+const getSaneStep = (balance: number): string => {
+    if (balance >= 10) return "1";
+    if (balance >= 1) return "0.1";
+    if (balance >= 0.1) return "0.01";
+    return "0.001";
+};
+
 interface PriceData {
     price: string;
     decimals: number;
@@ -131,9 +138,26 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
     return (
         <div className="flex items-end gap-4 p-4 border rounded-lg bg-card">
             <div className="flex-grow space-y-1">
-                <label htmlFor="eth-amount" className="text-sm font-medium text-muted-foreground">You Pay</label>
+                <div className="flex justify-between items-baseline">
+                    <label htmlFor="eth-amount" className="text-sm font-medium text-muted-foreground">You Pay</label>
+                    {ethBalance && (
+                        <span className="text-xs text-muted-foreground">
+                            Balance: {parseFloat(ethBalance.formatted).toFixed(4)}
+                        </span>
+                    )}
+                </div>
                 <div className="flex items-center gap-2">
-                    <Input id="eth-amount" type="number" placeholder="0.0" value={ethAmount} onChange={(e) => setEthAmount(e.target.value)} disabled={isLocked} />
+                    <Input
+                        id="eth-amount"
+                        type="number"
+                        placeholder="0.0"
+                        value={ethAmount}
+                        onChange={(e) => setEthAmount(e.target.value)}
+                        disabled={isLocked}
+                        min="0"
+                        max={ethBalance?.formatted ?? "0"}
+                        step={getSaneStep(ethBalance ? parseFloat(ethBalance.formatted) : 0)}
+                    />
                     <span className="font-semibold text-lg">ETH</span>
                 </div>
             </div>
