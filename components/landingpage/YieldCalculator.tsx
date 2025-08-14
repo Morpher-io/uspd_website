@@ -17,7 +17,8 @@ const formatCurrency = (value: number) => {
     }).format(value)
 }
 
-const APY = 0.027 // 2.7%
+const MIN_APY = 0.0275 // 2.75%
+const MAX_APY = 0.04   // 4%
 const YEARS = 5
 
 export function YieldCalculator() {
@@ -26,35 +27,50 @@ export function YieldCalculator() {
     const chartData = useMemo(() => {
         const data = []
         for (let i = 0; i <= YEARS; i++) {
-            const totalAmount = principal * Math.pow(1 + APY, i)
-            const yieldGenerated = totalAmount - principal
+            const totalAmountMin = principal * Math.pow(1 + MIN_APY, i)
+            const totalAmountMax = principal * Math.pow(1 + MAX_APY, i)
+            const minYieldGenerated = totalAmountMin - principal
+            const additionalYield = totalAmountMax - totalAmountMin
+
             data.push({
                 name: `Year ${i}`,
                 principal: principal,
-                yield: parseFloat(yieldGenerated.toFixed(2)),
+                minYield: parseFloat(minYieldGenerated.toFixed(2)),
+                additionalYield: parseFloat(additionalYield.toFixed(2)),
             })
         }
         return data
     }, [principal])
 
-    const finalAmount = chartData[YEARS].principal + chartData[YEARS].yield
+    const finalAmountMin = chartData[YEARS].principal + chartData[YEARS].minYield
+    const finalAmountMax = finalAmountMin + chartData[YEARS].additionalYield
 
     const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Payload<number, string>[] }) => {
         if (active && payload && payload.length) {
-            const data = payload[0].payload
+            const data = payload[0].payload;
+            const totalMin = data.principal + data.minYield;
+            const totalMax = totalMin + data.additionalYield;
             return (
-                <div className="rounded-lg border bg-background p-2 shadow-sm">
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="flex flex-col space-y-1">
-                            <span className="text-sm text-muted-foreground">{data.name}</span>
-                            <span className="font-bold">{formatCurrency(data.principal + data.yield)}</span>
+                <div className="rounded-lg border bg-background p-2 shadow-sm text-sm">
+                    <div className="font-bold mb-1">{data.name}</div>
+                    <div className="grid grid-cols-[1fr_auto] gap-x-2">
+                        <div className="flex items-center">
+                            <div className="w-2.5 h-2.5 rounded-full mr-2 bg-primary/40" />
+                            <span className="text-muted-foreground">Min. Total:</span>
                         </div>
+                        <span className="font-semibold">{formatCurrency(totalMin)}</span>
+
+                        <div className="flex items-center">
+                            <div className="w-2.5 h-2.5 rounded-full mr-2 bg-primary" />
+                            <span className="text-muted-foreground">Max. Total:</span>
+                        </div>
+                        <span className="font-semibold">{formatCurrency(totalMax)}</span>
                     </div>
                 </div>
-            )
+            );
         }
-        return null
-    }
+        return null;
+    };
 
     return (
         <Card className="flex flex-col h-full">
@@ -101,27 +117,22 @@ export function YieldCalculator() {
                                 cursor={{ stroke: "hsl(var(--border))", strokeWidth: 2 }}
                                 content={<CustomTooltip />}
                             />
-                            <Area
-                                dataKey="principal"
-                                type="monotone"
-                                stackId="1"
-                                fill="hsl(var(--secondary))"
-                                stroke="hsl(var(--secondary-foreground))"
-                            />
-                            <Area
-                                dataKey="yield"
-                                type="monotone"
-                                stackId="1"
-                                fill="hsl(var(--primary))"
-                                stroke="hsl(var(--primary-foreground))"
-                                fillOpacity={0.8}
-                            />
+                            <Area dataKey="principal" type="monotone" stackId="1" fill="hsl(var(--secondary))" stroke="hsl(var(--secondary-foreground))" />
+                            <Area dataKey="minYield" name="Min. Yield" type="monotone" stackId="1" fill="hsl(var(--primary))" stroke="hsl(var(--primary-foreground))" fillOpacity={0.4} />
+                            <Area dataKey="additionalYield" name="Max. Yield Range" type="monotone" stackId="1" fill="hsl(var(--primary))" stroke="hsl(var(--primary-foreground))" fillOpacity={0.8} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
+                <div className="flex justify-center items-center gap-4 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-secondary" /> Principal</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-primary/40" /> Yield ({MIN_APY * 100}%)</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-primary" /> Yield ({MAX_APY * 100}%)</div>
+                </div>
                 <div className="text-center">
-                    <p className="text-muted-foreground">In {YEARS} years, your USPD could be worth</p>
-                    <p className="text-3xl font-bold text-morpher-secondary">{formatCurrency(finalAmount)}</p>
+                    <p className="text-muted-foreground">In {YEARS} years, your USPD could be worth between</p>
+                    <p className="text-3xl font-bold text-morpher-secondary">
+                        {formatCurrency(finalAmountMin)} – {formatCurrency(finalAmountMax)}
+                    </p>
                 </div>
             </CardContent>
         </Card>

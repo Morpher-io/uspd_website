@@ -17,7 +17,9 @@ export default function EarnNativeYield() {
                     {/* Explanation */}
                     <div className="flex flex-col items-start text-left p-8 h-full">
                         <h3 className="text-2xl font-bold mb-4 font-heading">How it Works</h3>
-                        <p className="text-muted-foreground text-lg mb-2">The current APY is ~2.7%</p>
+                        <p className="text-muted-foreground text-lg mb-2">
+                            The underlying stETH collateral has historically provided a variable APY, typically ranging from 2.75% to 4%.
+                        </p>
                         <p className="text-muted-foreground mb-4 text-lg">
                            1. All ETH deposited to mint USPD is automatically converted into liquid staked ETH (stETH).
                         </p>
