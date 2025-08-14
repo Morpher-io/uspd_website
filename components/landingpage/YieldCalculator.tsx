@@ -55,13 +55,13 @@ export function YieldCalculator() {
                     <div className="font-bold mb-1">{data.name}</div>
                     <div className="grid grid-cols-[1fr_auto] gap-x-2">
                         <div className="flex items-center">
-                            <div className="w-2.5 h-2.5 rounded-full mr-2 bg-primary/40" />
+                            <div className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: 'var(--chart-2)' }} />
                             <span className="text-muted-foreground">Min. Total:</span>
                         </div>
                         <span className="font-semibold">{formatCurrency(totalMin)}</span>
 
                         <div className="flex items-center">
-                            <div className="w-2.5 h-2.5 rounded-full mr-2 bg-primary" />
+                            <div className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: 'var(--chart-1)' }} />
                             <span className="text-muted-foreground">Max. Total:</span>
                         </div>
                         <span className="font-semibold">{formatCurrency(totalMax)}</span>
@@ -117,16 +117,16 @@ export function YieldCalculator() {
                                 cursor={{ stroke: "hsl(var(--border))", strokeWidth: 2 }}
                                 content={<CustomTooltip />}
                             />
-                            <Area dataKey="principal" type="monotone" stackId="1" fill="hsl(var(--secondary))" stroke="hsl(var(--secondary-foreground))" />
-                            <Area dataKey="minYield" name="Min. Yield" type="monotone" stackId="1" fill="hsl(var(--primary))" stroke="hsl(var(--primary-foreground))" fillOpacity={0.4} />
-                            <Area dataKey="additionalYield" name="Max. Yield Range" type="monotone" stackId="1" fill="hsl(var(--primary))" stroke="hsl(var(--primary-foreground))" fillOpacity={0.8} />
+                            <Area dataKey="principal" type="monotone" stackId="1" fill="var(--chart-3)" stroke="var(--chart-3)" fillOpacity={0.8} />
+                            <Area dataKey="minYield" name="Min. Yield" type="monotone" stackId="1" fill="var(--chart-2)" stroke="var(--chart-2)" fillOpacity={0.8} />
+                            <Area dataKey="additionalYield" name="Max. Yield Range" type="monotone" stackId="1" fill="var(--chart-1)" stroke="var(--chart-1)" fillOpacity={0.8} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
                 <div className="flex justify-center items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-secondary" /> Principal</div>
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-primary/40" /> Yield ({MIN_APY * 100}%)</div>
-                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-primary" /> Yield ({MAX_APY * 100}%)</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-3)' }} /> Principal</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-2)' }} /> Yield ({MIN_APY * 100}%)</div>
+                    <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'var(--chart-1)' }} /> Yield ({MAX_APY * 100}%)</div>
                 </div>
                 <div className="text-center">
                     <p className="text-muted-foreground">In {YEARS} years, your USPD could be worth between</p>
