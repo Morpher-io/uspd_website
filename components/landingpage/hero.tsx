@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 const DynamicLottie = dynamic(() => import("lottie-react"), { ssr: false });
 import uspdCoinAnimation from "@/public/documents/USPD.json";
+import { HorizontalMintSection } from "./HorizontalMintSection";
 
 export default function HeroSection() {
     return <div className="mt-4 mx-auto container flex x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] flex-col items-center gap-10 pb-28 pt-20 sm:gap-14 lg:flex-row">
@@ -14,6 +15,7 @@ export default function HeroSection() {
             <p className="max-w-lg text-center lg:text-left text-muted-foreground text-3xl tracking-wide">
                 The decentralized, permissionless stablecoin with native yield and on-chain proof of reserves.
             </p>
+            <HorizontalMintSection />
         </div>
         <div className="relative flex-1">
             <DynamicLottie animationData={uspdCoinAnimation} />

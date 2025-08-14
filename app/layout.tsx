@@ -79,6 +79,7 @@ export default async function RootLayout({
             pageMap={await getPageMap()}
             docsRepositoryBase="https://github.com/morpher-io/uspd"
             footer={footer}
+            nextThemes={{defaultTheme: "dark"}}
           // ... Your additional layout options
           >
 

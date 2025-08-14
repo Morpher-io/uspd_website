@@ -121,7 +121,7 @@ function HorizontalMintWidgetCore({ isLocked }: { isLocked: boolean }) {
             finally: () => setIsLoading(false)
         })
     }
-    
+
     return (
         <ContractLoader contractKeys={["cuspdToken"]}>
             {(loadedAddresses) => {
@@ -140,37 +140,38 @@ function HorizontalMintWidgetCore({ isLocked }: { isLocked: boolean }) {
                     <div className="flex items-end gap-4 p-4 border rounded-lg bg-card">
                         <div className="flex-grow space-y-1">
                             <label htmlFor="eth-amount" className="text-sm font-medium text-muted-foreground">You Pay</label>
-                             <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
                                 <Input id="eth-amount" type="number" placeholder="0.0" value={ethAmount} onChange={(e) => setEthAmount(e.target.value)} disabled={isLocked} />
                                 <span className="font-semibold text-lg">ETH</span>
                             </div>
                         </div>
-                        
+
                         <ArrowRight className="w-6 h-6 text-muted-foreground shrink-0 mb-2" />
 
                         <div className="flex-grow space-y-1">
                             <label htmlFor="uspd-amount" className="text-sm font-medium text-muted-foreground">You Receive (est.)</label>
-                             <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
                                 <Input id="uspd-amount" type="text" value={uspdAmount} readOnly placeholder="0.0" />
                                 <span className="font-semibold text-lg">USPD</span>
                             </div>
                         </div>
 
-                        <Button
-                            onClick={() => handleMint(cuspdTokenAddress, cuspdTokenJson.abi as Abi)}
-                            disabled={
-                                isLocked ||
-                                isLoading ||
-                                isLoadingPrice ||
-                                !ethAmount ||
-                                parseFloat(ethAmount) <= 0 ||
-                                !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
-                            }
-                            size="lg"
-                            className="h-auto"
-                        >
-                            {isLoading ? 'Minting...' : 'Mint USPD'}
-                        </Button>
+                        <div className='pb-2'>
+                            <Button
+                                onClick={() => handleMint(cuspdTokenAddress, cuspdTokenJson.abi as Abi)}
+                                disabled={
+                                    isLocked ||
+                                    isLoading ||
+                                    isLoadingPrice ||
+                                    !ethAmount ||
+                                    parseFloat(ethAmount) <= 0 ||
+                                    !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
+                                }
+                                size="lg"
+                                className="h-auto"
+                            >
+                                {isLoading ? 'Minting...' : 'Mint USPD'}
+                            </Button></div>
                     </div>
                 );
             }}
@@ -193,38 +194,37 @@ export function HorizontalMintSection() {
             switchChain({ chainId: liquidityChainId });
         }
     };
-    
+
     return (
-        <section className="hidden md:block border-y bg-secondary border-border py-12">
-            <div className="container x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)]  mx-auto">
-                 <div className="flex flex-col items-center gap-6 mb-8">
-                    <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl text-balance text-center uppercase">
-                        Mint USPD Instantly
-                    </h2>
-                </div>
-                
-                <div className="w-full max-w-4xl mx-auto">
-                     {!isConnected ? (
-                        <div className="flex flex-col items-center justify-center gap-4 text-center p-8 border rounded-lg bg-card">
-                            <p className="text-muted-foreground text-lg">Connect your wallet to get started.</p>
-                            <ConnectButton />
-                        </div>
-                    ) : isWrongChain ? (
-                        <Alert variant="destructive" className="w-full max-w-md mx-auto">
-                            <AlertDescription className="flex flex-col items-center justify-center gap-4 text-center">
-                                <span>
-                                    Wrong network detected. Please switch to{' '}
-                                    <strong>{getChainName(liquidityChainId)}</strong> to proceed.
-                                </span>
-                                <Button onClick={handleSwitchChain} disabled={!switchChain || isSwitching}>
-                                    {isSwitching ? 'Switching...' : `Switch to ${getChainName(liquidityChainId)}`}
-                                </Button>
-                            </AlertDescription>
-                        </Alert>
-                    ) : (
-                        <HorizontalMintWidgetCore isLocked={isWrongChain} />
-                    )}
-                </div>
+        <section className="hidden md:block border-border py-12">
+
+            <div className="flex flex-col items-left gap-6 mb-8">
+                <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl text-balance text-left uppercase">
+                    Mint USPD Instantly
+                </h2>
+            </div>
+
+            <div className="w-full max-w-4xl mx-auto">
+                {!isConnected ? (
+                    <div className="flex flex-col items-center justify-center gap-4 text-center p-8 border rounded-lg bg-card">
+                        <p className="text-muted-foreground text-lg">Connect your wallet to mint USPD.</p>
+                        <ConnectButton />
+                    </div>
+                ) : isWrongChain ? (
+                    <Alert variant="destructive" className="w-full max-w-md mx-auto">
+                        <AlertDescription className="flex flex-col items-center justify-center gap-4 text-center">
+                            <span>
+                                Wrong network detected. Please switch to{' '}
+                                <strong>{getChainName(liquidityChainId)}</strong> to proceed.
+                            </span>
+                            <Button onClick={handleSwitchChain} disabled={!switchChain || isSwitching}>
+                                {isSwitching ? 'Switching...' : `Switch to ${getChainName(liquidityChainId)}`}
+                            </Button>
+                        </AlertDescription>
+                    </Alert>
+                ) : (
+                    <HorizontalMintWidgetCore isLocked={isWrongChain} />
+                )}
             </div>
         </section>
     )
