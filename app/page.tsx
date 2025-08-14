@@ -7,12 +7,14 @@ import Resources from '@/components/landingpage/resources';
 import WhyUspd from "@/components/landingpage/WhyUspd";
 import EarnNativeYield from "@/components/landingpage/EarnNativeYield";
 import MultiChain from "@/components/landingpage/MultiChain";
+import { HorizontalMintSection } from "@/components/landingpage/HorizontalMintSection";
 
 export default function IndexPage() {
      
     return (
         <div>
             <HeroSection />
+            <HorizontalMintSection />
             <WhyUspd />
             <Features />
             <ComparisonTable />
