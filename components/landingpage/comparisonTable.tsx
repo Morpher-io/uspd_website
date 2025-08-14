@@ -90,6 +90,13 @@ export default function ComparisonTable() {
                             <TableCell className="text-red-900 dark:text-red-500">No</TableCell>
                             <TableCell className="text-morpher-secondary">Yes</TableCell>
                         </TableRow>
+                        <TableRow>
+                            <TableCell className="font-medium text-xl">Native Yield</TableCell>
+                            <TableCell className="text-morpher-secondary">Yes</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500">No</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500">No</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500">No</TableCell>
+                        </TableRow>
                     </TableBody>
                 </Table>
             </div>

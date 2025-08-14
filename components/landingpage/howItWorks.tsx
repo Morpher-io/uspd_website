@@ -7,8 +7,6 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 const DynamicLottie = dynamic(() => import("lottie-react"), { ssr: false });
 
-import chart1Animation from "@/public/documents/Chart-USPD-1.json";
-import chart2Animation from "@/public/documents/Chart-USPD-2.json";
 import LandingPageStats from "../uspd/reporter/LandingPageStats";
 
 export default function HowItWorks() {
@@ -42,23 +40,21 @@ export default function HowItWorks() {
                 </div>
             </section>
             <section className="border-y border-border py-6">
-                <div className="container x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)]  mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="flex flex-col md:p-6 md:border-r md:border-r-border">
-                        <div className="mb-6 text-lg text-muted-foreground">
-                            USPD remains stable during crypto bull markets. Rising ETH prices generate excess collateral. Excess collateral covers short losses.
-                        </div>
-
-                        <div>
-                            <DynamicLottie animationData={chart1Animation} />
+                <div className="container x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)]  mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div className="flex flex-col p-6">
+                        <h3 className="text-2xl md:text-3xl font-semibold mb-4 uppercase">How USPD Stays Stable</h3>
+                        <div className="text-lg text-muted-foreground space-y-4">
+                            <p>
+                                Unlike other stablecoins that require you to manage your own debt position, USPD uses a <strong>pooled collateral</strong> model.
+                            </p>
+                            <p>
+                                All collateral is shared across the entire system, creating a single, robust buffer against market volatility. This collective approach ensures greater stability and removes the complexity and risk of managing individual collateralized positions.
+                            </p>
                         </div>
                     </div>
-                    <div className="flex flex-col md:p-6">
-                        <div className="mb-6 text-lg text-muted-foreground">
-                            USPD remains stable during crypto bear markets. Falling ETH prices generate short profits. Short profits top up collateral.
-                        </div>
-
-                        <div>
-                            <DynamicLottie animationData={chart2Animation} />
+                    <div className="flex flex-col items-center justify-center p-6">
+                        <div className="w-full h-64 bg-secondary/50 rounded-lg flex items-center justify-center">
+                            <p className="text-muted-foreground">[Placeholder for animation of a single, collective collateral pool absorbing market shocks]</p>
                         </div>
                     </div>
                 </div>
