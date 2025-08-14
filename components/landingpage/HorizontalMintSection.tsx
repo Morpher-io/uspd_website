@@ -30,7 +30,13 @@ const getChainName = (chainId: number | undefined): string => {
     }
 };
 
-function HorizontalMintWidgetCore({ isLocked }: { isLocked: boolean }) {
+interface HorizontalMintWidgetCoreProps {
+    isLocked: boolean;
+    cuspdTokenAddress: `0x${string}`;
+    cuspdTokenAbi: Abi;
+}
+
+function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }: HorizontalMintWidgetCoreProps) {
     const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
     const { data: ethBalance, refetch: refetchEthBalance } = useBalance({ address })
@@ -80,7 +86,7 @@ function HorizontalMintWidgetCore({ isLocked }: { isLocked: boolean }) {
         }
     }, [debouncedEthAmount, priceData])
 
-    const handleMint = async (cuspdTokenAddress: `0x${string}`, cuspdTokenAbi: Abi) => {
+    const handleMint = async () => {
         setIsLoading(true)
         const promise = async () => {
             if (!ethAmount || parseFloat(ethAmount) <= 0) {
@@ -123,59 +129,42 @@ function HorizontalMintWidgetCore({ isLocked }: { isLocked: boolean }) {
     }
 
     return (
-        <ContractLoader contractKeys={["cuspdToken"]}>
-            {(loadedAddresses) => {
-                const cuspdTokenAddress = loadedAddresses["cuspdToken"];
-                if (!cuspdTokenAddress) {
-                    return (
-                        <Alert variant="destructive">
-                            <AlertDescription className='text-center'>
-                                Failed to load contract address.
-                            </AlertDescription>
-                        </Alert>
-                    );
-                }
+        <div className="flex items-end gap-4 p-4 border rounded-lg bg-card">
+            <div className="flex-grow space-y-1">
+                <label htmlFor="eth-amount" className="text-sm font-medium text-muted-foreground">You Pay</label>
+                <div className="flex items-center gap-2">
+                    <Input id="eth-amount" type="number" placeholder="0.0" value={ethAmount} onChange={(e) => setEthAmount(e.target.value)} disabled={isLocked} />
+                    <span className="font-semibold text-lg">ETH</span>
+                </div>
+            </div>
 
-                return (
-                    <div className="flex items-end gap-4 p-4 border rounded-lg bg-card">
-                        <div className="flex-grow space-y-1">
-                            <label htmlFor="eth-amount" className="text-sm font-medium text-muted-foreground">You Pay</label>
-                            <div className="flex items-center gap-2">
-                                <Input id="eth-amount" type="number" placeholder="0.0" value={ethAmount} onChange={(e) => setEthAmount(e.target.value)} disabled={isLocked} />
-                                <span className="font-semibold text-lg">ETH</span>
-                            </div>
-                        </div>
+            <ArrowRight className="w-6 h-6 text-muted-foreground shrink-0 mb-2" />
 
-                        <ArrowRight className="w-6 h-6 text-muted-foreground shrink-0 mb-2" />
+            <div className="flex-grow space-y-1">
+                <label htmlFor="uspd-amount" className="text-sm font-medium text-muted-foreground">You Receive (est.)</label>
+                <div className="flex items-center gap-2">
+                    <Input id="uspd-amount" type="text" value={uspdAmount} readOnly placeholder="0.0" />
+                    <span className="font-semibold text-lg">USPD</span>
+                </div>
+            </div>
 
-                        <div className="flex-grow space-y-1">
-                            <label htmlFor="uspd-amount" className="text-sm font-medium text-muted-foreground">You Receive (est.)</label>
-                            <div className="flex items-center gap-2">
-                                <Input id="uspd-amount" type="text" value={uspdAmount} readOnly placeholder="0.0" />
-                                <span className="font-semibold text-lg">USPD</span>
-                            </div>
-                        </div>
-
-                        <div className='pb-2'>
-                            <Button
-                                onClick={() => handleMint(cuspdTokenAddress, cuspdTokenJson.abi as Abi)}
-                                disabled={
-                                    isLocked ||
-                                    isLoading ||
-                                    isLoadingPrice ||
-                                    !ethAmount ||
-                                    parseFloat(ethAmount) <= 0 ||
-                                    !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
-                                }
-                                size="lg"
-                                className="h-auto"
-                            >
-                                {isLoading ? 'Minting...' : 'Mint USPD'}
-                            </Button></div>
-                    </div>
-                );
-            }}
-        </ContractLoader>
+            <div className='pb-2'>
+                <Button
+                    onClick={handleMint}
+                    disabled={
+                        isLocked ||
+                        isLoading ||
+                        isLoadingPrice ||
+                        !ethAmount ||
+                        parseFloat(ethAmount) <= 0 ||
+                        !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
+                    }
+                    size="lg"
+                    className="h-auto"
+                >
+                    {isLoading ? 'Minting...' : 'Mint USPD'}
+                </Button></div>
+        </div>
     )
 }
 
@@ -223,7 +212,28 @@ export function HorizontalMintSection() {
                         </AlertDescription>
                     </Alert>
                 ) : (
-                    <HorizontalMintWidgetCore isLocked={isWrongChain} />
+                    <ContractLoader contractKeys={["cuspdToken"]}>
+                        {(loadedAddresses) => {
+                            const cuspdTokenAddress = loadedAddresses["cuspdToken"];
+                            if (!cuspdTokenAddress) {
+                                return (
+                                    <Alert variant="destructive">
+                                        <AlertDescription className='text-center'>
+                                            Failed to load contract address.
+                                        </AlertDescription>
+                                    </Alert>
+                                );
+                            }
+
+                            return (
+                                <HorizontalMintWidgetCore
+                                    isLocked={isWrongChain}
+                                    cuspdTokenAddress={cuspdTokenAddress}
+                                    cuspdTokenAbi={cuspdTokenJson.abi as Abi}
+                                />
+                            );
+                        }}
+                    </ContractLoader>
                 )}
             </div>
         </section>
