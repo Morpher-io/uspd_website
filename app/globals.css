@@ -192,6 +192,27 @@
     }
   }
   --animate-grid: grid 15s linear infinite;
+  --animate-orbit: orbit var(--duration) linear infinite;
+  --animate-orbit-item: orbit-item var(--duration) linear infinite;
+
+  @keyframes orbit {
+    0% {
+      transform: rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg);
+    }
+  }
+
+  @keyframes orbit-item {
+    0% {
+      transform: rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(0deg);
+    }
+  }
+
   @keyframes grid {
   0% {
     transform: translateY(-50%);
