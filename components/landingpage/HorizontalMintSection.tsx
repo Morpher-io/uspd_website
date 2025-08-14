@@ -209,7 +209,7 @@ export function HorizontalMintSection() {
     };
 
     return (
-        <section className="hidden md:block border-border py-12">
+        <section className="hidden md:block border-border py-12 xl:pr-12">
 
             <div className="flex flex-col items-left gap-6 mb-8">
                 <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl text-balance text-left uppercase">

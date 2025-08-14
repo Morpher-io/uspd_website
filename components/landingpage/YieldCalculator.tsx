@@ -103,7 +103,7 @@ export function YieldCalculator() {
                                 tickLine={false}
                                 axisLine={false}
                                 tickMargin={8}
-                                tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
+                                tick={{ fill: "var(--foreground)", fontSize: 12 }}
                             />
                             <YAxis
                                 tickFormatter={(value) => formatCurrency(value)}
@@ -111,10 +111,10 @@ export function YieldCalculator() {
                                 axisLine={false}
                                 tickMargin={8}
                                 width={80}
-                                tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
+                                tick={{ fill: "var(--foreground)", fontSize: 12 }}
                             />
                             <Tooltip
-                                cursor={{ stroke: "hsl(var(--border))", strokeWidth: 2 }}
+                                cursor={{ stroke: "var(--border)", strokeWidth: 2 }}
                                 content={<CustomTooltip />}
                             />
                             <Area dataKey="principal" type="monotone" stackId="1" fill="var(--chart-3)" stroke="var(--chart-3)" fillOpacity={0.8} />
