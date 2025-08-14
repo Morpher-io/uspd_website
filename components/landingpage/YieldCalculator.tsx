@@ -103,7 +103,7 @@ export function YieldCalculator() {
                                 tickLine={false}
                                 axisLine={false}
                                 tickMargin={8}
-                                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                                tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
                             />
                             <YAxis
                                 tickFormatter={(value) => formatCurrency(value)}
@@ -111,7 +111,7 @@ export function YieldCalculator() {
                                 axisLine={false}
                                 tickMargin={8}
                                 width={80}
-                                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                                tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
                             />
                             <Tooltip
                                 cursor={{ stroke: "hsl(var(--border))", strokeWidth: 2 }}
