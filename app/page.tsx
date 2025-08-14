@@ -1,22 +1,24 @@
-import { BecomeAUserStabilizerSection } from "@/components/landingpage/becomeAUserStabilizer";
 import HeroSection from "@/components/landingpage/hero";
 import { Features } from '@/components/landingpage/features';
 import ComparisonTable from '@/components/landingpage/comparisonTable';
 import HowItWorks from '@/components/landingpage/howItWorks';
-import HowToEarn from '@/components/landingpage/howToEarn';
 import Team from '@/components/landingpage/team';
 import Resources from '@/components/landingpage/resources';
+import WhyUspd from "@/components/landingpage/WhyUspd";
+import EarnNativeYield from "@/components/landingpage/EarnNativeYield";
+import MultiChain from "@/components/landingpage/MultiChain";
 
 export default function IndexPage() {
      
     return (
         <div>
             <HeroSection />
-            <BecomeAUserStabilizerSection />
+            <WhyUspd />
             <Features />
             <ComparisonTable />
             <HowItWorks />
-            <HowToEarn />
+            <EarnNativeYield />
+            <MultiChain />
             <Team />
             <Resources />
         </div>
