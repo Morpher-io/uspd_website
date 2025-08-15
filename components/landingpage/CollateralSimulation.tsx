@@ -146,7 +146,7 @@ export function CollateralSimulation() {
 
                 <div className="h-[250px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={simulationData.chartData} barCategoryGap="35%" margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                        <BarChart data={simulationData.chartData} barCategoryGap="35%" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis type="category" dataKey="name" tickLine={false} axisLine={false} />
                             <YAxis tickFormatter={(value) => formatCurrency(value as number)} />
