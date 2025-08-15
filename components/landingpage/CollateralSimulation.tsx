@@ -72,13 +72,18 @@ export function CollateralSimulation() {
                 );
             }
              if (data.name === 'Collateral') {
-                 const totalValue = data.userCollateral + data.stabilizer1Collateral + data.stabilizer2Collateral
+                 const userCollateralAtMint = USER_DEPOSIT_ETH * INITIAL_ETH_PRICE;
+                 const stabilizer1CollateralAtMint = STABILIZER_1_COLLATERAL_ETH * INITIAL_ETH_PRICE;
+                 const stabilizer2CollateralAtMint = STABILIZER_2_COLLATERAL_ETH * INITIAL_ETH_PRICE;
+                 const totalValueAtMint = userCollateralAtMint + stabilizer1CollateralAtMint + stabilizer2CollateralAtMint;
+
                  return (
                     <div className="rounded-lg border bg-background p-2 shadow-sm text-sm space-y-1">
-                        <p>User: {USER_DEPOSIT_ETH.toFixed(1)} ETH ({formatCurrency(data.userCollateral)})</p>
-                        <p>Stabilizer 1: {STABILIZER_1_COLLATERAL_ETH} ETH ({formatCurrency(data.stabilizer1Collateral)})</p>
-                        <p>Stabilizer 2: {STABILIZER_2_COLLATERAL_ETH} ETH ({formatCurrency(data.stabilizer2Collateral)})</p>
-                        <p className="font-bold pt-1 border-t mt-1">Total Collateral: {formatCurrency(totalValue)}</p>
+                        <p className="text-xs text-muted-foreground pb-1 mb-1 border-b">Value at Mint (ETH @ {formatCurrency(INITIAL_ETH_PRICE)})</p>
+                        <p>User: {USER_DEPOSIT_ETH.toFixed(1)} ETH ({formatCurrency(userCollateralAtMint)})</p>
+                        <p>Stabilizer 1: {STABILIZER_1_COLLATERAL_ETH} ETH ({formatCurrency(stabilizer1CollateralAtMint)})</p>
+                        <p>Stabilizer 2: {STABILIZER_2_COLLATERAL_ETH} ETH ({formatCurrency(stabilizer2CollateralAtMint)})</p>
+                        <p className="font-bold pt-1 border-t mt-1">Total Initial Collateral: {formatCurrency(totalValueAtMint)}</p>
                     </div>
                 );
             }
