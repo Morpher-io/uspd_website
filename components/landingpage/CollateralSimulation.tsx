@@ -6,19 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// Constants based on the user's request
+// Constants for a typical scenario based on user request
 const INITIAL_ETH_PRICE = 4000
-const USPD_LIABILITY = 5000 // $5000 USPD minted
-const MIN_COLLATERAL_RATIO = 1.1 // 110%
+const USER_DEPOSIT_ETH = 1.0 // User deposits 1 ETH to mint USPD
+const USPD_LIABILITY = USER_DEPOSIT_ETH * INITIAL_ETH_PRICE // User mints $4000 USPD
+const MIN_COLLATERAL_RATIO = 1.1 // System Minimum Collateral Ratio is 110%
 
-// To back $5000 USPD at 110% MCR with ETH at $4000, users need to deposit:
-// (5000 * 1.10) / 4000 = 1.375 ETH
-const USER_COLLATERAL_ETH = 1.375
+// Stabilizers add collateral to overcollateralize the user's position
+const STABILIZER_COLLATERAL_ETH = 0.4 // e.g., 2 stabilizers add 0.2 ETH each
 
-// Stabilizers provide 0.2 ETH each
-const STABILIZER_COLLATERAL_ETH = 0.4 // 2 * 0.2 ETH
-
-const TOTAL_ETH_COLLATERAL = USER_COLLATERAL_ETH + STABILIZER_COLLATERAL_ETH
+// Total pooled ETH collateral backing the USPD
+const TOTAL_ETH_COLLATERAL = USER_DEPOSIT_ETH + STABILIZER_COLLATERAL_ETH
 
 // Liquidation price = (USPD Liability * MCR) / Total ETH Collateral
 const LIQUIDATION_PRICE = (USPD_LIABILITY * MIN_COLLATERAL_RATIO) / TOTAL_ETH_COLLATERAL
@@ -36,7 +34,7 @@ export function CollateralSimulation() {
     const [ethPrice, setEthPrice] = useState(INITIAL_ETH_PRICE)
 
     const simulationData = useMemo(() => {
-        const userCollateralValue = USER_COLLATERAL_ETH * ethPrice
+        const userCollateralValue = USER_DEPOSIT_ETH * ethPrice
         const stabilizerCollateralValue = STABILIZER_COLLATERAL_ETH * ethPrice
         const totalCollateralValue = userCollateralValue + stabilizerCollateralValue
         const collateralizationRatio = (totalCollateralValue / USPD_LIABILITY) * 100
