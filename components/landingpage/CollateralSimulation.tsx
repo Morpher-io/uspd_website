@@ -70,7 +70,7 @@ export function CollateralSimulation() {
             chartData: [
                 {
                     name: "Liability",
-                    value: USPD_LIABILITY,
+                    liability: USPD_LIABILITY,
                 },
                 {
                     name: "Collateral",
@@ -90,7 +90,7 @@ export function CollateralSimulation() {
             if (data.name === 'Liability') {
                 return (
                     <div className="rounded-lg border bg-background p-2 shadow-sm text-sm">
-                        <p className="font-bold">USPD Liability: {formatCurrency(data.value)}</p>
+                        <p className="font-bold">USPD Liability: {formatCurrency(data.liability)}</p>
                     </div>
                 );
             }
@@ -151,11 +151,7 @@ export function CollateralSimulation() {
                                 content={<CustomTooltip />}
                             />
                             <Legend />
-                            <Bar dataKey="value" name="USPD Liability" fill="var(--primary)">
-                                {simulationData.chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.name === 'Liability' ? 'var(--primary)' : 'transparent'} />
-                                ))}
-                            </Bar>
+                            <Bar dataKey="liability" name="USPD Liability" fill="var(--primary)" />
                             <Bar dataKey="userCollateral" name="User Collateral" stackId="collateral" fill="var(--chart-3)" />
                             <Bar dataKey="stabilizer1Collateral" name="Stabilizer 1" stackId="collateral" fill="var(--chart-2)" />
                             <Bar dataKey="stabilizer2Collateral" name="Stabilizer 2" stackId="collateral" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
