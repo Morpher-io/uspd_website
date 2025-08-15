@@ -38,7 +38,7 @@ export function CollateralSimulation() {
     const simulationData = useMemo(() => {
         const userCollateralValue = USER_DEPOSIT_ETH * ethPrice
         const stabilizer1CollateralValue = STABILIZER_1_COLLATERAL_ETH * ethPrice
-        const stabilizer2CollateralValue = STBILIZER_2_COLLATERAL_ETH * ethPrice
+        const stabilizer2CollateralValue = STABILIZER_2_COLLATERAL_ETH * ethPrice
         const totalCollateralValue = userCollateralValue + stabilizer1CollateralValue + stabilizer2CollateralValue
         const collateralizationRatio = (totalCollateralValue / USPD_LIABILITY) * 100
 
