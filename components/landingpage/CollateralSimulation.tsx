@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 const INITIAL_ETH_PRICE = 4000
 const USER_DEPOSIT_ETH = 1.0 // User deposits 1 ETH to mint USPD
 const USPD_LIABILITY = USER_DEPOSIT_ETH * INITIAL_ETH_PRICE // User mints $4000 USPD
-const MIN_COLLATERAL_RATIO = 1.1 // System Minimum Collateral Ratio is 110%
+const MIN_COLLATERAL_RATIO = 1.25 // System Minimum Collateral Ratio is 125%
 
 // Stabilizers add collateral to overcollateralize the user's position
 const STABILIZER_1_COLLATERAL_ETH = 0.2
@@ -38,12 +38,28 @@ export function CollateralSimulation() {
     const simulationData = useMemo(() => {
         const userCollateralValue = USER_DEPOSIT_ETH * ethPrice
         const stabilizer1CollateralValue = STABILIZER_1_COLLATERAL_ETH * ethPrice
-        const stabilizer2CollateralValue = STABILIZER_2_COLLATERAL_ETH * ethPrice
+        const stabilizer2CollateralValue = STBILIZER_2_COLLATERAL_ETH * ethPrice
         const totalCollateralValue = userCollateralValue + stabilizer1CollateralValue + stabilizer2CollateralValue
         const collateralizationRatio = (totalCollateralValue / USPD_LIABILITY) * 100
 
+        let ratioColor = "text-green-500"
+        let statusDescription = "The system is well-collateralized. Minting and redeeming USPD functions normally."
+        let alertVariant: "default" | "destructive" = "default"
+
+        if (collateralizationRatio <= 125) {
+            ratioColor = "text-destructive"
+            statusDescription = "Collateral is below the 125% minimum. Positions are now eligible for liquidation to ensure system stability and maintain the peg."
+            alertVariant = "destructive"
+        } else if (collateralizationRatio <= 130) {
+            ratioColor = "text-yellow-500"
+            statusDescription = "Collateralization is approaching the minimum threshold. Positions are at risk of liquidation if the ETH price drops further."
+        }
+
         return {
             collateralizationRatio,
+            ratioColor,
+            statusDescription,
+            alertVariant,
             chartData: [
                 {
                     name: "Liability",
@@ -143,7 +159,7 @@ export function CollateralSimulation() {
                 <div className="grid grid-cols-2 gap-4 text-center">
                     <div className="p-4 rounded-lg bg-secondary">
                         <div className="text-sm text-muted-foreground">System Collateralization</div>
-                        <div className={`text-2xl font-bold ${isLiquidating ? "text-destructive" : "text-green-500"}`}>
+                        <div className={`text-2xl font-bold ${simulationData.ratioColor}`}>
                             {simulationData.collateralizationRatio.toFixed(2)}%
                         </div>
                     </div>
@@ -154,13 +170,14 @@ export function CollateralSimulation() {
                         </div>
                     </div>
                 </div>
-                 {isLiquidating && (
-                    <Alert variant="destructive">
-                        <AlertDescription>
-                            Warning: ETH price is below the liquidation threshold. At this point, the system would begin liquidating collateral to maintain the peg.
-                        </AlertDescription>
-                    </Alert>
-                )}
+                <Alert variant={simulationData.alertVariant} className={
+                    simulationData.ratioColor === 'text-yellow-500' ? 'border-yellow-500/50 text-yellow-500' :
+                    simulationData.ratioColor === 'text-green-500' ? 'border-green-500/50 text-green-500' : ''
+                }>
+                    <AlertDescription>
+                        {simulationData.statusDescription}
+                    </AlertDescription>
+                </Alert>
             </CardContent>
         </Card>
     )
