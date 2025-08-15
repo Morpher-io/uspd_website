@@ -154,11 +154,10 @@ export function CollateralSimulation() {
                                 cursor={{ fill: 'var(--muted)', fillOpacity: 0.5 }}
                                 content={<CustomTooltip />}
                             />
-                            <Legend />
-                            <Bar dataKey="liability" name="USPD Liability" fill="var(--foreground)" />
-                            <Bar dataKey="userCollateral" name="User Collateral" stackId="collateral" fill="var(--chart-3)" />
-                            <Bar dataKey="stabilizer1Collateral" name="Stabilizer 1" stackId="collateral" fill="var(--chart-2)" />
-                            <Bar dataKey="stabilizer2Collateral" name="Stabilizer 2" stackId="collateral" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="liability" name="USPD Liability" stackId="a" fill="var(--foreground)" />
+                            <Bar dataKey="userCollateral" name="User Collateral" stackId="a" fill="var(--chart-3)" />
+                            <Bar dataKey="stabilizer1Collateral" name="Stabilizer 1" stackId="a" fill="var(--chart-2)" />
+                            <Bar dataKey="stabilizer2Collateral" name="Stabilizer 2" stackId="a" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
