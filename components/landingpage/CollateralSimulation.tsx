@@ -71,9 +71,13 @@ export function CollateralSimulation() {
                 {
                     name: "Liability",
                     liability: USPD_LIABILITY,
+                    userCollateral: 0,
+                    stabilizer1Collateral: 0,
+                    stabilizer2Collateral: 0,
                 },
                 {
                     name: "Collateral",
+                    liability: 0,
                     userCollateral: userCollateralValue,
                     stabilizer1Collateral: stabilizer1CollateralValue,
                     stabilizer2Collateral: stabilizer2CollateralValue,
