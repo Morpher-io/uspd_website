@@ -7,12 +7,12 @@ import { YieldCalculator } from "../landingpage/YieldCalculator";
 
 const timelineData = [
     {
-        title: "1. Minting",
+        title: "1. Transparency",
         content: (
             <div className="flex-col flex flex-1 gap-4">
-                <h2 className="text-3xl uppercase font-medium">Minting and Redeeming</h2>
+                <h2 className="text-3xl uppercase font-medium">Radical Transparency</h2>
                 <div className="text-xl text-muted-foreground">
-                    Deposit ETH to get equivalent USPD. Redeem ETH by burning USPD. USPD can be minted by depositing ETH into the smart contract. Depositors receive USPD proportionally to the USD value of their deposited ETH. ETH can be redeemed from the smart contract by burning a corresponding amount of USPD.
+                    Beyond regular audits, USPD offers something more powerful: real-time, on-chain proof of reserves. Every dollar of USPD is backed by collateral that you can verify yourself, at any moment. There are no opaque bank accounts or off-chain assets—just transparent smart contracts.
                 </div>
                 <div className="mt-8">
                     <LandingPageStats />
@@ -66,6 +66,9 @@ export default function HowItWorks() {
                 <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-5xl text-balance text-center uppercase">
                     How it Works
                 </h1>
+                <p className="text-center text-muted-foreground text-xl max-w-4xl">
+                    Minting USPD by depositing ETH, and redeeming it by burning, works just like other stablecoins. But that&apos;s where the similarities end. USPD is built on three core pillars that set it apart: Radical Transparency, Unmatched Stability, and Effortless Native Yield.
+                </p>
             </div>
             <Timeline data={timelineData} />
         </section>
