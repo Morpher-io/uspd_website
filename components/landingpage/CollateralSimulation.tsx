@@ -23,6 +23,9 @@ const TOTAL_ETH_COLLATERAL = USER_DEPOSIT_ETH + STABILIZER_COLLATERAL_ETH
 // Liquidation price = (USPD Liability * MCR) / Total ETH Collateral
 const LIQUIDATION_PRICE = (USPD_LIABILITY * MIN_COLLATERAL_RATIO) / TOTAL_ETH_COLLATERAL
 
+// The portion of USPD debt "backed" by a single stabilizer's collateral share
+const USPD_DEBT_PER_STABILIZER = USPD_LIABILITY * (STABILIZER_1_COLLATERAL_ETH / TOTAL_ETH_COLLATERAL);
+
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -38,32 +41,42 @@ export function CollateralSimulation() {
     const simulationData = useMemo(() => {
         const userCollateralValue = USER_DEPOSIT_ETH * ethPrice
         const stabilizer1CollateralValue = STABILIZER_1_COLLATERAL_ETH * ethPrice
-        const stabilizer2CollateralValue = STABILIZER_2_COLLATERAL_ETH * ethPrice
-        const totalCollateralValue = userCollateralValue + stabilizer1CollateralValue + stabilizer2CollateralValue
-        const collateralizationRatio = (totalCollateralValue / USPD_LIABILITY) * 100
+        let stabilizer2CollateralValue = STABILIZER_2_COLLATERAL_ETH * ethPrice
+        let totalCollateralValue = userCollateralValue + stabilizer1CollateralValue + stabilizer2CollateralValue
+        let currentLiability = USPD_LIABILITY
+
+        const preLiquidationRatio = (totalCollateralValue / currentLiability) * 100
 
         let ratioColor = "text-green-500"
         let statusDescription = "The system is well-collateralized. Minting and redeeming USPD functions normally."
         let alertVariant: "default" | "destructive" = "default"
 
-        if (collateralizationRatio <= 125) {
+        if (preLiquidationRatio <= 125) {
+            // Simulate one stabilizer being liquidated
+            totalCollateralValue -= stabilizer2CollateralValue;
+            stabilizer2CollateralValue = 0; // Remove from chart
+            currentLiability -= USPD_DEBT_PER_STABILIZER;
+
             ratioColor = "text-destructive"
-            statusDescription = "Collateral is below the 125% minimum. Positions are now eligible for liquidation to ensure system stability and maintain the peg."
+            statusDescription = "Liquidation in progress! An unhealthy stabilizer position is removed, burning USPD and reducing total debt to re-stabilize the system."
             alertVariant = "destructive"
-        } else if (collateralizationRatio <= 130) {
+
+        } else if (preLiquidationRatio <= 130) {
             ratioColor = "text-yellow-500"
             statusDescription = "Collateralization is approaching the minimum threshold. Positions are at risk of liquidation if the ETH price drops further."
         }
 
+        const finalRatio = currentLiability > 0 ? (totalCollateralValue / currentLiability) * 100 : 0
+
         return {
-            collateralizationRatio,
+            collateralizationRatio: finalRatio,
             ratioColor,
             statusDescription,
             alertVariant,
             chartData: [
                 {
                     name: "Liability",
-                    value: USPD_LIABILITY,
+                    value: currentLiability,
                 },
                 {
                     name: "Collateral",
