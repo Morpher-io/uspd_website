@@ -5,6 +5,8 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import Link from "next/link"
+import { Button } from "../ui/button"
 
 // Constants for a typical scenario based on user request
 const INITIAL_ETH_PRICE = 4000
@@ -24,8 +26,6 @@ const TOTAL_ETH_COLLATERAL = USER_DEPOSIT_ETH + STABILIZER_COLLATERAL_ETH
 const LIQUIDATION_PRICE = (USPD_LIABILITY * MIN_COLLATERAL_RATIO) / TOTAL_ETH_COLLATERAL
 
 // The portion of USPD debt "backed" by a single stabilizer's collateral share
-const USPD_DEBT_PER_STABILIZER = USPD_LIABILITY * (STABILIZER_1_COLLATERAL_ETH / TOTAL_ETH_COLLATERAL);
-
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -41,42 +41,32 @@ export function CollateralSimulation() {
     const simulationData = useMemo(() => {
         const userCollateralValue = USER_DEPOSIT_ETH * ethPrice
         const stabilizer1CollateralValue = STABILIZER_1_COLLATERAL_ETH * ethPrice
-        let stabilizer2CollateralValue = STABILIZER_2_COLLATERAL_ETH * ethPrice
-        let totalCollateralValue = userCollateralValue + stabilizer1CollateralValue + stabilizer2CollateralValue
-        let currentLiability = USPD_LIABILITY
-
-        const preLiquidationRatio = (totalCollateralValue / currentLiability) * 100
+        const stabilizer2CollateralValue = STABILIZER_2_COLLATERAL_ETH * ethPrice
+        const totalCollateralValue = userCollateralValue + stabilizer1CollateralValue + stabilizer2CollateralValue
+        const collateralizationRatio = (totalCollateralValue / USPD_LIABILITY) * 100
 
         let ratioColor = "text-green-500"
         let statusDescription = "The system is well-collateralized. Minting and redeeming USPD functions normally."
         let alertVariant: "default" | "destructive" = "default"
 
-        if (preLiquidationRatio <= 125) {
-            // Simulate one stabilizer being liquidated
-            totalCollateralValue -= stabilizer2CollateralValue;
-            stabilizer2CollateralValue = 0; // Remove from chart
-            currentLiability -= USPD_DEBT_PER_STABILIZER;
-
+        if (collateralizationRatio <= 125) {
             ratioColor = "text-destructive"
-            statusDescription = "Liquidation in progress! An unhealthy stabilizer position is removed, burning USPD and reducing total debt to re-stabilize the system."
+            statusDescription = "Collateral is below 125%. Liquidators are now incentivized to step in, burn USPD, and claim collateral to restore the system to health."
             alertVariant = "destructive"
-
-        } else if (preLiquidationRatio <= 130) {
+        } else if (collateralizationRatio <= 130) {
             ratioColor = "text-yellow-500"
             statusDescription = "Collateralization is approaching the minimum threshold. Positions are at risk of liquidation if the ETH price drops further."
         }
 
-        const finalRatio = currentLiability > 0 ? (totalCollateralValue / currentLiability) * 100 : 0
-
         return {
-            collateralizationRatio: finalRatio,
+            collateralizationRatio,
             ratioColor,
             statusDescription,
             alertVariant,
             chartData: [
                 {
                     name: "Liability",
-                    value: currentLiability,
+                    value: USPD_LIABILITY,
                 },
                 {
                     name: "Collateral",
@@ -187,8 +177,13 @@ export function CollateralSimulation() {
                     simulationData.ratioColor === 'text-yellow-500' ? 'border-yellow-500/50 text-yellow-500' :
                     simulationData.ratioColor === 'text-green-500' ? 'border-green-500/50 text-green-500' : ''
                 }>
-                    <AlertDescription>
-                        {simulationData.statusDescription}
+                    <AlertDescription className="flex flex-col gap-4 items-start">
+                        <span>{simulationData.statusDescription}</span>
+                        {simulationData.alertVariant === 'destructive' && (
+                            <Link href="/docs/economics">
+                                <Button variant="link" className="p-0 h-auto text-destructive">Learn more about liquidations</Button>
+                            </Link>
+                        )}
                     </AlertDescription>
                 </Alert>
             </CardContent>
