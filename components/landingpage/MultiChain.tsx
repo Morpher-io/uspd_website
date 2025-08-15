@@ -35,7 +35,7 @@ export default function MultiChain() {
                         
 
                         {/* Inner Circles */}
-                        <OrbitingCircles duration={20} delay={20} radius={100}>
+                        <OrbitingCircles duration={20} radius={100}>
                             <Image src={LogoOptimism} alt="Optimism"  className="h-8 w-8" />
                             <Image src={LogoEthereum} alt="Ethereum"  className="h-8 w-8" />
                             <Image src={LogoPolygon} alt="Polygon"  className="h-8 w-8" />

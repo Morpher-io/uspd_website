@@ -115,13 +115,13 @@ export function CollateralSimulation() {
                             <XAxis type="category" dataKey="name" tickLine={false} axisLine={false} />
                             <YAxis tickFormatter={(value) => formatCurrency(value as number)} />
                             <Tooltip
-                                cursor={{ fill: 'hsl(var(--muted) / 0.5)' }}
+                                cursor={{ fill: 'var(--muted)', fillOpacity: 0.5 }}
                                 content={<CustomTooltip />}
                             />
                             <Legend />
-                            <Bar dataKey="value" name="USPD Liability" fill="hsl(var(--primary))">
+                            <Bar dataKey="value" name="USPD Liability" fill="var(--primary)">
                                 {simulationData.chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.name === 'Liability' ? 'hsl(var(--primary))' : 'transparent'} />
+                                    <Cell key={`cell-${index}`} fill={entry.name === 'Liability' ? 'var(--primary)' : 'transparent'} />
                                 ))}
                             </Bar>
                             <Bar dataKey="userCollateral" name="User Collateral" stackId="collateral" fill="var(--chart-3)" />
