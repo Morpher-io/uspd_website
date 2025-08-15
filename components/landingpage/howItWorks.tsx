@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 const DynamicLottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 import LandingPageStats from "../uspd/reporter/LandingPageStats";
+import { CollateralSimulation } from "./CollateralSimulation";
 
 export default function HowItWorks() {
     return (
@@ -52,10 +53,8 @@ export default function HowItWorks() {
                             </p>
                         </div>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-6">
-                        <div className="w-full h-64 bg-secondary/50 rounded-lg flex items-center justify-center">
-                            <p className="text-muted-foreground">[Placeholder for animation of a single, collective collateral pool absorbing market shocks]</p>
-                        </div>
+                    <div className="flex flex-col items-center justify-center">
+                        <CollateralSimulation />
                     </div>
                 </div>
             </section>

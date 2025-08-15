@@ -4,11 +4,9 @@
 /*
   ---break---
 */
-@plugin 'tailwindcss-animate';
 /*
   ---break---
 */
-@custom-variant dark (&:is(.dark *));
 
 @theme {
   --color-background: var(--background);
@@ -235,14 +233,7 @@
     background-position: 100% -100%;
     }
   }
-  @keyframes orbit {
-  0% {
-    transform: rotate(calc(var(--angle) * 1deg)) translateY(calc(var(--radius) * 1px)) rotate(calc(var(--angle) * -1deg));
-    }
-  100% {
-    transform: rotate(calc(var(--angle) * 1deg + 360deg)) translateY(calc(var(--radius) * 1px)) rotate(calc((var(--angle) * -1deg) - 360deg));
-    }
-  }}
+}
 /*
   ---break---
 */
