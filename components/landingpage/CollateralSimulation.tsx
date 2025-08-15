@@ -13,7 +13,9 @@ const USPD_LIABILITY = USER_DEPOSIT_ETH * INITIAL_ETH_PRICE // User mints $4000 
 const MIN_COLLATERAL_RATIO = 1.1 // System Minimum Collateral Ratio is 110%
 
 // Stabilizers add collateral to overcollateralize the user's position
-const STABILIZER_COLLATERAL_ETH = 0.4 // e.g., 2 stabilizers add 0.2 ETH each
+const STABILIZER_1_COLLATERAL_ETH = 0.2
+const STABILIZER_2_COLLATERAL_ETH = 0.2
+const STABILIZER_COLLATERAL_ETH = STABILIZER_1_COLLATERAL_ETH + STABILIZER_2_COLLATERAL_ETH
 
 // Total pooled ETH collateral backing the USPD
 const TOTAL_ETH_COLLATERAL = USER_DEPOSIT_ETH + STABILIZER_COLLATERAL_ETH
@@ -35,8 +37,9 @@ export function CollateralSimulation() {
 
     const simulationData = useMemo(() => {
         const userCollateralValue = USER_DEPOSIT_ETH * ethPrice
-        const stabilizerCollateralValue = STABILIZER_COLLATERAL_ETH * ethPrice
-        const totalCollateralValue = userCollateralValue + stabilizerCollateralValue
+        const stabilizer1CollateralValue = STABILIZER_1_COLLATERAL_ETH * ethPrice
+        const stabilizer2CollateralValue = STABILIZER_2_COLLATERAL_ETH * ethPrice
+        const totalCollateralValue = userCollateralValue + stabilizer1CollateralValue + stabilizer2CollateralValue
         const collateralizationRatio = (totalCollateralValue / USPD_LIABILITY) * 100
 
         return {
@@ -49,7 +52,8 @@ export function CollateralSimulation() {
                 {
                     name: "Collateral",
                     userCollateral: userCollateralValue,
-                    stabilizerCollateral: stabilizerCollateralValue,
+                    stabilizer1Collateral: stabilizer1CollateralValue,
+                    stabilizer2Collateral: stabilizer2CollateralValue,
                 },
             ],
         }
@@ -68,11 +72,13 @@ export function CollateralSimulation() {
                 );
             }
              if (data.name === 'Collateral') {
+                 const totalValue = data.userCollateral + data.stabilizer1Collateral + data.stabilizer2Collateral
                  return (
-                    <div className="rounded-lg border bg-background p-2 shadow-sm text-sm">
-                        <p>User Collateral: {formatCurrency(data.userCollateral)}</p>
-                        <p>Stabilizer Buffer: {formatCurrency(data.stabilizerCollateral)}</p>
-                        <p className="font-bold mt-1">Total: {formatCurrency(data.userCollateral + data.stabilizerCollateral)}</p>
+                    <div className="rounded-lg border bg-background p-2 shadow-sm text-sm space-y-1">
+                        <p>User: {USER_DEPOSIT_ETH.toFixed(1)} ETH ({formatCurrency(data.userCollateral)})</p>
+                        <p>Stabilizer 1: {STABILIZER_1_COLLATERAL_ETH} ETH ({formatCurrency(data.stabilizer1Collateral)})</p>
+                        <p>Stabilizer 2: {STABILIZER_2_COLLATERAL_ETH} ETH ({formatCurrency(data.stabilizer2Collateral)})</p>
+                        <p className="font-bold pt-1 border-t mt-1">Total Collateral: {formatCurrency(totalValue)}</p>
                     </div>
                 );
             }
@@ -123,7 +129,8 @@ export function CollateralSimulation() {
                                 ))}
                             </Bar>
                             <Bar dataKey="userCollateral" name="User Collateral" stackId="collateral" fill="var(--chart-3)" />
-                            <Bar dataKey="stabilizerCollateral" name="Stabilizer Buffer" stackId="collateral" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="stabilizer1Collateral" name="Stabilizer 1" stackId="collateral" fill="var(--chart-2)" />
+                            <Bar dataKey="stabilizer2Collateral" name="Stabilizer 2" stackId="collateral" fill="var(--chart-4)" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
