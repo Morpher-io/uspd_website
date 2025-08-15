@@ -124,7 +124,7 @@ export function CollateralSimulation() {
             <CardHeader>
                 <CardTitle>System Stability Simulation</CardTitle>
                 <CardDescription>
-                    See how pooled collateral protects USPD against ETH price changes.
+                    This simulation shows a scenario where {formatCurrency(USPD_LIABILITY)} USPD were minted at an ETH price of {formatCurrency(INITIAL_ETH_PRICE)}. The position is overcollateralized by a pool of the user&apos;s ETH and additional ETH from stabilizers. Move the slider to see how price changes affect stability.
                 </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6">
@@ -189,7 +189,17 @@ export function CollateralSimulation() {
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Link>
                             </Button>
-
+                        )}
+                        {simulationData.ratioColor === 'text-green-500' && (
+                            <div className="w-full pt-4 mt-2 border-t border-border/50">
+                                <p className="text-sm text-muted-foreground mb-3">Stabilizers provide this excess collateral and can earn up to 27% APY for protecting the system.</p>
+                                <Button asChild className="w-full">
+                                    <Link href="/docs/stabilizers">
+                                        Learn more about Stabilizers
+                                        <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Link>
+                                </Button>
+                            </div>
                         )}
                     </AlertDescription>
                 </Alert>
