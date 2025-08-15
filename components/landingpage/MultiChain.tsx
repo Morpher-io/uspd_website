@@ -1,8 +1,17 @@
 import Link from "next/link";
 import { InteractiveHoverButton } from "../magicui/interactive-hover-button";
-import OrbitingCircles from "../magicui/orbiting-circles";
+import { OrbitingCircles } from "@/components/magicui/orbiting-circles";
 import Image from "next/image";
 import UspdLogo from "@/public/images/logo_uspd.svg";
+import LogoEthereum from "@/public/images/logo-ethereum.svg";
+import LogoOptimism from "@/public/images/logo-optimism.svg";
+import LogoAvalanche from "@/public/images/logo-avalanche.svg";
+import LogoArbitrum from "@/public/images/logo-arbitrum.svg";
+import LogoUnichain from "@/public/images/logo-unichain.svg";
+import LogoBase from "@/public/images/logo-base.svg";
+import LogoCelo from "@/public/images/logo-celo.svg";
+import LogoGnosis from "@/public/images/logo-gnosis.svg";
+import LogoPolygon from "@/public/images/logo-polygon.svg";
 
 const ChainLogoPlaceholder = ({ className }: { className?: string }) => (
   <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-muted ${className}`} />
@@ -20,28 +29,26 @@ export default function MultiChain() {
                 </p>
                 <div className="grid md:grid-cols-2 gap-8 mt-8 w-full items-center">
                     {/* Visuals */}
-                    <div className="relative flex h-[500px] w-full flex-col items-center justify-center overflow-hidden rounded-lg">
-                        <span className="pointer-events-none whitespace-pre-wrap bg-gradient-to-b from-primary to-secondary-foreground bg-clip-text text-center text-8xl font-semibold leading-none text-transparent">
+                    <div className="relative flex h-[500px] w-full flex-col items-center justify-center overflow-hidden">
+                        
                             <Image className="h-20 w-20" alt="Uspd Logo" src={UspdLogo} />
-                        </span>
+                        
 
                         {/* Inner Circles */}
-                        <OrbitingCircles className="h-[30px] w-[30px] border-none bg-transparent" duration={20} delay={20} radius={80}>
-                            <ChainLogoPlaceholder />
-                        </OrbitingCircles>
-                        <OrbitingCircles className="h-[30px] w-[30px] border-none bg-transparent" duration={20} delay={10} radius={80}>
-                            <ChainLogoPlaceholder />
+                        <OrbitingCircles duration={20} delay={20} radius={100}>
+                            <Image src={LogoOptimism} alt="Optimism"  className="h-8 w-8" />
+                            <Image src={LogoEthereum} alt="Ethereum"  className="h-8 w-8" />
+                            <Image src={LogoPolygon} alt="Polygon"  className="h-8 w-8" />
+                            <Image src={LogoBase} alt="Base"  className="h-8 w-8" />
                         </OrbitingCircles>
 
                         {/* Outer Circles */}
-                        <OrbitingCircles className="h-[50px] w-[50px] border-none bg-transparent" reverse duration={30} delay={0} radius={190}>
-                            <ChainLogoPlaceholder />
-                        </OrbitingCircles>
-                        <OrbitingCircles className="h-[50px] w-[50px] border-none bg-transparent" reverse duration={30} delay={10} radius={190}>
-                             <ChainLogoPlaceholder />
-                        </OrbitingCircles>
-                        <OrbitingCircles className="h-[50px] w-[50px] border-none bg-transparent" reverse duration={30} delay={20} radius={190}>
-                             <ChainLogoPlaceholder />
+                        <OrbitingCircles reverse duration={30} delay={0} radius={190}>
+                            <Image src={LogoArbitrum} alt="Arbitrum"  className="h-8 w-8" />
+                            <Image src={LogoAvalanche} alt="Avalanche"  className="h-8 w-8" />
+                            <Image src={LogoUnichain} alt="Uniswap"  className="h-8 w-8" />
+                            <Image src={LogoCelo} alt="Celo"  className="h-8 w-8" />
+                            <Image src={LogoGnosis} alt="Celo"  className="h-8 w-8" />
                         </OrbitingCircles>
                     </div>
 
