@@ -5,7 +5,6 @@ import HowItWorks from '@/components/landingpage/howItWorks';
 import Team from '@/components/landingpage/team';
 import Resources from '@/components/landingpage/resources';
 import WhyUspd from "@/components/landingpage/WhyUspd";
-import EarnNativeYield from "@/components/landingpage/EarnNativeYield";
 import MultiChain from "@/components/landingpage/MultiChain";
 
 export default function IndexPage() {
@@ -17,7 +16,6 @@ export default function IndexPage() {
             <Features />
             <ComparisonTable />
             <HowItWorks />
-            <EarnNativeYield />
             <MultiChain />
             <Team />
             <Resources />
