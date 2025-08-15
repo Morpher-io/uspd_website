@@ -7,6 +7,10 @@ import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Button } from "../ui/button"
+import { BorderBeam } from "../magicui/border-beam"
+import { ShimmerButton } from "../magicui/shimmer-button"
+import { InteractiveHoverButton } from "../magicui/interactive-hover-button"
+import { ArrowRight } from "lucide-react"
 
 // Constants for a typical scenario based on user request
 const INITIAL_ETH_PRICE = 4000
@@ -84,19 +88,19 @@ export function CollateralSimulation() {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             if (data.name === 'Liability') {
-                 return (
+                return (
                     <div className="rounded-lg border bg-background p-2 shadow-sm text-sm">
                         <p className="font-bold">USPD Liability: {formatCurrency(data.value)}</p>
                     </div>
                 );
             }
-             if (data.name === 'Collateral') {
-                 const userCollateralAtMint = USER_DEPOSIT_ETH * INITIAL_ETH_PRICE;
-                 const stabilizer1CollateralAtMint = STABILIZER_1_COLLATERAL_ETH * INITIAL_ETH_PRICE;
-                 const stabilizer2CollateralAtMint = STABILIZER_2_COLLATERAL_ETH * INITIAL_ETH_PRICE;
-                 const totalValueAtMint = userCollateralAtMint + stabilizer1CollateralAtMint + stabilizer2CollateralAtMint;
+            if (data.name === 'Collateral') {
+                const userCollateralAtMint = USER_DEPOSIT_ETH * INITIAL_ETH_PRICE;
+                const stabilizer1CollateralAtMint = STABILIZER_1_COLLATERAL_ETH * INITIAL_ETH_PRICE;
+                const stabilizer2CollateralAtMint = STABILIZER_2_COLLATERAL_ETH * INITIAL_ETH_PRICE;
+                const totalValueAtMint = userCollateralAtMint + stabilizer1CollateralAtMint + stabilizer2CollateralAtMint;
 
-                 return (
+                return (
                     <div className="rounded-lg border bg-background p-2 shadow-sm text-sm space-y-1">
                         <p className="text-xs text-muted-foreground pb-1 mb-1 border-b">Value at Mint (ETH @ {formatCurrency(INITIAL_ETH_PRICE)})</p>
                         <p>User: {USER_DEPOSIT_ETH.toFixed(1)} ETH ({formatCurrency(userCollateralAtMint)})</p>
@@ -175,14 +179,18 @@ export function CollateralSimulation() {
                 </div>
                 <Alert variant={simulationData.alertVariant} className={
                     simulationData.ratioColor === 'text-yellow-500' ? 'border-yellow-500/50 text-yellow-500' :
-                    simulationData.ratioColor === 'text-green-500' ? 'border-green-500/50 text-green-500' : ''
+                        simulationData.ratioColor === 'text-green-500' ? 'border-green-500/50 text-green-500' : ''
                 }>
                     <AlertDescription className="flex flex-col gap-4 items-start">
                         <span>{simulationData.statusDescription}</span>
                         {simulationData.alertVariant === 'destructive' && (
-                            <Link href="/docs/economics">
-                                <Button variant="link" className="p-0 h-auto text-destructive">Learn more about liquidations</Button>
-                            </Link>
+                            <Button asChild className="w-full">
+                                <Link href="/docs/economics">
+                                    Learn more about liquidations
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Link>
+                            </Button>
+
                         )}
                     </AlertDescription>
                 </Alert>
