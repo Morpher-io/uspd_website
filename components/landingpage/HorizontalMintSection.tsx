@@ -130,7 +130,7 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
         toast.promise(promise(), {
             loading: 'Submitting transaction...',
             success: `Successfully initiated mint of ${uspdAmount} USPD!`,
-            error: (err: any) => err.message || 'An unknown error occurred.',
+            error: (err: Error) => err.message || 'An unknown error occurred.',
             finally: () => setIsLoading(false)
         })
     }
