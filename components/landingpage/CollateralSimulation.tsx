@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from "react"
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, TooltipProps } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -85,7 +85,7 @@ export function CollateralSimulation() {
 
     const isLiquidating = ethPrice < LIQUIDATION_PRICE
 
-    const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
+    const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             if (data.name === 'Liability') {
