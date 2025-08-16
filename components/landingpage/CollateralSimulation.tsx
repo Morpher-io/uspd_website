@@ -1,15 +1,12 @@
 'use client'
 
 import { useState, useMemo } from "react"
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Cell } from "recharts"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Button } from "../ui/button"
-import { BorderBeam } from "../magicui/border-beam"
-import { ShimmerButton } from "../magicui/shimmer-button"
-import { InteractiveHoverButton } from "../magicui/interactive-hover-button"
 import { ArrowRight } from "lucide-react"
 
 // Constants for a typical scenario based on user request
