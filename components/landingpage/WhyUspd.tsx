@@ -25,6 +25,14 @@ export default function WhyUspd() {
                     {/* Top section: Video and Minting */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
                         <div className="flex flex-col">
+                            <div className="mb-6">
+                                <h3 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl text-balance mb-4 uppercase text-center lg:text-left">
+                                    See USPD in Action
+                                </h3>
+                                <p className="text-muted-foreground text-lg text-center lg:text-left mb-6">
+                                    Watch co-founder Thomas demonstrate how to mint your first USPD and learn why our protocol is built for security and reliability.
+                                </p>
+                            </div>
                             <HeroVideoDialog
                                 className="block dark:hidden"
                                 animationStyle="from-center"
@@ -32,9 +40,6 @@ export default function WhyUspd() {
                                 thumbnailSrc="https://img.youtube.com/vi/I-Z8gSGbtfU/maxresdefault.jpg"
                                 thumbnailAlt="USPD video thumbnail"
                             />
-                            <p className="text-muted-foreground mt-4 text-lg text-center lg:text-left">
-                                Learn more about USPD, mint your first USPD together with co-founder Thomas and understand why it&apos;s safe and secure.
-                            </p>
                         </div>
                         <div className="flex flex-col">
                             <div className="mb-6">
