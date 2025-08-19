@@ -44,9 +44,12 @@ interface HorizontalMintWidgetCoreProps {
 }
 
 function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }: HorizontalMintWidgetCoreProps) {
-    const { address } = useAccount()
+    const { address, isConnected } = useAccount()
     const { writeContractAsync } = useWriteContract()
-    const { data: ethBalance, refetch: refetchEthBalance } = useBalance({ address })
+    const { data: ethBalance, refetch: refetchEthBalance } = useBalance({ 
+        address,
+        query: { enabled: isConnected }
+    })
 
     const [ethAmount, setEthAmount] = useState('')
     const [uspdAmount, setUspdAmount] = useState('')
@@ -153,19 +156,32 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
             </div>
 
             {/* Main Mint Interface */}
-            <div className="p-6 border rounded-lg bg-card space-y-6">
+            <div className="relative p-6 border rounded-lg bg-card space-y-6">
+                {/* Wallet Connection Overlay */}
+                {!isConnected && (
+                    <div className="absolute inset-0 bg-card/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+                        <div className="text-center space-y-4">
+                            <p className="text-muted-foreground text-lg">Connect your wallet to mint USPD</p>
+                            <ConnectButton />
+                        </div>
+                    </div>
+                )}
+
                 {/* Input Section */}
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <div className="flex justify-between items-baseline">
                             <label htmlFor="eth-amount" className="text-sm font-medium">You Pay</label>
-                            {ethBalance && (
+                            {ethBalance && isConnected && (
                                 <button 
                                     onClick={() => setEthAmount(ethBalance.formatted)}
                                     className="text-xs text-primary hover:underline"
                                 >
                                     Max: {parseFloat(ethBalance.formatted).toFixed(4)} ETH
                                 </button>
+                            )}
+                            {!isConnected && (
+                                <span className="text-xs text-muted-foreground">Balance: --</span>
                             )}
                         </div>
                         <div className="relative">
@@ -175,7 +191,7 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                                 placeholder="0.0"
                                 value={ethAmount}
                                 onChange={(e) => setEthAmount(e.target.value)}
-                                disabled={isLocked}
+                                disabled={isLocked || !isConnected}
                                 min="0"
                                 max={ethBalance?.formatted ?? "0"}
                                 step={getSaneStep(ethBalance ? parseFloat(ethBalance.formatted) : 0)}
@@ -202,6 +218,7 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                                 readOnly 
                                 placeholder="0.0"
                                 className="text-lg h-12 pr-20 bg-muted/50"
+                                disabled={!isConnected}
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-muted-foreground">USPD</span>
                         </div>
@@ -212,6 +229,7 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                 <Button
                     onClick={handleMint}
                     disabled={
+                        !isConnected ||
                         isLocked ||
                         isLoading ||
                         isLoadingPrice ||
@@ -222,7 +240,7 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                     size="lg"
                     className="w-full h-12 text-lg font-semibold"
                 >
-                    {isLoading ? 'Minting...' : 'Mint USPD'}
+                    {!isConnected ? 'Connect Wallet to Mint' : isLoading ? 'Minting...' : 'Mint USPD'}
                 </Button>
             </div>
         </div>
@@ -247,12 +265,7 @@ export function HorizontalMintSection() {
 
     return (
         <div className="w-full max-w-4xl">
-            {!isConnected ? (
-                <div className="flex flex-col items-center justify-center gap-4 text-center p-8 border rounded-lg bg-card">
-                    <p className="text-muted-foreground text-lg">Connect your wallet to mint USPD.</p>
-                    <ConnectButton />
-                </div>
-            ) : isWrongChain ? (
+            {isWrongChain ? (
                 <Alert variant="destructive" className="w-full max-w-md mx-auto">
                     <AlertDescription className="flex flex-col items-center justify-center gap-4 text-center">
                         <span>
