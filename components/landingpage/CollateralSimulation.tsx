@@ -149,7 +149,7 @@ export function CollateralSimulation() {
                             <YAxis tickFormatter={(value) => formatCurrency(value as number)} />
                             <Tooltip
                                 cursor={{ fill: 'var(--muted)', fillOpacity: 0.5 }}
-                                content={<CustomTooltip />}
+                                content={CustomTooltip}
                             />
                             <Bar dataKey="liability" name="USPD Liability" stackId="a" fill="var(--foreground)" />
                             <Bar dataKey="userCollateral" name="User Collateral" stackId="a" fill="var(--chart-3)" />
