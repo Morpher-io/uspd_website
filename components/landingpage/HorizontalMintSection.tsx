@@ -140,21 +140,6 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
 
     return (
         <div className="space-y-6">
-            {/* Exchange Rate Display */}
-            <div className="flex items-center justify-between p-4 bg-card border rounded-lg">
-                <span className="text-sm text-muted-foreground">Current Rate</span>
-                <div className="text-right">
-                    {priceData ? (
-                        <>
-                            <div className="font-semibold">1 ETH = ${(parseFloat(priceData.price) / (10 ** priceData.decimals)).toLocaleString()} USPD</div>
-                            <div className="text-xs text-muted-foreground">Updated every 30 seconds</div>
-                        </>
-                    ) : (
-                        <div className="text-sm text-muted-foreground">Loading rate...</div>
-                    )}
-                </div>
-            </div>
-
             {/* Main Mint Interface */}
             <div className="relative p-6 border rounded-lg bg-card space-y-6">
                 {/* Wallet Connection Overlay */}
@@ -221,6 +206,16 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                                 disabled={!isConnected}
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-muted-foreground">USPD</span>
+                        </div>
+                        {/* Current Rate Display */}
+                        <div className="text-xs text-muted-foreground text-right">
+                            {priceData ? (
+                                <>
+                                    1 ETH = ${(parseFloat(priceData.price) / (10 ** priceData.decimals)).toLocaleString()} USPD • Updated every 30s
+                                </>
+                            ) : (
+                                'Loading rate...'
+                            )}
                         </div>
                     </div>
                 </div>
