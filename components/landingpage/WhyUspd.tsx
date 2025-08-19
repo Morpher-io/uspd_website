@@ -34,7 +34,7 @@ export default function WhyUspd() {
                                 </p>
                             </div>
                             <HeroVideoDialog
-                                className="block dark:hidden"
+                                className="block"
                                 animationStyle="from-center"
                                 videoSrc="https://www.youtube.com/embed/I-Z8gSGbtfU"
                                 thumbnailSrc="https://img.youtube.com/vi/I-Z8gSGbtfU/maxresdefault.jpg"
