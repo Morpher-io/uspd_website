@@ -138,7 +138,7 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
     return (
         <div className="space-y-6">
             {/* Exchange Rate Display */}
-            <div className="flex items-center justify-between p-4 bg-background/50 border rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-card border rounded-lg">
                 <span className="text-sm text-muted-foreground">Current Rate</span>
                 <div className="text-right">
                     {priceData ? (

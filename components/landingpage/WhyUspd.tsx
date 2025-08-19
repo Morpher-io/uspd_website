@@ -57,7 +57,7 @@ export default function WhyUspd() {
                     {/* Bottom section: Pillars */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
                         {/* Pillar 1: Security */}
-                        <div className="flex text-center items-center flex-col p-6 border rounded-lg bg-background/50">
+                        <div className="flex text-center items-center flex-col p-6 border rounded-lg bg-card">
                             <div className="mb-6">
                                 <Image src={banksIcon} alt="Security Icon" width={64} height={64} />
                             </div>
@@ -67,7 +67,7 @@ export default function WhyUspd() {
                             </p>
                         </div>
                         {/* Pillar 2: Yield */}
-                        <div className="flex text-center items-center flex-col p-6 border rounded-lg bg-background/50">
+                        <div className="flex text-center items-center flex-col p-6 border rounded-lg bg-card">
                             <div className="mb-6">
                                 <Image src={layerIcon} alt="Yield Icon" width={64} height={64} />
                             </div>
@@ -80,7 +80,7 @@ export default function WhyUspd() {
                             </Link>
                         </div>
                         {/* Pillar 3: Accessibility */}
-                        <div className="flex text-center items-center flex-col p-6 border rounded-lg bg-background/50">
+                        <div className="flex text-center items-center flex-col p-6 border rounded-lg bg-card">
                             <div className="mb-6">
                                 <Image src={freezingIcon} alt="Accessibility Icon" width={64} height={64} />
                             </div>
