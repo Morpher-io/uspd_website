@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { InteractiveHoverButton } from "../magicui/interactive-hover-button";
 import { YieldCalculator } from "./YieldCalculator";
 
@@ -9,9 +10,9 @@ export default function EarnNativeYield() {
                     Earn Native Yield, Automatically
                 </h2>
                 <p className="text-center text-muted-foreground text-xl max-w-4xl">
-                    Holding USPD is not just about stability; it's about growing your assets. USPD provides a native yield generated directly from its underlying collateral.
+                    Holding USPD is not just about stability; it&apos;s about growing your assets. USPD provides a native yield generated directly from its underlying collateral.
                 </p>
-                <div className="grid md:grid-cols-2 gap-8 mt-8 w-full items-start">
+                <div className="flex flex-col gap-8 mt-8 w-full items-start">
                     <YieldCalculator />
 
                     {/* Explanation */}
@@ -29,11 +30,11 @@ export default function EarnNativeYield() {
                          <p className="text-muted-foreground mb-6 text-lg">
                            3. This yield is passed directly to USPD holders. As the system earns, the value of your USPD grows. You don&apos;t need to do anything but hold USPD in your wallet.
                         </p>
-                        <a href="https://docs.uspd.io/concepts/yield-generation" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
+                        <Link href="/how-it-works">
                             <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">
-                                Read Documentation
+                                Interactive How-It-Works Walkthrough
                             </InteractiveHoverButton>
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </div>

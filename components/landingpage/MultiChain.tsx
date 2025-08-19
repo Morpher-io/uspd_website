@@ -13,9 +13,6 @@ import LogoCelo from "@/public/images/logo-celo.svg";
 import LogoGnosis from "@/public/images/logo-gnosis.svg";
 import LogoPolygon from "@/public/images/logo-polygon.svg";
 
-const ChainLogoPlaceholder = ({ className }: { className?: string }) => (
-  <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-muted ${className}`} />
-);
 
 export default function MultiChain() {
     return (
@@ -56,7 +53,7 @@ export default function MultiChain() {
                     <div className="flex flex-col items-center md:items-start text-center md:text-left">
                         <h3 className="text-2xl font-bold mb-4 font-heading">Cross-Chain by Design</h3>
                         <p className="text-muted-foreground mb-6 text-lg">
-                            Our native bridge architecture ensures your USPD retains its value and properties, no matter which network you're on. Experience fast, secure, and reliable transfers between Ethereum and other leading blockchains.
+                            Our native bridge architecture ensures your USPD retains its value and properties, no matter which network you&apos;re on. Experience fast, secure, and reliable transfers between Ethereum and other leading blockchains.
                         </p>
                         <Link href="/docs/bridge" className="w-full md:w-auto">
                             <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">

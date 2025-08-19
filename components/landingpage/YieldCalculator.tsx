@@ -22,7 +22,7 @@ const MAX_APY = 0.04   // 4%
 const YEARS = 5
 
 export function YieldCalculator() {
-    const [principal, setPrincipal] = useState(1000)
+    const [principal, setPrincipal] = useState(17900)
 
     const chartData = useMemo(() => {
         const data = []

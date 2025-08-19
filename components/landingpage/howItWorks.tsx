@@ -12,7 +12,7 @@ const timelineData = [
             <div className="flex-col flex flex-1 gap-4">
                 <h2 className="text-3xl uppercase font-medium">Radical Transparency</h2>
                 <div className="text-xl text-muted-foreground">
-                    Beyond regular audits, USPD offers something more powerful: real-time, on-chain proof of reserves. Every dollar of USPD is backed by collateral that you can verify yourself, at any moment. There are no opaque bank accounts or off-chain assets—just transparent smart contracts.
+                    Beyond regular audits, USPD offers something more powerful: real-time, on-chain proof of reserves. Every dollar of USPD is backed by collateral that you can verify yourself, at any moment. There are no opaque bank accounts or off-chain assets. Just transparent smart contracts.
                 </div>
                 <div className="mt-8">
                     <LandingPageStats />
@@ -24,7 +24,7 @@ const timelineData = [
         title: "2. Stability",
         content: (
             <div className="space-y-4">
-                 <h2 className="text-3xl uppercase font-medium">How USPD Stays Stable</h2>
+                <h2 className="text-3xl uppercase font-medium">How USPD Stays Stable</h2>
                 <p className="text-lg text-muted-foreground">
                     Unlike other stablecoins that require you to manage your own debt position, USPD uses a <strong>pooled collateral</strong> model. All collateral is shared across the entire system, creating a single, robust buffer against market volatility.
                 </p>
@@ -37,23 +37,25 @@ const timelineData = [
     {
         title: "3. Yield",
         content: (
-            <div className="grid md:grid-cols-2 gap-8 w-full items-start">
-                <YieldCalculator />
-                <div className="flex flex-col items-start text-left p-8 h-full">
-                    <h3 className="text-2xl font-bold mb-4 font-heading">How Native Yield Works</h3>
+            <div className="space-y-4" id="earn-yield">
+                <h2 className="text-3xl uppercase font-medium">How Native Yield Works</h2> 
+                <div className="flex flex-col items-start text-left">
+                    
                     <p className="text-muted-foreground text-lg mb-2">
                         The underlying stETH collateral has historically provided a variable APY, typically ranging from 2.75% to 4%.
                     </p>
                     <p className="text-muted-foreground mb-4 text-lg">
-                       1. All ETH deposited is automatically converted into liquid staked ETH (stETH).
+                        1. All ETH deposited is automatically converted into liquid staked ETH (stETH).
                     </p>
                     <p className="text-muted-foreground mb-4 text-lg">
-                       2. This stETH generates staking rewards, which increases the total value of the collateral pool.
+                        2. This stETH generates staking rewards, which increases the total value of the collateral pool.
                     </p>
-                     <p className="text-muted-foreground mb-6 text-lg">
-                       3. This yield is passed directly to USPD holders. As the system earns, the value of your USPD grows. You don&apos;t need to do anything but hold USPD in your wallet.
+                    <p className="text-muted-foreground mb-6 text-lg">
+                        3. This yield is passed directly to USPD holders. As the system earns, the value of your USPD grows. You don&apos;t need to do anything but hold USPD in your wallet.
                     </p>
                 </div>
+                <YieldCalculator />
+
             </div>
         )
     },
