@@ -209,57 +209,48 @@ export function HorizontalMintSection() {
     };
 
     return (
-        <section className="hidden md:block border-border py-12 xl:pr-12">
-
-            <div className="flex flex-col items-left gap-6 mb-8">
-                <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl text-balance text-left uppercase">
-                    Mint USPD Instantly
-                </h2>
-            </div>
-
-            <div className="w-full max-w-4xl mx-auto">
-                {!isConnected ? (
-                    <div className="flex flex-col items-center justify-center gap-4 text-center p-8 border rounded-lg bg-card">
-                        <p className="text-muted-foreground text-lg">Connect your wallet to mint USPD.</p>
-                        <ConnectButton />
-                    </div>
-                ) : isWrongChain ? (
-                    <Alert variant="destructive" className="w-full max-w-md mx-auto">
-                        <AlertDescription className="flex flex-col items-center justify-center gap-4 text-center">
-                            <span>
-                                Wrong network detected. Please switch to{' '}
-                                <strong>{getChainName(liquidityChainId)}</strong> to proceed.
-                            </span>
-                            <Button onClick={handleSwitchChain} disabled={!switchChain || isSwitching}>
-                                {isSwitching ? 'Switching...' : `Switch to ${getChainName(liquidityChainId)}`}
-                            </Button>
-                        </AlertDescription>
-                    </Alert>
-                ) : (
-                    <ContractLoader contractKeys={["cuspdToken"]}>
-                        {(loadedAddresses) => {
-                            const cuspdTokenAddress = loadedAddresses["cuspdToken"];
-                            if (!cuspdTokenAddress) {
-                                return (
-                                    <Alert variant="destructive">
-                                        <AlertDescription className='text-center'>
-                                            Failed to load contract address.
-                                        </AlertDescription>
-                                    </Alert>
-                                );
-                            }
-
+        <div className="w-full max-w-4xl">
+            {!isConnected ? (
+                <div className="flex flex-col items-center justify-center gap-4 text-center p-8 border rounded-lg bg-card">
+                    <p className="text-muted-foreground text-lg">Connect your wallet to mint USPD.</p>
+                    <ConnectButton />
+                </div>
+            ) : isWrongChain ? (
+                <Alert variant="destructive" className="w-full max-w-md mx-auto">
+                    <AlertDescription className="flex flex-col items-center justify-center gap-4 text-center">
+                        <span>
+                            Wrong network detected. Please switch to{' '}
+                            <strong>{getChainName(liquidityChainId)}</strong> to proceed.
+                        </span>
+                        <Button onClick={handleSwitchChain} disabled={!switchChain || isSwitching}>
+                            {isSwitching ? 'Switching...' : `Switch to ${getChainName(liquidityChainId)}`}
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            ) : (
+                <ContractLoader contractKeys={["cuspdToken"]}>
+                    {(loadedAddresses) => {
+                        const cuspdTokenAddress = loadedAddresses["cuspdToken"];
+                        if (!cuspdTokenAddress) {
                             return (
-                                <HorizontalMintWidgetCore
-                                    isLocked={isWrongChain}
-                                    cuspdTokenAddress={cuspdTokenAddress}
-                                    cuspdTokenAbi={cuspdTokenJson.abi as Abi}
-                                />
+                                <Alert variant="destructive">
+                                    <AlertDescription className='text-center'>
+                                        Failed to load contract address.
+                                    </AlertDescription>
+                                </Alert>
                             );
-                        }}
-                    </ContractLoader>
-                )}
-            </div>
-        </section>
+                        }
+
+                        return (
+                            <HorizontalMintWidgetCore
+                                isLocked={isWrongChain}
+                                cuspdTokenAddress={cuspdTokenAddress}
+                                cuspdTokenAbi={cuspdTokenJson.abi as Abi}
+                            />
+                        );
+                    }}
+                </ContractLoader>
+            )}
+        </div>
     )
 }
