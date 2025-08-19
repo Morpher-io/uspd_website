@@ -136,43 +136,79 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
     }
 
     return (
-        <div className="flex items-end gap-4 p-4 border rounded-lg bg-card">
-            <div className="flex-grow space-y-1">
-                <div className="flex justify-between items-baseline">
-                    <label htmlFor="eth-amount" className="text-sm font-medium text-muted-foreground">You Pay</label>
-                    {ethBalance && (
-                        <span className="text-xs text-muted-foreground">
-                            Balance: {parseFloat(ethBalance.formatted).toFixed(4)}
-                        </span>
+        <div className="space-y-6">
+            {/* Exchange Rate Display */}
+            <div className="flex items-center justify-between p-4 bg-background/50 border rounded-lg">
+                <span className="text-sm text-muted-foreground">Current Rate</span>
+                <div className="text-right">
+                    {priceData ? (
+                        <>
+                            <div className="font-semibold">1 ETH = ${(parseFloat(priceData.price) / (10 ** priceData.decimals)).toLocaleString()} USPD</div>
+                            <div className="text-xs text-muted-foreground">Updated every 30 seconds</div>
+                        </>
+                    ) : (
+                        <div className="text-sm text-muted-foreground">Loading rate...</div>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                    <Input
-                        id="eth-amount"
-                        type="number"
-                        placeholder="0.0"
-                        value={ethAmount}
-                        onChange={(e) => setEthAmount(e.target.value)}
-                        disabled={isLocked}
-                        min="0"
-                        max={ethBalance?.formatted ?? "0"}
-                        step={getSaneStep(ethBalance ? parseFloat(ethBalance.formatted) : 0)}
-                    />
-                    <span className="font-semibold text-lg">ETH</span>
-                </div>
             </div>
 
-            <ArrowRight className="w-6 h-6 text-muted-foreground shrink-0 mb-2" />
+            {/* Main Mint Interface */}
+            <div className="p-6 border rounded-lg bg-card space-y-6">
+                {/* Input Section */}
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-baseline">
+                            <label htmlFor="eth-amount" className="text-sm font-medium">You Pay</label>
+                            {ethBalance && (
+                                <button 
+                                    onClick={() => setEthAmount(ethBalance.formatted)}
+                                    className="text-xs text-primary hover:underline"
+                                >
+                                    Max: {parseFloat(ethBalance.formatted).toFixed(4)} ETH
+                                </button>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <Input
+                                id="eth-amount"
+                                type="number"
+                                placeholder="0.0"
+                                value={ethAmount}
+                                onChange={(e) => setEthAmount(e.target.value)}
+                                disabled={isLocked}
+                                min="0"
+                                max={ethBalance?.formatted ?? "0"}
+                                step={getSaneStep(ethBalance ? parseFloat(ethBalance.formatted) : 0)}
+                                className="text-lg h-12 pr-16"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-muted-foreground">ETH</span>
+                        </div>
+                    </div>
 
-            <div className="flex-grow space-y-1">
-                <label htmlFor="uspd-amount" className="text-sm font-medium text-muted-foreground">You Receive (est.)</label>
-                <div className="flex items-center gap-2">
-                    <Input id="uspd-amount" type="text" value={uspdAmount} readOnly placeholder="0.0" />
-                    <span className="font-semibold text-lg">USPD</span>
+                    {/* Arrow */}
+                    <div className="flex justify-center">
+                        <div className="p-2 border rounded-full bg-background">
+                            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label htmlFor="uspd-amount" className="text-sm font-medium">You Receive (estimated)</label>
+                        <div className="relative">
+                            <Input 
+                                id="uspd-amount" 
+                                type="text" 
+                                value={uspdAmount} 
+                                readOnly 
+                                placeholder="0.0"
+                                className="text-lg h-12 pr-20 bg-muted/50"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-muted-foreground">USPD</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div className='pb-2'>
+                {/* Action Button */}
                 <Button
                     onClick={handleMint}
                     disabled={
@@ -184,10 +220,11 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                         !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
                     }
                     size="lg"
-                    className="h-auto"
+                    className="w-full h-12 text-lg font-semibold"
                 >
                     {isLoading ? 'Minting...' : 'Mint USPD'}
-                </Button></div>
+                </Button>
+            </div>
         </div>
     )
 }

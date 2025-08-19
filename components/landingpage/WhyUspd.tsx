@@ -36,10 +36,15 @@ export default function WhyUspd() {
                                 Learn more about USPD, mint your first USPD together with co-founder Thomas and understand why it&apos;s safe and secure.
                             </p>
                         </div>
-                        <div>
-                            <h3 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl text-balance mb-8 uppercase text-center lg:text-left">
-                                Mint USPD Instantly
-                            </h3>
+                        <div className="flex flex-col">
+                            <div className="mb-6">
+                                <h3 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl text-balance mb-4 uppercase text-center lg:text-left">
+                                    Mint USPD Instantly
+                                </h3>
+                                <p className="text-muted-foreground text-lg text-center lg:text-left mb-6">
+                                    Convert your ETH to USPD in seconds. Start earning yield immediately with our secure, permissionless minting process.
+                                </p>
+                            </div>
                             <HorizontalMintSection />
                         </div>
                     </div>
