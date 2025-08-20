@@ -14,6 +14,14 @@
 
   --color-morpher-primary: hsl(161,100%,38%);
   --color-morpher-secondary: hsl(162,63%,95%);
+  
+  /* Brand Color Palette */
+  --color-light-grey: #d6d6d6;
+  --color-icon-grey: #a4a4a4;
+  --color-blackout: #110e14;
+  --color-main-green: #00c386;
+  --color-mild-green: #009164;
+  --color-organic-red: #ff5656;
 }
 
 /*
@@ -65,6 +73,14 @@
 
   --color-morpher-primary: hsl(161,100%,38%);
   --color-morpher-secondary: hsl(162, 29%, 20%);
+  
+  /* Brand Color Palette from Frame 16 */
+  --color-light-grey: #d6d6d6;
+  --color-icon-grey: #a4a4a4;
+  --color-blackout: #110e14;
+  --color-main-green: #00c386;
+  --color-mild-green: #009164;
+  --color-organic-red: #ff5656;
 }
 /*
   ---break---

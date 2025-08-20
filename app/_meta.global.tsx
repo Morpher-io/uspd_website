@@ -40,6 +40,12 @@ export default {
     title: 'Documentation',
 
   },
+  "brand-guidelines": {
+    type: 'page',
+    title: 'Brand Guidelines',
+    display: "hidden"
+
+  },
   uspd: {
     // type: 'page',
     title: 'Mint/Burn',

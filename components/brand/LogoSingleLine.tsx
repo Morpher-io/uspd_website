@@ -1,24 +1,31 @@
-"use client"
-
 import Image from "next/image"
 import UspdLogo from "@/public/images/logo_uspd_text.svg"
+import UspdLogoNoText from "@/public/images/logo_uspd.svg"
 
 export default function LogoSingleLine() {
   return (
     <section className="min-h-screen bg-[#110e14] text-white overflow-hidden">
       {/* Main Content Area */}
-      <div className="flex flex-col justify-center min-h-screen px-8 lg:px-32 py-16">
-        
+      <div className="flex flex-col justify-center items-center min-h-screen px-8 lg:px-32 py-16">
+
         {/* Large Logo Display */}
-        <div className="flex items-center justify-center mb-16 lg:mb-24">
-          <div className="flex items-center gap-8 lg:gap-12">
-            {/* Logo Icon */}
+        <div className="flex flex-col gap-8 lg:gap-12 mb-16 lg:mb-24 justify-start">
+          {/* Logo Icon */}
+          <div>
             <Image
               src={UspdLogo}
               alt="USPD Logo"
-              width={854}
-              height={267}
-              className="w-32 h-32 md:w-48 md:h-48 lg:w-[854px] lg:h-[267px]"
+
+              className="w-32 h-32 md:w-48 md:h-48 lg:w-[500px] lg:h-[267px]"
+            />
+          </div>
+          <div>
+            {/* Logo Icon */}
+            <Image
+              src={UspdLogoNoText}
+              alt="USPD Logo"
+
+              className="w-32 h-32 md:w-48 md:h-48 lg:w-[500px] lg:h-[190px]"
             />
           </div>
         </div>
@@ -28,7 +35,7 @@ export default function LogoSingleLine() {
 
         {/* Content Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-          
+
           {/* Title */}
           <div className="lg:col-span-1">
             <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight mb-4">
@@ -78,10 +85,10 @@ export default function LogoSingleLine() {
             002
           </div>
         </div>
-        
+
         {/* Bottom border line */}
         <div className="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent mt-6" />
-        
+
         {/* Vertical center line */}
         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-px h-16 bg-gray-600" />
       </div>

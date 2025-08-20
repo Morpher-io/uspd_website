@@ -1,6 +1,7 @@
 import BrandHero from "@/components/brand/BrandHero"
 import LogoSingleLine from "@/components/brand/LogoSingleLine"
 import LogoColorGuide from "@/components/brand/LogoColorGuide"
+import ColorBars from "@/components/brand/ColorBars"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -26,7 +27,12 @@ export default function BrandGuidelinesPage() {
       {/* Frame 7: Logo Color Guide */}
       <div className="min-h-sceen relative">
         <LogoColorGuide />
-        </div>
+      </div>
+
+      {/* Frame 16: Color Bars */}
+      <div className="min-h-sceen relative">
+        <ColorBars />
+      </div>
 
     </div>
   )
