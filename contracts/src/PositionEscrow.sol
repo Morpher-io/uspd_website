@@ -118,9 +118,14 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
 
         uint256 userStEthReceived; //default 0
         if (userEthAmount > 0) {
+            // Get balance before staking
+            uint256 balanceBefore = IERC20(stETH).balanceOf(address(this));
+            
             // Stake User's ETH via Lido - stETH is minted directly to this contract
-            try ILido(lido).submit{value: userEthAmount}(address(0)) returns (uint256 receivedStEth) {
-                userStEthReceived = receivedStEth;
+            try ILido(lido).submit{value: userEthAmount}(address(0)) {
+                // Calculate actual stETH received by balance difference
+                uint256 balanceAfter = IERC20(stETH).balanceOf(address(this));
+                userStEthReceived = balanceAfter - balanceBefore;
                 if (userStEthReceived == 0) revert TransferFailed(); // Lido submit should return > 0 stETH
             } catch {
                 revert TransferFailed(); // Lido submit failed
@@ -146,9 +151,14 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         uint256 ethAmount = msg.value;
         if (ethAmount == 0) revert ZeroAmount();
 
+        // Get balance before staking
+        uint256 balanceBefore = IERC20(stETH).balanceOf(address(this));
+        
         uint256 stEthReceived; //default = 0;
-        try ILido(lido).submit{value: ethAmount}(address(0)) returns (uint256 received) {
-            stEthReceived = received;
+        try ILido(lido).submit{value: ethAmount}(address(0)) {
+            // Calculate actual stETH received by balance difference
+            uint256 balanceAfter = IERC20(stETH).balanceOf(address(this));
+            stEthReceived = balanceAfter - balanceBefore;
             if (stEthReceived == 0) revert TransferFailed(); // Lido submit should return > 0 stETH
         } catch {
             revert TransferFailed(); // Lido submit failed
@@ -399,9 +409,14 @@ contract PositionEscrow is Initializable, IPositionEscrow, AccessControlUpgradea
         uint256 ethAmount = msg.value;
         if (ethAmount == 0) return; // Do nothing if no ETH sent
 
+        // Get balance before staking
+        uint256 balanceBefore = IERC20(stETH).balanceOf(address(this));
+        
         uint256 stEthReceived; //default = 0;
-        try ILido(lido).submit{value: ethAmount}(address(0)) returns (uint256 received) {
-            stEthReceived = received;
+        try ILido(lido).submit{value: ethAmount}(address(0)) {
+            // Calculate actual stETH received by balance difference
+            uint256 balanceAfter = IERC20(stETH).balanceOf(address(this));
+            stEthReceived = balanceAfter - balanceBefore;
             if (stEthReceived == 0) revert TransferFailed(); // Lido submit should return > 0 stETH
         } catch {
             revert TransferFailed(); // Lido submit failed

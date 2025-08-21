@@ -114,10 +114,15 @@ contract StabilizerEscrow is Initializable, IStabilizerEscrow { // <-- Inherit I
             revert InsufficientEscrowAmount(unallocatedStETHBalance, msg.value, MINIMUM_ESCROW_AMOUNT);
         }
 
+        // Get balance before staking
+        uint256 balanceBefore = IERC20(stETH).balanceOf(address(this));
+        
         // Stake additional ETH and capture stETH received
         uint256 stEthReceived;
-        try ILido(lido).submit{value: msg.value}(address(0)) returns (uint256 received) {
-            stEthReceived = received;
+        try ILido(lido).submit{value: msg.value}(address(0)) {
+            // Calculate actual stETH received by balance difference
+            uint256 balanceAfter = IERC20(stETH).balanceOf(address(this));
+            stEthReceived = balanceAfter - balanceBefore;
         } catch {
             revert DepositFailed();
         }
