@@ -192,7 +192,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
             <Alert className="mt-4">
                 <AlertDescription className="text-sm">
                     <strong>Note:</strong> Your ETH will be automatically staked with Lido to generate staking rewards. 
-                    The backing collateral becomes stETH, which you'll receive when burning USPD.
+                    The backing collateral becomes stETH, which you&apos;ll receive when burning USPD.
                 </AlertDescription>
             </Alert>
 

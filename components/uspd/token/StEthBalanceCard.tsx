@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAccount, useBalance, useReadContract } from 'wagmi'
-import { formatUnits, Address } from 'viem'
-import { ExternalLink, ArrowUpRight } from 'lucide-react'
+import { Abi, Address } from 'viem'
+import { ExternalLink } from 'lucide-react'
 import poolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json'
 
 interface StEthBalanceCardProps {
     cuspdTokenAddress: `0x${string}`
-    cuspdTokenAbi: any
+    cuspdTokenAbi: Abi
 }
 
 export function StEthBalanceCard({ cuspdTokenAddress, cuspdTokenAbi }: StEthBalanceCardProps) {

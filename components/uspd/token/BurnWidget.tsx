@@ -295,7 +295,7 @@ export function BurnWidget({
 
             <Alert className="mt-4">
                 <AlertDescription className="text-sm">
-                    <strong>Note:</strong> You'll receive stETH (Lido Staked ETH), not regular ETH. 
+                    <strong>Note:</strong> You&apos;ll receive stETH (Lido Staked ETH), not regular ETH. 
                     stETH can be swapped for ETH on DEXs like Uniswap or held to earn staking rewards.
                 </AlertDescription>
             </Alert>
