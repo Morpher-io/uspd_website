@@ -20,7 +20,7 @@ stUSPD is designed specifically for:
 - **Institutional Investors**: Banks, hedge funds, pension funds, and other large financial institutions
 - **Regulated Entities**: Organizations requiring compliance with KYC/AML regulations
 - **High-Net-Worth Clients**: Minimum investment threshold of €100,000 equivalent
-- **Long-term Investors**: Particularly suited for institutions comfortable with 1-year lock periods (EU/US)
+- **Long-term Investors**: Particularly suited for institutions comfortable with 1-year lock periods (US only)
 
 ## Key Features
 
@@ -31,13 +31,13 @@ stUSPD is designed specifically for:
 - API-driven compliance checks
 
 ### Regional Compliance
-- **EU Investors**: Automatic 1-year escrow period for regulatory compliance
 - **US Investors**: Automatic 1-year escrow period for regulatory compliance
+- **EU Investors**: €100,000 minimum investment threshold requirement
 - **Other Regions**: Direct token receipt with standard transfer restrictions
-- **Automated Release**: Tokens automatically released after lock period expires
+- **Automated Release**: Tokens automatically released after lock period expires (US only)
 
 ### Minimum Investment Thresholds
-- €100,000 minimum equivalent for all operations
+- €100,000 minimum equivalent for EU operations
 - Real-time EUR/USD conversion via existing Redis infrastructure
 - Dynamic threshold validation at transaction time
 
@@ -66,11 +66,11 @@ stUSPD is designed specifically for:
 
 ### Phase 3: Regional Compliance
 **Timeline: 4-5 weeks**
-- Design and implement EU escrow contract
-- Design and implement US escrow contract
+- Design and implement US escrow contract for 1-year lock period
 - Create automated region detection logic
-- Implement 1-year lock period mechanism
+- Implement 1-year lock period mechanism for US investors
 - Add automated release functionality after lock expiry
+- Implement €100k minimum validation for EU investors
 - Create admin override capabilities for special circumstances
 
 ### Phase 4: Price Integration
@@ -127,7 +127,7 @@ stUSPD is designed specifically for:
 stUSPD is designed with regulatory compliance as a primary concern:
 
 - **KYC/AML Compliance**: Built-in verification requirements
-- **Regional Regulations**: Automatic compliance with EU and US holding periods
+- **Regional Regulations**: Automatic compliance with US holding periods and EU minimum investment requirements
 - **Audit Trails**: Comprehensive logging for regulatory reporting
 - **Emergency Controls**: Administrative override capabilities for compliance situations
 
@@ -136,8 +136,8 @@ stUSPD is designed with regulatory compliance as a primary concern:
 Institutional investors interested in stUSPD should:
 
 1. **Complete KYC Process**: Work with Permissionless Technologies to complete institutional KYC
-2. **Minimum Investment**: Prepare minimum €100,000 equivalent investment
-3. **Regional Considerations**: Understand applicable holding periods based on jurisdiction
+2. **Minimum Investment**: Prepare minimum €100,000 equivalent investment (EU requirement)
+3. **Regional Considerations**: Understand applicable holding periods (US: 1-year lock) and minimum investment requirements (EU: €100k)
 4. **Technical Integration**: Coordinate with technical teams for wallet integration
 
 For more information or to begin the institutional onboarding process, contact Permissionless Technologies directly.
