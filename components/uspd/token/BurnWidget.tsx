@@ -293,6 +293,13 @@ export function BurnWidget({
                 readOnly={true}
             />
 
+            <Alert className="mt-4">
+                <AlertDescription className="text-sm">
+                    <strong>Note:</strong> You'll receive stETH (Lido Staked ETH), not regular ETH. 
+                    stETH can be swapped for ETH on DEXs like Uniswap or held to earn staking rewards.
+                </AlertDescription>
+            </Alert>
+
             {priceData && (
                 <div className="text-xs text-muted-foreground text-right">
                     Rate: 1 USPD ≈ {(1 / (parseFloat(priceData.price) / (10 ** priceData.decimals))).toFixed(4)} stETH

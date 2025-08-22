@@ -12,8 +12,11 @@ import SystemCollateralizationDisplay from '@/components/uspd/reporter/SystemCol
 
 This interface allows you to interact with the core functionality of the USPD stablecoin:
 
-*   **Minting:** Convert your ETH into USPD. The system uses the current ETH/USD price (provided by a secure oracle) and finds available stabilizer collateral to ensure your minted USPD is overcollateralized according to the protocol rules (typically 110% or higher).
-*   **Burning:** Redeem your USPD back into ETH. The system calculates the equivalent ETH value based on the current oracle price and returns the corresponding collateral from the backing positions.
+*   **Minting:** Convert your ETH into USPD. Your ETH is automatically staked with Lido to earn staking rewards, becoming stETH as the backing collateral. The system uses the current ETH/USD price (provided by a secure oracle) and finds available stabilizer collateral to ensure your minted USPD is overcollateralized according to the protocol rules (typically 110% or higher).
+
+*   **Burning:** Redeem your USPD back into stETH (not regular ETH). The system calculates the equivalent stETH value based on the current oracle price and returns the corresponding staked collateral from the backing positions. You can then swap stETH for ETH on DEXs like Uniswap if needed.
+
+**Important:** The protocol uses Lido stETH as collateral to generate staking rewards. When you mint with ETH, you get USPD backed by yield-generating stETH. When you burn USPD, you receive stETH back.
 
 All operations require a signed price attestation from the oracle system to ensure accurate and secure conversions.
 

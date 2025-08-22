@@ -189,6 +189,13 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 readOnly={true}
             />
 
+            <Alert className="mt-4">
+                <AlertDescription className="text-sm">
+                    <strong>Note:</strong> Your ETH will be automatically staked with Lido to generate staking rewards. 
+                    The backing collateral becomes stETH, which you'll receive when burning USPD.
+                </AlertDescription>
+            </Alert>
+
             {priceData && (
                 <div className="text-xs text-muted-foreground text-right">
                     Rate: 1 ETH ≈ {(parseFloat(priceData.price) / (10 ** priceData.decimals)).toFixed(4)} USPD 
