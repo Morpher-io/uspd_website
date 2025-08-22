@@ -800,6 +800,14 @@ contract StabilizerNFT is
         (uint256 stEthCollateralForSliceAtCurrentRatio, uint256 userStEthParValueForSlice) =
             _calculateUnallocationFromEscrow(positionEscrow, poolSharesSliceToUnallocate, priceResponse);
 
+        /**
+         * a note on syncStEthBalance here
+         * we omit calling this because it will go beyond the max-contract size
+         * there is no gain for the highest allocated to donate stETH directly to his Escrow
+         * liquidate is syncing before liquidating, so there we need it. Here we don't.
+         */
+        //positionEscrow.syncStEthBalance();
+
         // Modify allocation based on the shares for *this slice* before further calculations or collateral removal
         positionEscrow.modifyAllocation(-int256(poolSharesSliceToUnallocate));
 

@@ -212,7 +212,7 @@ contract cUSPDToken is ERC20, ERC20Permit, AccessControl {
             // 6. Transfer stETH to the recipient.
             address stETHAddress = rateContract.stETH();
             require(stETHAddress != address(0), "cUSPD: Invalid stETH address from rateContract");
-            require(IERC20(stETHAddress).balanceOf(address(this)) >= unallocatedStEth, "cUSPD: Insufficient stETH received");
+            require(IERC20(stETHAddress).balanceOf(address(this)) >= (unallocatedStEth - 1), "cUSPD: Insufficient stETH received"); //accounting for a rounding error missing 1 wei in stETH
             bool success = IERC20(stETHAddress).transfer(to, unallocatedStEth);
             require(success, "cUSPD: stETH transfer failed");
         }

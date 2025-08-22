@@ -1,18 +1,18 @@
 {
   "contracts": {
-    "oracleImpl": "0xBEB3c91Bd747705FAaBF2d55fc5a5Bd305063EC0",
-    "oracle": "0x91ac30A06361B46FcB21Eb18A503ED018B4BA7a8",
-    "stabilizerImpl": "0x1A96f3B663671edF8fA8CE6e3c7aA7b6ECc6d088",
-    "stabilizer": "0x40A54151c9CABdc1fE5135a52BFe860B7E56B60d",
-    "cuspdToken": "0x9896DFad4c53f43e97710c57DD3D914F47343203",
-    "uspdToken": "0x4dE19965Da7166eDa659E3966D127CC47ab0AeDc",
-    "rateContract": "0xDF5dDD2b481EeB07a17fD2Cd328ac2B87406b61B",
-    "reporterImpl": "0x46cB288324a4fF8DAbAb7e0bF4757Ae931458873",
-    "reporter": "0x73aD65ff903AeF3328932CD949ca1022ab1d4da7",
-    "insuranceEscrow": "0x20cD5f243A9Cc7bA3E1f2C238aA7Ba75BbfDA714",
-    "bridgeEscrow": "0xcE27e69fdCb167941cD0786C2b74853403161D5E",
-    "stabilizerEscrowImpl": "0xfa57C54ccEcdEd64DAd29e578c82e33050f14Cda",
-    "positionEscrowImpl": "0x5E17B6C71bc83c4311d89575aec9D74D78b52Ddc"
+    "oracleImpl": "0x7F1Ab1E3FBCDBf3a361DAA0De264EE59d556bC3a",
+    "oracle": "0xAf6c3ee04f49Ac553823E9Ed44c57e9C9EF3aC88",
+    "stabilizerImpl": "0xb17F84D60D193a76aC66974195BCc7630c0fE602",
+    "stabilizer": "0xe3aBe7FB1338D36450343D935400d486BE09C46d",
+    "cuspdToken": "0xBe09DcDC5376867C8335C7Da8D7e48461E43f73a",
+    "uspdToken": "0xeF9d72816d13AEBd3bb3ab4a3A4AECaC26F90CFB",
+    "rateContract": "0x855b7271d865c205D57BF6A56eFcB1A9D0595309",
+    "reporterImpl": "0xaF4cf2E05B4a7dc2C40d9e5ce0eC7789e9DF3AD7",
+    "reporter": "0xf9531d95C6980e6A26D56EAFB8fE38E420909e70",
+    "insuranceEscrow": "0xECE9A3914A9b829Bf3A47cA672114ABaC41066D3",
+    "bridgeEscrow": "0xf9E37A22850CDD6b54AA0f015384e2b373D13856",
+    "stabilizerEscrowImpl": "0xEBBa4b879a0ebc1D3E19936ba29019fa42C36A5a",
+    "positionEscrowImpl": "0xdbF0D85746eD10D992F9491f7196b9bE24A98d5F"
   },
   "config": {
     "usdcAddress": "0x07865c6E87B9F70255377e024ace6630C1Eaa37F",
@@ -20,11 +20,11 @@
     "chainlinkAggregator": "0x694AA1769357215DE4FAC081bf1f309aDC325306",
     "lidoAddress": "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af",
     "stETHAddress": "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af",
-    "stabilizerBaseURI": "https://testnet.uspd.io/api/stabilizer/metadata/"
+    "stabilizerBaseURI": "https://uspd.io/api/stabilizer/metadata/"
   },
   "metadata": {
     "chainId": 11155111,
-    "deploymentTimestamp": 1753186740,
+    "deploymentTimestamp": 1755852264,
     "deployer": "0x555350445E1f1ca212edB8cF397a383695ff7a36"
   }
 }

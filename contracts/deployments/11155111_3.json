@@ -1,0 +1,30 @@
+{
+  "contracts": {
+    "oracleImpl": "0xBEB3c91Bd747705FAaBF2d55fc5a5Bd305063EC0",
+    "oracle": "0x91ac30A06361B46FcB21Eb18A503ED018B4BA7a8",
+    "stabilizerImpl": "0x1A96f3B663671edF8fA8CE6e3c7aA7b6ECc6d088",
+    "stabilizer": "0x40A54151c9CABdc1fE5135a52BFe860B7E56B60d",
+    "cuspdToken": "0x9896DFad4c53f43e97710c57DD3D914F47343203",
+    "uspdToken": "0x4dE19965Da7166eDa659E3966D127CC47ab0AeDc",
+    "rateContract": "0xDF5dDD2b481EeB07a17fD2Cd328ac2B87406b61B",
+    "reporterImpl": "0x46cB288324a4fF8DAbAb7e0bF4757Ae931458873",
+    "reporter": "0x73aD65ff903AeF3328932CD949ca1022ab1d4da7",
+    "insuranceEscrow": "0x20cD5f243A9Cc7bA3E1f2C238aA7Ba75BbfDA714",
+    "bridgeEscrow": "0xcE27e69fdCb167941cD0786C2b74853403161D5E",
+    "stabilizerEscrowImpl": "0xfa57C54ccEcdEd64DAd29e578c82e33050f14Cda",
+    "positionEscrowImpl": "0x5E17B6C71bc83c4311d89575aec9D74D78b52Ddc"
+  },
+  "config": {
+    "usdcAddress": "0x07865c6E87B9F70255377e024ace6630C1Eaa37F",
+    "uniswapRouter": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "chainlinkAggregator": "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+    "lidoAddress": "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af",
+    "stETHAddress": "0x3e3FE7dBc6B4C189E7128855dD526361c49b40Af",
+    "stabilizerBaseURI": "https://testnet.uspd.io/api/stabilizer/metadata/"
+  },
+  "metadata": {
+    "chainId": 11155111,
+    "deploymentTimestamp": 1753186740,
+    "deployer": "0x555350445E1f1ca212edB8cF397a383695ff7a36"
+  }
+}

@@ -46,7 +46,7 @@ interface IPositionEscrow is IERC20Errors, IAccessControl {
         uint256 amountToRemove, // Amount the caller wants to remove
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external;
-    // releaseCollateralForLiquidation function removed
+    function syncStEthBalance() external;
 
     // --- View Functions ---
     function getCollateralizationRatio(IPriceOracle.PriceResponse memory priceResponse) external view returns (uint256 ratio);
