@@ -32,21 +32,34 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     uint256 public shareValue; // Value per share in USD (scaled by PRECISION)
     uint256 public constant PRECISION = 1e18; // Precision factor for share value calculations
     
+    // KYC signature validation
+    mapping(address => bool) public authorizedSigners; // Whitelisted KYC signers
+    mapping(uint256 => bool) public usedNonces; // Track used nonces to prevent double spending
+    uint256 public constant SIGNATURE_VALIDITY_WINDOW = 300; // 5 minutes in seconds
+    uint256 public constant SIGNATURE_FUTURE_TOLERANCE = 30; // 30 seconds tolerance for future timestamps
+    
     // --- Roles ---
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes32 public constant SHAREVALUE_UPDATER_ROLE = keccak256("SHAREVALUE_UPDATER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant SIGNER_MANAGER_ROLE = keccak256("SIGNER_MANAGER_ROLE");
 
     // --- Events ---
     event ShareValueUpdated(uint256 oldValue, uint256 newValue, address indexed updater);
     event SharesMinted(address indexed to, uint256 sharesAmount, uint256 usdValue);
     event SharesBurned(address indexed from, uint256 sharesAmount, uint256 usdValue);
+    event AuthorizedSignerUpdated(address indexed signer, bool authorized);
 
     // --- Errors ---
     error ZeroAddress();
     error ZeroAmount();
     error InvalidShareValue();
+    error InvalidSignature();
+    error NonceAlreadyUsed();
+    error SignatureExpired();
+    error SignatureTooEarly();
+    error SignerNotAuthorized();
 
     // --- Constructor ---
     constructor(
@@ -63,6 +76,7 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(SHAREVALUE_UPDATER_ROLE, _admin);
         _grantRole(PAUSER_ROLE, _admin);
+        _grantRole(SIGNER_MANAGER_ROLE, _admin);
     }
 
     // --- Share Value Management ---
@@ -101,14 +115,125 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         return (usdAmount * PRECISION) / shareValue;
     }
 
+    // --- Signer Management ---
+
+    /**
+     * @notice Adds or removes an authorized KYC signer.
+     * @param signer The address of the signer.
+     * @param authorized Whether the signer should be authorized.
+     * @dev Callable only by addresses with SIGNER_MANAGER_ROLE.
+     */
+    function setAuthorizedSigner(address signer, bool authorized) external onlyRole(SIGNER_MANAGER_ROLE) {
+        if (signer == address(0)) revert ZeroAddress();
+        authorizedSigners[signer] = authorized;
+        emit AuthorizedSignerUpdated(signer, authorized);
+    }
+
+    // --- Signature Verification ---
+
+    /**
+     * @notice Verifies a KYC signature for minting.
+     * @param to The address to receive the minted shares.
+     * @param sharesAmount The amount of shares to mint.
+     * @param nonce The nonce (timestamp) used in the signature.
+     * @param signature The KYC signature.
+     * @return The recovered signer address.
+     */
+    function verifyKYCSignature(
+        address to,
+        uint256 sharesAmount,
+        uint256 nonce,
+        bytes memory signature
+    ) internal returns (address) {
+        // Check nonce hasn't been used
+        if (usedNonces[nonce]) revert NonceAlreadyUsed();
+        
+        // Check timestamp validity (nonce is timestamp in seconds)
+        uint256 currentTime = block.timestamp;
+        if (nonce + SIGNATURE_VALIDITY_WINDOW < currentTime) revert SignatureExpired();
+        if (nonce > currentTime + SIGNATURE_FUTURE_TOLERANCE) revert SignatureTooEarly();
+        
+        // Mark nonce as used
+        usedNonces[nonce] = true;
+        
+        // Recreate the message hash
+        bytes32 messageHash = keccak256(abi.encodePacked(to, sharesAmount, nonce));
+        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        
+        // Recover signer address
+        address recoveredSigner = recoverSigner(ethSignedMessageHash, signature);
+        
+        // Check if signer is authorized
+        if (!authorizedSigners[recoveredSigner]) revert SignerNotAuthorized();
+        
+        return recoveredSigner;
+    }
+
+    /**
+     * @notice Recovers the signer address from a signature.
+     * @param hash The hash that was signed.
+     * @param signature The signature.
+     * @return The recovered signer address.
+     */
+    function recoverSigner(bytes32 hash, bytes memory signature) internal pure returns (address) {
+        if (signature.length != 65) revert InvalidSignature();
+        
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        
+        assembly {
+            r := mload(add(signature, 32))
+            s := mload(add(signature, 64))
+            v := byte(0, mload(add(signature, 96)))
+        }
+        
+        if (v < 27) {
+            v += 27;
+        }
+        
+        if (v != 27 && v != 28) revert InvalidSignature();
+        
+        address recoveredAddress = ecrecover(hash, v, r, s);
+        if (recoveredAddress == address(0)) revert InvalidSignature();
+        
+        return recoveredAddress;
+    }
+
     // --- Minting and Burning ---
 
     /**
-     * @notice Mints stUSPD shares to a specified address.
+     * @notice Mints stUSPD shares to a specified address with KYC signature verification.
+     * @param to The address to receive the minted shares.
+     * @param sharesAmount The amount of shares to mint.
+     * @param nonce The nonce (timestamp) used in the signature.
+     * @param signature The KYC signature from an authorized signer.
+     * @dev This function verifies the KYC signature before minting.
+     */
+    function mintWithKYC(
+        address to,
+        uint256 sharesAmount,
+        uint256 nonce,
+        bytes memory signature
+    ) external whenNotPaused {
+        if (to == address(0)) revert ZeroAddress();
+        if (sharesAmount == 0) revert ZeroAmount();
+
+        // Verify KYC signature
+        verifyKYCSignature(to, sharesAmount, nonce, signature);
+
+        uint256 usdValue = (sharesAmount * shareValue) / PRECISION;
+        
+        _mint(to, sharesAmount);
+        emit SharesMinted(to, sharesAmount, usdValue);
+    }
+
+    /**
+     * @notice Mints stUSPD shares to a specified address (admin only).
      * @param to The address to receive the minted shares.
      * @param sharesAmount The amount of shares to mint.
      * @dev Callable only by addresses with MINTER_ROLE.
-     *      This function is intended to be called after KYC verification and payment processing.
+     *      This function is for administrative minting without KYC signature.
      */
     function mint(address to, uint256 sharesAmount) external onlyRole(MINTER_ROLE) whenNotPaused {
         if (to == address(0)) revert ZeroAddress();
