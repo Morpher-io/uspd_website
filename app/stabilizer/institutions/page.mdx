@@ -48,62 +48,68 @@ stUSPD is designed specifically for:
 
 ## Development Roadmap
 
+import { Steps } from 'nextra/components'
+
+<Steps>
+
 ### Phase 1: Core Token Infrastructure
-**Timeline: 4-6 weeks**
-- Design stUSPD token contract with share-based appreciation mechanism
-- Implement signature verification system for KYC validation
-- Create role-based access control for administrative functions
-- Add minimum transfer amount validation with EUR/USD conversion
-- Implement pause/unpause functionality for emergency situations
+
+- [ ] Design stUSPD token contract with share-based appreciation mechanism
+- [ ] Implement signature verification system for KYC validation
+- [ ] Create role-based access control for administrative functions
+- [ ] Add minimum transfer amount validation with EUR/USD conversion
+- [ ] Implement pause/unpause functionality for emergency situations
 
 ### Phase 2: KYC Integration
-**Timeline: 3-4 weeks**
-- Design KYC signature API endpoint specification
-- Implement database schema for KYC wallet tracking
-- Create signature generation service with proper key management
-- Add signature validation logic in smart contract
-- Implement rate limiting and security measures for API
+
+- [ ] Design KYC signature API endpoint specification
+- [ ] Implement database schema for KYC wallet tracking
+- [ ] Create signature generation service with proper key management
+- [ ] Add signature validation logic in smart contract
+- [ ] Implement rate limiting and security measures for API
 
 ### Phase 3: Regional Compliance
-**Timeline: 4-5 weeks**
-- Design and implement US escrow contract for 1-year lock period
-- Create automated region detection logic
-- Implement 1-year lock period mechanism for US investors
-- Add automated release functionality after lock expiry
-- Implement €100k minimum validation for EU investors
-- Create admin override capabilities for special circumstances
+
+- [ ] Design and implement US escrow contract for 1-year lock period
+- [ ] Create automated region detection logic
+- [ ] Implement 1-year lock period mechanism for US investors
+- [ ] Add automated release functionality after lock expiry
+- [ ] Implement €100k minimum validation for EU investors
+- [ ] Create admin override capabilities for special circumstances
 
 ### Phase 4: Price Integration
-**Timeline: 2-3 weeks**
-- Integrate with existing Redis price infrastructure
-- Implement EUR/USD conversion service
-- Add real-time price validation for minimum transfers
-- Create price update mechanisms and fallback systems
-- Add price staleness checks and error handling
+
+- [ ] Integrate with existing Redis price infrastructure
+- [ ] Implement EUR/USD conversion service
+- [ ] Add real-time price validation for minimum transfers
+- [ ] Create price update mechanisms and fallback systems
+- [ ] Add price staleness checks and error handling
 
 ### Phase 5: Administrative Tools
-**Timeline: 3-4 weeks**
-- Create admin dashboard for token management
-- Implement emergency pause/unpause controls
-- Add KYC status management interface
-- Create reporting tools for compliance tracking
-- Implement audit trail functionality
+
+- [ ] Create admin dashboard for token management
+- [ ] Implement emergency pause/unpause controls
+- [ ] Add KYC status management interface
+- [ ] Create reporting tools for compliance tracking
+- [ ] Implement audit trail functionality
 
 ### Phase 6: Security & Testing
-**Timeline: 4-6 weeks**
-- Comprehensive smart contract security audit
-- Penetration testing of KYC API endpoints
-- Load testing for institutional-scale transactions
-- Compliance review with legal team
-- Integration testing with existing USPD infrastructure
+
+- [ ] Comprehensive smart contract security audit
+- [ ] Penetration testing of KYC API endpoints
+- [ ] Load testing for institutional-scale transactions
+- [ ] Compliance review with legal team
+- [ ] Integration testing with existing USPD infrastructure
 
 ### Phase 7: Deployment & Monitoring
-**Timeline: 2-3 weeks**
-- Mainnet deployment strategy
-- Monitoring and alerting systems
-- Documentation for institutional clients
-- Integration guides for institutional wallets
-- Support processes for institutional users
+
+- [ ] Mainnet deployment strategy
+- [ ] Monitoring and alerting systems
+- [ ] Documentation for institutional clients
+- [ ] Integration guides for institutional wallets
+- [ ] Support processes for institutional users
+
+</Steps>
 
 ## Technical Architecture
 
