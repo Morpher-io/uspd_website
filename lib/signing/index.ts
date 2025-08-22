@@ -36,4 +36,13 @@ export class SigningService {
 
         return signature;
     }
+
+    async signMessage(messageHash: `0x${string}`): Promise<string> {
+        // Sign the message hash directly
+        const signature = await this.account.signMessage({
+            message: { raw: messageHash }
+        });
+
+        return signature;
+    }
 }
