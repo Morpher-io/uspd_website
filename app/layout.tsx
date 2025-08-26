@@ -42,6 +42,7 @@ export const metadata: Metadata = {
 
 const navbar = (
   <Navbar
+    className='font-medium'
     logo={<div className='flex items-center'>
       <div className='flex gap-2 items-center'>
         <Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />
