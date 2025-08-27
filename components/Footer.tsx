@@ -12,6 +12,7 @@ export const Footer = () => {
             <Link href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank" >Risk Analysis</Link>
             <Link href="https://docsend.com/view/tdqrj9us6hp7dn2b" target="_blank" >Litepaper</Link>
             <Link href="https://t.me/+V9hBnsllQVY5YWU0" target="_blank">Join Telegram</Link>
+            <Link href="/brand-guidelines">Brand Guidelines</Link>
           </div>
 
       </div>

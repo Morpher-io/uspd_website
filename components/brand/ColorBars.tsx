@@ -62,7 +62,7 @@ const colorBars: ColorBar[] = [
 
 export default function ColorBars() {
   return (
-    <section className="min-h-screen bg-[#110e14] flex flex-col w-full">
+    <section className="flex flex-col w-full">
       {/* Color Bars Section */}
       <div className="flex-1">
         {colorBars.map((color) => (
@@ -98,7 +98,7 @@ export default function ColorBars() {
       </div>
 
       {/* Bottom Content Section */}
-      <div className="bg-[#110e14] px-4 md:px-8 lg:px-32 py-16">
+      <div className="py-8">
         {/* Title */}
         <div className="mb-8">
           <h2 className="font-heading text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold tracking-tight">
@@ -119,7 +119,7 @@ export default function ColorBars() {
 
         {/* Footer Information */}
         <div className="mt-16">
-          <div className="flex justify-between items-center text-[#bebebe] text-sm md:text-base lg:text-lg">
+          <div className="flex justify-between items-center text-muted-foreground text-sm md:text-base lg:text-lg">
             <div>USPD Brand Guidelines</div>
             <div>Colors</div>
             <div>004</div>

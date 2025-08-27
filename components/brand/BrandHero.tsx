@@ -31,7 +31,7 @@ export default function BrandHero() {
 
       {/* Footer Information */}
       <div className="mt-auto px-4 md:px-8 lg:px-32 pb-8">
-        <div className="flex justify-between items-center text-[#bebebe] text-sm md:text-base lg:text-lg">
+        <div className="flex justify-between items-center text-muted-foreground text-sm md:text-base lg:text-lg">
           <div>USPD Brand Guidelines</div>
           <div>2025</div>
         </div>

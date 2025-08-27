@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 export default function BrandGuidelinesPage() {
   return (
-    <div className="w-full">
-      <BrandHero />
+<div className="mt-4 mx-auto container flex x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] flex-col items-center pb-28 ">     
+   <BrandHero />
       <LogoSingleLine />
       <LogoColorGuide />
       <ColorBars />
