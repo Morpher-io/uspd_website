@@ -3,7 +3,7 @@ import UspdLogo from "@/public/images/logo_uspd_text.svg"
 
 export default function BrandHero() {
   return (
-    <section className="relative w-full text-white min-h-screen flex flex-col">
+    <section className="relative w-full min-h-screen flex flex-col">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-morpher-primary blur-3xl" />

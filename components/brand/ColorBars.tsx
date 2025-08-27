@@ -62,7 +62,7 @@ const colorBars: ColorBar[] = [
 
 export default function ColorBars() {
   return (
-    <section className="min-h-screen bg-[#110e14] text-white flex flex-col w-full">
+    <section className="min-h-screen bg-[#110e14] flex flex-col w-full">
       {/* Color Bars Section */}
       <div className="flex-1">
         {colorBars.map((color) => (
@@ -109,7 +109,7 @@ export default function ColorBars() {
         {/* Description */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-4xl">
           <div>
-            <p className="text-white text-lg leading-relaxed">
+            <p className="text-lg leading-relaxed">
               Minimalist color scheme that mainly relies on black and white. 
               Variations in grey help with accents and outlines, while green 
               and red are available for accents.

@@ -76,12 +76,12 @@ export default function LogoColorGuide() {
         {/* Usage Guidelines Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-4xl">
           <div>
-            <p className="text-white text-lg leading-relaxed">
+            <p className="text-lg leading-relaxed">
               The logo should be white on darker backgrounds and black on lighter backgrounds
             </p>
           </div>
           <div>
-            <p className="text-white text-lg leading-relaxed">
+            <p className="text-lg leading-relaxed">
               Less is more. we want the logo to be instantly recognizable at all sizes and in all contexts.
             </p>
           </div>

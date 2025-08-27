@@ -4,7 +4,7 @@ import UspdLogoNoText from "@/public/images/logo_uspd.svg"
 
 export default function LogoSingleLine() {
   return (
-    <section className="relative min-h-screen bg-[#110e14] text-white flex flex-col">
+    <section className="relative min-h-screen bg-[#110e14] flex flex-col">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div className="absolute top-1/3 left-1/3 w-64 h-64 rounded-full bg-morpher-primary blur-3xl" />
@@ -45,7 +45,7 @@ export default function LogoSingleLine() {
           {/* Design Principles */}
           <div className="lg:col-span-1 space-y-4">
             <h3 className="text-lg font-medium mb-4">Design Principles</h3>
-            <ul className="space-y-2 text-white">
+            <ul className="space-y-2">
               <li className="flex items-start gap-2">
                 <span className="text-morpher-primary">•</span>
                 <span>Embrace the power of B/W</span>
@@ -64,7 +64,7 @@ export default function LogoSingleLine() {
           {/* Usage Guidelines */}
           <div className="lg:col-span-1">
             <h3 className="text-lg font-medium mb-4">Usage Guidelines</h3>
-            <p className="text-white leading-relaxed">
+            <p className="leading-relaxed">
               Less is more. We want the logo to be instantly recognizable at all sizes and in all contexts.
             </p>
           </div>
