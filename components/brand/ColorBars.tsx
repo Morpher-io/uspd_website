@@ -62,7 +62,7 @@ const colorBars: ColorBar[] = [
 
 export default function ColorBars() {
   return (
-    <section className="min-h-screen bg-[#110e14] text-white flex flex-col">
+    <section className="min-h-screen bg-[#110e14] text-white flex flex-col w-full">
       {/* Color Bars Section */}
       <div className="flex-1">
         {colorBars.map((color) => (

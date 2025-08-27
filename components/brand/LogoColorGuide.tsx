@@ -4,7 +4,7 @@ import UspdLogoText from "@/public/images/logo_uspd_text.svg"
 
 export default function LogoColorGuide() {
   return (
-    <section className="relative min-h-screen bg-[#110e14] text-white flex flex-col">
+    <section className="relative min-h-screen flex flex-col w-full">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <div className="absolute top-1/4 right-1/4 w-80 h-80 rounded-full bg-morpher-primary blur-3xl" />
