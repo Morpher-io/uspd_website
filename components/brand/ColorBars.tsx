@@ -122,7 +122,7 @@ export default function ColorBars() {
           <div className="flex justify-between items-center text-muted-foreground text-sm md:text-base lg:text-lg">
             <div>USPD Brand Guidelines</div>
             <div>Colors</div>
-            <div>004</div>
+            <div>006</div>
           </div>
           
           {/* Bottom border line */}

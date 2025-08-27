@@ -1,6 +1,7 @@
 import BrandHero from "@/components/brand/BrandHero"
 import LogoSingleLine from "@/components/brand/LogoSingleLine"
 import LogoColorGuide from "@/components/brand/LogoColorGuide"
+import Typography from "@/components/brand/Typography"
 import ColorBars from "@/components/brand/ColorBars"
 import { Metadata } from "next"
 
@@ -15,6 +16,7 @@ export default function BrandGuidelinesPage() {
    <BrandHero />
       <LogoSingleLine />
       <LogoColorGuide />
+      <Typography />
       <ColorBars />
     </div>
   )
