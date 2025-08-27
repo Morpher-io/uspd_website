@@ -11,29 +11,11 @@ export const metadata: Metadata = {
 
 export default function BrandGuidelinesPage() {
   return (
-    <div className="mx-auto container flex x:max-w-(--nextra-content-width)  x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] flex-col">
-      {/* Frame 1: Brand Hero */}
-      <div className="min-h-sceen relative">
-
-        <BrandHero />
-      </div>
-      
-      {/* Frame 2: Single-line Lockup */}
-      <div className="min-h-sceen relative">
-
-        <LogoSingleLine />
-      </div>
-      
-      {/* Frame 7: Logo Color Guide */}
-      <div className="min-h-sceen relative">
-        <LogoColorGuide />
-      </div>
-
-      {/* Frame 16: Color Bars */}
-      <div className="min-h-sceen relative">
-        <ColorBars />
-      </div>
-
+    <div className="w-full">
+      <BrandHero />
+      <LogoSingleLine />
+      <LogoColorGuide />
+      <ColorBars />
     </div>
   )
 }

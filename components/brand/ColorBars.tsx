@@ -1,6 +1,5 @@
 "use client"
 
-
 interface ColorBar {
   id: string
   name: string
@@ -16,7 +15,7 @@ const colorBars: ColorBar[] = [
     name: "LIGHT GREY",
     hexCode: "D6D6D6",
     bgColor: "#d6d6d6",
-    textColor: "text-blackout",
+    textColor: "text-black",
     number: "01"
   },
   {
@@ -63,33 +62,33 @@ const colorBars: ColorBar[] = [
 
 export default function ColorBars() {
   return (
-    <section className="min-h-screen bg-blackout text-white relative overflow-hidden">
+    <section className="min-h-screen bg-[#110e14] text-white flex flex-col">
       {/* Color Bars Section */}
-      <div className="grid grid-rows-6">
+      <div className="flex-1">
         {colorBars.map((color) => (
           <div 
             key={color.id}
-            className="relative flex h-28"
+            className="flex items-center justify-between h-20 md:h-24 lg:h-28 px-4 md:px-8 lg:px-32"
             style={{ backgroundColor: color.bgColor }}
           >
-            {/* Color Name - positioned near top left */}
-            <div className={`absolute top-4 left-8 lg:left-32 ${color.textColor} text-sm md:text-base font-medium tracking-wide`}>
+            {/* Left side - Color Name */}
+            <div className={`${color.textColor} text-sm md:text-base font-medium tracking-wide`}>
               {color.name}
             </div>
             
-            {/* Right side content - Number and Hex Code with proper spacing */}
-            <div className="absolute right-8 lg:right-32 top-1/2 transform -translate-y-1/2 flex items-center gap-8">
+            {/* Right side - Number and Hex Code */}
+            <div className="flex items-center gap-4 md:gap-8">
               {/* Color Number */}
               <div className={`${color.textColor} text-base font-medium`}>
                 {color.number}
               </div>
               
               {/* Hex Code Section */}
-              <div className="flex items-center gap-4">
-                <div className={`${color.textColor} text-sm uppercase tracking-wider opacity-60`}>
+              <div className="flex items-center gap-2 md:gap-4">
+                <div className={`${color.textColor} text-xs md:text-sm uppercase tracking-wider opacity-60`}>
                   HEX
                 </div>
-                <div className={`${color.textColor} text-sm font-mono tracking-wider`}>
+                <div className={`${color.textColor} text-xs md:text-sm font-mono tracking-wider`}>
                   {color.hexCode}
                 </div>
               </div>
@@ -98,56 +97,36 @@ export default function ColorBars() {
         ))}
       </div>
 
-      
-
       {/* Bottom Content Section */}
-      <div className="absolute bottom-0 left-0 right-0 bg-blackout">
-        <div className="px-8 lg:px-32 py-16">
-          {/* Title */}
-          <div className="mb-8">
-            <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight">
-              Colors
-            </h2>
-          </div>
+      <div className="bg-[#110e14] px-4 md:px-8 lg:px-32 py-16">
+        {/* Title */}
+        <div className="mb-8">
+          <h2 className="font-heading text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold tracking-tight">
+            Colors
+          </h2>
+        </div>
 
-          {/* Description */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div>
-              <p className="text-white text-lg leading-relaxed">
-                Minimalist color scheme that mainly relies on black and white. 
-                Variations in grey help with accents and outlines, while green 
-                and red are available for accents.
-              </p>
-            </div>
+        {/* Description */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-4xl">
+          <div>
+            <p className="text-white text-lg leading-relaxed">
+              Minimalist color scheme that mainly relies on black and white. 
+              Variations in grey help with accents and outlines, while green 
+              and red are available for accents.
+            </p>
           </div>
         </div>
 
         {/* Footer Information */}
-        <div className="px-8 lg:px-32 pb-8">
-          <div className="flex justify-between items-end">
-            <div className="text-[#bebebe] text-base lg:text-lg">
-              USPD Brand Guidelines
-            </div>
-            <div className="text-[#bebebe] text-base lg:text-lg">
-              Colors
-            </div>
-            <div className="text-[#bebebe] text-base lg:text-lg">
-              004
-            </div>
+        <div className="mt-16">
+          <div className="flex justify-between items-center text-[#bebebe] text-sm md:text-base lg:text-lg">
+            <div>USPD Brand Guidelines</div>
+            <div>Colors</div>
+            <div>004</div>
           </div>
           
           {/* Bottom border line */}
           <div className="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent mt-6" />
-          
-          {/* Vertical center line */}
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-px h-16 bg-gray-600" />
-        </div>
-
-        {/* Right side year indicator */}
-        <div className="absolute right-8 lg:right-32 top-1/2 transform -translate-y-1/2">
-          <div className="text-[#bebebe] text-base lg:text-lg writing-mode-vertical transform">
-            2025
-          </div>
         </div>
       </div>
     </section>
