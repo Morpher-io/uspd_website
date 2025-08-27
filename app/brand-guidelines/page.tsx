@@ -16,8 +16,8 @@ export default function BrandGuidelinesPage() {
    <BrandHero />
       <LogoSingleLine />
       <LogoColorGuide />
-      <Typography />
       <ColorBars />
+      <Typography />
     </div>
   )
 }
