@@ -93,7 +93,7 @@ export default function Typography() {
                   <p className="font-mono text-sm leading-relaxed tracking-wide">
                     function mint(uint256 amount) external {"{"}
                     <br />
-                    &nbsp;&nbsp;require(amount > 0, "Invalid amount");
+                    &nbsp;&nbsp;require(amount &gt; 0, &quot;Invalid amount&quot;);
                     <br />
                     {"}"}
                   </p>
