@@ -96,12 +96,29 @@ For developers building liquidation bots or monitoring systems, understanding ho
 Each Stabilizer NFT has an associated `PositionEscrow` contract that holds the actual collateral. To find the escrow address for a given NFT:
 
 ```javascript
+import { createPublicClient, http, getContract } from 'viem';
+import { mainnet } from 'viem/chains';
+
+// Create a public client
+const publicClient = createPublicClient({
+  chain: mainnet,
+  transport: http()
+});
+
 // Get the PositionEscrow address for a specific Stabilizer NFT
-const stabilizerNFTContract = new ethers.Contract(STABILIZER_NFT_ADDRESS, stabilizerNFTAbi, provider);
-const positionEscrowAddress = await stabilizerNFTContract.positionEscrows(tokenId);
+const positionEscrowAddress = await publicClient.readContract({
+  address: STABILIZER_NFT_ADDRESS,
+  abi: stabilizerNFTAbi,
+  functionName: 'positionEscrows',
+  args: [tokenId]
+});
 
 // Create contract instance for the PositionEscrow
-const positionEscrow = new ethers.Contract(positionEscrowAddress, positionEscrowAbi, provider);
+const positionEscrow = getContract({
+  address: positionEscrowAddress,
+  abi: positionEscrowAbi,
+  client: publicClient
+});
 ```
 
 ```python
@@ -119,17 +136,19 @@ position_escrow = w3.eth.contract(address=position_escrow_address, abi=position_
 The collateralization ratio determines if a position is eligible for liquidation. Here's how to calculate it:
 
 ```javascript
+import { parseUnits, keccak256, toBytes } from 'viem';
+
 // Get current ETH/USD price from your price oracle
 const priceQuery = {
-    price: ethers.parseUnits("3000", 18), // $3000 with 18 decimals
+    price: parseUnits("3000", 18), // $3000 with 18 decimals
     decimals: 18,
     dataTimestamp: Math.floor(Date.now() / 1000),
-    assetPair: ethers.keccak256(ethers.toUtf8Bytes("ETH/USD")),
+    assetPair: keccak256(toBytes("ETH/USD")),
     signature: "0x..." // Signed price attestation
 };
 
 // Get the collateralization ratio
-const ratio = await positionEscrow.getCollateralizationRatio(priceQuery);
+const ratio = await positionEscrow.read.getCollateralizationRatio([priceQuery]);
 
 // ratio is scaled by 10000, so 11000 = 110.00%
 const ratioPercent = Number(ratio) / 100; // Convert to percentage (110.00)
@@ -187,14 +206,16 @@ console.log(`Position ratio: ${currentRatio}%, Threshold: ${threshold}%, Liquida
 Before executing a liquidation, you need to determine how much can be liquidated:
 
 ```javascript
+import { formatEther } from 'viem';
+
 // Get the backed pool shares (liability) of the position
-const backedShares = await positionEscrow.backedPoolShares();
+const backedShares = await positionEscrow.read.backedPoolShares();
 
 // Get current stETH balance (collateral)
-const stEthBalance = await positionEscrow.getCurrentStEthBalance();
+const stEthBalance = await positionEscrow.read.getCurrentStEthBalance();
 
-console.log(`Position has ${ethers.formatEther(backedShares)} backed shares`);
-console.log(`Position has ${ethers.formatEther(stEthBalance)} stETH collateral`);
+console.log(`Position has ${formatEther(backedShares)} backed shares`);
+console.log(`Position has ${formatEther(stEthBalance)} stETH collateral`);
 
 // You can liquidate up to the full backed shares amount
 const maxLiquidatableShares = backedShares;
@@ -205,29 +226,63 @@ const maxLiquidatableShares = backedShares;
 To build an effective liquidation bot, monitor these key events:
 
 ```javascript
+import { formatEther } from 'viem';
+
 // Monitor CollateralAdded events on PositionEscrow contracts
-positionEscrow.on("CollateralAdded", (amount, event) => {
-    console.log(`Collateral added to position ${tokenId}: ${ethers.formatEther(amount)} stETH`);
-    // Recalculate position health
+const unwatch1 = publicClient.watchContractEvent({
+  address: positionEscrowAddress,
+  abi: positionEscrowAbi,
+  eventName: 'CollateralAdded',
+  onLogs: (logs) => {
+    logs.forEach((log) => {
+      const { amount } = log.args;
+      console.log(`Collateral added to position ${tokenId}: ${formatEther(amount)} stETH`);
+      // Recalculate position health
+    });
+  }
 });
 
 // Monitor CollateralRemoved events
-positionEscrow.on("CollateralRemoved", (recipient, amount, event) => {
-    console.log(`Collateral removed from position ${tokenId}: ${ethers.formatEther(amount)} stETH`);
-    // Recalculate position health
+const unwatch2 = publicClient.watchContractEvent({
+  address: positionEscrowAddress,
+  abi: positionEscrowAbi,
+  eventName: 'CollateralRemoved',
+  onLogs: (logs) => {
+    logs.forEach((log) => {
+      const { recipient, amount } = log.args;
+      console.log(`Collateral removed from position ${tokenId}: ${formatEther(amount)} stETH`);
+      // Recalculate position health
+    });
+  }
 });
 
 // Monitor AllocationModified events (changes in backed shares/liability)
-positionEscrow.on("AllocationModified", (sharesDelta, newTotalShares, event) => {
-    console.log(`Position ${tokenId} allocation changed by ${ethers.formatEther(sharesDelta)} shares`);
-    console.log(`New total backed shares: ${ethers.formatEther(newTotalShares)}`);
-    // Recalculate position health
+const unwatch3 = publicClient.watchContractEvent({
+  address: positionEscrowAddress,
+  abi: positionEscrowAbi,
+  eventName: 'AllocationModified',
+  onLogs: (logs) => {
+    logs.forEach((log) => {
+      const { sharesDelta, newTotalShares } = log.args;
+      console.log(`Position ${tokenId} allocation changed by ${formatEther(sharesDelta)} shares`);
+      console.log(`New total backed shares: ${formatEther(newTotalShares)}`);
+      // Recalculate position health
+    });
+  }
 });
 
 // Monitor StabilizerNFT events for new positions
-stabilizerNFTContract.on("StabilizerPositionCreated", (tokenId, owner, event) => {
-    console.log(`New Stabilizer Position created: ${tokenId} owned by ${owner}`);
-    // Add to monitoring list
+const unwatch4 = publicClient.watchContractEvent({
+  address: STABILIZER_NFT_ADDRESS,
+  abi: stabilizerNFTAbi,
+  eventName: 'StabilizerPositionCreated',
+  onLogs: (logs) => {
+    logs.forEach((log) => {
+      const { tokenId, owner } = log.args;
+      console.log(`New Stabilizer Position created: ${tokenId} owned by ${owner}`);
+      // Add to monitoring list
+    });
+  }
 });
 ```
 
@@ -253,26 +308,53 @@ for event in collateral_filter.get_new_entries():
 Here's a simplified liquidation bot structure:
 
 ```javascript
+import { createPublicClient, createWalletClient, http, getContract } from 'viem';
+import { mainnet } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
+
 class LiquidationBot {
-    constructor(provider, stabilizerNFTAddress, liquidatorTokenId) {
-        this.provider = provider;
-        this.stabilizerNFT = new ethers.Contract(stabilizerNFTAddress, stabilizerNFTAbi, provider);
+    constructor(privateKey, stabilizerNFTAddress, liquidatorTokenId) {
+        this.account = privateKeyToAccount(privateKey);
+        
+        this.publicClient = createPublicClient({
+            chain: mainnet,
+            transport: http()
+        });
+        
+        this.walletClient = createWalletClient({
+            account: this.account,
+            chain: mainnet,
+            transport: http()
+        });
+        
+        this.stabilizerNFT = getContract({
+            address: stabilizerNFTAddress,
+            abi: stabilizerNFTAbi,
+            client: { public: this.publicClient, wallet: this.walletClient }
+        });
+        
         this.liquidatorTokenId = liquidatorTokenId;
         this.monitoredPositions = new Map();
     }
 
     async scanAllPositions() {
-        const totalSupply = await this.stabilizerNFT.totalSupply();
+        const totalSupply = await this.stabilizerNFT.read.totalSupply();
         
-        for (let i = 1; i <= totalSupply; i++) {
+        for (let i = 1n; i <= totalSupply; i++) {
             try {
-                const owner = await this.stabilizerNFT.ownerOf(i);
-                const escrowAddress = await this.stabilizerNFT.positionEscrows(i);
+                const owner = await this.stabilizerNFT.read.ownerOf([i]);
+                const escrowAddress = await this.stabilizerNFT.read.positionEscrows([i]);
                 
-                this.monitoredPositions.set(i, {
+                const escrow = getContract({
+                    address: escrowAddress,
+                    abi: positionEscrowAbi,
+                    client: this.publicClient
+                });
+                
+                this.monitoredPositions.set(Number(i), {
                     owner,
                     escrowAddress,
-                    escrow: new ethers.Contract(escrowAddress, positionEscrowAbi, this.provider)
+                    escrow
                 });
             } catch (error) {
                 // Token doesn't exist or other error
@@ -286,7 +368,7 @@ class LiquidationBot {
         if (!position) return null;
 
         const priceQuery = this.buildPriceQuery(ethUsdPrice);
-        const ratio = await position.escrow.getCollateralizationRatio(priceQuery);
+        const ratio = await position.escrow.read.getCollateralizationRatio([priceQuery]);
         const ratioPercent = Number(ratio) / 100;
         
         const threshold = this.calculateLiquidationThreshold(this.liquidatorTokenId);
@@ -296,20 +378,22 @@ class LiquidationBot {
             ratio: ratioPercent,
             threshold,
             isLiquidatable: ratioPercent < threshold,
-            backedShares: await position.escrow.backedPoolShares()
+            backedShares: await position.escrow.read.backedPoolShares()
         };
     }
 
     async liquidatePosition(tokenId, sharesToLiquidate, priceQuery) {
         // Execute liquidation transaction
-        const tx = await this.stabilizerNFT.liquidatePosition(
+        const hash = await this.stabilizerNFT.write.liquidatePosition([
             this.liquidatorTokenId,
             tokenId,
             sharesToLiquidate,
             priceQuery
-        );
+        ]);
         
-        return await tx.wait();
+        // Wait for transaction confirmation
+        const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+        return receipt;
     }
 }
 ```
