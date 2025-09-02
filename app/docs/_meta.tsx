@@ -9,8 +9,5 @@ export default {
   },
   bridge: {
       title: "USPD Cross-Chain (Bridge)"
-  },
-  addresses: {
-      title: "Contract Addresses"
   }
 }
