@@ -86,3 +86,232 @@ In a severe flash crash where the ETH price drops significantly and rapidly, a l
 *   **System Resilience:** The expectation is that even in extreme scenarios, the combination of discounted USPD on secondary markets and the remaining (though diminished) collateral in Stabilizer Positions creates economic incentives for liquidation. This helps the system find a new equilibrium and deleverage. If the ETH price subsequently recovers, the system's collateralization ratio will improve more rapidly due to the reduced USPD supply.
 
 This multi-layered approach, combining overcollateralization, arbitrage, direct redemptions (in stable times), incentivized liquidations, and an insurance fund, aims to create a resilient stablecoin that can adapt to various market stresses.
+
+## Technical Guide: Building a Liquidation Bot
+
+For developers building liquidation bots or monitoring systems, understanding how to programmatically assess Stabilizer Position health is crucial. The health of a Stabilizer Position is determined by its collateralization ratio, which is calculated within the individual `PositionEscrow` contract associated with each Stabilizer NFT.
+
+### 1. Finding Position Escrow Contracts
+
+Each Stabilizer NFT has an associated `PositionEscrow` contract that holds the actual collateral. To find the escrow address for a given NFT:
+
+```javascript
+// Get the PositionEscrow address for a specific Stabilizer NFT
+const stabilizerNFTContract = new ethers.Contract(STABILIZER_NFT_ADDRESS, stabilizerNFTAbi, provider);
+const positionEscrowAddress = await stabilizerNFTContract.positionEscrows(tokenId);
+
+// Create contract instance for the PositionEscrow
+const positionEscrow = new ethers.Contract(positionEscrowAddress, positionEscrowAbi, provider);
+```
+
+```python
+# Python example using web3.py
+from web3 import Web3
+
+stabilizer_nft = w3.eth.contract(address=STABILIZER_NFT_ADDRESS, abi=stabilizer_nft_abi)
+position_escrow_address = stabilizer_nft.functions.positionEscrows(token_id).call()
+
+position_escrow = w3.eth.contract(address=position_escrow_address, abi=position_escrow_abi)
+```
+
+### 2. Calculating Collateralization Ratio
+
+The collateralization ratio determines if a position is eligible for liquidation. Here's how to calculate it:
+
+```javascript
+// Get current ETH/USD price from your price oracle
+const priceQuery = {
+    price: ethers.parseUnits("3000", 18), // $3000 with 18 decimals
+    decimals: 18,
+    dataTimestamp: Math.floor(Date.now() / 1000),
+    assetPair: ethers.keccak256(ethers.toUtf8Bytes("ETH/USD")),
+    signature: "0x..." // Signed price attestation
+};
+
+// Get the collateralization ratio
+const ratio = await positionEscrow.getCollateralizationRatio(priceQuery);
+
+// ratio is scaled by 10000, so 11000 = 110.00%
+const ratioPercent = Number(ratio) / 100; // Convert to percentage (110.00)
+
+console.log(`Position collateralization ratio: ${ratioPercent}%`);
+```
+
+```python
+# Python example
+def calculate_collateralization_ratio(position_escrow, eth_usd_price):
+    price_query = {
+        'price': int(eth_usd_price * 10**18),  # Convert to wei with 18 decimals
+        'decimals': 18,
+        'dataTimestamp': int(time.time()),
+        'assetPair': Web3.keccak(text="ETH/USD"),
+        'signature': "0x..."  # Your signed price attestation
+    }
+    
+    ratio = position_escrow.functions.getCollateralizationRatio(price_query).call()
+    ratio_percent = ratio / 100  # Convert from basis points to percentage
+    
+    return ratio_percent
+```
+
+### 3. Determining Liquidation Eligibility
+
+A position becomes eligible for liquidation when its ratio falls below the liquidation threshold. The threshold depends on the liquidator's NFT ID:
+
+```javascript
+// Calculate liquidation threshold based on liquidator's NFT ID
+function calculateLiquidationThreshold(liquidatorTokenId) {
+    if (liquidatorTokenId === 0) {
+        return 110.00; // Default threshold (110%)
+    }
+    
+    const baseThreshold = 125.00; // 125%
+    const minThreshold = 110.00;  // 110%
+    const decrement = (liquidatorTokenId - 1) * 0.5; // 0.5% per ID
+    
+    const calculatedThreshold = baseThreshold - decrement;
+    return Math.max(calculatedThreshold, minThreshold);
+}
+
+// Check if position is liquidatable
+const liquidatorTokenId = 5; // Your liquidator NFT ID
+const threshold = calculateLiquidationThreshold(liquidatorTokenId);
+const currentRatio = Number(await positionEscrow.getCollateralizationRatio(priceQuery)) / 100;
+
+const isLiquidatable = currentRatio < threshold;
+console.log(`Position ratio: ${currentRatio}%, Threshold: ${threshold}%, Liquidatable: ${isLiquidatable}`);
+```
+
+### 4. Getting Position Data for Liquidation
+
+Before executing a liquidation, you need to determine how much can be liquidated:
+
+```javascript
+// Get the backed pool shares (liability) of the position
+const backedShares = await positionEscrow.backedPoolShares();
+
+// Get current stETH balance (collateral)
+const stEthBalance = await positionEscrow.getCurrentStEthBalance();
+
+console.log(`Position has ${ethers.formatEther(backedShares)} backed shares`);
+console.log(`Position has ${ethers.formatEther(stEthBalance)} stETH collateral`);
+
+// You can liquidate up to the full backed shares amount
+const maxLiquidatableShares = backedShares;
+```
+
+### 5. Monitoring Events for Position Changes
+
+To build an effective liquidation bot, monitor these key events:
+
+```javascript
+// Monitor CollateralAdded events on PositionEscrow contracts
+positionEscrow.on("CollateralAdded", (amount, event) => {
+    console.log(`Collateral added to position ${tokenId}: ${ethers.formatEther(amount)} stETH`);
+    // Recalculate position health
+});
+
+// Monitor CollateralRemoved events
+positionEscrow.on("CollateralRemoved", (recipient, amount, event) => {
+    console.log(`Collateral removed from position ${tokenId}: ${ethers.formatEther(amount)} stETH`);
+    // Recalculate position health
+});
+
+// Monitor AllocationModified events (changes in backed shares/liability)
+positionEscrow.on("AllocationModified", (sharesDelta, newTotalShares, event) => {
+    console.log(`Position ${tokenId} allocation changed by ${ethers.formatEther(sharesDelta)} shares`);
+    console.log(`New total backed shares: ${ethers.formatEther(newTotalShares)}`);
+    // Recalculate position health
+});
+
+// Monitor StabilizerNFT events for new positions
+stabilizerNFTContract.on("StabilizerPositionCreated", (tokenId, owner, event) => {
+    console.log(`New Stabilizer Position created: ${tokenId} owned by ${owner}`);
+    // Add to monitoring list
+});
+```
+
+```python
+# Python event monitoring example
+def handle_collateral_added(event):
+    token_id = event['args']['tokenId']  # You'll need to track this mapping
+    amount = event['args']['amount']
+    print(f"Collateral added to position {token_id}: {Web3.fromWei(amount, 'ether')} stETH")
+    # Trigger position health recalculation
+
+# Set up event filters
+collateral_filter = position_escrow.events.CollateralAdded.createFilter(fromBlock='latest')
+allocation_filter = position_escrow.events.AllocationModified.createFilter(fromBlock='latest')
+
+# Poll for events in your main loop
+for event in collateral_filter.get_new_entries():
+    handle_collateral_added(event)
+```
+
+### 6. Complete Liquidation Bot Example
+
+Here's a simplified liquidation bot structure:
+
+```javascript
+class LiquidationBot {
+    constructor(provider, stabilizerNFTAddress, liquidatorTokenId) {
+        this.provider = provider;
+        this.stabilizerNFT = new ethers.Contract(stabilizerNFTAddress, stabilizerNFTAbi, provider);
+        this.liquidatorTokenId = liquidatorTokenId;
+        this.monitoredPositions = new Map();
+    }
+
+    async scanAllPositions() {
+        const totalSupply = await this.stabilizerNFT.totalSupply();
+        
+        for (let i = 1; i <= totalSupply; i++) {
+            try {
+                const owner = await this.stabilizerNFT.ownerOf(i);
+                const escrowAddress = await this.stabilizerNFT.positionEscrows(i);
+                
+                this.monitoredPositions.set(i, {
+                    owner,
+                    escrowAddress,
+                    escrow: new ethers.Contract(escrowAddress, positionEscrowAbi, this.provider)
+                });
+            } catch (error) {
+                // Token doesn't exist or other error
+                continue;
+            }
+        }
+    }
+
+    async checkPositionHealth(tokenId, ethUsdPrice) {
+        const position = this.monitoredPositions.get(tokenId);
+        if (!position) return null;
+
+        const priceQuery = this.buildPriceQuery(ethUsdPrice);
+        const ratio = await position.escrow.getCollateralizationRatio(priceQuery);
+        const ratioPercent = Number(ratio) / 100;
+        
+        const threshold = this.calculateLiquidationThreshold(this.liquidatorTokenId);
+        
+        return {
+            tokenId,
+            ratio: ratioPercent,
+            threshold,
+            isLiquidatable: ratioPercent < threshold,
+            backedShares: await position.escrow.backedPoolShares()
+        };
+    }
+
+    async liquidatePosition(tokenId, sharesToLiquidate, priceQuery) {
+        // Execute liquidation transaction
+        const tx = await this.stabilizerNFT.liquidatePosition(
+            this.liquidatorTokenId,
+            tokenId,
+            sharesToLiquidate,
+            priceQuery
+        );
+        
+        return await tx.wait();
+    }
+}
+```
+
+This technical foundation enables developers to build sophisticated liquidation bots that can monitor position health in real-time and execute profitable liquidations when positions become undercollateralized.
