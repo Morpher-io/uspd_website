@@ -2,6 +2,7 @@
 import imgMartin from "@/public/images/martin.svg";
 import imgWilly from "@/public/images/willy.svg";
 import imgThomas from "@/public/images/thomas.svg";
+import imgAndreas from "@/public/images/andreas_border.png";
 import Image from "next/image";
 
 export default function Team() {
@@ -12,9 +13,9 @@ export default function Team() {
                 <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-5xl text-balance text-center uppercase">
                     Team
                 </h2>
-                <div className="flex grid grid-cols-1 md:grid-cols-3 gap-4 justify-items-center">
+                <div className="flex grid grid-cols-1 md:grid-cols-4 gap-4 justify-items-center">
                     <div className="flex flex-col text-xl">
-                        <Image src={imgMartin} alt="Martin" />
+                        <Image src={imgMartin} alt="Martin" className="w-64" />
                         <div className="text-2xl font-bold uppercase my-4">Martin Froehler, CEO</div>
                         <div>CEO & Founder of</div>
                         <div className="text-morpher-secondary">Morpher, Quantiacs</div>
@@ -23,7 +24,7 @@ export default function Team() {
                     </div>
                     <div className="flex flex-col text-xl">
 
-                        <Image src={imgWilly} alt="Willy" />
+                        <Image src={imgWilly} alt="Willy" className="w-64" />
                         <div className="text-2xl font-bold uppercase my-4">Willy Woo, Advisor</div>
                         <div>Managing Partner</div>
                         <div className="text-morpher-secondary">CMCC Global &amp; Crest</div>
@@ -32,7 +33,16 @@ export default function Team() {
                     </div>
                     <div className="flex flex-col text-xl">
 
-                        <Image src={imgThomas} alt="Thomas" />
+                        <Image src={imgAndreas} alt="Andreas" className="w-64" />
+                        <div className="text-2xl font-bold uppercase my-4">Andreas Bonelli, COO</div>
+                        <div>Managing Director of</div>
+                        <div className="text-morpher-secondary">Superfund Asset Management</div>
+                        <div>15+ years in quant finance</div>
+                        <div>PhD Computer Science</div>
+                    </div>
+                    <div className="flex flex-col text-xl">
+
+                        <Image src={imgThomas} alt="Thomas" className="w-64"  />
                         <div className="text-2xl font-bold uppercase my-4">Thomas Wiesner, CTO</div>
                         <div>CTO of</div>
                         <div className="text-morpher-secondary">Morpher, Bitcoders</div>
