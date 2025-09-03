@@ -24,6 +24,15 @@ export default function Team() {
                     </div>
                     <div className="flex flex-col text-xl">
 
+                        <Image src={imgThomas} alt="Thomas" className="w-64"  />
+                        <div className="text-2xl font-bold uppercase my-4">Thomas Wiesner, CTO</div>
+                        <div>CTO of</div>
+                        <div className="text-morpher-secondary">Morpher, Bitcoders</div>
+                        <div>Teaching blockchain to 130k developers</div>
+                        <div>MS Computer Science</div>
+                    </div>
+                    <div className="flex flex-col text-xl">
+
                         <Image src={imgWilly} alt="Willy" className="w-64" />
                         <div className="text-2xl font-bold uppercase my-4">Willy Woo, Advisor</div>
                         <div>Managing Partner</div>
@@ -39,15 +48,6 @@ export default function Team() {
                         <div className="text-morpher-secondary">Superfund Asset Management</div>
                         <div>15+ years in quant finance</div>
                         <div>PhD Computer Science</div>
-                    </div>
-                    <div className="flex flex-col text-xl">
-
-                        <Image src={imgThomas} alt="Thomas" className="w-64"  />
-                        <div className="text-2xl font-bold uppercase my-4">Thomas Wiesner, CTO</div>
-                        <div>CTO of</div>
-                        <div className="text-morpher-secondary">Morpher, Bitcoders</div>
-                        <div>Teaching blockchain to 130k developers</div>
-                        <div>MS Computer Science</div>
                     </div>
                 </div>
             </div>
