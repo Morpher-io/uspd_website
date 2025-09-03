@@ -31,15 +31,7 @@ export default function Team() {
                         <div>Teaching blockchain to 130k developers</div>
                         <div>MS Computer Science</div>
                     </div>
-                    <div className="flex flex-col text-xl">
-
-                        <Image src={imgWilly} alt="Willy" className="w-64" />
-                        <div className="text-2xl font-bold uppercase my-4">Willy Woo, Advisor</div>
-                        <div>Managing Partner</div>
-                        <div className="text-morpher-secondary">CMCC Global &amp; Crest</div>
-                        <div>Pioneer of on-chain analysis</div>
-                        <div>BS Engineering</div>
-                    </div>
+                    
                     <div className="flex flex-col text-xl">
 
                         <Image src={imgAndreas} alt="Andreas" className="w-64" />
@@ -48,6 +40,15 @@ export default function Team() {
                         <div className="text-morpher-secondary">Superfund Asset Management</div>
                         <div>15+ years in quant finance</div>
                         <div>PhD Computer Science</div>
+                    </div>
+                    <div className="flex flex-col text-xl">
+
+                        <Image src={imgWilly} alt="Willy" className="w-64" />
+                        <div className="text-2xl font-bold uppercase my-4">Willy Woo, Advisor</div>
+                        <div>Managing Partner</div>
+                        <div className="text-morpher-secondary">CMCC Global &amp; Crest</div>
+                        <div>Pioneer of on-chain analysis</div>
+                        <div>BS Engineering</div>
                     </div>
                 </div>
             </div>
