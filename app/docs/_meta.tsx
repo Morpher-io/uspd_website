@@ -6,8 +6,5 @@ export default {
   },
   economics: {
       title: "Economics, Liquidations"
-  },
-  bridge: {
-      title: "USPD Cross-Chain (Bridge)"
   }
 }
