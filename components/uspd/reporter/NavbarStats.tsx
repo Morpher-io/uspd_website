@@ -53,10 +53,16 @@ function formatBigIntToCompact(value: bigint | undefined | null, decimals: numbe
 
 function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInnerProps) {
     const [priceData, setPriceData] = useState<PriceApiResponse | null>(null);
-    const [isLoadingPrice, setIsLoadingPrice] = useState(true);
+    const [isInitialLoadingPrice, setIsInitialLoadingPrice] = useState(true);
+    const [isRefetchingPrice, setIsRefetchingPrice] = useState(false);
 
-    const fetchPriceData = useCallback(async () => {
-        setIsLoadingPrice(true);
+    const fetchPriceData = useCallback(async (isInitialLoad = false) => {
+        if (isInitialLoad) {
+            setIsInitialLoadingPrice(true);
+        } else {
+            setIsRefetchingPrice(true);
+        }
+        
         try {
             const response = await fetch('/api/v1/price/eth-usd');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -65,13 +71,17 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
         } catch (err) {
             console.error('Failed to fetch price data for navbar stats:', err);
         } finally {
-            setIsLoadingPrice(false);
+            if (isInitialLoad) {
+                setIsInitialLoadingPrice(false);
+            } else {
+                setIsRefetchingPrice(false);
+            }
         }
     }, []);
 
     useEffect(() => {
-        fetchPriceData();
-        const interval = setInterval(fetchPriceData, 30000); // Refresh every 30 seconds
+        fetchPriceData(true); // Initial load
+        const interval = setInterval(() => fetchPriceData(false), 30000); // Background refresh every 30 seconds
         return () => clearInterval(interval);
     }, [fetchPriceData]);
 
@@ -86,7 +96,8 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
 
     const {
         data: systemRatioData,
-        isLoading: isLoadingRatio,
+        isLoading: isInitialLoadingRatio,
+        isFetching: isRefetchingRatio,
         refetch: refetchRatio
     } = useReadContract({
         address: reporterAddress,
@@ -105,7 +116,7 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
         }
     }, [priceResponseForContract, refetchRatio]);
 
-    const { data: uspdTotalSupplyData, isLoading: isLoadingUspdTotalSupply } = useReadContract({
+    const { data: uspdTotalSupplyData, isLoading: isInitialLoadingUspdTotalSupply } = useReadContract({
         address: uspdTokenAddress,
         abi: uspdTokenAbiJson.abi,
         functionName: 'totalSupply',
@@ -125,17 +136,17 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
         displaySystemRatio = `${(Number(systemRatio) / 100).toFixed(2)}%`;
     }
 
-    const isLoading = isLoadingRatio || isLoadingPrice || isLoadingUspdTotalSupply;
+    const isInitialLoading = isInitialLoadingRatio || isInitialLoadingPrice || isInitialLoadingUspdTotalSupply;
 
     return (
         <div className="hidden md:flex items-center gap-4 border-r border-border pr-4 text-sm">
             <div className="flex flex-col items-start">
                 <span className="text-xs text-muted-foreground">Collateralization</span>
-                {isLoading ? <Skeleton className="h-5 w-20" /> : <span className={`font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
+                {isInitialLoading ? <Skeleton className="h-5 w-20" /> : <span className={`font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
             </div>
             <div className="flex flex-col items-start">
                 <span className="text-xs text-muted-foreground">USPD Supply</span>
-                {isLoading ? <Skeleton className="h-5 w-20" /> : <span className="font-semibold">{formatBigIntToCompact(uspdTotalSupply, 18)}</span>}
+                {isInitialLoading ? <Skeleton className="h-5 w-20" /> : <span className="font-semibold">{formatBigIntToCompact(uspdTotalSupply, 18)}</span>}
             </div>
         </div>
     );
