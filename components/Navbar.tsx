@@ -1,16 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation';
+import iconBridge from "@/public/images/icon_bridge.png"
+import iconMintBurn from "@/public/images/icon_mint_burn.png"
 
 export default function CustomNavbar() {
   const pathname = usePathname()
 
   const navLinks = [
-    { href: '/uspd', label: 'Mint/Burn' },
+    { href: '/mint-burn-uspd', label: 'Mint/Burn' },
+    { href: '/bridge', label: 'Bridge' },
     { href: '/how-it-works', label: 'How USPD works' },
-    { href: '/bridge', label: 'Bridge USPD' },
-    { href: '/docs', label: 'Documentation' }
+    { href: '/docs/uspd', label: 'Documentation' }
   ]
 
   return (
