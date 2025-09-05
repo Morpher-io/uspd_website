@@ -2,14 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation';
-import { Coins } from 'lucide-react';
-
+import { Coins, RedoDot } from 'lucide-react';
 export default function CustomNavbar() {
   const pathname = usePathname()
 
   const navLinks = [
     { href: '/mint-burn-uspd', label: 'Mint/Burn', icon: <Coins /> },
-    { href: '/bridge', label: 'Bridge' },
+    { href: '/bridge', label: 'Bridge', icon: <RedoDot /> },
     { href: '/how-it-works', label: 'How USPD works' },
     { href: '/docs/uspd', label: 'Documentation' }
   ]
