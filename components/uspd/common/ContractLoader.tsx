@@ -3,7 +3,7 @@ import { useChainId } from 'wagmi'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
-import { getContractAddresses } from '@/lib/contracts'
+import { useContractContext } from './ContractContext'
 
 interface ContractLoaderProps {
   contractKeys: string[]
@@ -14,18 +14,15 @@ interface ContractLoaderProps {
 
 export function ContractLoader({ contractKeys, children, backLink, chainId: propChainId }: ContractLoaderProps) {
   const hookChainId = useChainId()
-  const effectiveChainId = propChainId ?? hookChainId // Use propChainId if available, otherwise fall back to hookChainId
+  const effectiveChainId = propChainId ?? hookChainId
+  const { loadContracts, isLoading: isContextLoading } = useContractContext()
 
   const [loadedAddresses, setLoadedAddresses] = useState<Record<string, `0x${string}`> | null>(null)
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    async function loadContracts() {
-      setIsLoading(true)
-      setDeploymentError(null)
-      setLoadedAddresses(null)
-
+    async function loadContractsFromContext() {
       if (!effectiveChainId) {
         setDeploymentError("Chain ID not available.")
         setIsLoading(false)
@@ -34,38 +31,16 @@ export function ContractLoader({ contractKeys, children, backLink, chainId: prop
       if (!contractKeys || contractKeys.length === 0) {
         setDeploymentError("No contract keys provided.")
         setIsLoading(false)
-        return;
+        return
       }
 
       try {
-        const deploymentConfig = await getContractAddresses(effectiveChainId)
-        if (!deploymentConfig) {
-          setDeploymentError(`No deployment found for chain ID ${effectiveChainId}`)
-          setIsLoading(false)
-          return
+        setIsLoading(true)
+        setDeploymentError(null)
+        const addresses = await loadContracts(effectiveChainId, contractKeys)
+        if (addresses) {
+          setLoadedAddresses(addresses)
         }
-        
-        const newAddresses: Record<string, `0x${string}`> = {}
-        let allKeysFound = true
-        const missingKeys: string[] = []
-
-        for (const key of contractKeys) {
-          const address = deploymentConfig[key as keyof typeof deploymentConfig]
-          if (!address || address === '0x0000000000000000000000000000000000000000') {
-            allKeysFound = false
-            missingKeys.push(key)
-          } else {
-            newAddresses[key] = address as `0x${string}`
-          }
-        }
-
-        if (!allKeysFound) {
-          setDeploymentError(`Contract address(es) not found for key(s): ${missingKeys.join(', ')} on chain ID ${effectiveChainId}`)
-          setIsLoading(false)
-          return
-        }
-        
-        setLoadedAddresses(newAddresses)
       } catch (error) {
         console.error('Error loading contracts:', error)
         setDeploymentError(`Error loading contracts: ${(error as Error).message}`)
@@ -74,8 +49,8 @@ export function ContractLoader({ contractKeys, children, backLink, chainId: prop
       }
     }
     
-    loadContracts()
-  }, [effectiveChainId, contractKeys]) // Depend on the effectiveChainId
+    loadContractsFromContext()
+  }, [effectiveChainId, contractKeys, loadContracts])
 
   if (isLoading) {
     return (

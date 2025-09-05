@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner" // if you re-export from ui
 
 import '@rainbow-me/rainbowkit/styles.css';
 import { Providers } from './providers';
+import { ContractProvider } from '@/components/uspd/common/ContractContext';
 import { Barlow } from 'next/font/google';
 import type { Metadata } from 'next'
 // import { Toaster } from "react-hot-toast";
@@ -85,22 +86,24 @@ export default async function RootLayout({
       </Head>
       <body className={`${barlow.className} duration-200`}>
         <Providers>
-          <Layout
-            navbar={navbar}
-            pageMap={await getPageMap()}
-            docsRepositoryBase="https://github.com/morpher-io/uspd"
-            footer={footer}
-            nextThemes={{defaultTheme: "dark"}}
-          // ... Your additional layout options
-          >
+          <ContractProvider>
+            <Layout
+              navbar={navbar}
+              pageMap={await getPageMap()}
+              docsRepositoryBase="https://github.com/morpher-io/uspd"
+              footer={footer}
+              nextThemes={{defaultTheme: "dark"}}
+            // ... Your additional layout options
+            >
 
 
 
 
-            {children}
+              {children}
 
 
-          </Layout>
+            </Layout>
+          </ContractProvider>
         </Providers>
 
         <Toaster richColors />
