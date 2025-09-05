@@ -4,14 +4,14 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation';
 import iconBridge from "@/public/images/icon_bridge.png"
-import iconMintBurn from "@/public/images/icon_mint_burn.png"
+import { Coins } from 'lucide-react';
 
 export default function CustomNavbar() {
   const pathname = usePathname()
 
   const navLinks = [
-    { href: '/mint-burn-uspd', label: 'Mint/Burn', icon: iconMintBurn },
-    { href: '/bridge', label: 'Bridge', icon: iconBridge },
+    { href: '/mint-burn-uspd', label: 'Mint/Burn', icon: <Coins /> },
+    { href: '/bridge', label: 'Bridge' },
     { href: '/how-it-works', label: 'How USPD works' },
     { href: '/docs/uspd', label: 'Documentation' }
   ]
@@ -31,7 +31,7 @@ export default function CustomNavbar() {
               alt={`${label} icon`} 
               width={16} 
               height={16} 
-              className="w-4 h-4"
+              className="w-8 h-8"
             />
           )}
           {label}
