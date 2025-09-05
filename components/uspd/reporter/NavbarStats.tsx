@@ -54,13 +54,9 @@ function formatBigIntToCompact(value: bigint | undefined | null, decimals: numbe
 function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInnerProps) {
     const [priceData, setPriceData] = useState<PriceApiResponse | null>(null);
     const [isInitialLoadingPrice, setIsInitialLoadingPrice] = useState(true);
-    const [isRefetchingPrice, setIsRefetchingPrice] = useState(false);
-
     const fetchPriceData = useCallback(async (isInitialLoad = false) => {
         if (isInitialLoad) {
             setIsInitialLoadingPrice(true);
-        } else {
-            setIsRefetchingPrice(true);
         }
         
         try {
@@ -73,8 +69,6 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
         } finally {
             if (isInitialLoad) {
                 setIsInitialLoadingPrice(false);
-            } else {
-                setIsRefetchingPrice(false);
             }
         }
     }, []);
@@ -97,7 +91,6 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
     const {
         data: systemRatioData,
         isLoading: isInitialLoadingRatio,
-        isFetching: isRefetchingRatio,
         refetch: refetchRatio
     } = useReadContract({
         address: reporterAddress,
