@@ -26,8 +26,8 @@ import Link from 'next/link';
 const barlow = Barlow({ subsets: ['latin'], weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'] })
 
 export const metadata: Metadata = {
-  title: 'USPD Demo',
-  description: "Welcome to the new era of decentralized stablecoins. USPD is the only sovereign stablecoin that doesn&#x27;t rely on banks. It&#x27;s backed by ETH with fully transparent on-chain reserves.",
+  title: 'USPD - The Dollar for the Decentralized Nation',
+  description: "US Permissionless Dollar is the first fully transparent, decentralized and permissionless stablecoin with native yield and on-chain proof of reserves.",
   metadataBase: new URL('https://uspd.io'),
   openGraph: {
     type: "website",
