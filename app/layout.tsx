@@ -17,6 +17,8 @@ import UspdLogo from "@/public/images/logo_uspd.svg";
 import NavbarStats from '@/components/uspd/reporter/NavbarStats';
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import Link from 'next/link';
+import { headers } from "next/headers";
 
 
 
@@ -43,20 +45,28 @@ export const metadata: Metadata = {
 const navbar = (
   <Navbar
     className='font-medium'
+
+    logoLink={false}
     logo={<div className='flex items-center'>
-      <div className='flex gap-2 items-center'>
+      <Link href="/" className='flex gap-2 items-center'>
         <Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />
         <span>USPD</span>
-      </div>
-      <div className='hidden lg:block'>
+      </Link>
+      <div className='hidden lg:block flex flex-row'>
         <NavbarStats />
+        
       </div>
+      <div>
+        <Link aria-current={(await headers()).get("next-url") == "/uspd" ? true : undefined} className='x:focus-visible:nextra-focus x:text-sm x:contrast-more:text-gray-700 x:contrast-more:dark:text-gray-100 x:whitespace-nowrap x:text-gray-600 x:hover:text-gray-800 x:dark:text-gray-400 x:dark:hover:text-gray-200 x:ring-inset x:transition-colors x:aria-[current]:font-medium x:aria-[current]:subpixel-antialiased x:aria-[current]:text-current' href="/uspd">Mint</Link>
+        </div>
     </div>}
   ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
 
   </Navbar>
 )
 const footer = <NextraFooter><Footer /></NextraFooter>
+
+
 
 export default async function RootLayout({
   children,
