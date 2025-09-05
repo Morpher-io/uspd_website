@@ -48,7 +48,7 @@ const navbar = (
 
     logoLink={false}
     logo={<div className='flex items-center'>
-      <Link href="/" className='flex gap-2 items-center'>
+      <Link href="/" className='flex gap-2 items-center border-r border-border pr-4 mr-4'>
         <Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />
         <span>USPD</span>
       </Link>

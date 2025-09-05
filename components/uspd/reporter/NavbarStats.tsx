@@ -128,7 +128,7 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
     const isLoading = isLoadingRatio || isLoadingPrice || isLoadingUspdTotalSupply;
 
     return (
-        <div className="hidden md:flex items-center gap-4 border-l border-r border-border mx-4 px-4 text-sm">
+        <div className="hidden md:flex items-center gap-4 border-r border-border pr-4 text-sm">
             <div className="flex flex-col items-start">
                 <span className="text-xs text-muted-foreground">Collateralization</span>
                 {isLoading ? <Skeleton className="h-5 w-20" /> : <span className={`font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
@@ -153,7 +153,7 @@ export default function NavbarStats() {
                 if (!reporterAddress || !uspdTokenAddress) {
                     // Render skeletons if addresses are not yet loaded
                     return (
-                        <div className="hidden md:flex items-center gap-4 border-l border-r border-border mx-4 px-4 text-sm">
+                        <div className="hidden md:flex items-center gap-4 border-r border-border pr-4 text-sm">
                             <div className="flex flex-col items-start">
                                 <span className="text-xs text-muted-foreground">Collateralization</span>
                                 <Skeleton className="h-5 w-20" />

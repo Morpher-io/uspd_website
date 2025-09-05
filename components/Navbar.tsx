@@ -14,7 +14,7 @@ export default function CustomNavbar() {
   ]
 
   return (
-    <div className="flex flex-row gap-4">
+    <div className="flex flex-row gap-4 border-l border-border pl-4">
       {navLinks.map(({ href, label, icon }) => (
         <Link
           key={href}
