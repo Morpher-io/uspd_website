@@ -3,25 +3,33 @@ import { Shield } from "lucide-react";
 
 export const Footer = () => {
   return (
-    <div className="flex flex-col gap-4 min-w-max container">
-      <div className="flex justify-center">
-        <p className="">© Permissionless Technologies {new Date().getFullYear()}</p>
-      </div>
-      
-      <div className="flex flex-col md:flex-row justify-center items-center gap-3 font-semibold text-sm md:text-base">
-        <Link href="https://docsend.com/view/ifeip6bksazscjf8" target="_blank">Deck</Link>
-        <Link href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank">Risk Analysis</Link>
-        <Link href="https://docsend.com/view/tdqrj9us6hp7dn2b" target="_blank">Litepaper</Link>
-        <Link href="https://t.me/+V9hBnsllQVY5YWU0" target="_blank">Join Telegram</Link>
-        <Link href="/brand-guidelines">Brand Guidelines</Link>
-        <Link href="/documents/uspd_audit_resonance.pdf" target="_blank" className="flex items-center gap-1">
-          <Shield size={16} />
-          Resonance Audit
-        </Link>
-        <Link href="/documents/uspd_audit_nethermind.pdf" target="_blank" className="flex items-center gap-1">
-          <Shield size={16} />
-          Nethermind Audit
-        </Link>
+    <div className="container">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        {/* Left Column - Company */}
+        <div className="text-center md:text-left">
+          <p className="font-semibold">© Permissionless Technologies {new Date().getFullYear()}</p>
+        </div>
+        
+        {/* Center Column - Main Links */}
+        <div className="flex flex-col items-center gap-3 font-semibold">
+          <Link href="https://docsend.com/view/ifeip6bksazscjf8" target="_blank">Deck</Link>
+          <Link href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank">Risk Analysis</Link>
+          <Link href="https://docsend.com/view/tdqrj9us6hp7dn2b" target="_blank">Litepaper</Link>
+          <Link href="https://t.me/+V9hBnsllQVY5YWU0" target="_blank">Join Telegram</Link>
+        </div>
+        
+        {/* Right Column - Audits & Brand */}
+        <div className="flex flex-col items-center md:items-end gap-3 font-semibold">
+          <Link href="/documents/uspd_audit_resonance.pdf" target="_blank" className="flex items-center gap-1">
+            <Shield size={16} />
+            Resonance Audit
+          </Link>
+          <Link href="/documents/uspd_audit_nethermind.pdf" target="_blank" className="flex items-center gap-1">
+            <Shield size={16} />
+            Nethermind Audit
+          </Link>
+          <Link href="/brand-guidelines">Brand Guidelines</Link>
+        </div>
       </div>
     </div>
   );
