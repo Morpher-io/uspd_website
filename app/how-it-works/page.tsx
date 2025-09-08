@@ -1351,6 +1351,98 @@ const scenes: SceneConfig[] = [
         solvent.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '66.67%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+        opacity: 0.5,
+      },
+      {
+        type: 'liquidator',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.95,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 0,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Liquidator Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'To Spend',
+            unit: 'ETH'
+          },
+          {
+            value: 2500,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'For Liquidation',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      },
+      {
+        position: { x: '37.5%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '113% Collateralized',
+        value: 'ETH Price: $2,700',
+        status: 'danger',
+      }
+    ],
   },
   {
     id: 18,
@@ -1361,6 +1453,105 @@ const scenes: SceneConfig[] = [
         bonus. In total, they get 0.97 ETH for their service.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '66.67%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+        opacity: 0.5,
+      },
+      {
+        type: 'liquidator',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.95,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 0.08,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Liquidator Wallet',
+        data: [
+          {
+            value: 0.97,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Received',
+            unit: 'ETH'
+          },
+          {
+            value: 0,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'For Liquidation',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '64.17%', y: '56%' },
+        rotate: 0,
+        visible: true,
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      },
+      {
+        position: { x: '37.5%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '113% Collateralized',
+        value: 'ETH Price: $2,700',
+        status: 'danger',
+      }
+    ],
   },
   {
     id: 19,
@@ -1371,6 +1562,29 @@ const scenes: SceneConfig[] = [
         provides an extra layer of security against extreme market events.
       </p>
     ),
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Insurance Fund',
+        data: {
+          value: 0.08,
+          maxValue: 1,
+          color: 'bg-indigo-500',
+          label: 'System Reserve',
+          unit: 'ETH'
+        }
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '25.83%', y: '56%' },
+        rotate: 180,
+        visible: true,
+      }
+    ],
   },
   {
     id: 20,
@@ -1381,6 +1595,22 @@ const scenes: SceneConfig[] = [
         participants were incentivized to act. The peg is secure.
       </p>
     ),
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Insurance Fund',
+        data: {
+          value: 0.08,
+          maxValue: 1,
+          color: 'bg-indigo-500',
+          label: 'System Reserve',
+          unit: 'ETH'
+        }
+      }
+    ],
   },
   {
     id: 21,
@@ -1406,6 +1636,46 @@ const scenes: SceneConfig[] = [
         value in ETH from the system at the current market rate.
       </p>
     ),
+    actors: [
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'system-pool',
+        position: { x: '0%', y: '30%' },
+        size: { w: '66.67%', h: '60%' },
+        visible: true,
+        label: 'USPD System Pool',
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 2500,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
   },
   {
     id: 23,
@@ -1417,6 +1687,53 @@ const scenes: SceneConfig[] = [
       </p>
     ),
     link: { href: "/uspd", text: "Burn USPD" },
+    actors: [
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'system-pool',
+        position: { x: '0%', y: '30%' },
+        size: { w: '66.67%', h: '60%' },
+        visible: true,
+        label: 'USPD System Pool',
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 0,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '66.67%', y: '56%' },
+        rotate: -135,
+        visible: true,
+      }
+    ],
   },
   {
     id: 24,
@@ -1428,6 +1745,53 @@ const scenes: SceneConfig[] = [
         USPD peg held perfectly.
       </p>
     ),
+    actors: [
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'system-pool',
+        position: { x: '0%', y: '30%' },
+        size: { w: '66.67%', h: '60%' },
+        visible: true,
+        label: 'USPD System Pool',
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0.926,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 0,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '66.67%', y: '56%' },
+        rotate: 0,
+        visible: true,
+      }
+    ],
   },
   {
     id: 25,
@@ -1439,6 +1803,46 @@ const scenes: SceneConfig[] = [
         was liquidated.
       </p>
     ),
+    actors: [
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'system-pool',
+        position: { x: '0%', y: '30%' },
+        size: { w: '66.67%', h: '60%' },
+        visible: true,
+        label: 'USPD System Pool',
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0.926,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 0,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
   },
   {
     id: 26,
@@ -1465,6 +1869,43 @@ const scenes: SceneConfig[] = [
         against ETH price volatility.
       </p>
     ),
+    charts: [
+      {
+        type: 'yield-strategy',
+        position: { x: '0%', y: '0%' },
+        size: { w: '100%', h: '100%' },
+        visible: true,
+        label: 'Delta-Neutral Strategy',
+        customContent: (
+          <div className="w-full h-full flex items-center justify-center relative">
+            <YieldStrategyBox
+              icon={<TrendingUp size={32} />}
+              label="Long ETH"
+              x="25%"
+              y="40%"
+              visible={true}
+              color="border-green-500"
+            />
+            <YieldStrategyBox
+              icon={<TrendingDown size={32} />}
+              label="Short ETH"
+              x="75%"
+              y="40%"
+              visible={true}
+              color="border-red-500"
+            />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.3 } }}
+              className="absolute"
+              style={{ left: "50%", top: "42%" }}
+            >
+              <Scale size={48} />
+            </motion.div>
+          </div>
+        )
+      }
+    ],
   },
   {
     id: 28,
@@ -1476,6 +1917,45 @@ const scenes: SceneConfig[] = [
         around 11% annually.
       </p>
     ),
+    charts: [
+      {
+        type: 'yield-strategy',
+        position: { x: '0%', y: '0%' },
+        size: { w: '100%', h: '100%' },
+        visible: true,
+        label: 'Funding Fees',
+        customContent: (
+          <div className="relative w-full h-full justify-center">
+            <YieldStrategyBox
+              icon={<TrendingDown size={48} />}
+              label="Short ETH"
+              x="50%"
+              y="30%"
+              visible={true}
+              color="border-red-500"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: 0.5 } }}
+              className="absolute"
+              style={{ top: "62%", left: "52%" }}
+            >
+              <Coins size={48} className="text-yellow-400" />
+            </motion.div>
+            <Arrow x="52%" y="52%" rotate={90} visible={true} />
+            <InfoBox
+              x="50%"
+              y="75%"
+              w="auto"
+              visible={true}
+              title="~11% APY"
+              value="Funding Fees"
+              centered={true}
+            />
+          </div>
+        )
+      }
+    ],
   },
   {
     id: 29,
@@ -1487,6 +1967,40 @@ const scenes: SceneConfig[] = [
         effectively leveraging their capital.
       </p>
     ),
+    charts: [
+      {
+        type: 'leverage',
+        position: { x: '25%', y: '30%' },
+        size: { w: '50%', h: '60%' },
+        visible: true,
+        label: 'Leverage',
+        data: [
+          {
+            value: 33,
+            maxValue: 110,
+            color: 'bg-gray-500',
+            label: 'Margin',
+            unit: '%'
+          },
+          {
+            value: 100,
+            maxValue: 110,
+            color: 'bg-red-500',
+            label: 'Short Position',
+            unit: '%'
+          }
+        ]
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '25%', y: '98%' },
+        size: { w: '50%' },
+        visible: true,
+        title: '~3x Leverage',
+        value: 'Capital Efficiency',
+      }
+    ],
   },
   {
     id: 30,
@@ -1498,6 +2012,37 @@ const scenes: SceneConfig[] = [
         ~33% APY.
       </p>
     ),
+    charts: [
+      {
+        type: 'yield-strategy',
+        position: { x: '0%', y: '0%' },
+        size: { w: '100%', h: '100%' },
+        visible: true,
+        label: 'Strategy Comparison',
+        customContent: (
+          <div className="w-full flex justify-around">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-center font-mono"
+            >
+              <div className="text-lg font-bold">Risk-Averse</div>
+              <div className="text-2xl mt-2">2x * 11% =</div>
+              <div className="text-4xl font-bold text-primary">22% APY</div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-center font-mono"
+            >
+              <div className="text-lg font-bold">Risk-On</div>
+              <div className="text-2xl mt-2">3x * 11% =</div>
+              <div className="text-4xl font-bold text-primary">33% APY</div>
+            </motion.div>
+          </div>
+        )
+      }
+    ],
   },
   {
     id: 32,
@@ -1509,6 +2054,27 @@ const scenes: SceneConfig[] = [
       </p>
     ),
     link: { href: "/stabilizer", text: "Become a Stabilizer" },
+    charts: [
+      {
+        type: 'yield-strategy',
+        position: { x: '0%', y: '0%' },
+        size: { w: '100%', h: '100%' },
+        visible: true,
+        label: 'Final Yield',
+        customContent: (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center"
+          >
+            <div className="text-6xl font-bold text-primary">~20-35% APY</div>
+            <div className="text-xl text-muted-foreground">
+              Delta-Neutral
+            </div>
+          </motion.div>
+        )
+      }
+    ],
   },
   {
     id: 33,
