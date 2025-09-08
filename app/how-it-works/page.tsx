@@ -875,7 +875,7 @@ const scenes: SceneConfig[] = [
     ],
     infoBoxes: [
       {
-        position: { x: '50%', y: '95%' },
+        position: { x: '50%', y: '105%' },
         size: { w: '40%' },
         visible: true,
         title: 'Native Yield: +2% APY',
