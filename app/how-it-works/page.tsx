@@ -182,6 +182,15 @@ const scenes: SceneConfig[] = [
         to earn yield.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '45%', y: '40%' },
+        visible: true,
+        scale: 2,
+        labelVisible: false,
+      }
+    ],
   },
   {
     id: 2,
@@ -193,6 +202,37 @@ const scenes: SceneConfig[] = [
       </p>
     ),
     link: { href: "/stabilizer/mint", text: "Open the Minting Page" },
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 0,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+      }
+    ],
   },
   {
     id: 3,
@@ -204,6 +244,37 @@ const scenes: SceneConfig[] = [
       </p>
     ),
     link: { href: "/stabilizer", text: "Open the Collateralization Manager" },
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 10,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+      }
+    ],
   },
   {
     id: 4,
@@ -215,6 +286,47 @@ const scenes: SceneConfig[] = [
         150%.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 10,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      }
+    ],
   },
   {
     id: 5,
@@ -225,6 +337,53 @@ const scenes: SceneConfig[] = [
         pegged to the US dollar.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 10,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      }
+    ],
   },
   {
     id: 6,
@@ -236,6 +395,99 @@ const scenes: SceneConfig[] = [
       </p>
     ),
     link: { href: "/uspd", text: "Open the Minting Page" },
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 10,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: [
+          {
+            value: 1,
+            maxValue: 1.6,
+            color: 'bg-green-500',
+            label: 'User',
+            unit: 'ETH'
+          },
+          {
+            value: 0,
+            maxValue: 1.6,
+            color: 'bg-blue-700',
+            label: 'Stabilizer',
+            unit: 'ETH'
+          }
+        ]
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 0,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '64.17%', y: '56%' },
+        rotate: 180,
+        visible: true,
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      }
+    ],
   },
   {
     id: 7,
