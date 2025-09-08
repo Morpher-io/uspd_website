@@ -787,17 +787,51 @@ const scenes: SceneConfig[] = [
     title: "Price Goes Up",
     content: (
       <p>
-        The price of ETH increases to $4,800. The value of the collateral is now
-        $7,200, pushing the collateralization ratio up to a very safe 180%.
+        The price of ETH increases to $4,800. Alice's USPD automatically benefits 
+        from this through stETH rebasing - her purchasing power grows without any 
+        action required. The system remains healthy and overcollateralized.
       </p>
     ),
     actors: [
       {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
+        type: 'user',
+        position: { x: '50%', y: '20%' },
         visible: true,
         labelVisible: true,
-      },
+        scale: 1.5,
+      }
+    ],
+    charts: [
+      {
+        type: 'system-pool',
+        position: { x: '0%', y: '40%' },
+        size: { w: '100%', h: '50%' },
+        visible: true,
+        label: 'USPD System Pool - All Stabilizers',
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '50%', y: '95%' },
+        size: { w: '40%' },
+        visible: true,
+        title: 'System Health: Excellent',
+        value: 'ETH Price: $4,800 (+20%)',
+        status: 'safe',
+        centered: true,
+      }
+    ],
+  },
+  {
+    title: "Automatic Yield Generation",
+    content: (
+      <p>
+        As the underlying stETH collateral earns staking rewards and ETH appreciates, 
+        Alice's USPD automatically grows in value. She doesn't need to manage anything - 
+        the yield is built into her stablecoin balance.
+      </p>
+    ),
+    actors: [
       {
         type: 'user',
         position: { x: '83.33%', y: '10%' },
@@ -805,406 +839,6 @@ const scenes: SceneConfig[] = [
         labelVisible: true,
       }
     ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 9.5,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-        data: {
-          value: 1.5,
-          maxValue: 1.6,
-          color: 'bg-teal-500',
-          label: 'Total Collateral',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'User Wallet',
-        data: [
-          {
-            value: 0,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'ETH',
-            unit: 'ETH'
-          },
-          {
-            value: 4000,
-            maxValue: 4100,
-            color: 'bg-purple-500',
-            label: 'USPD',
-            unit: 'USPD'
-          }
-        ]
-      }
-    ],
-    infoBoxes: [
-      {
-        position: { x: '0%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '150% Ratio',
-        value: "Stabilizer's Preference",
-        status: 'safe',
-      },
-      {
-        position: { x: '37.5%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '180% Collateralized',
-        value: 'ETH Price: $4,800',
-        status: 'safe',
-      }
-    ],
-  },
-  {
-    title: "Stabilizer Takes Profit",
-    content: (
-      <p>
-        The Stabilizer can withdraw any collateral above the 125% minimum. They
-        take 0.45 ETH, rebalancing the position to a lean 126% and realizing a
-        profit from the ETH price increase.
-      </p>
-    ),
-    link: { href: "/stabilizer", text: "Manage Collateral" },
-    actors: [
-      {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      },
-      {
-        type: 'user',
-        position: { x: '83.33%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 9.95,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-        data: {
-          value: 1.05,
-          maxValue: 1.6,
-          color: 'bg-teal-500',
-          label: 'Total Collateral',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'User Wallet',
-        data: [
-          {
-            value: 0,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'ETH',
-            unit: 'ETH'
-          },
-          {
-            value: 4000,
-            maxValue: 4100,
-            color: 'bg-purple-500',
-            label: 'USPD',
-            unit: 'USPD'
-          }
-        ]
-      }
-    ],
-    arrows: [
-      {
-        position: { x: '25.83%', y: '56%' },
-        rotate: 180,
-        visible: true,
-      }
-    ],
-    infoBoxes: [
-      {
-        position: { x: '0%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '150% Ratio',
-        value: "Stabilizer's Preference",
-        status: 'safe',
-      },
-      {
-        position: { x: '37.5%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '126% Collateralized',
-        value: 'ETH Price: $4,800',
-        status: 'safe',
-      }
-    ],
-  },
-  {
-    title: <>Danger Zone: Price Drops</>,
-    isHero: true,
-    heroOptions: {
-      gridColor: "#ff0000",
-      textColor: "text-red-500/80 dark:text-red-500",
-    },
-    content: (
-      <p>
-        But what happens if the price of ETH falls? When a position&apos;s
-        collateralization ratio drops below the 125% minimum, it becomes
-        vulnerable to liquidation.
-      </p>
-    ),
-    link: {
-      href: "/docs/stabilizers/liquidation",
-      text: "Open Liquidation Docs",
-    },
-  },
-  {
-    title: "Entering Liquidation Risk",
-    content: (
-      <p>
-        The price of ETH drops to $3,600. The position&apos;s collateral is now worth
-        only $5,400, pushing the ratio down to a risky 135%. While still above 
-        the 125% minimum, this is getting close to liquidation territory.
-      </p>
-    ),
-    actors: [
-      {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      },
-      {
-        type: 'user',
-        position: { x: '83.33%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 9.95,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-        data: {
-          value: 1.05,
-          maxValue: 1.6,
-          color: 'bg-teal-500',
-          label: 'Total Collateral',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'User Wallet',
-        data: [
-          {
-            value: 0,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'Available',
-            unit: 'ETH'
-          },
-          {
-            value: 2500,
-            maxValue: 2550,
-            color: 'bg-purple-500',
-            label: 'Minted',
-            unit: 'USPD'
-          }
-        ]
-      }
-    ],
-    infoBoxes: [
-      {
-        position: { x: '0%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '150% Ratio',
-        value: "Stabilizer's Preference",
-        status: 'safe',
-      },
-      {
-        position: { x: '37.5%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '135% Collateralized',
-        value: 'ETH Price: $3,600',
-        status: 'danger',
-      }
-    ],
-  },
-  {
-    title: "The Liquidator Arrives",
-    content: (
-      <p>
-        If the price drops further to $3,200 (making the ratio 120%, below the 
-        125% minimum), a Liquidator can step in. They help secure the system 
-        and earn a reward by providing 4,000 USPD to close the position.
-      </p>
-    ),
-    actors: [
-      {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      },
-      {
-        type: 'user',
-        position: { x: '66.67%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-        opacity: 0.5,
-      },
-      {
-        type: 'liquidator',
-        position: { x: '83.33%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 9.95,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-        data: {
-          value: 1.05,
-          maxValue: 1.6,
-          color: 'bg-teal-500',
-          label: 'Total Collateral',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Liquidator Wallet',
-        data: [
-          {
-            value: 0.926,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'To Spend',
-            unit: 'ETH'
-          },
-          {
-            value: 0,
-            maxValue: 2550,
-            color: 'bg-purple-500',
-            label: 'For Liquidation',
-            unit: 'USPD'
-          }
-        ]
-      }
-    ],
-    infoBoxes: [
-      {
-        position: { x: '0%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '150% Ratio',
-        value: "Stabilizer's Preference",
-        status: 'safe',
-      },
-      {
-        position: { x: '37.5%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '120% Collateralized',
-        value: 'ETH Price: $3,200',
-        status: 'danger',
-      }
-    ],
-  },
-  {
-    title: "Acquiring USPD",
-    content: (
-      <p>
-        To do this, the Liquidator uses their own ETH to acquire 4,000 USPD from
-        the system&apos;s aggregate liquidity pool, which is backed by many other
-        healthy Stabilizer positions.
-      </p>
-    ),
     charts: [
       {
         type: 'system-pool',
@@ -1212,98 +846,26 @@ const scenes: SceneConfig[] = [
         size: { w: '66.67%', h: '60%' },
         visible: true,
         label: 'USPD System Pool',
-      }
-    ],
-    arrows: [
-      {
-        position: { x: '50%', y: '56%' },
-        rotate: 180,
-        visible: true,
-      },
-      {
-        position: { x: '50%', y: '64%' },
-        rotate: 0,
-        visible: true,
-      }
-    ],
-  },
-  {
-    title: "Initiating Liquidation",
-    content: (
-      <p>
-        The Liquidator calls the liquidation function, sending their 4,000 USPD
-        to the system. This cancels out Alice's original debt.
-      </p>
-    ),
-    actors: [
-      {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      },
-      {
-        type: 'user',
-        position: { x: '66.67%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-        opacity: 0.5,
-      },
-      {
-        type: 'liquidator',
-        position: { x: '83.33%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 9.95,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-        data: {
-          value: 1.05,
-          maxValue: 1.6,
-          color: 'bg-teal-500',
-          label: 'Total Collateral',
-          unit: 'ETH'
-        }
       },
       {
         type: 'multi-bar',
         position: { x: '75%', y: '30%' },
         size: { w: '25%', h: '60%' },
         visible: true,
-        label: 'Liquidator Wallet',
+        label: 'Alice Wallet',
         data: [
           {
             value: 0,
             maxValue: 1.1,
             color: 'bg-green-500',
-            label: 'To Spend',
+            label: 'ETH',
             unit: 'ETH'
           },
           {
-            value: 2500,
-            maxValue: 2550,
+            value: 4080,
+            maxValue: 4200,
             color: 'bg-purple-500',
-            label: 'For Liquidation',
+            label: 'USPD (Growing)',
             unit: 'USPD'
           }
         ]
@@ -1311,299 +873,174 @@ const scenes: SceneConfig[] = [
     ],
     arrows: [
       {
-        position: { x: '64.17%', y: '56%' },
-        rotate: 180,
-        visible: true,
-      }
-    ],
-    infoBoxes: [
-      {
-        position: { x: '0%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '150% Ratio',
-        value: "Stabilizer's Preference",
-        status: 'safe',
-      },
-      {
-        position: { x: '37.5%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '113% Collateralized',
-        value: 'ETH Price: $2,700',
-        status: 'danger',
-      }
-    ],
-  },
-  {
-    title: "Collateral is Seized",
-    content: (
-      <p>
-        The system seizes the 1.05 ETH from the risky Position Escrow. The
-        original Stabilizer loses their collateral, but the system remains
-        solvent.
-      </p>
-    ),
-    actors: [
-      {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      },
-      {
-        type: 'user',
-        position: { x: '66.67%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-        opacity: 0.5,
-      },
-      {
-        type: 'liquidator',
-        position: { x: '83.33%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 9.95,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-        data: {
-          value: 0,
-          maxValue: 1.6,
-          color: 'bg-teal-500',
-          label: 'Total Collateral',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Liquidator Wallet',
-        data: [
-          {
-            value: 0,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'To Spend',
-            unit: 'ETH'
-          },
-          {
-            value: 2500,
-            maxValue: 2550,
-            color: 'bg-purple-500',
-            label: 'For Liquidation',
-            unit: 'USPD'
-          }
-        ]
-      }
-    ],
-    infoBoxes: [
-      {
-        position: { x: '0%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '150% Ratio',
-        value: "Stabilizer's Preference",
-        status: 'safe',
-      },
-      {
-        position: { x: '37.5%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '113% Collateralized',
-        value: 'ETH Price: $2,700',
-        status: 'danger',
-      }
-    ],
-  },
-  {
-    title: "Liquidator is Rewarded",
-    content: (
-      <p>
-        The Liquidator receives ETH equal to the USPD they provided, plus a 5%
-        bonus. In total, they get about 1.31 ETH for their service.
-      </p>
-    ),
-    actors: [
-      {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      },
-      {
-        type: 'user',
-        position: { x: '66.67%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-        opacity: 0.5,
-      },
-      {
-        type: 'liquidator',
-        position: { x: '83.33%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 9.95,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-        data: {
-          value: 0.08,
-          maxValue: 1.6,
-          color: 'bg-teal-500',
-          label: 'Total Collateral',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Liquidator Wallet',
-        data: [
-          {
-            value: 0.97,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'Received',
-            unit: 'ETH'
-          },
-          {
-            value: 0,
-            maxValue: 2550,
-            color: 'bg-purple-500',
-            label: 'For Liquidation',
-            unit: 'USPD'
-          }
-        ]
-      }
-    ],
-    arrows: [
-      {
-        position: { x: '64.17%', y: '56%' },
+        position: { x: '66.67%', y: '45%' },
         rotate: 0,
         visible: true,
       }
     ],
     infoBoxes: [
       {
-        position: { x: '0%', y: '98%' },
-        size: { w: '25%' },
+        position: { x: '50%', y: '95%' },
+        size: { w: '40%' },
         visible: true,
-        title: '150% Ratio',
-        value: "Stabilizer's Preference",
+        title: 'Native Yield: +2% APY',
+        value: 'From stETH Staking Rewards',
         status: 'safe',
+        centered: true,
+      }
+    ],
+  },
+  {
+    title: <>What If ETH Price Drops?</>,
+    isHero: true,
+    heroOptions: {
+      gridColor: "#ff6600",
+      textColor: "text-orange-500/80 dark:text-orange-500",
+    },
+    content: (
+      <p>
+        Alice doesn't need to worry about price drops. The system's pooled 
+        collateral model and liquidation mechanisms ensure her USPD remains 
+        stable and redeemable, even during market volatility.
+      </p>
+    ),
+    link: {
+      href: "/docs/economics",
+      text: "Learn About System Stability",
+    },
+  },
+  {
+    title: "System Under Pressure",
+    content: (
+      <p>
+        When ETH drops to $3,200, some stabilizer positions become undercollateralized. 
+        But Alice's USPD remains safe - it's backed by the entire pool of stabilizers, 
+        not just one position. The system automatically rebalances.
+      </p>
+    ),
+    actors: [
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'system-pool',
+        position: { x: '0%', y: '30%' },
+        size: { w: '66.67%', h: '60%' },
+        visible: true,
+        label: 'USPD System Pool - Multiple Stabilizers',
       },
       {
-        position: { x: '37.5%', y: '98%' },
-        size: { w: '25%' },
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
         visible: true,
-        title: '113% Collateralized',
-        value: 'ETH Price: $2,700',
+        label: 'Alice Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'ETH',
+            unit: 'ETH'
+          },
+          {
+            value: 4000,
+            maxValue: 4100,
+            color: 'bg-purple-500',
+            label: 'USPD (Safe)',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '50%', y: '95%' },
+        size: { w: '40%' },
+        visible: true,
+        title: 'System Health: Stressed',
+        value: 'ETH Price: $3,200 (-20%)',
         status: 'danger',
+        centered: true,
       }
     ],
   },
   {
-    title: "The Insurance Fund",
+    title: "Liquidation Mechanism",
     content: (
       <p>
-        The remaining 0.08 ETH is sent to the system&apos;s Insurance Fund, which
-        provides an extra layer of security against extreme market events.
+        When stabilizer positions become undercollateralized, liquidators step in. 
+        They buy USPD (often at a discount) and use it to close bad positions, 
+        earning a profit while removing unhealthy collateral from the system.
+      </p>
+    ),
+    actors: [
+      {
+        type: 'liquidator',
+        position: { x: '50%', y: '20%' },
+        visible: true,
+        labelVisible: true,
+        scale: 1.5,
+      }
+    ],
+    charts: [
+      {
+        type: 'system-pool',
+        position: { x: '0%', y: '40%' },
+        size: { w: '100%', h: '50%' },
+        visible: true,
+        label: 'System Rebalancing in Progress',
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '50%', y: '95%' },
+        size: { w: '40%' },
+        visible: true,
+        title: 'Liquidation Active',
+        value: 'Bad Debt Being Cleared',
+        status: 'danger',
+        centered: true,
+      }
+    ],
+  },
+  {
+    title: "System Self-Heals",
+    content: (
+      <p>
+        Through liquidations, the system automatically removes undercollateralized 
+        positions and reduces USPD supply. This brings the system back to health. 
+        New stabilizers can step in to provide fresh collateral.
       </p>
     ),
     charts: [
       {
-        type: 'single-bar',
+        type: 'system-pool',
         position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
+        size: { w: '100%', h: '60%' },
         visible: true,
-        label: 'Insurance Fund',
-        data: {
-          value: 0.08,
-          maxValue: 1,
-          color: 'bg-indigo-500',
-          label: 'System Reserve',
-          unit: 'ETH'
-        }
+        label: 'USPD System Pool - Healthy & Rebalanced',
       }
     ],
-    arrows: [
+    infoBoxes: [
       {
-        position: { x: '25.83%', y: '56%' },
-        rotate: 180,
+        position: { x: '50%', y: '95%' },
+        size: { w: '40%' },
         visible: true,
+        title: 'System Health: Restored',
+        value: 'Ready for New Users',
+        status: 'safe',
+        centered: true,
       }
     ],
   },
   {
-    title: "System Secured",
-    content: (
-      <p>
-        The risky position is closed, the system&apos;s health is restored, and all
-        participants were incentivized to act. The peg is secure.
-      </p>
-    ),
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Insurance Fund',
-        data: {
-          value: 0.08,
-          maxValue: 1,
-          color: 'bg-indigo-500',
-          label: 'System Reserve',
-          unit: 'ETH'
-        }
-      }
-    ],
-  },
-  {
-    title: "What About The User?",
+    title: "Alice's USPD Remains Safe",
     isHero: true,
     heroOptions: {
       gridColor: "#00ff00",
@@ -1611,19 +1048,22 @@ const scenes: SceneConfig[] = [
     },
     content: (
       <p>
-        Alice's original position was liquidated, but her 4,000 USPD are
-        still safe, now backed by the system&apos;s aggregate liquidity pool.
+        Throughout all the market volatility and system rebalancing, Alice's 
+        4,000 USPD remained stable and redeemable. She never had to monitor 
+        positions or manage collateral - the system handled everything.
       </p>
     ),
   },
   {
-    title: "User Redeems USPD",
+    title: "Redeeming USPD Anytime",
     content: (
       <p>
-        At any time, Alice can burn her USPD to redeem the equivalent
-        value in ETH from the system at the current market rate.
+        Alice can redeem her USPD for ETH at any time when the system is healthy. 
+        The pooled collateral model ensures there's always sufficient backing, 
+        even if individual stabilizer positions come and go.
       </p>
     ),
+    link: { href: "/uspd", text: "Try USPD" },
     actors: [
       {
         type: 'user',
@@ -1638,194 +1078,41 @@ const scenes: SceneConfig[] = [
         position: { x: '0%', y: '30%' },
         size: { w: '66.67%', h: '60%' },
         visible: true,
-        label: 'USPD System Pool',
+        label: 'USPD System Pool - Always Available',
       },
       {
         type: 'multi-bar',
         position: { x: '75%', y: '30%' },
         size: { w: '25%', h: '60%' },
         visible: true,
-        label: 'User Wallet',
+        label: 'Alice Wallet',
         data: [
           {
             value: 0,
             maxValue: 1.1,
             color: 'bg-green-500',
-            label: 'Available',
+            label: 'ETH',
             unit: 'ETH'
           },
           {
-            value: 2500,
-            maxValue: 2550,
+            value: 4000,
+            maxValue: 4100,
             color: 'bg-purple-500',
-            label: 'Minted',
+            label: 'USPD',
             unit: 'USPD'
           }
         ]
       }
     ],
-  },
-  {
-    title: "Burning USPD",
-    content: (
-      <p>
-        Alice burns her 4,000 USPD. The system removes this liability from
-        circulation, keeping the currency fully backed.
-      </p>
-    ),
-    link: { href: "/uspd", text: "Burn USPD" },
-    actors: [
+    infoBoxes: [
       {
-        type: 'user',
-        position: { x: '83.33%', y: '10%' },
+        position: { x: '50%', y: '95%' },
+        size: { w: '40%' },
         visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'system-pool',
-        position: { x: '0%', y: '30%' },
-        size: { w: '66.67%', h: '60%' },
-        visible: true,
-        label: 'USPD System Pool',
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'User Wallet',
-        data: [
-          {
-            value: 0,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'Available',
-            unit: 'ETH'
-          },
-          {
-            value: 0,
-            maxValue: 2550,
-            color: 'bg-purple-500',
-            label: 'Minted',
-            unit: 'USPD'
-          }
-        ]
-      }
-    ],
-    arrows: [
-      {
-        position: { x: '66.67%', y: '56%' },
-        rotate: -135,
-        visible: true,
-      }
-    ],
-  },
-  {
-    title: "Receiving ETH",
-    content: (
-      <p>
-        Alice receives 1.25 ETH. At the current price of $3,200/ETH, this is
-        worth exactly $4,000. Her funds were fully protected, and the
-        USPD peg held perfectly.
-      </p>
-    ),
-    actors: [
-      {
-        type: 'user',
-        position: { x: '83.33%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'system-pool',
-        position: { x: '0%', y: '30%' },
-        size: { w: '66.67%', h: '60%' },
-        visible: true,
-        label: 'USPD System Pool',
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'User Wallet',
-        data: [
-          {
-            value: 0.926,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'Available',
-            unit: 'ETH'
-          },
-          {
-            value: 0,
-            maxValue: 2550,
-            color: 'bg-purple-500',
-            label: 'Minted',
-            unit: 'USPD'
-          }
-        ]
-      }
-    ],
-    arrows: [
-      {
-        position: { x: '66.67%', y: '56%' },
-        rotate: 0,
-        visible: true,
-      }
-    ],
-  },
-  {
-    title: "Full Circle",
-    content: (
-      <p>
-        Alice has successfully exited her position. The system ensured
-        her funds were safe, even when her original position was liquidated.
-        She never had to manage anything herself.
-      </p>
-    ),
-    actors: [
-      {
-        type: 'user',
-        position: { x: '83.33%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'system-pool',
-        position: { x: '0%', y: '30%' },
-        size: { w: '66.67%', h: '60%' },
-        visible: true,
-        label: 'USPD System Pool',
-      },
-      {
-        type: 'multi-bar',
-        position: { x: '75%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'User Wallet',
-        data: [
-          {
-            value: 0.926,
-            maxValue: 1.1,
-            color: 'bg-green-500',
-            label: 'Available',
-            unit: 'ETH'
-          },
-          {
-            value: 0,
-            maxValue: 2550,
-            color: 'bg-purple-500',
-            label: 'Minted',
-            unit: 'USPD'
-          }
-        ]
+        title: 'Always Redeemable',
+        value: '1 USPD = $1 of ETH',
+        status: 'safe',
+        centered: true,
       }
     ],
   },
@@ -1833,15 +1120,17 @@ const scenes: SceneConfig[] = [
     title: "How Stabilizers Earn Yield",
     isHero: true,
     heroOptions: {
-      gridColor: "#888888",
-      textColor: "text-foreground",
+      gridColor: "#6366f1",
+      textColor: "text-indigo-500/80 dark:text-indigo-400",
     },
     content: (
       <p>
-        Stabilizing USPD is not just a public good; it&apos;s a powerful,
-        delta-neutral yield-generating strategy based on funding fees.
+        For those interested in becoming stabilizers: providing collateral to 
+        back USPD isn't just a public service - it's a sophisticated yield 
+        strategy that can generate 20-35% APY through delta-neutral positions.
       </p>
     ),
+    link: { href: "/stabilizer", text: "Become a Stabilizer" },
   },
   {
     title: "The Delta-Neutral Strategy",
