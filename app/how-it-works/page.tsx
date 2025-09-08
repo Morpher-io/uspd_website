@@ -498,6 +498,99 @@ const scenes: SceneConfig[] = [
         ETH into the Position Escrow, matching the user&apos;s deposit.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.5,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: [
+          {
+            value: 1,
+            maxValue: 1.6,
+            color: 'bg-green-500',
+            label: 'User',
+            unit: 'ETH'
+          },
+          {
+            value: 0.5,
+            maxValue: 1.6,
+            color: 'bg-blue-700',
+            label: 'Stabilizer',
+            unit: 'ETH'
+          }
+        ]
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 0,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '25.83%', y: '56%' },
+        rotate: 0,
+        visible: true,
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      }
+    ],
   },
   {
     id: 8,
@@ -509,6 +602,90 @@ const scenes: SceneConfig[] = [
         ETH.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.5,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 1.5,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 2500,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '64.17%', y: '45%' },
+        rotate: 0,
+        visible: true,
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      }
+    ],
   },
   {
     id: 9,
@@ -519,6 +696,91 @@ const scenes: SceneConfig[] = [
         price at $2,500. This creates a safety buffer against price drops.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.5,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 1.5,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 2500,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      },
+      {
+        position: { x: '37.5%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Collateralized',
+        value: 'ETH Price: $2,500',
+        status: 'safe',
+      }
+    ],
   },
   {
     id: 10,
@@ -529,6 +791,91 @@ const scenes: SceneConfig[] = [
         $4,500, pushing the collateralization ratio up to a very safe 180%.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.5,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 1.5,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 2500,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      },
+      {
+        position: { x: '37.5%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '180% Collateralized',
+        value: 'ETH Price: $3,000',
+        status: 'safe',
+      }
+    ],
   },
   {
     id: 11,
@@ -541,6 +888,98 @@ const scenes: SceneConfig[] = [
       </p>
     ),
     link: { href: "/stabilizer", text: "Manage Collateral" },
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.95,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 1.05,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 2500,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '25.83%', y: '56%' },
+        rotate: 180,
+        visible: true,
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      },
+      {
+        position: { x: '37.5%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '126% Collateralized',
+        value: 'ETH Price: $3,000',
+        status: 'safe',
+      }
+    ],
   },
   {
     id: 12,
@@ -572,6 +1011,91 @@ const scenes: SceneConfig[] = [
         at risk of liquidation.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.95,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 1.05,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'User Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'Available',
+            unit: 'ETH'
+          },
+          {
+            value: 2500,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'Minted',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      },
+      {
+        position: { x: '37.5%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '113% Collateralized',
+        value: 'ETH Price: $2,700',
+        status: 'danger',
+      }
+    ],
   },
   {
     id: 14,
@@ -583,6 +1107,98 @@ const scenes: SceneConfig[] = [
         the position.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '66.67%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+        opacity: 0.5,
+      },
+      {
+        type: 'liquidator',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.95,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 1.05,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Liquidator Wallet',
+        data: [
+          {
+            value: 0.926,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'To Spend',
+            unit: 'ETH'
+          },
+          {
+            value: 0,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'For Liquidation',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      },
+      {
+        position: { x: '37.5%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '113% Collateralized',
+        value: 'ETH Price: $2,700',
+        status: 'danger',
+      }
+    ],
   },
   {
     id: 15,
@@ -594,6 +1210,27 @@ const scenes: SceneConfig[] = [
         healthy Stabilizer positions.
       </p>
     ),
+    charts: [
+      {
+        type: 'system-pool',
+        position: { x: '0%', y: '30%' },
+        size: { w: '66.67%', h: '60%' },
+        visible: true,
+        label: 'USPD System Pool',
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '50%', y: '56%' },
+        rotate: 180,
+        visible: true,
+      },
+      {
+        position: { x: '50%', y: '64%' },
+        rotate: 0,
+        visible: true,
+      }
+    ],
   },
   {
     id: 16,
@@ -604,6 +1241,105 @@ const scenes: SceneConfig[] = [
         to the system. This cancels out the original user&apos;s debt.
       </p>
     ),
+    actors: [
+      {
+        type: 'stabilizer',
+        position: { x: '7%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      },
+      {
+        type: 'user',
+        position: { x: '66.67%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+        opacity: 0.5,
+      },
+      {
+        type: 'liquidator',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+    charts: [
+      {
+        type: 'single-bar',
+        position: { x: '0%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Stabilizer Escrow',
+        data: {
+          value: 9.95,
+          maxValue: 11,
+          color: 'bg-gray-500',
+          label: 'Unallocated',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'single-bar',
+        position: { x: '37.5%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Position Escrow',
+        data: {
+          value: 1.05,
+          maxValue: 1.6,
+          color: 'bg-teal-500',
+          label: 'Total Collateral',
+          unit: 'ETH'
+        }
+      },
+      {
+        type: 'multi-bar',
+        position: { x: '75%', y: '30%' },
+        size: { w: '25%', h: '60%' },
+        visible: true,
+        label: 'Liquidator Wallet',
+        data: [
+          {
+            value: 0,
+            maxValue: 1.1,
+            color: 'bg-green-500',
+            label: 'To Spend',
+            unit: 'ETH'
+          },
+          {
+            value: 2500,
+            maxValue: 2550,
+            color: 'bg-purple-500',
+            label: 'For Liquidation',
+            unit: 'USPD'
+          }
+        ]
+      }
+    ],
+    arrows: [
+      {
+        position: { x: '64.17%', y: '56%' },
+        rotate: 180,
+        visible: true,
+      }
+    ],
+    infoBoxes: [
+      {
+        position: { x: '0%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '150% Ratio',
+        value: "Stabilizer's Preference",
+        status: 'safe',
+      },
+      {
+        position: { x: '37.5%', y: '98%' },
+        size: { w: '25%' },
+        visible: true,
+        title: '113% Collateralized',
+        value: 'ETH Price: $2,700',
+        status: 'danger',
+      }
+    ],
   },
   {
     id: 17,
