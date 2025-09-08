@@ -306,8 +306,8 @@ const scenes: SceneConfig[] = [
     title: "Limited Stablecoin Options",
     content: (
       <p>
-        Alice's options are limited: centralized stablecoins require trust in banks, 
-        while other decentralized options either don't generate yield or require 
+        Alice&apos;s options are limited: centralized stablecoins require trust in banks, 
+        while other decentralized options either don&apos;t generate yield or require 
         complex position management. She needs something better.
       </p>
     ),
@@ -504,8 +504,8 @@ const scenes: SceneConfig[] = [
     title: "Automatic Collateral Matching",
     content: (
       <p>
-        The system automatically matches Alice's 1 ETH with 0.5 ETH from the 
-        stabilizer's pool, creating 150% overcollateralization. This happens 
+        The system automatically matches Alice&apos;s 1 ETH with 0.5 ETH from the 
+        stabilizer&apos;s pool, creating 150% overcollateralization. This happens 
         instantly and automatically.
       </p>
     ),
@@ -779,7 +779,7 @@ const scenes: SceneConfig[] = [
         size: { w: '25%' },
         visible: true,
         title: '150% Ratio',
-        value: "Stabilizer's Preference",
+        value: "Stabilizer&apos;s Preference",
         status: 'safe',
       },
       {
@@ -831,7 +831,7 @@ const scenes: SceneConfig[] = [
     content: (
       <p>
         As the underlying stETH collateral earns staking rewards and ETH appreciates, 
-        Alice's USPD automatically grows in value. She doesn't need to manage anything - 
+        Alice&apos;s USPD automatically grows in value. She doesn&apos;t need to manage anything - 
         the yield is built into her stablecoin balance.
       </p>
     ),
@@ -903,7 +903,7 @@ const scenes: SceneConfig[] = [
     },
     content: (
       <p>
-        Alice doesn't need to worry about price drops. The system's pooled 
+        Alice doesn&apos;t need to worry about price drops. The system&apos;s pooled 
         collateral model and liquidation mechanisms ensure her USPD remains 
         stable and redeemable, even during market volatility.
       </p>
@@ -918,7 +918,7 @@ const scenes: SceneConfig[] = [
     content: (
       <p>
         When ETH drops to $3,200, some stabilizer positions become undercollateralized. 
-        But Alice's USPD remains safe - it's backed by the entire pool of stabilizers, 
+        But Alice&apos;s USPD remains safe - it&apos;s backed by the entire pool of stabilizers, 
         not just one position. The system automatically rebalances.
       </p>
     ),
@@ -1052,7 +1052,7 @@ const scenes: SceneConfig[] = [
     },
     content: (
       <p>
-        Throughout all the market volatility and system rebalancing, Alice's 
+        Throughout all the market volatility and system rebalancing, Alice&apos;s 
         4,000 USPD remained stable and redeemable. She never had to monitor 
         positions or manage collateral - the system handled everything.
       </p>
@@ -1063,7 +1063,7 @@ const scenes: SceneConfig[] = [
     content: (
       <p>
         Alice can redeem her USPD for ETH at any time when the system is healthy. 
-        The pooled collateral model ensures there's always sufficient backing, 
+        The pooled collateral model ensures there&apos;s always sufficient backing, 
         even if individual stabilizer positions come and go.
       </p>
     ),
