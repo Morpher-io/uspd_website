@@ -29,20 +29,17 @@ import { cn } from "@/lib/utils";
 // --- Progress Indicator Component ---
 const ScrollProgressIndicator = ({
   scenes,
-  activeSceneId,
+  activeSceneIndex,
   onDotClick,
 }: {
-  scenes: Array<{ id: number; title: string | React.ReactNode }>;
-  activeSceneId: number;
-  onDotClick: (id: number) => void;
+  scenes: Array<{ title: string | React.ReactNode }>;
+  activeSceneIndex: number;
+  onDotClick: (index: number) => void;
 }) => {
   const { theme } = useTheme();
   const darkMode = theme == 'dark';
-  const activeSceneIndex = scenes.findIndex(
-    (scene) => scene.id === activeSceneId
-  );
 
-  if (activeSceneIndex === -1) {
+  if (activeSceneIndex < 0 || activeSceneIndex >= scenes.length) {
     return null;
   }
 
@@ -83,10 +80,10 @@ const ScrollProgressIndicator = ({
 
       {scenes.map((scene, index) => (
         <motion.div
-          key={scene.id}
+          key={index}
           className="h-5 w-5 flex items-center justify-center z-10 cursor-pointer"
           title={typeof scene.title === "string" ? scene.title : ""}
-          onClick={() => onDotClick(scene.id)}
+          onClick={() => onDotClick(index)}
           whileHover={{ scale: 1.5 }} // Wow-factor: hover effect
           transition={{ type: "spring", stiffness: 400, damping: 15 }}
         >
@@ -159,7 +156,6 @@ interface InfoBoxConfig {
 }
 
 interface SceneConfig {
-  id: number;
   title: string | React.ReactNode;
   content: React.ReactNode;
   link?: { href: string; text: string };
@@ -174,7 +170,6 @@ interface SceneConfig {
 // --- Scene Configuration ---
 const scenes: SceneConfig[] = [
   {
-    id: 1,
     title: "The Stabilizer",
     content: (
       <p>
@@ -193,7 +188,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 2,
     title: "Minting a Stabilizer NFT",
     content: (
       <p>
@@ -235,7 +229,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 3,
     title: "Adding Collateral",
     content: (
       <p>
@@ -277,7 +270,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 4,
     title: "Setting the Ratio",
     content: (
       <p>
@@ -329,7 +321,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 5,
     title: "The User Arrives",
     content: (
       <p>
@@ -386,7 +377,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 6,
     title: "User Mints USPD",
     content: (
       <p>
@@ -490,7 +480,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 7,
     title: "Stabilizer Matches Collateral",
     content: (
       <p>
@@ -593,7 +582,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 8,
     title: "The Position Escrow",
     content: (
       <p>
@@ -688,7 +676,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 9,
     title: "Fully Collateralized",
     content: (
       <p>
@@ -783,7 +770,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 10,
     title: "Price Goes Up",
     content: (
       <p>
@@ -878,7 +864,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 11,
     title: "Stabilizer Takes Profit",
     content: (
       <p>
@@ -982,7 +967,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 12,
     title: <>Danger Zone: Price Drops</>,
     isHero: true,
     heroOptions: {
@@ -1002,7 +986,6 @@ const scenes: SceneConfig[] = [
     },
   },
   {
-    id: 13,
     title: "Entering Liquidation Risk",
     content: (
       <p>
@@ -1098,7 +1081,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 14,
     title: "The Liquidator Arrives",
     content: (
       <p>
@@ -1201,7 +1183,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 15,
     title: "Acquiring USPD",
     content: (
       <p>
@@ -1233,7 +1214,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 16,
     title: "Initiating Liquidation",
     content: (
       <p>
@@ -1342,7 +1322,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 17,
     title: "Collateral is Seized",
     content: (
       <p>
@@ -1445,7 +1424,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 18,
     title: "Liquidator is Rewarded",
     content: (
       <p>
@@ -1554,7 +1532,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 19,
     title: "The Insurance Fund",
     content: (
       <p>
@@ -1587,7 +1564,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 20,
     title: "System Secured",
     content: (
       <p>
@@ -1613,7 +1589,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 21,
     title: "What About The User?",
     isHero: true,
     heroOptions: {
@@ -1628,7 +1603,6 @@ const scenes: SceneConfig[] = [
     ),
   },
   {
-    id: 22,
     title: "User Redeems USPD",
     content: (
       <p>
@@ -1678,7 +1652,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 23,
     title: "Burning USPD",
     content: (
       <p>
@@ -1736,7 +1709,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 24,
     title: "Receiving ETH",
     content: (
       <p>
@@ -1794,7 +1766,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 25,
     title: "Full Circle",
     content: (
       <p>
@@ -1845,7 +1816,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 26,
     title: "How Stabilizers Earn Yield",
     isHero: true,
     heroOptions: {
@@ -1860,7 +1830,6 @@ const scenes: SceneConfig[] = [
     ),
   },
   {
-    id: 27,
     title: "The Delta-Neutral Strategy",
     content: (
       <p>
@@ -1908,7 +1877,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 28,
     title: "Earning Funding Fees",
     content: (
       <p>
@@ -1958,7 +1926,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 29,
     title: "The Power of Leverage",
     content: (
       <p>
@@ -2003,7 +1970,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 30,
     title: "Choose Your Strategy",
     content: (
       <p>
@@ -2045,7 +2011,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 32,
     title: "Ready to Earn?",
     content: (
       <p>
@@ -2077,7 +2042,6 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    id: 33,
     title: "Questions?",
     isHero: true,
 
@@ -2298,39 +2262,6 @@ const InfoBox = ({
   </AnimatePresence>
 );
 
-const YieldStrategyBox = ({
-  icon,
-  label,
-  x,
-  y,
-  visible,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  x: string;
-  y: string;
-  visible: boolean;
-  color: string;
-}) => (
-  <AnimatePresence>
-    {visible && (
-      <motion.div
-        className="absolute flex flex-col items-center gap-2"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.5 }}
-        style={{ left: x, top: y, transform: "translateX(-50%)" }}
-      >
-        <div className={`p-3 rounded-full bg-secondary/80 border-2 ${color}`}>
-          {icon}
-        </div>
-        <span className="text-sm font-semibold">{label}</span>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
 
 // --- Declarative Scene Rendering ---
 const renderActor = (actor: ActorConfig) => {
@@ -2451,8 +2382,8 @@ const renderInfoBox = (infoBox: InfoBoxConfig) => (
   />
 );
 
-const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
-  const activeScene = scenes.find((s) => s.id === activeSceneId);
+const SceneGraphic = ({ activeSceneIndex }: { activeSceneIndex: number }) => {
+  const activeScene = scenes[activeSceneIndex];
   const isHero = activeScene?.isHero;
 
   if (!activeScene) {
@@ -2488,20 +2419,20 @@ const TextBlock = React.forwardRef<
   HTMLDivElement,
   {
     title: string | React.ReactNode;
-    sceneId: number;
-    activeSceneId: number;
-    setActiveSceneId: (id: number) => void;
+    sceneIndex: number;
+    activeSceneIndex: number;
+    setActiveSceneIndex: (index: number) => void;
     children: React.ReactNode;
     link?: { href: string; text: string };
   }
->(({ title, sceneId, activeSceneId, setActiveSceneId, children, link }, ref) => {
-  const isActive = sceneId === activeSceneId;
+>(({ title, sceneIndex, activeSceneIndex, setActiveSceneIndex, children, link }, ref) => {
+  const isActive = sceneIndex === activeSceneIndex;
 
   return (
     <motion.div
       ref={ref}
       className="h-screen flex items-center"
-      onViewportEnter={() => setActiveSceneId(sceneId)}
+      onViewportEnter={() => setActiveSceneIndex(sceneIndex)}
       viewport={{ amount: 0.5 }}
     >
       <BlurFade inView={isActive} delay={0.25}>
@@ -2515,8 +2446,8 @@ const TextBlock = React.forwardRef<
 TextBlock.displayName = "TextBlock";
 
 type HeroBlockProps = {
-  sceneId: number;
-  setActiveSceneId: (id: number) => void;
+  sceneIndex: number;
+  setActiveSceneIndex: (index: number) => void;
   children: React.ReactNode;
   content: React.ReactNode;
   link?: { href: string; text: string };
@@ -2524,8 +2455,8 @@ type HeroBlockProps = {
 };
 
 const HeroBlock = ({
-  sceneId,
-  setActiveSceneId,
+  sceneIndex,
+  setActiveSceneIndex,
   children,
   content,
   link,
@@ -2533,7 +2464,7 @@ const HeroBlock = ({
 }: HeroBlockProps) => (
   <motion.section
     className="h-screen w-full flex flex-col items-center justify-center text-center relative"
-    onViewportEnter={() => setActiveSceneId(sceneId)}
+    onViewportEnter={() => setActiveSceneIndex(sceneIndex)}
     viewport={{ amount: 0.5 }}
   >
     <FlickeringGrid
@@ -2569,7 +2500,7 @@ const HeroBlock = ({
   </motion.section>
 );
 
-const MobileScene = ({ scene }: { scene: (typeof scenes)[0] }) => (
+const MobileScene = ({ scene, sceneIndex }: { scene: (typeof scenes)[0]; sceneIndex: number }) => (
   <div className="flex flex-col items-center py-16 px-4">
     {/* Text comes first on mobile */}
     <div className="text-lg text-center text-muted-foreground space-y-4 max-w-md">
@@ -2585,7 +2516,7 @@ const MobileScene = ({ scene }: { scene: (typeof scenes)[0] }) => (
     </div>
     {/* Graphic comes second */}
     <div className="mt-12 h-[50vh] flex items-center justify-center w-full">
-      <SceneGraphic activeSceneId={scene.id} />
+      <SceneGraphic activeSceneIndex={sceneIndex} />
     </div>
   </div>
 );
@@ -2593,7 +2524,7 @@ const MobileScene = ({ scene }: { scene: (typeof scenes)[0] }) => (
 // --- Main Page Component ---
 
 export default function HowItWorksPage() {
-  const [activeSceneId, setActiveSceneId] = useState(0);
+  const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const scenesContainerRef = useRef<HTMLDivElement>(null);
   const sceneRefs = useRef<Map<number, HTMLDivElement | null>>(new Map());
 
@@ -2601,8 +2532,8 @@ export default function HowItWorksPage() {
     scenesContainerRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleDotClick = (sceneId: number) => {
-    const element = sceneRefs.current.get(sceneId);
+  const handleDotClick = (sceneIndex: number) => {
+    const element = sceneRefs.current.get(sceneIndex);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
     }
@@ -2682,11 +2613,12 @@ export default function HowItWorksPage() {
               gridColor: "#888888",
               textColor: "text-foreground",
             };
+            const globalIndex = scenes.indexOf(scene);
             return (
               <HeroBlock
-                key={scene.id}
-                sceneId={scene.id}
-                setActiveSceneId={setActiveSceneId}
+                key={globalIndex}
+                sceneIndex={globalIndex}
+                setActiveSceneIndex={setActiveSceneIndex}
                 link={scene.link}
                 content={scene.content}
                 heroOptions={heroOptions}
@@ -2707,13 +2639,13 @@ export default function HowItWorksPage() {
               className="container mx-auto grid grid-cols-[1fr_auto_1fr] gap-16 relative"
             >
               <div className="sticky top-0 h-screen flex items-center justify-center">
-                <SceneGraphic activeSceneId={activeSceneId} />
+                <SceneGraphic activeSceneIndex={activeSceneIndex} />
               </div>
 
               <div className="sticky top-0 h-screen flex items-center justify-center">
                 <ScrollProgressIndicator
                   scenes={group}
-                  activeSceneId={activeSceneId}
+                  activeSceneIndex={activeSceneIndex}
                   onDotClick={handleDotClick}
                 />
               </div>
@@ -2722,25 +2654,28 @@ export default function HowItWorksPage() {
                 {index === 0 && (
                   <motion.div
                     className="absolute top-0 h-16"
-                    onViewportEnter={() => setActiveSceneId(0)}
+                    onViewportEnter={() => setActiveSceneIndex(0)}
                     viewport={{ amount: 1 }}
                   />
                 )}
-                {group.map((scene) => (
-                  <TextBlock
-                    ref={(el) => {
-                      sceneRefs.current.set(scene.id, el);
-                    }}
-                    key={scene.id}
-                    title={scene.title}
-                    sceneId={scene.id}
-                    activeSceneId={activeSceneId}
-                    setActiveSceneId={setActiveSceneId}
-                    link={scene.link}
-                  >
-                    {scene.content}
-                  </TextBlock>
-                ))}
+                {group.map((scene, sceneIndex) => {
+                  const globalIndex = scenes.indexOf(scene);
+                  return (
+                    <TextBlock
+                      ref={(el) => {
+                        sceneRefs.current.set(globalIndex, el);
+                      }}
+                      key={globalIndex}
+                      title={scene.title}
+                      sceneIndex={globalIndex}
+                      activeSceneIndex={activeSceneIndex}
+                      setActiveSceneIndex={setActiveSceneIndex}
+                      link={scene.link}
+                    >
+                      {scene.content}
+                    </TextBlock>
+                  );
+                })}
               </div>
             </div>
           );
@@ -2750,7 +2685,7 @@ export default function HowItWorksPage() {
 
       {/* Mobile Layout */}
       <div className="md:hidden">
-        {allScenes.map((scene) => {
+        {allScenes.map((scene, index) => {
           if (scene.isHero) {
             const heroOptions = scene.heroOptions || {
               gridColor: "#888888",
@@ -2758,9 +2693,9 @@ export default function HowItWorksPage() {
             };
             return (
               <HeroBlock
-                key={scene.id}
-                sceneId={scene.id}
-                setActiveSceneId={setActiveSceneId}
+                key={index}
+                sceneIndex={index}
+                setActiveSceneIndex={setActiveSceneIndex}
                 link={scene.link}
                 content={scene.content}
                 heroOptions={heroOptions}
@@ -2773,7 +2708,7 @@ export default function HowItWorksPage() {
               </HeroBlock>
             );
           }
-          return <MobileScene key={scene.id} scene={scene} />;
+          return <MobileScene key={index} scene={scene} sceneIndex={index} />;
         })}
         <div className="h-48" />
       </div>
