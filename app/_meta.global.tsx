@@ -13,6 +13,9 @@ export default {
   bridge: {
       title: "USPD Cross-Chain (Bridge)"
   },
+  "health": {
+    title: "System Health & Status",
+  },
   "how-it-works": {
     title: 'How USPD Works',
   },

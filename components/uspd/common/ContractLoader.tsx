@@ -15,7 +15,7 @@ interface ContractLoaderProps {
 export function ContractLoader({ contractKeys, children, backLink, chainId: propChainId }: ContractLoaderProps) {
   const hookChainId = useChainId()
   const effectiveChainId = propChainId ?? hookChainId
-  const { loadContracts, isLoading: isContextLoading } = useContractContext()
+  const { loadContracts } = useContractContext()
 
   const [loadedAddresses, setLoadedAddresses] = useState<Record<string, `0x${string}`> | null>(null)
   const [deploymentError, setDeploymentError] = useState<string | null>(null)
