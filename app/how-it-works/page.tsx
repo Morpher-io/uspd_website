@@ -19,6 +19,7 @@ import {
   ExternalLinkIcon,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { BlurFade } from "@/components/magicui/blur-fade";
 import { ChronoCard } from "@/components/uspd/how-it-works/ChronoCard";
@@ -208,7 +209,7 @@ const ScrollProgressIndicator = ({
 };
 
 // --- Types for Declarative Scene Configuration ---
-type ActorType = 'stabilizer' | 'user' | 'liquidator';
+type ActorType = 'stabilizer' | 'user' | 'liquidator' | 'logo';
 type ChartType = 'single-bar' | 'multi-bar' | 'yield-strategy' | 'leverage' | 'system-pool';
 
 interface Position {
@@ -326,6 +327,13 @@ const scenes: SceneConfig[] = [
         position: { x: '83.33%', y: '10%' },
         visible: true,
         labelVisible: true,
+      },
+      {
+        type: 'logo',
+        position: { x: '50%', y: '50%' },
+        visible: true,
+        scale: 1.5,
+        labelVisible: false,
       }
     ],
   },
@@ -2207,6 +2215,8 @@ const renderActor = (actor: ActorConfig) => {
         return <User size={48} />;
       case 'liquidator':
         return <Zap size={48} className="text-yellow-400" />;
+      case 'logo':
+        return <Image src="/images/logo_uspd.svg" alt="USPD Logo" width={96} height={96} />;
     }
   };
 
@@ -2218,6 +2228,8 @@ const renderActor = (actor: ActorConfig) => {
         return 'User';
       case 'liquidator':
         return 'Liquidator';
+      case 'logo':
+        return 'USPD';
     }
   };
 
