@@ -813,7 +813,7 @@ const scenes: SceneConfig[] = [
     infoBoxes: [
       {
         position: { x: '50%', y: '95%' },
-        size: { w: '40%' },
+        size: { w: '50%' },
         visible: true,
         title: 'System Health: Excellent',
         value: 'ETH Price: $4,800 (+20%)',
