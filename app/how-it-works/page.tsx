@@ -845,14 +845,14 @@ const scenes: SceneConfig[] = [
             value: 0,
             maxValue: 1.1,
             color: 'bg-green-500',
-            label: 'Available',
+            label: 'ETH',
             unit: 'ETH'
           },
           {
-            value: 2500,
-            maxValue: 2550,
+            value: 4000,
+            maxValue: 4100,
             color: 'bg-purple-500',
-            label: 'Minted',
+            label: 'USPD',
             unit: 'USPD'
           }
         ]
@@ -941,14 +941,14 @@ const scenes: SceneConfig[] = [
             value: 0,
             maxValue: 1.1,
             color: 'bg-green-500',
-            label: 'Available',
+            label: 'ETH',
             unit: 'ETH'
           },
           {
-            value: 2500,
-            maxValue: 2550,
+            value: 4000,
+            maxValue: 4100,
             color: 'bg-purple-500',
-            label: 'Minted',
+            label: 'USPD',
             unit: 'USPD'
           }
         ]
