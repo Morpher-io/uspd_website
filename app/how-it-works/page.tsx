@@ -61,6 +61,75 @@ const YieldStrategyBox = ({
   </AnimatePresence>
 );
 
+const Arrow = ({ x, y, rotate, visible }: {
+  x: string;
+  y: string;
+  rotate: number;
+  visible: boolean;
+}) => (
+  <AnimatePresence>
+    {visible && (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1, transition: { delay: 0.5 } }}
+        exit={{ opacity: 0 }}
+        className="absolute"
+        style={{ left: x, top: y, rotate }}
+      >
+        <ArrowRight size={48} className="text-muted-foreground" />
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+const InfoBox = ({
+  title,
+  value,
+  x,
+  y,
+  w,
+  visible,
+  status,
+  centered = false,
+}: {
+  title: string;
+  value: string;
+  x: string;
+  y: string;
+  w: string;
+  visible: boolean;
+  status?: "danger" | "safe";
+  centered?: boolean;
+}) => (
+  <AnimatePresence mode="wait">
+    {visible && (
+      <motion.div
+        key={title + value}
+        className="absolute text-center"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.3 }}
+        style={{
+          left: x,
+          top: y,
+          width: w,
+          transform: centered ? "translateX(-50%)" : undefined,
+        }}
+      >
+        <div className="text-sm text-muted-foreground">{value}</div>
+        <div
+          className={`font-bold text-base ${
+            status === "danger" ? "text-red-500" : ""
+          }`}
+        >
+          {title}
+        </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
 // --- Progress Indicator Component ---
 const ScrollProgressIndicator = ({
   scenes,
@@ -2224,78 +2293,6 @@ const ChartBar = ({ value, maxValue, color, label, unit }: ChartBarProps) => {
   );
 };
 
-type ArrowProps = {
-  x: string;
-  y: string;
-  rotate: number;
-  visible: boolean;
-};
-
-const Arrow = ({ x, y, rotate, visible }: ArrowProps) => (
-  <AnimatePresence>
-    {visible && (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1, transition: { delay: 0.5 } }}
-        exit={{ opacity: 0 }}
-        className="absolute"
-        style={{ left: x, top: y, rotate }}
-      >
-        <ArrowRight size={48} className="text-muted-foreground" />
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
-
-type InfoBoxProps = {
-  title: string;
-  value: string;
-  x: string;
-  y: string;
-  w: string;
-  visible: boolean;
-  status?: "danger" | "safe";
-  centered?: boolean;
-};
-
-const InfoBox = ({
-  title,
-  value,
-  x,
-  y,
-  w,
-  visible,
-  status,
-  centered = false,
-}: InfoBoxProps) => (
-  <AnimatePresence mode="wait">
-    {visible && (
-      <motion.div
-        key={title + value}
-        className="absolute text-center"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.3 }}
-        style={{
-          left: x,
-          top: y,
-          width: w,
-          transform: centered ? "translateX(-50%)" : undefined,
-        }}
-      >
-        <div className="text-sm text-muted-foreground">{value}</div>
-        <div
-          className={`font-bold text-base ${
-            status === "danger" ? "text-red-500" : ""
-          }`}
-        >
-          {title}
-        </div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
 
 
 // --- Declarative Scene Rendering ---
