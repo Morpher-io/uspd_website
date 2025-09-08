@@ -8,6 +8,7 @@ import { parseEther, formatUnits, Abi } from 'viem'
 import { TokenDisplay } from './TokenDisplay'
 import { ArrowDown } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 // Define a type for the price data from the API
 interface PriceData {
@@ -37,11 +38,14 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
 
     const debouncedEthAmount = useDebounce(ethAmount, 500)
 
-    const { address } = useAccount()
+    const { address, isConnected } = useAccount()
     const { writeContractAsync } = useWriteContract()
 
     // Get ETH balance
-    const { data: ethBalance } = useBalance({ address })
+    const { data: ethBalance } = useBalance({ 
+        address,
+        query: { enabled: isConnected }
+    })
 
     // Get USPD balance (for display)
     const { data: uspdBalance, refetch: refetchUspdBalance } = useReadContract({
@@ -94,7 +98,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
     }, [debouncedEthAmount, priceData])
 
     const handleMaxEth = () => {
-        if (ethBalance) {
+        if (ethBalance && isConnected) {
             const maxEth = parseFloat(ethBalance.formatted) - 0.01
             if (maxEth > 0) {
                 setEthAmount(maxEth.toFixed(6))
@@ -169,8 +173,8 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 symbol="ETH"
                 amount={ethAmount}
                 setAmount={setEthAmount}
-                balance={ethBalance ? ethBalance.formatted : '0'}
-                onMax={handleMaxEth}
+                balance={isConnected ? (ethBalance ? ethBalance.formatted : '0') : '--'}
+                onMax={isConnected ? handleMaxEth : undefined}
                 readOnly={isLocked}
             />
 
@@ -185,7 +189,7 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 symbol="USPD"
                 amount={uspdAmount}
                 setAmount={setUspdAmount} // Should not be settable here
-                balance={uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0'}
+                balance={isConnected ? (uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0') : '--'}
                 readOnly={true}
             />
 
@@ -202,20 +206,30 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 </div>
             )}
 
-            <Button
-                className="w-full"
-                onClick={handleMint}
-                disabled={
-                    isLocked ||
-                    isLoading ||
-                    isLoadingPrice ||
-                    !ethAmount ||
-                    parseFloat(ethAmount) <= 0 ||
-                    (ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
-                }
-            >
-                {isLoading ? 'Minting...' : 'Mint USPD'}
-            </Button>
+            {!isConnected ? (
+                <ConnectButton.Custom>
+                    {({ openConnectModal }) => (
+                        <Button className="w-full" onClick={openConnectModal}>
+                            Connect Wallet to Mint
+                        </Button>
+                    )}
+                </ConnectButton.Custom>
+            ) : (
+                <Button
+                    className="w-full"
+                    onClick={handleMint}
+                    disabled={
+                        isLocked ||
+                        isLoading ||
+                        isLoadingPrice ||
+                        !ethAmount ||
+                        parseFloat(ethAmount) <= 0 ||
+                        (ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
+                    }
+                >
+                    {isLoading ? 'Minting...' : 'Mint USPD'}
+                </Button>
+            )}
 
             {error && (
                 <Alert variant="destructive" className="mt-4">

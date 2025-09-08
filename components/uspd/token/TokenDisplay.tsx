@@ -21,7 +21,7 @@ export function TokenDisplay({
   onMax,
   readOnly = false
 }: TokenDisplayProps) {
-  const formattedBalance = parseFloat(balance).toFixed(4) // Changed to 4 decimal places
+  const formattedBalance = balance === '--' ? '--' : parseFloat(balance).toFixed(4) // Handle disconnected state
   
   return (
     <div className="rounded-lg border p-4 space-y-2">
@@ -43,7 +43,7 @@ export function TokenDisplay({
         />
         
         <div className="flex items-center gap-2">
-          {onMax && (
+          {onMax && balance !== '--' && (
             <Button 
               variant="outline" 
               size="sm" 

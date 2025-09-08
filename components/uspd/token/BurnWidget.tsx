@@ -9,6 +9,7 @@ import { IPriceOracle } from '@/types/contracts'
 import { TokenDisplay } from './TokenDisplay'
 import { ArrowDown } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 // Import necessary ABIs (assuming paths are correct)
 import poolSharesConversionRateAbi from '@/contracts/out/PoolSharesConversionRate.sol/PoolSharesConversionRate.json'
 
@@ -51,7 +52,7 @@ export function BurnWidget({
 
     const debouncedUspdAmount = useDebounce(uspdAmount, 500)
 
-    const { address } = useAccount()
+    const { address, isConnected } = useAccount()
     const { writeContractAsync } = useWriteContract()
 
     // Get USPD balance
@@ -94,7 +95,7 @@ export function BurnWidget({
     const { data: stEthBalance, refetch: refetchStEthBalance } = useBalance({
         address: address,
         token: stEthTokenAddress!,
-        query: { enabled: !!address && !!stEthTokenAddress }
+        query: { enabled: !!address && !!stEthTokenAddress && isConnected }
     });
 
     // Fetch Yield Factor from Rate Contract
@@ -176,7 +177,7 @@ export function BurnWidget({
     }, [debouncedUspdAmount, yieldFactor]);
 
     const handleMaxUspd = () => {
-        if (uspdBalance) {
+        if (uspdBalance && isConnected) {
             const maxUspd = parseFloat(formatUnits(uspdBalance as bigint, 18))
             setUspdAmount(maxUspd.toFixed(6))
         }
@@ -268,8 +269,8 @@ export function BurnWidget({
                 symbol="USPD"
                 amount={uspdAmount}
                 setAmount={setUspdAmount}
-                balance={uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0'}
-                onMax={handleMaxUspd}
+                balance={isConnected ? (uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0') : '--'}
+                onMax={isConnected ? handleMaxUspd : undefined}
                 readOnly={isLocked}
             />
              {sharesToBurn > 0 && (
@@ -289,7 +290,7 @@ export function BurnWidget({
                 symbol="stETH"
                 amount={stEthAmount}
                 setAmount={setStEthAmount} // Should not be settable here
-                balance={stEthBalance ? stEthBalance.formatted : '0'}
+                balance={isConnected ? (stEthBalance ? stEthBalance.formatted : '0') : '--'}
                 readOnly={true}
             />
 
@@ -306,20 +307,30 @@ export function BurnWidget({
                 </div>
             )}
 
-            <Button
-                className="w-full"
-                onClick={handleBurn}
-                disabled={
-                    isLocked ||
-                    isLoading ||
-                    isLoadingPrice ||
-                    !uspdAmount ||
-                    parseFloat(uspdAmount) <= 0 ||
-                    !!(uspdBalance && parseFloat(uspdAmount) > parseFloat(formatUnits(uspdBalance as bigint, 18)))
-                }
-            >
-                {isLoading ? 'Burning...' : 'Burn USPD'}
-            </Button>
+            {!isConnected ? (
+                <ConnectButton.Custom>
+                    {({ openConnectModal }) => (
+                        <Button className="w-full" onClick={openConnectModal}>
+                            Connect Wallet to Burn
+                        </Button>
+                    )}
+                </ConnectButton.Custom>
+            ) : (
+                <Button
+                    className="w-full"
+                    onClick={handleBurn}
+                    disabled={
+                        isLocked ||
+                        isLoading ||
+                        isLoadingPrice ||
+                        !uspdAmount ||
+                        parseFloat(uspdAmount) <= 0 ||
+                        !!(uspdBalance && parseFloat(uspdAmount) > parseFloat(formatUnits(uspdBalance as bigint, 18)))
+                    }
+                >
+                    {isLoading ? 'Burning...' : 'Burn USPD'}
+                </Button>
+            )}
 
             {error && (
                 <Alert variant="destructive" className="mt-4">

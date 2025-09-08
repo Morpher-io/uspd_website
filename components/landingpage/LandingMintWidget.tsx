@@ -37,9 +37,12 @@ const isTestnet = (chainId: number | undefined): boolean => {
 
 // This is the core widget logic, separated to use ContractLoader
 function MintWidgetCore({ isLocked }: { isLocked: boolean }) {
-    const { address } = useAccount()
+    const { address, isConnected } = useAccount()
     const { writeContractAsync } = useWriteContract()
-    const { data: ethBalance, refetch: refetchEthBalance } = useBalance({ address })
+    const { data: ethBalance, refetch: refetchEthBalance } = useBalance({ 
+        address,
+        query: { enabled: isConnected }
+    })
 
     const [ethAmount, setEthAmount] = useState('')
     const [uspdAmount, setUspdAmount] = useState('')
@@ -87,7 +90,7 @@ function MintWidgetCore({ isLocked }: { isLocked: boolean }) {
     }, [debouncedEthAmount, priceData])
 
     const handleMaxEth = () => {
-        if (ethBalance) {
+        if (ethBalance && isConnected) {
             const maxEth = parseFloat(ethBalance.formatted) - 0.01
             setEthAmount(maxEth > 0 ? maxEth.toFixed(6) : '0')
         }
@@ -157,8 +160,8 @@ function MintWidgetCore({ isLocked }: { isLocked: boolean }) {
                             symbol="ETH"
                             amount={ethAmount}
                             setAmount={setEthAmount}
-                            balance={ethBalance ? ethBalance.formatted : '0'}
-                            onMax={handleMaxEth}
+                            balance={isConnected ? (ethBalance ? ethBalance.formatted : '0') : '--'}
+                            onMax={isConnected ? handleMaxEth : undefined}
                             readOnly={isLocked}
                         />
 
@@ -173,24 +176,34 @@ function MintWidgetCore({ isLocked }: { isLocked: boolean }) {
                             symbol="USPD"
                             amount={uspdAmount}
                             setAmount={() => {}}
-                            balance={'...'} // USPD balance isn't needed for this widget
+                            balance={'--'} // USPD balance isn't needed for this widget
                             readOnly={true}
                         />
 
-                        <Button
-                            className="w-full"
-                            onClick={() => handleMint(cuspdTokenAddress, cuspdTokenJson.abi as Abi)}
-                            disabled={
-                                isLocked ||
-                                isLoading ||
-                                isLoadingPrice ||
-                                !ethAmount ||
-                                parseFloat(ethAmount) <= 0 ||
-                                !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
-                            }
-                        >
-                            {isLoading ? 'Minting...' : 'Mint USPD'}
-                        </Button>
+                        {!isConnected ? (
+                            <ConnectButton.Custom>
+                                {({ openConnectModal }) => (
+                                    <Button className="w-full" onClick={openConnectModal}>
+                                        Connect Wallet to Mint
+                                    </Button>
+                                )}
+                            </ConnectButton.Custom>
+                        ) : (
+                            <Button
+                                className="w-full"
+                                onClick={() => handleMint(cuspdTokenAddress, cuspdTokenJson.abi as Abi)}
+                                disabled={
+                                    isLocked ||
+                                    isLoading ||
+                                    isLoadingPrice ||
+                                    !ethAmount ||
+                                    parseFloat(ethAmount) <= 0 ||
+                                    !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
+                                }
+                            >
+                                {isLoading ? 'Minting...' : 'Mint USPD'}
+                            </Button>
+                        )}
                     </div>
                 );
             }}
@@ -227,12 +240,7 @@ export function LandingMintWidget() {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                {!isConnected ? (
-                    <div className="flex flex-col items-center justify-center gap-4 text-center h-[260px]">
-                         <p className="text-muted-foreground">Connect your wallet to get started.</p>
-                        <ConnectButton />
-                    </div>
-                ) : isWrongChain ? (
+                {isWrongChain ? (
                      <div className="flex flex-col items-center justify-center gap-4 text-center h-[260px]">
                         <p className="text-destructive">
                             Wrong network detected. Please switch to{' '}
