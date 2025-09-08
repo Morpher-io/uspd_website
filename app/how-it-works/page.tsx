@@ -26,6 +26,41 @@ import { FlickeringGrid } from "@/components/magicui/flickering-grid";
 import { AnimatedGridPattern } from "@/components/magicui/animated-grid-pattern";
 import { cn } from "@/lib/utils";
 
+// --- Helper Components (must be defined before scene configurations) ---
+const YieldStrategyBox = ({
+  icon,
+  label,
+  x,
+  y,
+  visible,
+  color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  x: string;
+  y: string;
+  visible: boolean;
+  color: string;
+}) => (
+  <AnimatePresence>
+    {visible && (
+      <motion.div
+        className="absolute flex flex-col items-center gap-2"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.5 }}
+        style={{ left: x, top: y, transform: "translateX(-50%)" }}
+      >
+        <div className={`p-3 rounded-full bg-secondary/80 border-2 ${color}`}>
+          {icon}
+        </div>
+        <span className="text-sm font-semibold">{label}</span>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
 // --- Progress Indicator Component ---
 const ScrollProgressIndicator = ({
   scenes,
@@ -2057,41 +2092,6 @@ const scenes: SceneConfig[] = [
     link: { href: "https://t.me/+XKKeAZZwypM0MDFk", text: "Join Telegram" },
   },
 ];
-
-// --- Helper Components ---
-const YieldStrategyBox = ({
-  icon,
-  label,
-  x,
-  y,
-  visible,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  x: string;
-  y: string;
-  visible: boolean;
-  color: string;
-}) => (
-  <AnimatePresence>
-    {visible && (
-      <motion.div
-        className="absolute flex flex-col items-center gap-2"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.5 }}
-        style={{ left: x, top: y, transform: "translateX(-50%)" }}
-      >
-        <div className={`p-3 rounded-full bg-secondary/80 border-2 ${color}`}>
-          {icon}
-        </div>
-        <span className="text-sm font-semibold">{label}</span>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
 
 // --- Graphic Components ---
 
