@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 import reporterAbiJson from '@/contracts/out/OvercollateralizationReporter.sol/OvercollateralizationReporter.json'
 import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
+import Link from 'next/link'
 
 // The primary chain for liquidity and reporting, defaulting to Sepolia.
 const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11155111;
@@ -58,7 +59,7 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
         if (isInitialLoad) {
             setIsInitialLoadingPrice(true);
         }
-        
+
         try {
             const response = await fetch('/api/v1/price/eth-usd');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -132,7 +133,9 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
     const isInitialLoading = isInitialLoadingRatio || isInitialLoadingPrice || isInitialLoadingUspdTotalSupply;
 
     return (
-        <div className="hidden md:flex items-center gap-4 border-r border-border pr-4 text-sm">
+
+
+        <Link href="/health" className="hidden md:flex items-center gap-4 border-r border-border pr-4 text-sm">
             <div className="flex flex-col items-start">
                 <span className="text-xs text-muted-foreground">Collateralization</span>
                 {isInitialLoading ? <Skeleton className="h-5 w-20" /> : <span className={`font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
@@ -141,7 +144,7 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
                 <span className="text-xs text-muted-foreground">USPD Supply</span>
                 {isInitialLoading ? <Skeleton className="h-5 w-20" /> : <span className="font-semibold">{formatBigIntToCompact(uspdTotalSupply, 18)}</span>}
             </div>
-        </div>
+        </Link>
     );
 }
 
@@ -157,6 +160,7 @@ export default function NavbarStats() {
                 if (!reporterAddress || !uspdTokenAddress) {
                     // Render skeletons if addresses are not yet loaded
                     return (
+
                         <div className="hidden md:flex items-center gap-4 border-r border-border pr-4 text-sm">
                             <div className="flex flex-col items-start">
                                 <span className="text-xs text-muted-foreground">Collateralization</span>
@@ -169,7 +173,7 @@ export default function NavbarStats() {
                         </div>
                     );
                 }
-                
+
                 return (
                     <NavbarStatsInner
                         reporterAddress={reporterAddress}
