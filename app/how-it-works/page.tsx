@@ -868,14 +868,14 @@ const scenes: SceneConfig[] = [
     ],
     arrows: [
       {
-        position: { x: '66.67%', y: '45%' },
+        position: { x: '66.67%', y: '60%' },
         rotate: 0,
         visible: true,
       }
     ],
     infoBoxes: [
       {
-        position: { x: '50%', y: '105%' },
+        position: { x: '50%', y: '100%' },
         size: { w: '40%' },
         visible: true,
         title: 'Native Yield: +2% APY',
@@ -955,7 +955,7 @@ const scenes: SceneConfig[] = [
     ],
     infoBoxes: [
       {
-        position: { x: '50%', y: '95%' },
+        position: { x: '13%', y: '70%' },
         size: { w: '40%' },
         visible: true,
         title: 'System Health: Stressed',
@@ -977,7 +977,7 @@ const scenes: SceneConfig[] = [
     actors: [
       {
         type: 'liquidator',
-        position: { x: '50%', y: '20%' },
+        position: { x: '45%', y: '20%' },
         visible: true,
         labelVisible: true,
         scale: 1.5,
@@ -994,7 +994,7 @@ const scenes: SceneConfig[] = [
     ],
     infoBoxes: [
       {
-        position: { x: '50%', y: '95%' },
+        position: { x: '30%', y: '75%' },
         size: { w: '40%' },
         visible: true,
         title: 'Liquidation Active',
@@ -1024,7 +1024,7 @@ const scenes: SceneConfig[] = [
     ],
     infoBoxes: [
       {
-        position: { x: '50%', y: '95%' },
+        position: { x: '30%', y: '75%' },
         size: { w: '40%' },
         visible: true,
         title: 'System Health: Restored',
@@ -1058,7 +1058,7 @@ const scenes: SceneConfig[] = [
         even if individual stabilizer positions come and go.
       </p>
     ),
-    link: { href: "/uspd", text: "Try USPD" },
+    link: { href: "/mint-burn-uspd", text: "Try USPD" },
     actors: [
       {
         type: 'user',
@@ -1101,7 +1101,7 @@ const scenes: SceneConfig[] = [
     ],
     infoBoxes: [
       {
-        position: { x: '50%', y: '95%' },
+        position: { x: '50%', y: '100%' },
         size: { w: '40%' },
         visible: true,
         title: 'Always Redeemable',
@@ -1140,7 +1140,7 @@ const scenes: SceneConfig[] = [
       {
         type: 'yield-strategy',
         position: { x: '0%', y: '0%' },
-        size: { w: '100%', h: '100%' },
+        size: { w: '100%', h: '60%' },
         visible: true,
         label: 'Delta-Neutral Strategy',
         customContent: (
@@ -1148,7 +1148,7 @@ const scenes: SceneConfig[] = [
             <YieldStrategyBox
               icon={<TrendingUp size={32} />}
               label="Long ETH"
-              x="25%"
+              x="20%"
               y="40%"
               visible={true}
               color="border-green-500"
@@ -1156,7 +1156,7 @@ const scenes: SceneConfig[] = [
             <YieldStrategyBox
               icon={<TrendingDown size={32} />}
               label="Short ETH"
-              x="75%"
+              x="70%"
               y="40%"
               visible={true}
               color="border-red-500"
@@ -1165,7 +1165,7 @@ const scenes: SceneConfig[] = [
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 0.3 } }}
               className="absolute"
-              style={{ left: "50%", top: "42%" }}
+              style={{ left: "45%", top: "42%" }}
             >
               <Scale size={48} />
             </motion.div>
@@ -1186,8 +1186,8 @@ const scenes: SceneConfig[] = [
     charts: [
       {
         type: 'yield-strategy',
-        position: { x: '0%', y: '0%' },
-        size: { w: '100%', h: '100%' },
+        position: { x: '20%', y: '0%' },
+        size: { w: '60%', h: '100%' },
         visible: true,
         label: 'Funding Fees',
         customContent: (
@@ -1195,8 +1195,8 @@ const scenes: SceneConfig[] = [
             <YieldStrategyBox
               icon={<TrendingDown size={48} />}
               label="Short ETH"
-              x="50%"
-              y="30%"
+              x="43%"
+              y="20%"
               visible={true}
               color="border-red-500"
             />
@@ -1204,14 +1204,14 @@ const scenes: SceneConfig[] = [
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0, transition: { delay: 0.5 } }}
               className="absolute"
-              style={{ top: "62%", left: "52%" }}
+              style={{ top: "62%", left: "46%" }}
             >
               <Coins size={48} className="text-yellow-400" />
             </motion.div>
-            <Arrow x="52%" y="52%" rotate={90} visible={true} />
+            <Arrow x="45%" y="47%" rotate={90} visible={true} />
             <InfoBox
-              x="50%"
-              y="75%"
+              x="44%"
+              y="80%"
               w="auto"
               visible={true}
               title="~11% APY"
@@ -1280,7 +1280,7 @@ const scenes: SceneConfig[] = [
       {
         type: 'yield-strategy',
         position: { x: '0%', y: '0%' },
-        size: { w: '100%', h: '100%' },
+        size: { w: '100%', h: '40%' },
         visible: true,
         label: 'Strategy Comparison',
         customContent: (
@@ -1321,7 +1321,7 @@ const scenes: SceneConfig[] = [
       {
         type: 'yield-strategy',
         position: { x: '0%', y: '0%' },
-        size: { w: '100%', h: '100%' },
+        size: { w: '100%', h: '40%' },
         visible: true,
         label: 'Final Yield',
         customContent: (
