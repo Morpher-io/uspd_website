@@ -136,15 +136,21 @@ const ScrollProgressIndicator = ({
   scenes,
   activeSceneIndex,
   onDotClick,
+  groupStartIndex = 0,
 }: {
   scenes: Array<{ title: string | React.ReactNode }>;
   activeSceneIndex: number;
   onDotClick: (index: number) => void;
+  groupStartIndex?: number;
 }) => {
   const { theme } = useTheme();
   const darkMode = theme == 'dark';
 
-  if (activeSceneIndex < 0 || activeSceneIndex >= scenes.length) {
+  // Calculate the relative active index within this group
+  const relativeActiveIndex = activeSceneIndex - groupStartIndex;
+  
+  // Only show if the active scene is within this group
+  if (relativeActiveIndex < 0 || relativeActiveIndex >= scenes.length) {
     return null;
   }
 
@@ -179,31 +185,34 @@ const ScrollProgressIndicator = ({
           backgroundColor: brandColor,
         }}
         initial={false}
-        animate={{ y: activeSceneIndex * itemHeight }}
+        animate={{ y: relativeActiveIndex * itemHeight }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
       />
 
-      {scenes.map((scene, index) => (
-        <motion.div
-          key={index}
-          className="h-5 w-5 flex items-center justify-center z-10 cursor-pointer"
-          title={typeof scene.title === "string" ? scene.title : ""}
-          onClick={() => onDotClick(index)}
-          whileHover={{ scale: 1.5 }} // Wow-factor: hover effect
-          transition={{ type: "spring", stiffness: 400, damping: 15 }}
-        >
+      {scenes.map((scene, index) => {
+        const globalIndex = groupStartIndex + index;
+        return (
           <motion.div
-            key={`${index}-${darkMode}`} // Force re-render on theme change
-            className="h-2 w-2 rounded-full"
-            animate={{
-              scale: activeSceneIndex === index ? 1.5 : 1,
-              backgroundColor:
-                activeSceneIndex === index ? activeDotColor : inactiveDotColor,
-            }}
-            transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          />
-        </motion.div>
-      ))}
+            key={index}
+            className="h-5 w-5 flex items-center justify-center z-10 cursor-pointer"
+            title={typeof scene.title === "string" ? scene.title : ""}
+            onClick={() => onDotClick(globalIndex)}
+            whileHover={{ scale: 1.5 }} // Wow-factor: hover effect
+            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          >
+            <motion.div
+              key={`${globalIndex}-${darkMode}`} // Force re-render on theme change
+              className="h-2 w-2 rounded-full"
+              animate={{
+                scale: activeSceneIndex === globalIndex ? 1.5 : 1,
+                backgroundColor:
+                  activeSceneIndex === globalIndex ? activeDotColor : inactiveDotColor,
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            />
+          </motion.div>
+        );
+      })}
     </div>
   );
 };
@@ -1880,6 +1889,7 @@ export default function HowItWorksPage() {
                   scenes={group}
                   activeSceneIndex={activeSceneIndex}
                   onDotClick={handleDotClick}
+                  groupStartIndex={scenes.indexOf(group[0])}
                 />
               </div>
 
