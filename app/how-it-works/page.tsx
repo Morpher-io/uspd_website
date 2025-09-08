@@ -106,8 +106,73 @@ const ScrollProgressIndicator = ({
   );
 };
 
+// --- Types for Declarative Scene Configuration ---
+type ActorType = 'stabilizer' | 'user' | 'liquidator';
+type ChartType = 'single-bar' | 'multi-bar' | 'yield-strategy' | 'leverage' | 'system-pool';
+
+interface Position {
+  x: string;
+  y: string;
+}
+
+interface ActorConfig {
+  type: ActorType;
+  position: Position;
+  visible: boolean;
+  scale?: number;
+  opacity?: number;
+  labelVisible?: boolean;
+}
+
+interface ChartBarData {
+  value: number;
+  maxValue: number;
+  color: string;
+  label: string;
+  unit: string;
+}
+
+interface ChartConfig {
+  type: ChartType;
+  position: Position;
+  size: { w: string; h: string };
+  visible: boolean;
+  label: string;
+  data?: ChartBarData | ChartBarData[];
+  customContent?: React.ReactNode;
+}
+
+interface ArrowConfig {
+  position: Position;
+  rotate: number;
+  visible: boolean;
+}
+
+interface InfoBoxConfig {
+  position: Position;
+  size: { w: string };
+  visible: boolean;
+  title: string;
+  value: string;
+  status?: 'danger' | 'safe';
+  centered?: boolean;
+}
+
+interface SceneConfig {
+  id: number;
+  title: string | React.ReactNode;
+  content: React.ReactNode;
+  link?: { href: string; text: string };
+  isHero?: boolean;
+  heroOptions?: { gridColor: string; textColor: string };
+  actors?: ActorConfig[];
+  charts?: ChartConfig[];
+  arrows?: ArrowConfig[];
+  infoBoxes?: InfoBoxConfig[];
+}
+
 // --- Scene Configuration ---
-const scenes = [
+const scenes: SceneConfig[] = [
   {
     id: 1,
     title: "The Stabilizer",
@@ -713,67 +778,132 @@ const YieldStrategyBox = ({
   </AnimatePresence>
 );
 
-const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
-  const MAX_CHART_ETH = 11;
-  const isHero = scenes.find((s) => s.id === activeSceneId)?.isHero;
-
-  const getPositionInfo = (sceneId: number) => {
-    if (sceneId >= 13 && sceneId <= 17 && sceneId !== 15) {
-      return {
-        title: "113% Collateralized",
-        value: "ETH Price: $2,700",
-        visible: true,
-        status: "danger" as const,
-      };
-    }
-    switch (sceneId) {
-      case 9:
-        return {
-          title: "150% Collateralized",
-          value: "ETH Price: $2,500",
-          visible: true,
-          status: "safe" as const,
-        };
-      case 10:
-        return {
-          title: "180% Collateralized",
-          value: "ETH Price: $3,000",
-          visible: true,
-          status: "safe" as const,
-        };
-      case 11:
-        return {
-          title: "126% Collateralized",
-          value: "ETH Price: $3,000",
-          visible: true,
-          status: "safe" as const,
-        };
-      default:
-        return {
-          title: "",
-          value: "",
-          visible: false,
-          status: "safe" as const,
-        };
+// --- Declarative Scene Rendering ---
+const renderActor = (actor: ActorConfig) => {
+  const getActorIcon = (type: ActorType) => {
+    switch (type) {
+      case 'stabilizer':
+        return <ShieldCheck size={48} />;
+      case 'user':
+        return <User size={48} />;
+      case 'liquidator':
+        return <Zap size={48} className="text-yellow-400" />;
     }
   };
 
-  const positionInfo = getPositionInfo(activeSceneId);
+  const getActorLabel = (type: ActorType) => {
+    switch (type) {
+      case 'stabilizer':
+        return 'Stabilizer';
+      case 'user':
+        return 'User';
+      case 'liquidator':
+        return 'Liquidator';
+    }
+  };
 
-  let positionEscrowValue;
-  if (activeSceneId >= 20) {
-    positionEscrowValue = 0;
-  } else if (activeSceneId >= 18) {
-    positionEscrowValue = 0.08;
-  } else if (activeSceneId >= 11) {
-    positionEscrowValue = 1.05;
-  } else {
-    positionEscrowValue = 1.5;
+  return (
+    <Actor
+      key={`${actor.type}-${actor.position.x}-${actor.position.y}`}
+      icon={getActorIcon(actor.type)}
+      label={getActorLabel(actor.type)}
+      x={actor.position.x}
+      y={actor.position.y}
+      visible={actor.visible}
+      labelVisible={actor.labelVisible ?? true}
+      iconAnimate={{ scale: actor.scale ?? 1 }}
+      animate={{ opacity: actor.opacity ?? 1 }}
+    />
+  );
+};
+
+const renderChart = (chart: ChartConfig) => {
+  if (chart.type === 'system-pool') {
+    return (
+      <ChartContainer
+        key={`chart-${chart.position.x}-${chart.position.y}`}
+        label={chart.label}
+        x={chart.position.x}
+        y={chart.position.y}
+        w={chart.size.w}
+        h={chart.size.h}
+        visible={chart.visible}
+      >
+        <Users size={64} className="m-auto text-muted-foreground" />
+      </ChartContainer>
+    );
   }
 
-  const stabilizerX = activeSceneId === 1 ? "45%" : "7%";
-  const stabilizerY = activeSceneId === 1 ? "40%" : "10%";
-  const stabilizerScale = activeSceneId === 1 ? 2 : 1;
+  return (
+    <ChartContainer
+      key={`chart-${chart.position.x}-${chart.position.y}`}
+      label={chart.label}
+      x={chart.position.x}
+      y={chart.position.y}
+      w={chart.size.w}
+      h={chart.size.h}
+      visible={chart.visible}
+    >
+      {chart.data && (
+        Array.isArray(chart.data) ? (
+          <div className="w-full h-full flex items-end gap-1">
+            {chart.data.map((barData, index) => (
+              <ChartBar
+                key={index}
+                value={barData.value}
+                maxValue={barData.maxValue}
+                color={barData.color}
+                label={barData.label}
+                unit={barData.unit}
+              />
+            ))}
+          </div>
+        ) : (
+          <ChartBar
+            value={chart.data.value}
+            maxValue={chart.data.maxValue}
+            color={chart.data.color}
+            label={chart.data.label}
+            unit={chart.data.unit}
+          />
+        )
+      )}
+      {chart.customContent}
+    </ChartContainer>
+  );
+};
+
+const renderArrow = (arrow: ArrowConfig) => (
+  <Arrow
+    key={`arrow-${arrow.position.x}-${arrow.position.y}`}
+    x={arrow.position.x}
+    y={arrow.position.y}
+    rotate={arrow.rotate}
+    visible={arrow.visible}
+  />
+);
+
+const renderInfoBox = (infoBox: InfoBoxConfig) => (
+  <InfoBox
+    key={`info-${infoBox.position.x}-${infoBox.position.y}`}
+    x={infoBox.position.x}
+    y={infoBox.position.y}
+    w={infoBox.size.w}
+    visible={infoBox.visible}
+    title={infoBox.title}
+    value={infoBox.value}
+    status={infoBox.status}
+    centered={infoBox.centered}
+  />
+);
+
+const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
+  const activeScene = scenes.find((s) => s.id === activeSceneId);
+  const isHero = activeScene?.isHero;
+
+  if (!activeScene) {
+    return <div className="relative w-full h-[500px] text-foreground max-w-[600px]" />;
+  }
 
   return (
     <div className={"relative w-full h-[500px] text-foreground" + (isHero ? '' : ' max-w-[600px] ')}>
@@ -782,392 +912,17 @@ const SceneGraphic = ({ activeSceneId }: { activeSceneId: number }) => {
         transition={{ duration: 0.4 }}
         className="w-full h-full"
       >
-        {/* Actors */}
-        <Actor
-          icon={<ShieldCheck size={48} />}
-          label="Stabilizer"
-          labelVisible={activeSceneId > 1}
-          x={stabilizerX}
-          y={stabilizerY}
-          visible={activeSceneId >= 1 && activeSceneId < 19 && activeSceneId != 15}
-          iconAnimate={{ scale: stabilizerScale }}
-        ></Actor>
-
-        {/* Charts */}
-        <ChartContainer
-          label="Stabilizer Escrow"
-          x={"0%"}
-          y={"30%"}
-          w={"25%"}
-          h={"60%"}
-          visible={activeSceneId >= 2 && activeSceneId < 19 && activeSceneId !== 15}
-        >
-          <ChartBar
-            value={
-              activeSceneId < 3 ? 0 : // Scenes before 3 show 0
-                activeSceneId >= 11 ? 9.95 : activeSceneId >= 7 ? 9.5 : 10
-            }
-            maxValue={MAX_CHART_ETH}
-            color="bg-gray-500"
-            label="Unallocated"
-            unit="ETH"
-          />
-        </ChartContainer>
-
-        <InfoBox
-          x={"0%"}
-          y={"98%"}
-          w={"25%"}
-          visible={activeSceneId >= 4 && activeSceneId < 19 && activeSceneId != 15}
-          title="150% Ratio"
-          value="Stabilizer&apos;s Preference"
-          status="safe"
-        />
-
-        <Actor
-          icon={<User size={48} />}
-          label="User"
-          x={activeSceneId >= 14 && activeSceneId < 21 ? "66.67%" : "83.33%"}
-          y={"10%"}
-          visible={activeSceneId >= 5 && activeSceneId < 26 && activeSceneId != 15}
-          animate={{
-            opacity: activeSceneId >= 14 && activeSceneId < 21 ? 0.5 : 1,
-          }}
-        ></Actor>
-
-        <Actor
-          icon={<Zap size={48} className="text-yellow-400" />}
-          label="Liquidator"
-          x={"83.33%"}
-          y={"10%"}
-          visible={activeSceneId >= 14 && activeSceneId < 21}
-        ></Actor>
-
-        {/* Charts */}
-
-        <ChartContainer
-          label="User Wallet"
-          x={"75%"}
-          y={"30%"}
-          w={"25%"}
-          h={"60%"}
-          visible={
-            (activeSceneId >= 5 && activeSceneId < 14) ||
-            (activeSceneId >= 21 && activeSceneId <= 25)
-          }
-        >
-          <div className="w-full h-full flex items-end gap-1">
-            <ChartBar
-              value={
-                activeSceneId >= 24 ? 0.926 : activeSceneId >= 6 ? 0 : 1
-              }
-              maxValue={1.1}
-              color="bg-green-500"
-              label="Available"
-              unit="ETH"
-            />
-            <ChartBar
-              value={
-                activeSceneId >= 23 ? 0 : activeSceneId >= 8 ? 2500 : 0
-              }
-              maxValue={2550}
-              color="bg-purple-500"
-              label="Minted"
-              unit="USPD"
-            />
-          </div>
-        </ChartContainer>
-
-        <ChartContainer
-          label="Liquidator Wallet"
-          x={"75%"}
-          y={"30%"}
-          w={"25%"}
-          h={"60%"}
-          visible={activeSceneId >= 14 && activeSceneId < 21}
-        >
-          <div className="w-full h-full flex items-end gap-1">
-            <ChartBar
-              value={
-                activeSceneId === 14
-                  ? 0.926
-                  : activeSceneId >= 18
-                    ? 0.97
-                    : 0
-              }
-              maxValue={1.1}
-              color="bg-green-500"
-              label={activeSceneId >= 18 ? "Received" : "To Spend"}
-              unit="ETH"
-            />
-            <ChartBar
-              value={activeSceneId >= 15 && activeSceneId < 16 ? 2500 : 0}
-              maxValue={2550}
-              color="bg-purple-500"
-              label="For Liquidation"
-              unit="USPD"
-            />
-          </div>
-        </ChartContainer>
-
-        <ChartContainer
-          label="Position Escrow"
-          x={"37.5%"}
-          y={"30%"}
-          w={"25%"}
-          h={"60%"}
-          visible={
-
-            (activeSceneId >= 2 && activeSceneId < 21 && activeSceneId !== 15)
-          }
-        >
-          <AnimatePresence mode="wait">
-            {activeSceneId >= 6 && activeSceneId <= 7 ? (
-              <motion.div
-                key="two-bars-evolving"
-                className="w-full h-full flex items-end gap-1"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <ChartBar
-                  value={1}
-                  maxValue={1.6}
-                  color="bg-green-500"
-                  label="User"
-                  unit="ETH"
-                />
-                <ChartBar
-                  value={activeSceneId === 6 ? 0 : 0.5}
-                  maxValue={1.6}
-                  color="bg-blue-700"
-                  label="Stabilizer"
-                  unit="ETH"
-                />
-              </motion.div>
-            ) : activeSceneId >= 8 ? (
-              <motion.div
-                key="one-bar-combined"
-                className="w-full h-full flex items-end gap-1"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <ChartBar
-                  value={positionEscrowValue}
-                  maxValue={1.6}
-                  color="bg-teal-500"
-                  label="Total Collateral"
-                  unit="ETH"
-                />
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-        </ChartContainer>
-
-        <ChartContainer
-          label="Insurance Fund"
-          x={"0%"}
-          y={"30%"}
-          w={"25%"}
-          h={"60%"}
-          visible={activeSceneId >= 19 && activeSceneId < 21}
-        >
-          <ChartBar
-            value={activeSceneId >= 19 ? 0.08 : 0}
-            maxValue={1}
-            color="bg-indigo-500"
-            label="System Reserve"
-            unit="ETH"
-          />
-        </ChartContainer>
-
-        <ChartContainer
-          label="USPD System Pool"
-          x={"0%"}
-          y={"30%"}
-          w={"66.67%"}
-          h={"60%"}
-          visible={
-            activeSceneId === 15 || (activeSceneId >= 21 && activeSceneId <= 25)
-          }
-        >
-          <Users size={64} className="m-auto text-muted-foreground" />
-        </ChartContainer>
-
-        <InfoBox
-          x={"37.5%"}
-          y={"98%"}
-          w={"25%"}
-          visible={positionInfo.visible}
-          title={positionInfo.title}
-          value={positionInfo.value}
-          status={positionInfo.status}
-        />
-
-        {/* Arrows */}
-        <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 6} />
-        <Arrow x={"25.83%"} y={"56%"} rotate={0} visible={activeSceneId === 7} />
-        <Arrow x={"64.17%"} y={"45%"} rotate={0} visible={activeSceneId === 8} />
-        <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 11} />
-        <Arrow x={"50%"} y={"56%"} rotate={180} visible={activeSceneId === 15} />
-        <Arrow x={"50%"} y={"64%"} rotate={0} visible={activeSceneId === 15} />
-        <Arrow x={"64.17%"} y={"56%"} rotate={180} visible={activeSceneId === 16} />
-        <Arrow x={"64.17%"} y={"56%"} rotate={0} visible={activeSceneId === 18} />
-        <Arrow x={"25.83%"} y={"56%"} rotate={180} visible={activeSceneId === 19} />
-        <Arrow x={"66.67%"} y={"56%"} rotate={-135} visible={activeSceneId === 23} />
-        <Arrow x={"66.67%"} y={"56%"} rotate={0} visible={activeSceneId === 24} />
-
-        {/* Yield Chapter Graphics */}
-        <AnimatePresence>
-          {activeSceneId >= 27 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="w-full h-full flex items-center justify-center"
-            >
-              <YieldStrategyBox
-                icon={<TrendingUp size={32} />}
-                label="Long ETH"
-                x="25%"
-                y="40%"
-                visible={activeSceneId === 27}
-                color="border-green-500"
-              />
-              <YieldStrategyBox
-                icon={<TrendingDown size={32} />}
-                label="Short ETH"
-                x="75%"
-                y="40%"
-                visible={activeSceneId === 27}
-                color="border-red-500"
-              />
-              <AnimatePresence>
-                {activeSceneId === 27 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { delay: 0.3 } }}
-                    className="absolute"
-                    style={{ left: "50%", top: "42%" }}
-                  >
-                    <Scale size={48} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <AnimatePresence>
-                {activeSceneId === 28 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="relative w-full h-full justify-center"
-                  >
-                    <YieldStrategyBox
-                      icon={<TrendingDown size={48} />}
-                      label="Short ETH"
-                      x="50%"
-                      y="30%"
-                      visible={true}
-                      color="border-red-500"
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0, transition: { delay: 0.5 } }}
-                      className="absolute"
-                      style={{ top: "62%", left: "52%" }}
-                    >
-                      <Coins size={48} className="text-yellow-400" />
-                    </motion.div>
-                    <Arrow x="52%" y="52%" rotate={90} visible={true} />
-                    <InfoBox
-                      x="50%"
-                      y="75%"
-                      w="auto"
-                      visible={true}
-                      title="~11% APY"
-                      value="Funding Fees"
-                      centered={true}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <ChartContainer
-                label="Leverage"
-                x={"25%"}
-                y={"30%"}
-                w={"50%"}
-                h={"60%"}
-                visible={activeSceneId === 29}
-              >
-                <div className="w-full h-full flex items-end gap-4">
-                  <ChartBar
-                    value={33}
-                    maxValue={110}
-                    color="bg-gray-500"
-                    label="Margin"
-                    unit="%"
-                  />
-                  <ChartBar
-                    value={100}
-                    maxValue={110}
-                    color="bg-red-500"
-                    label="Short Position"
-                    unit="%"
-                  />
-                </div>
-              </ChartContainer>
-              <InfoBox
-                x={"25%"}
-                y={"98%"}
-                w={"50%"}
-                visible={activeSceneId === 29}
-                title="~3x Leverage"
-                value="Capital Efficiency"
-              />
-
-              <AnimatePresence>
-                {activeSceneId === 30 && (
-                  <div className="w-full flex justify-around">
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-center font-mono"
-                    >
-                      <div className="text-lg font-bold">Risk-Averse</div>
-                      <div className="text-2xl mt-2">2x * 11% =</div>
-                      <div className="text-4xl font-bold text-primary">22% APY</div>
-                    </motion.div>
-                    <motion.div
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-center font-mono"
-                    >
-                      <div className="text-lg font-bold">Risk-On</div>
-                      <div className="text-2xl mt-2">3x * 11% =</div>
-                      <div className="text-4xl font-bold text-primary">33% APY</div>
-                    </motion.div>
-                  </div>
-                )}
-              </AnimatePresence>
-
-              <AnimatePresence>
-                {activeSceneId === 32 && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center"
-                  >
-                    <div className="text-6xl font-bold text-primary">~20-35% APY</div>
-                    <div className="text-xl text-muted-foreground">
-                      Delta-Neutral
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Render actors */}
+        {activeScene.actors?.map(renderActor)}
+        
+        {/* Render charts */}
+        {activeScene.charts?.map(renderChart)}
+        
+        {/* Render arrows */}
+        {activeScene.arrows?.map(renderArrow)}
+        
+        {/* Render info boxes */}
+        {activeScene.infoBoxes?.map(renderInfoBox)}
       </motion.div>
     </div>
   );
