@@ -60,34 +60,47 @@ const isMDXFile = (value: unknown): value is MdxFile =>
 const isNotHiddenPage = ([_, value]: [string, Meta]): boolean => 
   !isPageType(value) || value.display !== "hidden";
 
-const toSitemapEntry = (pageMapEntry: PageMapItem): SitemapEntry[] => {
-  if (isFolder(pageMapEntry)) {
-    return parsePageMapItems(pageMapEntry.children);
-  } else if (isMDXFile(pageMapEntry)) {
-    const { frontMatter, route } = pageMapEntry;
-
-    return [{
-      url: route,
-      lastModified: frontMatter?.timestamp ? new Date(frontMatter.timestamp).toISOString() : new Date().toISOString(),
-    }];
-  }
-
-  return [];
-}
-
 const parsePageMapItems = (items: PageMapItem[]): SitemapEntry[] => {
-  const metadata = Object.entries(items.find((item) => isMetaJSONFile(item))?.data ?? []);
+  const sitemapEntries: SitemapEntry[] = [];
   
-  const siteMapEntries: (SitemapEntry | null)[] = metadata
-    .filter(isNotHiddenPage)
-    .map(([key, _]) => items.find(
-      (item) => "name" in item && item.name === key
-    ))
-    .filter((item): item is PageMapItem => !!item)
-    .flatMap(pageMapEntry => toSitemapEntry(pageMapEntry));
-
-
-  return siteMapEntries.filter((entry): entry is SitemapEntry => !!entry)
+  // Find metadata file to check for hidden pages
+  const metaFile = items.find((item) => isMetaJSONFile(item));
+  const metadata = Object.entries(metaFile?.data ?? {});
+  
+  for (const item of items) {
+    if (isMetaJSONFile(item)) {
+      // Skip metadata files
+      continue;
+    }
+    
+    if (isMDXFile(item)) {
+      // Check if this page is hidden in metadata
+      const metaEntry = metadata.find(([key, _]) => key === item.name);
+      if (metaEntry && isPageType(metaEntry[1]) && metaEntry[1].display === "hidden") {
+        continue;
+      }
+      
+      // Add MDX file to sitemap
+      sitemapEntries.push({
+        url: item.route,
+        lastModified: item.frontMatter?.timestamp 
+          ? new Date(item.frontMatter.timestamp).toISOString() 
+          : new Date().toISOString(),
+      });
+    } else if (isFolder(item)) {
+      // Check if this folder is hidden in metadata
+      const metaEntry = metadata.find(([key, _]) => key === item.name);
+      if (metaEntry && isPageType(metaEntry[1]) && metaEntry[1].display === "hidden") {
+        continue;
+      }
+      
+      // Recursively parse folder contents
+      const childEntries = parsePageMapItems(item.children);
+      sitemapEntries.push(...childEntries);
+    }
+  }
+  
+  return sitemapEntries;
 };
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
