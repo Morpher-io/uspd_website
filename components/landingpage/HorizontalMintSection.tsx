@@ -167,7 +167,7 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                                 placeholder="0.0"
                                 value={ethAmount}
                                 onChange={(e) => setEthAmount(e.target.value)}
-                                disabled={isLocked || !isConnected}
+                                disabled={isLocked}
                                 min="0"
                                 max={ethBalance?.formatted ?? "0"}
                                 step={getSaneStep(ethBalance ? parseFloat(ethBalance.formatted) : 0)}
@@ -194,7 +194,6 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                                 readOnly 
                                 placeholder="0.0"
                                 className="text-lg h-12 pr-20 bg-muted/50"
-                                disabled={!isConnected}
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-muted-foreground">USPD</span>
                         </div>
@@ -212,22 +211,35 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
                 </div>
 
                 {/* Action Button */}
-                <Button
-                    onClick={handleMint}
-                    disabled={
-                        !isConnected ||
-                        isLocked ||
-                        isLoading ||
-                        isLoadingPrice ||
-                        !ethAmount ||
-                        parseFloat(ethAmount) <= 0 ||
-                        !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
-                    }
-                    size="lg"
-                    className="w-full h-12 text-lg font-semibold"
-                >
-                    {!isConnected ? 'Connect Wallet to Mint' : isLoading ? 'Minting...' : 'Mint USPD'}
-                </Button>
+                {!isConnected ? (
+                    <ConnectButton.Custom>
+                        {({ openConnectModal }) => (
+                            <Button 
+                                onClick={openConnectModal}
+                                size="lg"
+                                className="w-full h-12 text-lg font-semibold"
+                            >
+                                Connect Wallet to Mint
+                            </Button>
+                        )}
+                    </ConnectButton.Custom>
+                ) : (
+                    <Button
+                        onClick={handleMint}
+                        disabled={
+                            isLocked ||
+                            isLoading ||
+                            isLoadingPrice ||
+                            !ethAmount ||
+                            parseFloat(ethAmount) <= 0 ||
+                            !!(ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
+                        }
+                        size="lg"
+                        className="w-full h-12 text-lg font-semibold"
+                    >
+                        {isLoading ? 'Minting...' : 'Mint USPD'}
+                    </Button>
+                )}
             </div>
         </div>
     )
