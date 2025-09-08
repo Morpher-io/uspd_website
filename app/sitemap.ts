@@ -104,7 +104,7 @@ const parsePageMapItems = (items: PageMapItem[]): SitemapEntry[] => {
 };
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
-  const baseUrl = "https://example.com";
+  const baseUrl = "https://uspd.io";
   const pageMap = await getPageMap();
 
 
