@@ -49,17 +49,6 @@ export default function UspdMintBurn() {
         }
     };
 
-    if (!isConnected) {
-        return (
-            <div className="flex items-center justify-center">
-                <Alert>
-                    <AlertDescription className='text-center'>
-                        Please connect your wallet to mint or burn USPD
-                    </AlertDescription>
-                </Alert>
-            </div>
-        )
-    }
 
     return (
         <div className="mt-4 w-full flex flex-col items-center gap-6 pb-28 pt-10 sm:gap-8">
