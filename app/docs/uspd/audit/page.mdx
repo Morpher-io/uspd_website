@@ -71,12 +71,87 @@ Resonance employed a comprehensive approach combining:
 - Manual security review by 3 engineers over 10 days
 - Focus on common attack vectors: re-entrancy, front-running, unsafe external calls, access control
 
-## Nethermind Audit
+## Nethermind Security Audit
 
-**Coming Soon**  
-Details about the Nethermind security audit will be added here upon completion.
+**Audit Completion:** August 20, 2025  
+**Auditors:** Nethermind Security  
+**Scope:** 10 core smart contracts and 11 interfaces (2,043 lines of Solidity code)
 
 [📄 View Full Nethermind Audit Report](/documents/uspd_audit_nethermind.pdf)
+
+### Overview
+
+Nethermind Security conducted a comprehensive security review of the USPD Stablecoin protocol, employing both manual and automated analysis techniques. The audit focused on identifying security flaws in the core logic of the protocol's smart contracts.
+
+### Code Quality Assessment
+
+| Metric | Rating | Notes |
+|--------|--------|-------|
+| **Test Suite** | High | 85.55% mutation testing score - detected vast majority of injected bugs |
+| **Documentation** | High | Detailed specifications, responsive team communication |
+
+#### Mutation Testing Analysis
+
+Nethermind performed detailed mutation testing to evaluate test suite thoroughness:
+- **Overall Score:** 85.55% - excellent detection of injected bugs
+- **StabilizerNFT.sol:** 78.25% (lowest score, indicating areas for improved coverage)
+- **Assessment:** High-quality test suite with room for targeted improvements
+
+### Security Findings Summary
+
+The audit uncovered **12 issues** with significant critical and high-severity findings. The USPD team demonstrated exceptional security practices by **fixing 11 of 12 findings** (91.7% resolution rate), with only 1 acknowledged.
+
+#### Critical Findings
+
+| Description | Status |
+|-------------|--------|
+| **Global Collateralization Manipulation**: Stabilizer owners could bypass reporting by directly transferring stETH to PositionEscrow, preventing legitimate liquidations and causing DoS | ✅ **Fixed** |
+| **Price Oracle Inversion Error**: PriceOracle failed to invert Uniswap ETH/USDC price, causing permanent DoS for oracle-dependent functions | ✅ **Fixed** |
+| **Misconfigured Constant**: MINIMUM_UNALLOCATE_COLLATERALIZATION_RATIO set to 100 instead of scaled 10000, rendering health checks ineffective | ✅ **Fixed** |
+
+#### High Severity Findings
+
+| Description | Status |
+|-------------|--------|
+| **Role Transfer Issue**: EXCESSCOLLATERALMANAGER_ROLE not transferred with StabilizerNFT ownership, allowing previous owners to withdraw collateral | ✅ **Fixed** |
+| **Gas Exhaustion Loss**: Out-of-gas scenarios in unallocateStabilizerFunds could permanently lose user shares | ✅ **Fixed** |
+
+#### Medium Severity Findings
+
+| Description | Status |
+|-------------|--------|
+| **Minimal Collateral DoS**: Malicious stabilizers could block cUSPD minting by creating positions with minimal collateral (1 wei) | ✅ **Fixed** |
+| **Immediate Liquidation Risk**: Stabilizers could set collateralization ratios below liquidation thresholds, making positions immediately liquidatable | ✅ **Fixed** |
+
+#### Low Severity Findings
+
+| Description | Status |
+|-------------|--------|
+| **Stale Yield Factor**: Delayed L1-to-L2 bridge messages could cause USPD devaluation and improper liquidations | ⚠️ **Acknowledged** |
+
+### Key Security Insights
+
+This audit revealed several critical architectural vulnerabilities:
+
+1. **Price Oracle Integration Flaws**: Critical errors in price fetching and validation logic
+2. **Collateral Accounting Issues**: Manipulation vectors in collateralization reporting
+3. **Role Management Gaps**: Incomplete permission transfers during NFT ownership changes
+4. **Gas-Related Vulnerabilities**: Potential for permanent fund loss during gas exhaustion
+
+### Audit Methodology
+
+Nethermind employed a comprehensive approach:
+- **Manual Security Review**: Expert analysis of complex protocol logic
+- **Automated Analysis**: Systematic vulnerability detection
+- **Mutation Testing**: Rigorous evaluation of test suite effectiveness
+- **Architectural Assessment**: Review of core protocol design decisions
+
+### Notable Observations
+
+- **High-quality test suite** (85.55% mutation score) did not prevent critical logical flaws
+- Demonstrates the **critical importance of expert manual review** for complex DeFi protocols
+- **Exceptional team response** with 91.7% issue resolution rate, including all critical/high findings
+- Strong commitment to protocol security through comprehensive remediation efforts
 
 ---
 
