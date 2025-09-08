@@ -23,13 +23,9 @@ export const Footer = () => {
         
         {/* Right Column - Audits & Brand */}
         <div className="flex flex-col items-center md:items-end gap-3 font-semibold">
-          <Link href="/documents/uspd_audit_resonance.pdf" target="_blank" className="flex items-center gap-1">
+          <Link href="/docs/uspd/audit" className="flex items-center gap-1">
             <Shield size={16} />
-            Resonance Audit
-          </Link>
-          <Link href="/documents/uspd_audit_nethermind.pdf" target="_blank" className="flex items-center gap-1">
-            <Shield size={16} />
-            Nethermind Audit
+            Security Audits
           </Link>
           <Link href="/brand-guidelines">Brand Guidelines</Link>
         </div>

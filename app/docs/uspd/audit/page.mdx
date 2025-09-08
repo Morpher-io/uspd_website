@@ -1,0 +1,97 @@
+# Security Audits
+
+USPD has undergone comprehensive security audits by leading blockchain security firms to ensure the safety and reliability of the protocol. This page provides detailed summaries of the audit findings and the team's responses.
+
+## Resonance Security Audit
+
+**Audit Period:** June 10-20, 2025  
+**Auditors:** Resonance Security  
+**Scope:** USPD stablecoin smart contracts and NFT-based stabilizer system
+
+[📄 View Full Resonance Audit Report](/documents/uspd_audit_resonance.pdf)
+
+### Overview
+
+Resonance Security conducted a thorough assessment of USPD's smart contracts, focusing on the unique NFT-based stabilizer system that underpins this USD-pegged stablecoin. The audit aimed to identify security vulnerabilities and verify correct functionality across all contract components.
+
+### Code Quality Assessment
+
+The audit team rated the project across three critical dimensions:
+
+| Metric | Score | Rating | Notes |
+|--------|-------|--------|-------|
+| **Code Quality** | 7/10 | Good | Follows development best practices, uses standard libraries, highly readable |
+| **Test Coverage** | 9/10 | Excellent | 96% code coverage with comprehensive unit and integration tests |
+| **Documentation** | 9/10 | Excellent | Comprehensive specifications and technical details |
+
+### Security Findings Summary
+
+The audit identified **22 vulnerabilities** across different severity levels. The USPD team demonstrated strong security practices by resolving **18 of 22 findings**, with the remaining 4 acknowledged as accepted design trade-offs.
+
+#### Critical Findings
+
+| ID | Description | Status |
+|----|-------------|--------|
+| **RES-01** | Yield factor manipulation via direct stETH transfers to rateContract, potentially allowing malicious liquidations | ✅ **Resolved** |
+
+#### Medium Severity Findings
+
+| ID | Description | Status |
+|----|-------------|--------|
+| **RES-02** | Unprotected `receive()` function in StabilizerEscrow could lead to native token loss | ✅ **Resolved** |
+| **RES-03** | Outdated price query signatures could be reused due to lack of nonce mechanism | ✅ **Resolved** |
+| **RES-04** | Uniform staleness period for price validation across different oracle sources | ✅ **Resolved** |
+
+#### Low Severity Findings
+
+| ID | Description | Status |
+|----|-------------|--------|
+| **RES-05** | Centralization risk from admin-privileged minting/burning functions | ⚠️ **Acknowledged** |
+| **RES-08** | L2 yield factor update logic doesn't account for L1 slashing events | ✅ **Resolved** |
+| **RES-13** | StabilizerNFT minting susceptible to front-running attacks | ⚠️ **Acknowledged** |
+
+#### Informational Findings
+
+| ID | Description | Status |
+|----|-------------|--------|
+| **RES-14** | Floating pragma version (^0.8.20) could lead to deployment inconsistencies | ✅ **Resolved** |
+| **RES-21** | `mint()` function doesn't follow Checks-Effects-Interactions pattern | ✅ **Resolved** |
+
+### Acknowledged Design Decisions
+
+Several findings were acknowledged rather than resolved due to intentional design choices:
+
+- **RES-05 (Centralization)**: Admin privileges are intentionally limited to bridge and L2 minting operations for regulatory compliance
+- **RES-13 (Front-running)**: Permissionless minting is maintained by design for regulatory reasons, accepting the front-running risk
+
+### Audit Methodology
+
+Resonance employed a comprehensive approach combining:
+- Automated source code analysis
+- Manual security review by 3 engineers over 10 days
+- Focus on common attack vectors: re-entrancy, front-running, unsafe external calls, access control
+
+## Nethermind Audit
+
+**Coming Soon**  
+Details about the Nethermind security audit will be added here upon completion.
+
+[📄 View Full Nethermind Audit Report](/documents/uspd_audit_nethermind.pdf)
+
+---
+
+## Security Commitment
+
+The USPD protocol takes security seriously, as evidenced by:
+
+- **High test coverage** (96%) with comprehensive unit and integration tests
+- **Excellent documentation** providing clear specifications
+- **Proactive security measures** with multiple independent audits
+- **Transparent disclosure** of all findings and resolutions
+- **Responsible design decisions** balancing security with regulatory requirements
+
+For security researchers or users with security concerns, please review the full audit reports linked above or contact the team through our official channels.
+
+---
+
+*Last updated: {new Date().toLocaleDateString()}*
