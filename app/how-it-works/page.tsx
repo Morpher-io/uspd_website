@@ -193,7 +193,7 @@ const ScrollProgressIndicator = ({
           transition={{ type: "spring", stiffness: 400, damping: 15 }}
         >
           <motion.div
-            key={`${scene.id}-${darkMode}`} // Force re-render on theme change
+            key={`${index}-${darkMode}`} // Force re-render on theme change
             className="h-2 w-2 rounded-full"
             animate={{
               scale: activeSceneIndex === index ? 1.5 : 1,
