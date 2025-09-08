@@ -808,17 +808,12 @@ const scenes: SceneConfig[] = [
         size: { w: '100%', h: '50%' },
         visible: true,
         label: 'USPD System Pool - All Stabilizers',
-      }
-    ],
-    infoBoxes: [
-      {
-        position: { x: '50%', y: '95%' },
-        size: { w: '50%' },
-        visible: true,
-        title: 'System Health: Excellent',
-        value: 'ETH Price: $4,800 (+20%)',
-        status: 'safe',
-        centered: true,
+        customContent: (
+          <div className="mt-4 text-center">
+            <div className="text-sm text-muted-foreground">ETH Price: $4,800 (+20%)</div>
+            <div className="font-bold text-base">System Health: Excellent</div>
+          </div>
+        )
       }
     ],
   },
@@ -1549,7 +1544,10 @@ const renderChart = (chart: ChartConfig) => {
         h={chart.size.h}
         visible={chart.visible}
       >
-        <Users size={64} className="m-auto text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center h-full">
+          <Users size={64} className="text-muted-foreground" />
+          {chart.customContent}
+        </div>
       </ChartContainer>
     );
   }
