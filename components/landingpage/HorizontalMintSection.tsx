@@ -142,15 +142,6 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
         <div className="space-y-6">
             {/* Main Mint Interface */}
             <div className="relative p-6 border rounded-lg bg-card space-y-6">
-                {/* Wallet Connection Overlay */}
-                {!isConnected && (
-                    <div className="absolute inset-0 bg-card/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-                        <div className="flex flex-col items-center space-y-4">
-                            <p className="text-muted-foreground text-lg">Connect your wallet to mint USPD</p>
-                            <ConnectButton />
-                        </div>
-                    </div>
-                )}
 
                 {/* Input Section */}
                 <div className="space-y-4">
