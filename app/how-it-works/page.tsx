@@ -1390,7 +1390,7 @@ const Actor = ({
         animate={{ opacity: 1, y: 0, ...animate }}
         exit={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.7, ease: "easeInOut" }}
-        style={{ left: x, top: y }}
+        style={{ left: x, top: y, transform: "translateX(-50%)" }}
       >
         <motion.div
           className="relative"
