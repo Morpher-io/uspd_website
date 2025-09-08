@@ -2,6 +2,8 @@
 
 import uspdCoinAnimation from "@/public/documents/USPD.json";
 import dynamic from "next/dynamic";                                                                                                                                                                
+import { InteractiveHoverButton } from "../magicui/interactive-hover-button";
+import Link from "next/link";
 const DynamicLottie = dynamic(() => import("lottie-react"), { ssr: false }); 
 
 export default function HeroSection() {
@@ -14,6 +16,11 @@ export default function HeroSection() {
             <p className="max-w-lg text-center lg:text-left text-muted-foreground text-3xl tracking-wide">
                 The decentralized, permissionless stablecoin with native yield and on-chain proof of reserves.
             </p>
+            <Link href="https://t.me/+V9hBnsllQVY5YWU0" target="_blank" className="w-full md:w-auto">
+                            <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">
+                                Join us on Telegram
+                            </InteractiveHoverButton>
+                        </Link>
         </div>
         <div className="relative flex-1">
             <DynamicLottie animationData={uspdCoinAnimation} />
