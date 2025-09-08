@@ -89,6 +89,8 @@ export default async function RootLayout({
           <ContractProvider>
             <Layout
               navbar={navbar}
+              editLink={null}
+              feedback={{content: null}}
               pageMap={await getPageMap()}
               docsRepositoryBase="https://github.com/morpher-io/uspd"
               footer={footer}
