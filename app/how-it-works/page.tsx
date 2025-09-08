@@ -274,16 +274,17 @@ interface SceneConfig {
 // --- Scene Configuration ---
 const scenes: SceneConfig[] = [
   {
-    title: "The Stabilizer",
+    title: "The Problem: Volatile Assets",
     content: (
       <p>
-        It all starts with a Stabilizer. They have ETH they want to put to work
-        to earn yield.
+        Meet Alice. She has 1 ETH worth $4,000, but she's tired of the constant 
+        price volatility. She wants stable purchasing power without giving up 
+        the benefits of DeFi.
       </p>
     ),
     actors: [
       {
-        type: 'stabilizer',
+        type: 'user',
         position: { x: '45%', y: '40%' },
         visible: true,
         scale: 2,
@@ -292,144 +293,49 @@ const scenes: SceneConfig[] = [
     ],
   },
   {
-    title: "Minting a Stabilizer NFT",
+    title: "Limited Stablecoin Options",
     content: (
       <p>
-        The Stabilizer mints a Stabilizer NFT, which represents their position
-        in the system. The NFT automatically gets two contracts attached: A Stabilizer Escrow contract and a Position Escrow contract.
-      </p>
-    ),
-    link: { href: "/stabilizer/mint", text: "Open the Minting Page" },
-    actors: [
-      {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 0,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-      }
-    ],
-  },
-  {
-    title: "Adding Collateral",
-    content: (
-      <p>
-        They then deposit 10 ETH into their personal Stabilizer Escrow. This ETH
-        is now unallocated collateral, ready to back new USPD.
-      </p>
-    ),
-    link: { href: "/stabilizer", text: "Open the Collateralization Manager" },
-    actors: [
-      {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
-        visible: true,
-        labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 10,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-      }
-    ],
-  },
-  {
-    title: "Setting the Ratio",
-    content: (
-      <p>
-        Next, they set their desired overcollateralization ratio. For example 150%: For every 1
-        ETH a user provides, the Stabilizer will add 0.5 ETH, for a total of
-        150%.
+        Alice's options are limited: centralized stablecoins require trust in banks, 
+        while other decentralized options either don't generate yield or require 
+        complex position management. She needs something better.
       </p>
     ),
     actors: [
       {
-        type: 'stabilizer',
-        position: { x: '7%', y: '10%' },
+        type: 'user',
+        position: { x: '45%', y: '40%' },
         visible: true,
+        scale: 1.5,
         labelVisible: true,
-      }
-    ],
-    charts: [
-      {
-        type: 'single-bar',
-        position: { x: '0%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Stabilizer Escrow',
-        data: {
-          value: 10,
-          maxValue: 11,
-          color: 'bg-gray-500',
-          label: 'Unallocated',
-          unit: 'ETH'
-        }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
-      }
-    ],
-    infoBoxes: [
-      {
-        position: { x: '0%', y: '98%' },
-        size: { w: '25%' },
-        visible: true,
-        title: '150% Ratio',
-        value: "Stabilizer's Preference",
-        status: 'safe',
       }
     ],
   },
   {
-    title: "The User Arrives",
+    title: "Enter USPD",
     content: (
       <p>
-        Now, a User arrives with 1 ETH. They want to mint USPD, a stablecoin
-        pegged to the US dollar.
+        USPD offers what Alice needs: a permissionless, yield-bearing stablecoin. 
+        She can mint USPD with her ETH and let the system handle everything else. 
+        No position management required.
+      </p>
+    ),
+    actors: [
+      {
+        type: 'user',
+        position: { x: '83.33%', y: '10%' },
+        visible: true,
+        labelVisible: true,
+      }
+    ],
+  },
+  {
+    title: "Behind the Scenes: Stabilizers",
+    content: (
+      <p>
+        What makes this possible? Stabilizers - sophisticated actors who have 
+        already deposited ETH into the system and set their desired collateralization 
+        ratios. They provide the overcollateral that backs USPD.
       </p>
     ),
     actors: [
@@ -457,16 +363,9 @@ const scenes: SceneConfig[] = [
           value: 10,
           maxValue: 11,
           color: 'bg-gray-500',
-          label: 'Unallocated',
+          label: 'Available Collateral',
           unit: 'ETH'
         }
-      },
-      {
-        type: 'single-bar',
-        position: { x: '37.5%', y: '30%' },
-        size: { w: '25%', h: '60%' },
-        visible: true,
-        label: 'Position Escrow',
       }
     ],
     infoBoxes: [
@@ -475,20 +374,21 @@ const scenes: SceneConfig[] = [
         size: { w: '25%' },
         visible: true,
         title: '150% Ratio',
-        value: "Stabilizer's Preference",
+        value: "Ready to Match Users",
         status: 'safe',
       }
     ],
   },
   {
-    title: "User Mints USPD",
+    title: "Alice Mints USPD",
     content: (
       <p>
-        The User deposits their 1 ETH (worth e.g. $2,500) into a new Position
-        Escrow. This ETH is now locked, ready to be collateralized.
+        Alice simply deposits her 1 ETH (worth $4,000) to mint 4,000 USPD. 
+        The system automatically matches her with available stabilizer collateral. 
+        It's that simple - no complex setup required.
       </p>
     ),
-    link: { href: "/uspd", text: "Open the Minting Page" },
+    link: { href: "/uspd", text: "Mint USPD" },
     actors: [
       {
         type: 'stabilizer',
@@ -514,7 +414,7 @@ const scenes: SceneConfig[] = [
           value: 10,
           maxValue: 11,
           color: 'bg-gray-500',
-          label: 'Unallocated',
+          label: 'Available Collateral',
           unit: 'ETH'
         }
       },
@@ -527,16 +427,16 @@ const scenes: SceneConfig[] = [
         data: [
           {
             value: 1,
-            maxValue: 1.6,
+            maxValue: 2.1,
             color: 'bg-green-500',
-            label: 'User',
+            label: 'Alice ETH',
             unit: 'ETH'
           },
           {
             value: 0,
-            maxValue: 1.6,
+            maxValue: 2.1,
             color: 'bg-blue-700',
-            label: 'Stabilizer',
+            label: 'Stabilizer Match',
             unit: 'ETH'
           }
         ]
@@ -546,20 +446,20 @@ const scenes: SceneConfig[] = [
         position: { x: '75%', y: '30%' },
         size: { w: '25%', h: '60%' },
         visible: true,
-        label: 'User Wallet',
+        label: 'Alice Wallet',
         data: [
           {
             value: 0,
             maxValue: 1.1,
             color: 'bg-green-500',
-            label: 'Available',
+            label: 'ETH',
             unit: 'ETH'
           },
           {
             value: 0,
-            maxValue: 2550,
+            maxValue: 4100,
             color: 'bg-purple-500',
-            label: 'Minted',
+            label: 'USPD',
             unit: 'USPD'
           }
         ]
@@ -578,17 +478,18 @@ const scenes: SceneConfig[] = [
         size: { w: '25%' },
         visible: true,
         title: '150% Ratio',
-        value: "Stabilizer's Preference",
+        value: "Auto-Matching Available",
         status: 'safe',
       }
     ],
   },
   {
-    title: "Stabilizer Matches Collateral",
+    title: "Automatic Collateral Matching",
     content: (
       <p>
-        To meet the 150% ratio, the Stabilizer&apos;s Escrow automatically moves 0.5
-        ETH into the Position Escrow, matching the user&apos;s deposit.
+        The system automatically matches Alice's 1 ETH with 0.5 ETH from the 
+        stabilizer's pool, creating 150% overcollateralization. This happens 
+        instantly and automatically.
       </p>
     ),
     actors: [
@@ -616,7 +517,7 @@ const scenes: SceneConfig[] = [
           value: 9.5,
           maxValue: 11,
           color: 'bg-gray-500',
-          label: 'Unallocated',
+          label: 'Remaining Available',
           unit: 'ETH'
         }
       },
@@ -629,16 +530,16 @@ const scenes: SceneConfig[] = [
         data: [
           {
             value: 1,
-            maxValue: 1.6,
+            maxValue: 2.1,
             color: 'bg-green-500',
-            label: 'User',
+            label: 'Alice ETH',
             unit: 'ETH'
           },
           {
             value: 0.5,
-            maxValue: 1.6,
+            maxValue: 2.1,
             color: 'bg-blue-700',
-            label: 'Stabilizer',
+            label: 'Stabilizer Match',
             unit: 'ETH'
           }
         ]
@@ -648,20 +549,20 @@ const scenes: SceneConfig[] = [
         position: { x: '75%', y: '30%' },
         size: { w: '25%', h: '60%' },
         visible: true,
-        label: 'User Wallet',
+        label: 'Alice Wallet',
         data: [
           {
             value: 0,
             maxValue: 1.1,
             color: 'bg-green-500',
-            label: 'Available',
+            label: 'ETH',
             unit: 'ETH'
           },
           {
             value: 0,
-            maxValue: 2550,
+            maxValue: 4100,
             color: 'bg-purple-500',
-            label: 'Minted',
+            label: 'USPD',
             unit: 'USPD'
           }
         ]
@@ -680,18 +581,18 @@ const scenes: SceneConfig[] = [
         size: { w: '25%' },
         visible: true,
         title: '150% Ratio',
-        value: "Stabilizer's Preference",
+        value: "Automatically Achieved",
         status: 'safe',
       }
     ],
   },
   {
-    title: "The Position Escrow",
+    title: "Alice Receives USPD",
     content: (
       <p>
-        With the position now fully collateralized, 2,500 USPD are minted and
-        sent to the User&apos;s wallet. The Position Escrow securely holds the 1.5
-        ETH.
+        With 1.5 ETH now securing the position (worth $6,000), Alice receives 
+        4,000 USPD in her wallet. She now has stable purchasing power that 
+        generates yield automatically.
       </p>
     ),
     actors: [
@@ -719,7 +620,7 @@ const scenes: SceneConfig[] = [
           value: 9.5,
           maxValue: 11,
           color: 'bg-gray-500',
-          label: 'Unallocated',
+          label: 'Remaining Available',
           unit: 'ETH'
         }
       },
@@ -731,7 +632,7 @@ const scenes: SceneConfig[] = [
         label: 'Position Escrow',
         data: {
           value: 1.5,
-          maxValue: 1.6,
+          maxValue: 2.1,
           color: 'bg-teal-500',
           label: 'Total Collateral',
           unit: 'ETH'
@@ -742,20 +643,20 @@ const scenes: SceneConfig[] = [
         position: { x: '75%', y: '30%' },
         size: { w: '25%', h: '60%' },
         visible: true,
-        label: 'User Wallet',
+        label: 'Alice Wallet',
         data: [
           {
             value: 0,
             maxValue: 1.1,
             color: 'bg-green-500',
-            label: 'Available',
+            label: 'ETH',
             unit: 'ETH'
           },
           {
-            value: 2500,
-            maxValue: 2550,
+            value: 4000,
+            maxValue: 4100,
             color: 'bg-purple-500',
-            label: 'Minted',
+            label: 'USPD',
             unit: 'USPD'
           }
         ]
@@ -774,17 +675,18 @@ const scenes: SceneConfig[] = [
         size: { w: '25%' },
         visible: true,
         title: '150% Ratio',
-        value: "Stabilizer's Preference",
+        value: "Secured & Earning Yield",
         status: 'safe',
       }
     ],
   },
   {
-    title: "Fully Collateralized",
+    title: "No Management Required",
     content: (
       <p>
-        The Position Escrow is now overcollateralized at 150%, with the ETH
-        price at $2,500. This creates a safety buffer against price drops.
+        Alice is done! She has 4,000 USPD that maintains its $1 peg and 
+        generates yield automatically. The stabilizers handle all the complex 
+        position management behind the scenes.
       </p>
     ),
     actors: [
@@ -841,14 +743,14 @@ const scenes: SceneConfig[] = [
             value: 0,
             maxValue: 1.1,
             color: 'bg-green-500',
-            label: 'Available',
+            label: 'ETH',
             unit: 'ETH'
           },
           {
-            value: 2500,
-            maxValue: 2550,
+            value: 4000,
+            maxValue: 4100,
             color: 'bg-purple-500',
-            label: 'Minted',
+            label: 'USPD',
             unit: 'USPD'
           }
         ]
@@ -868,7 +770,7 @@ const scenes: SceneConfig[] = [
         size: { w: '25%' },
         visible: true,
         title: '150% Collateralized',
-        value: 'ETH Price: $2,500',
+        value: 'ETH Price: $4,000',
         status: 'safe',
       }
     ],
@@ -877,8 +779,8 @@ const scenes: SceneConfig[] = [
     title: "Price Goes Up",
     content: (
       <p>
-        The price of ETH increases to $3,000. The value of the collateral is now
-        $4,500, pushing the collateralization ratio up to a very safe 180%.
+        The price of ETH increases to $4,800. The value of the collateral is now
+        $7,200, pushing the collateralization ratio up to a very safe 180%.
       </p>
     ),
     actors: [
@@ -962,7 +864,7 @@ const scenes: SceneConfig[] = [
         size: { w: '25%' },
         visible: true,
         title: '180% Collateralized',
-        value: 'ETH Price: $3,000',
+        value: 'ETH Price: $4,800',
         status: 'safe',
       }
     ],
@@ -973,7 +875,7 @@ const scenes: SceneConfig[] = [
       <p>
         The Stabilizer can withdraw any collateral above the 125% minimum. They
         take 0.45 ETH, rebalancing the position to a lean 126% and realizing a
-        profit.
+        profit from the ETH price increase.
       </p>
     ),
     link: { href: "/stabilizer", text: "Manage Collateral" },
@@ -1065,7 +967,7 @@ const scenes: SceneConfig[] = [
         size: { w: '25%' },
         visible: true,
         title: '126% Collateralized',
-        value: 'ETH Price: $3,000',
+        value: 'ETH Price: $4,800',
         status: 'safe',
       }
     ],
@@ -1093,9 +995,9 @@ const scenes: SceneConfig[] = [
     title: "Entering Liquidation Risk",
     content: (
       <p>
-        The price of ETH drops to $2,700. The position&apos;s collateral is now worth
-        only $2,835, pushing the ratio down to a risky 113%. The position is now
-        at risk of liquidation.
+        The price of ETH drops to $3,600. The position&apos;s collateral is now worth
+        only $5,400, pushing the ratio down to a risky 135%. While still above 
+        the 125% minimum, this is getting close to liquidation territory.
       </p>
     ),
     actors: [
@@ -1178,8 +1080,8 @@ const scenes: SceneConfig[] = [
         position: { x: '37.5%', y: '98%' },
         size: { w: '25%' },
         visible: true,
-        title: '113% Collateralized',
-        value: 'ETH Price: $2,700',
+        title: '135% Collateralized',
+        value: 'ETH Price: $3,600',
         status: 'danger',
       }
     ],
@@ -1188,9 +1090,9 @@ const scenes: SceneConfig[] = [
     title: "The Liquidator Arrives",
     content: (
       <p>
-        A new actor, the Liquidator, sees the risky position. They can help
-        secure the system and earn a reward by providing 2,500 USPD to close
-        the position.
+        If the price drops further to $3,200 (making the ratio 120%, below the 
+        125% minimum), a Liquidator can step in. They help secure the system 
+        and earn a reward by providing 4,000 USPD to close the position.
       </p>
     ),
     actors: [
@@ -1280,8 +1182,8 @@ const scenes: SceneConfig[] = [
         position: { x: '37.5%', y: '98%' },
         size: { w: '25%' },
         visible: true,
-        title: '113% Collateralized',
-        value: 'ETH Price: $2,700',
+        title: '120% Collateralized',
+        value: 'ETH Price: $3,200',
         status: 'danger',
       }
     ],
@@ -1290,7 +1192,7 @@ const scenes: SceneConfig[] = [
     title: "Acquiring USPD",
     content: (
       <p>
-        To do this, the Liquidator uses their own ETH to acquire 2,500 USPD from
+        To do this, the Liquidator uses their own ETH to acquire 4,000 USPD from
         the system&apos;s aggregate liquidity pool, which is backed by many other
         healthy Stabilizer positions.
       </p>
@@ -1321,8 +1223,8 @@ const scenes: SceneConfig[] = [
     title: "Initiating Liquidation",
     content: (
       <p>
-        The Liquidator calls the liquidation function, sending their 2,500 USPD
-        to the system. This cancels out the original user&apos;s debt.
+        The Liquidator calls the liquidation function, sending their 4,000 USPD
+        to the system. This cancels out Alice's original debt.
       </p>
     ),
     actors: [
@@ -1532,7 +1434,7 @@ const scenes: SceneConfig[] = [
     content: (
       <p>
         The Liquidator receives ETH equal to the USPD they provided, plus a 5%
-        bonus. In total, they get 0.97 ETH for their service.
+        bonus. In total, they get about 1.31 ETH for their service.
       </p>
     ),
     actors: [
@@ -1701,7 +1603,7 @@ const scenes: SceneConfig[] = [
     },
     content: (
       <p>
-        The original user&apos;s position was liquidated, but their 2,500 USPD are
+        Alice's original position was liquidated, but her 4,000 USPD are
         still safe, now backed by the system&apos;s aggregate liquidity pool.
       </p>
     ),
@@ -1710,7 +1612,7 @@ const scenes: SceneConfig[] = [
     title: "User Redeems USPD",
     content: (
       <p>
-        At any time, the user can burn their USPD to redeem the equivalent
+        At any time, Alice can burn her USPD to redeem the equivalent
         value in ETH from the system at the current market rate.
       </p>
     ),
@@ -1759,7 +1661,7 @@ const scenes: SceneConfig[] = [
     title: "Burning USPD",
     content: (
       <p>
-        The user burns their 2,500 USPD. The system removes this liability from
+        Alice burns her 4,000 USPD. The system removes this liability from
         circulation, keeping the currency fully backed.
       </p>
     ),
@@ -1816,8 +1718,8 @@ const scenes: SceneConfig[] = [
     title: "Receiving ETH",
     content: (
       <p>
-        They receive 0.926 ETH. At the current price of $2,700/ETH, this is
-        worth exactly $2,500. The user&apos;s funds were fully protected, and the
+        Alice receives 1.25 ETH. At the current price of $3,200/ETH, this is
+        worth exactly $4,000. Her funds were fully protected, and the
         USPD peg held perfectly.
       </p>
     ),
@@ -1873,9 +1775,9 @@ const scenes: SceneConfig[] = [
     title: "Full Circle",
     content: (
       <p>
-        The user has successfully exited their position. The system ensured
-        their funds were safe, even when their original counterparty&apos;s position
-        was liquidated.
+        Alice has successfully exited her position. The system ensured
+        her funds were safe, even when her original position was liquidated.
+        She never had to manage anything herself.
       </p>
     ),
     actors: [
