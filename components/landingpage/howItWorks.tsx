@@ -3,6 +3,7 @@
 import LandingPageStats from "../uspd/reporter/LandingPageStats";
 import { CollateralSimulation } from "./CollateralSimulation";
 import { Timeline } from "../ui/timeline";
+import { AccordionTimeline } from "../ui/accordion-timeline";
 import { YieldCalculator } from "../landingpage/YieldCalculator";
 
 const timelineData = [
@@ -72,7 +73,15 @@ export default function HowItWorks() {
                     Minting USPD by depositing ETH, and redeeming it by burning, works just like other stablecoins. But that&apos;s where the similarities end. USPD is built on three core pillars that set it apart: Radical Transparency, Unmatched Stability, and Effortless Native Yield.
                 </p>
             </div>
-            <Timeline data={timelineData} />
+            {/* Desktop Timeline */}
+            <div className="hidden md:block">
+                <Timeline data={timelineData} />
+            </div>
+            
+            {/* Mobile Accordion */}
+            <div className="block md:hidden">
+                <AccordionTimeline data={timelineData} />
+            </div>
         </section>
     )
 }
