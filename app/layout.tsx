@@ -20,6 +20,7 @@ import CustomNavbar from '@/components/Navbar';
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
+import Script from 'next/script';
 
 
 
