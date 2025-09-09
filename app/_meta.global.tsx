@@ -18,6 +18,7 @@ export default {
   },
   "how-it-works": {
     title: 'How USPD Works',
+    display: "hidden"
   },
   
   docs: {
