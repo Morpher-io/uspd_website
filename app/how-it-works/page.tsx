@@ -287,7 +287,7 @@ const scenes: SceneConfig[] = [
     title: "The Problem: Volatile Assets",
     content: (
       <p>
-        Meet Alice. She has 1 ETH worth $4,000, but she's tired of the constant 
+        Meet Alice. She has 1 ETH worth $4,000, but she&apos;s tired of the constant 
         price volatility. She wants stable purchasing power without giving up 
         the benefits of DeFi.
       </p>
@@ -402,7 +402,7 @@ const scenes: SceneConfig[] = [
       <p>
         Alice simply deposits her 1 ETH (worth $4,000) to mint 4,000 USPD. 
         The system automatically matches her with available stabilizer collateral. 
-        It's that simple - no complex setup required.
+        It&apos;s that simple - no complex setup required.
       </p>
     ),
     link: { href: "/uspd", text: "Mint USPD" },
@@ -796,7 +796,7 @@ const scenes: SceneConfig[] = [
     title: "Price Goes Up",
     content: (
       <p>
-        The price of ETH increases to $4,800. Alice's USPD automatically benefits 
+        The price of ETH increases to $4,800. Alice&apos;s USPD automatically benefits 
         from this through stETH rebasing - her purchasing power grows without any 
         action required. The system remains healthy and overcollateralized.
       </p>
@@ -1130,7 +1130,7 @@ const scenes: SceneConfig[] = [
     content: (
       <p>
         For those interested in becoming stabilizers: providing collateral to 
-        back USPD isn't just a public service - it's a sophisticated yield 
+        back USPD isn&apos;t just a public service - it&apos;s a sophisticated yield 
         strategy that can generate 20-35% APY through delta-neutral positions.
       </p>
     ),
@@ -1834,7 +1834,7 @@ export default function HowItWorksPage() {
           }}
         >
           <ShimmerButton onClick={scrollToStart} className="shadow-2xl">
-            <div className="h-full flex flex-row gap-1 items-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
+            <div className="h-full flex flex-row gap-1 items-center text-sm font-medium leading-none tracking-tight text-morpher-secondary dark:from-white dark:to-slate-900/10 lg:text-lg">
               Scroll to Start
               <span>
                 <ArrowBigDown className="size-4 transition-transform duration-300 ease-in-out group-hover:translate-y-0.5" />
@@ -1901,7 +1901,7 @@ export default function HowItWorksPage() {
                     viewport={{ amount: 1 }}
                   />
                 )}
-                {group.map((scene, sceneIndex) => {
+                {group.map((scene, /**sceneIndex**/) => {
                   const globalIndex = scenes.indexOf(scene);
                   return (
                     <TextBlock
