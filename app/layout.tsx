@@ -109,6 +109,9 @@ export default async function RootLayout({
         </Providers>
 
         <Toaster richColors />
+
+          {/* 100% privacy-first analytics */}
+          <Script src="https://scripts.simpleanalyticscdn.com/latest.js" />
       </body>
     </html>
   )
