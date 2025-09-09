@@ -405,7 +405,7 @@ const scenes: SceneConfig[] = [
         It&apos;s that simple - no complex setup required.
       </p>
     ),
-    link: { href: "/uspd", text: "Mint USPD" },
+    link: { href: "/mint-burn-uspd", text: "Mint USPD" },
     actors: [
       {
         type: 'stabilizer',
