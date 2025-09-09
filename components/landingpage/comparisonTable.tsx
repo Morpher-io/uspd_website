@@ -26,33 +26,33 @@ export default function ComparisonTable() {
                 </h2>
 
                 <div className="w-full overflow-x-auto">
-                    <Table className="mt-12 min-w-[600px]">
+                    <Table className="mt-12 min-w-[800px]">
                     <TableCaption>Comparison of Stablecoin Features</TableCaption>
                     <TableHeader>
                         <TableRow className="text-3xl">
-                            <TableHead className="w-[100px]"></TableHead>
-                            <TableHead className="text-foreground text-center py-5 px-4">
+                            <TableHead className="w-[200px]"></TableHead>
+                            <TableHead className="text-foreground text-center py-5 px-6 min-w-[150px]">
                                 <div className="flex flex-row justify-center gap-2">
                                     <Image src={uspdLogo} alt="USPD Logo Small" />
                                     <div>USPD</div>
                                 </div>
 
                             </TableHead>
-                            <TableHead className="text-foreground text-center px-4">
+                            <TableHead className="text-foreground text-center px-6 min-w-[150px]">
                                 <div className="flex flex-row justify-center gap-2">
                                     <Image src={logoUsdc} alt="USDC Logo Small" />
                                     <div>USDC</div>
                                 </div>
 
                             </TableHead>
-                            <TableHead className="text-foreground text-center px-4">
+                            <TableHead className="text-foreground text-center px-6 min-w-[150px]">
                                 <div className="flex flex-row justify-center gap-2">
                                     <Image src={logoDai} alt="DAI Logo Small" />
                                     <div>DAI</div>
                                 </div>
 
                             </TableHead>
-                            <TableHead className="text-foreground text-center px-4">
+                            <TableHead className="text-foreground text-center px-6 min-w-[150px]">
                                 <div className="flex flex-row justify-center gap-2">
                                     <Image src={logoFusd} alt="FUSD Logo Small" />
                                     <div>FUSD</div>
@@ -62,39 +62,39 @@ export default function ComparisonTable() {
                     </TableHeader>
                     <TableBody className="text-center text-xl">
                         <TableRow>
-                            <TableCell className="font-medium text-xl px-4">Decentralized</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
+                            <TableCell className="font-medium text-xl px-6">Decentralized</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
                         </TableRow>
                         <TableRow>
-                            <TableCell className="font-medium text-xl px-4">Transparent Reserves</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
+                            <TableCell className="font-medium text-xl px-6">Transparent Reserves</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
                         </TableRow>
                         <TableRow>
-                            <TableCell className="font-medium text-xl px-4">Independent from Banks</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
+                            <TableCell className="font-medium text-xl px-6">Independent from Banks</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
                         </TableRow>
                         <TableRow>
-                            <TableCell className="font-medium text-xl px-4">Sovereign &amp; Unregulated</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
+                            <TableCell className="font-medium text-xl px-6">Sovereign &amp; Unregulated</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
                         </TableRow>
                         <TableRow>
-                            <TableCell className="font-medium text-xl px-4">Native Yield</TableCell>
-                            <TableCell className="text-morpher-secondary px-4">Yes</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
-                            <TableCell className="text-red-900 dark:text-red-500 px-4">No</TableCell>
+                            <TableCell className="font-medium text-xl px-6">Native Yield</TableCell>
+                            <TableCell className="text-morpher-secondary px-6">Yes</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
+                            <TableCell className="text-red-900 dark:text-red-500 px-6">No</TableCell>
                         </TableRow>
                     </TableBody>
                     </Table>
