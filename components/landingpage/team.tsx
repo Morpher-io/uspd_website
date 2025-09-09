@@ -13,8 +13,8 @@ export default function Team() {
                 <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-5xl text-balance text-center uppercase">
                     Team
                 </h2>
-                <div className="flex grid grid-cols-1 md:grid-cols-4 gap-4 justify-items-center">
-                    <div className="flex flex-col text-xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 justify-items-center">
+                    <div className="flex flex-col text-xl items-center text-center">
                         <Image src={imgMartin} alt="Martin" className="w-64" />
                         <div className="text-2xl font-bold uppercase my-4">Martin Froehler, CEO</div>
                         <div>CEO & Founder of</div>
@@ -22,8 +22,7 @@ export default function Team() {
                         <div>10+ years in quant finance</div>
                         <div>MS Technical Mathematics</div>
                     </div>
-                    <div className="flex flex-col text-xl">
-
+                    <div className="flex flex-col text-xl items-center text-center">
                         <Image src={imgThomas} alt="Thomas" className="w-64"  />
                         <div className="text-2xl font-bold uppercase my-4">Thomas Wiesner, CTO</div>
                         <div>CTO of</div>
@@ -32,8 +31,7 @@ export default function Team() {
                         <div>MS Computer Science</div>
                     </div>
                     
-                    <div className="flex flex-col text-xl">
-
+                    <div className="flex flex-col text-xl items-center text-center">
                         <Image src={imgAndreas} alt="Andreas" className="w-64" />
                         <div className="text-2xl font-bold uppercase my-4">Andreas Bonelli, COO</div>
                         <div>Managing Director of</div>
@@ -41,8 +39,7 @@ export default function Team() {
                         <div>15+ years in quant finance</div>
                         <div>PhD Computer Science</div>
                     </div>
-                    <div className="flex flex-col text-xl">
-
+                    <div className="flex flex-col text-xl items-center text-center">
                         <Image src={imgWilly} alt="Willy" className="w-64" />
                         <div className="text-2xl font-bold uppercase my-4">Willy Woo, Advisor</div>
                         <div>Managing Partner</div>
