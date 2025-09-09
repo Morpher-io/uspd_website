@@ -2,7 +2,6 @@ import { MetadataRoute } from "next";
 import {
   Folder,
   MdxFile,
-  Meta,
   MetaJsonFile,
   PageMapItem,
 } from "nextra";
@@ -73,7 +72,7 @@ const parsePageMapItems = (items: PageMapItem[]): SitemapEntry[] => {
     
     if (isMDXFile(item)) {
       // Check if this page is hidden in metadata
-      const metaEntry = metadata.find(([key, _]) => key === item.name);
+      const metaEntry = metadata.find(([key, _value]) => key === item.name);
       if (metaEntry && isPageType(metaEntry[1]) && metaEntry[1].display === "hidden") {
         continue;
       }
@@ -87,7 +86,7 @@ const parsePageMapItems = (items: PageMapItem[]): SitemapEntry[] => {
       });
     } else if (isFolder(item)) {
       // Check if this folder is hidden in metadata
-      const metaEntry = metadata.find(([key, _]) => key === item.name);
+      const metaEntry = metadata.find(([key, _value]) => key === item.name);
       if (metaEntry && isPageType(metaEntry[1]) && metaEntry[1].display === "hidden") {
         continue;
       }
