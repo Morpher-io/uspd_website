@@ -57,8 +57,6 @@ const isMDXFile = (value: unknown): value is MdxFile =>
   "frontMatter" in value;
 
 // Filter out hidden pages
-const isNotHiddenPage = ([_, value]: [string, Meta]): boolean => 
-  !isPageType(value) || value.display !== "hidden";
 
 const parsePageMapItems = (items: PageMapItem[]): SitemapEntry[] => {
   const sitemapEntries: SitemapEntry[] = [];
