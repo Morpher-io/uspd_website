@@ -21,15 +21,15 @@ export default function Resources() {
                         </a>
                     </div>
 
-                    {/* Card 2: Risk Analysis */}
+                    {/* Card 2: Security Audits */}
                     <div className="flex flex-col items-center text-center p-8 border border-border rounded-lg bg-secondary/50">
-                        <h3 className="text-2xl font-bold mb-4 font-heading">Risk Analysis</h3>
+                        <h3 className="text-2xl font-bold mb-4 font-heading">Security Audits</h3>
                         <p className="text-muted-foreground mb-6 flex-grow">
-                            An in-depth analysis of the potential risks associated with the USPD protocol and its components. Understand our mitigation strategies and the safeguards in place.
+                            USPD has undergone comprehensive security audits by leading blockchain security firms including Resonance Security and Nethermind. Review the detailed findings and our security commitment.
                         </p>
-                        <a href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
+                        <a href="/docs/uspd/audit" className="w-full md:w-auto">
                             <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">
-                                READ RISK ANALYSIS
+                                VIEW AUDIT REPORTS
                             </InteractiveHoverButton>
                         </a>
                     </div>
