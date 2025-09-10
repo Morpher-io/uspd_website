@@ -25,28 +25,28 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
         {/* Marquee container */}
         <div className="flex animate-marquee">
           {/* First set of segments */}
-          <div className="flex items-center justify-between min-w-full flex-shrink-0">
+          <div className="flex items-center min-w-full flex-shrink-0">
             {segments.map((segment, index) => (
               <div key={`first-${index}`} className="flex items-center">
-                <span className="text-sm font-medium whitespace-nowrap text-foreground">
+                <span className="text-sm font-medium whitespace-nowrap text-foreground px-6">
                   {segment.trim()}
                 </span>
                 {index < segments.length - 1 && (
-                  <span className="mx-4 text-muted-foreground">+++</span>
+                  <span className="text-muted-foreground px-6">+++</span>
                 )}
               </div>
             ))}
           </div>
           
           {/* Second set for seamless loop */}
-          <div className="flex items-center justify-between min-w-full flex-shrink-0 ml-8">
+          <div className="flex items-center min-w-full flex-shrink-0">
             {segments.map((segment, index) => (
               <div key={`second-${index}`} className="flex items-center">
-                <span className="text-sm font-medium whitespace-nowrap text-foreground">
+                <span className="text-sm font-medium whitespace-nowrap text-foreground px-6">
                   {segment.trim()}
                 </span>
                 {index < segments.length - 1 && (
-                  <span className="mx-4 text-muted-foreground">+++</span>
+                  <span className="text-muted-foreground px-6">+++</span>
                 )}
               </div>
             ))}
@@ -65,12 +65,12 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
         }
         
         .animate-marquee {
-          animation: marquee 25s linear infinite;
+          animation: marquee 35s linear infinite;
         }
         
         @media (max-width: 768px) {
           .animate-marquee {
-            animation-duration: 20s;
+            animation-duration: 25s;
           }
         }
       `}</style>
