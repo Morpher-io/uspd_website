@@ -21,6 +21,7 @@ import CustomNavbar from '@/components/Navbar';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import Script from 'next/script';
+import { AnimatedRibbon } from '@/components/ui/animated-ribbon';
 
 
 
@@ -45,26 +46,32 @@ export const metadata: Metadata = {
 
 
 const navbar = (
-  <Navbar
-    className='font-medium'
+  <div>
+    <AnimatedRibbon 
+      text="We are in Testnet +++ Mainnet Launch Q4 2025 +++ Follow on X, Discord or Telegram to stay up to date"
+      className="border-b border-border/20"
+    />
+    <Navbar
+      className='font-medium'
 
-    logoLink={false}
-    logo={<div className='flex items-center'>
-      <Link href="/" className='flex gap-2 items-center border-r border-border pr-4 mr-4'>
-        <Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />
-        <span>USPD</span>
-      </Link>
-      <div className='hidden lg:block flex flex-row'>
-        <NavbarStats />
-        
-      </div>
-      <div className='hidden md:block'>
-        <CustomNavbar />
-      </div>
-    </div>}
-  ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
+      logoLink={false}
+      logo={<div className='flex items-center'>
+        <Link href="/" className='flex gap-2 items-center border-r border-border pr-4 mr-4'>
+          <Image className="h-8 w-8" alt="Uspd Logo" src={UspdLogo} />
+          <span>USPD</span>
+        </Link>
+        <div className='hidden lg:block flex flex-row'>
+          <NavbarStats />
+          
+        </div>
+        <div className='hidden md:block'>
+          <CustomNavbar />
+        </div>
+      </div>}
+    ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
 
-  </Navbar>
+    </Navbar>
+  </div>
 )
 const footer = <NextraFooter><Footer /></NextraFooter>
 
