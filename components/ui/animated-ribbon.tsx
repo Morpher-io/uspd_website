@@ -25,7 +25,7 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
         {/* Marquee container */}
         <div className="flex animate-marquee">
           {/* Multiple repetitions for seamless scrolling */}
-          {Array.from({ length: 4 }).map((_, setIndex) => (
+          {Array.from({ length: 6 }).map((_, setIndex) => (
             <div key={setIndex} className="flex items-center flex-shrink-0">
               {segments.map((segment, index) => (
                 <div key={`${setIndex}-${index}`} className="flex items-center">
@@ -46,17 +46,17 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
             transform: translateX(0);
           }
           100% {
-            transform: translateX(-25%);
+            transform: translateX(calc(-100% / 6));
           }
         }
         
         .animate-marquee {
-          animation: marquee 35s linear infinite;
+          animation: marquee 30s linear infinite;
         }
         
         @media (max-width: 768px) {
           .animate-marquee {
-            animation-duration: 25s;
+            animation-duration: 20s;
           }
         }
       `}</style>
