@@ -46,8 +46,8 @@ export const metadata: Metadata = {
 
 
 const navbar = (
-  <div className="sticky top-0 z-50 bg-background">
-    
+  <>
+    <div className="sticky top-0 z-50">
     <Navbar
       className='font-medium'
 
@@ -67,7 +67,8 @@ const navbar = (
       </div>}
     ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
 
-    </Navbar><AnimatedRibbon 
+    </Navbar>
+    </div><AnimatedRibbon 
       segments={[
         "Sepolia Testnet launched",
         "Mainnet Launch Q4 2025", 
@@ -75,7 +76,7 @@ const navbar = (
       ]}
       className="border-b border-border/20"
     />
-  </div>
+  </>
 )
 const footer = <NextraFooter><Footer /></NextraFooter>
 

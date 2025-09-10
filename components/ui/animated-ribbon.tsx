@@ -54,7 +54,7 @@ export function AnimatedRibbon({ segments, className }: AnimatedRibbonProps) {
         
         @media (max-width: 768px) {
           .animate-marquee {
-            animation-duration: 20s;
+            animation-duration: 10s;
           }
         }
       `}</style>
