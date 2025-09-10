@@ -46,7 +46,7 @@ export const metadata: Metadata = {
 
 
 const navbar = (
-  <div>
+  <div className="sticky top-0 z-50 bg-background">
     
     <Navbar
       className='font-medium'
