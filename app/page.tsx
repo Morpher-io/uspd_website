@@ -15,7 +15,7 @@ export default function IndexPage() {
             <HeroSection />
             <WhyUspd />
             <Features />
-            <HowToEarn />
+            {/* <HowToEarn /> */}
             <ComparisonTable />
             <HowItWorks />
             <MultiChain />

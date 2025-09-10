@@ -18,7 +18,7 @@ export default function WhyUspd() {
                         The Dollar for the Decentralized Nation
                     </h2>
                     <p className="text-center text-muted-foreground text-xl max-w-4xl">
-                        We believe a decentralized economy needs a fully decentralized and stable currency. That's why we created USPD or US Permissionless Dollar. USPD build on three core principles:
+                        We believe a decentralized economy needs a fully decentralized and stable currency. That&apos;s why we created USPD or US Permissionless Dollar. USPD build on three core principles:
                     </p>
                 </div>
                 <div className="flex flex-col gap-16 mt-12">
@@ -34,7 +34,7 @@ export default function WhyUspd() {
                                 Your funds are overcollaterized in stETH, secured by smart contracts and transparently verifiable at all times.
                             </p>
                             <Link href="#transparency">
-                                <InteractiveHoverButton className="border-morpher-secondary">Learn More</InteractiveHoverButton>
+                                <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">Learn More</InteractiveHoverButton>
                             </Link>
                         </div>
                         {/* Pillar 2: Yield */}
@@ -47,7 +47,7 @@ export default function WhyUspd() {
                                 Automatically earn yield by holding USPD. The underlying collateral is stETH, and the rewards are passed directly to you, growing your USPD holdings over time.
                             </p>
                             <Link href="#earn-yield">
-                                <InteractiveHoverButton className="border-morpher-secondary">Learn More</InteractiveHoverButton>
+                                <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">Learn More</InteractiveHoverButton>
                             </Link>
                         </div>
                         {/* Pillar 3: Unstoppable & Accessible */}
@@ -60,7 +60,7 @@ export default function WhyUspd() {
                                 Permissionless, censorship-resistant, independent from TradFi and available on multiple chains.
                             </p>
                             <Link href="/mint-burn-uspd">
-                                <InteractiveHoverButton className="border-morpher-secondary">Learn More</InteractiveHoverButton>
+                                <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">Learn More</InteractiveHoverButton>
                             </Link>
                         </div>
                     </div>
