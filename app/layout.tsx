@@ -47,10 +47,7 @@ export const metadata: Metadata = {
 
 const navbar = (
   <div>
-    <AnimatedRibbon 
-      text="We are in Testnet +++ Mainnet Launch Q4 2025 +++ Follow on X, Discord or Telegram to stay up to date"
-      className="border-b border-border/20"
-    />
+    
     <Navbar
       className='font-medium'
 
@@ -70,7 +67,10 @@ const navbar = (
       </div>}
     ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
 
-    </Navbar>
+    </Navbar><AnimatedRibbon 
+      text="We are in Testnet +++ Mainnet Launch Q4 2025 +++ Follow on X, Discord or Telegram to stay up to date"
+      className="border-b border-border/20"
+    />
   </div>
 )
 const footer = <NextraFooter><Footer /></NextraFooter>

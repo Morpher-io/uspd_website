@@ -25,14 +25,14 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
         {/* Marquee container */}
         <div className="flex animate-marquee">
           {/* Multiple repetitions for seamless scrolling */}
-          {Array.from({ length: 6 }).map((_, setIndex) => (
+          {Array.from({ length: 60 }).map((_, setIndex) => (
             <div key={setIndex} className="flex items-center flex-shrink-0">
               {segments.map((segment, index) => (
                 <div key={`${setIndex}-${index}`} className="flex items-center">
-                  <span className="text-sm font-medium whitespace-nowrap px-6 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 contrast-more:text-gray-700 contrast-more:dark:text-gray-100 transition-colors">
+                  <span className="text-sm font-medium whitespace-nowrap px-6 text-gray-600 x:dark:text-gray-400 transition-colors">
                     {segment.trim()}
                   </span>
-                  <span className="px-6 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 contrast-more:text-gray-700 contrast-more:dark:text-gray-100 transition-colors">+++</span>
+                  <span className="px-6 text-gray-600 x:dark:text-gray-500 contrast-more:text-gray-700 contrast-more:dark:text-gray-100 transition-colors">+++</span>
                 </div>
               ))}
             </div>
@@ -51,7 +51,7 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
         }
         
         .animate-marquee {
-          animation: marquee 30s linear infinite;
+          animation: marquee 20s linear infinite;
         }
         
         @media (max-width: 768px) {
