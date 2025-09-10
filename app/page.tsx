@@ -6,7 +6,7 @@ import Team from '@/components/landingpage/team';
 import Resources from '@/components/landingpage/resources';
 import WhyUspd from "@/components/landingpage/WhyUspd";
 import MultiChain from "@/components/landingpage/MultiChain";
-import HowToEarn from "@/components/landingpage/howToEarn";
+// import HowToEarn from "@/components/landingpage/howToEarn";
 
 export default function IndexPage() {
      
