@@ -318,8 +318,8 @@ function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNf
             </CardContent>
             <CardFooter>
                 <Button asChild className="w-full">
-                    <Link href="/uspd">
-                        Go to App & View More Stats
+                    <Link href="/health">
+                        Check the System Health Dashboard
                         <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                 </Button>
