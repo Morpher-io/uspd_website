@@ -29,10 +29,10 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
             <div key={setIndex} className="flex items-center flex-shrink-0">
               {segments.map((segment, index) => (
                 <div key={`${setIndex}-${index}`} className="flex items-center">
-                  <span className="text-sm font-medium whitespace-nowrap text-foreground px-6">
+                  <span className="text-sm font-medium whitespace-nowrap px-6 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 contrast-more:text-gray-700 contrast-more:dark:text-gray-100 transition-colors">
                     {segment.trim()}
                   </span>
-                  <span className="text-muted-foreground px-6">+++</span>
+                  <span className="px-6 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 contrast-more:text-gray-700 contrast-more:dark:text-gray-100 transition-colors">+++</span>
                 </div>
               ))}
             </div>
