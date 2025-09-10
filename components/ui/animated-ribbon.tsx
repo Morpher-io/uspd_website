@@ -13,15 +13,15 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
 
   return (
     <div className={cn(
-      "relative overflow-hidden bg-background border-b py-2",
+      "relative bg-background border-b py-2",
       className
     )}>
-      {/* Fade effects on left and right edges - positioned relative to full width */}
-      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-      
       {/* Container with proper constraints */}
-      <div className="container x:max-w-(--nextra-content-width) x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] mx-auto relative">
+      <div className="container x:max-w-(--nextra-content-width) x:pl-[max(env(safe-area-inset-left),1.5rem)] x:pr-[max(env(safe-area-inset-right),1.5rem)] mx-auto relative overflow-hidden">
+        {/* Fade effects on left and right edges - positioned at container edges */}
+        <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+        
         {/* Marquee container */}
         <div className="flex animate-marquee">
           {/* First set of segments */}
