@@ -24,33 +24,19 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
         
         {/* Marquee container */}
         <div className="flex animate-marquee">
-          {/* First set of segments */}
-          <div className="flex items-center min-w-full flex-shrink-0">
-            {segments.map((segment, index) => (
-              <div key={`first-${index}`} className="flex items-center">
-                <span className="text-sm font-medium whitespace-nowrap text-foreground px-6">
-                  {segment.trim()}
-                </span>
-                {index < segments.length - 1 && (
+          {/* Multiple repetitions for seamless scrolling */}
+          {Array.from({ length: 4 }).map((_, setIndex) => (
+            <div key={setIndex} className="flex items-center flex-shrink-0">
+              {segments.map((segment, index) => (
+                <div key={`${setIndex}-${index}`} className="flex items-center">
+                  <span className="text-sm font-medium whitespace-nowrap text-foreground px-6">
+                    {segment.trim()}
+                  </span>
                   <span className="text-muted-foreground px-6">+++</span>
-                )}
-              </div>
-            ))}
-          </div>
-          
-          {/* Second set for seamless loop */}
-          <div className="flex items-center min-w-full flex-shrink-0">
-            {segments.map((segment, index) => (
-              <div key={`second-${index}`} className="flex items-center">
-                <span className="text-sm font-medium whitespace-nowrap text-foreground px-6">
-                  {segment.trim()}
-                </span>
-                {index < segments.length - 1 && (
-                  <span className="text-muted-foreground px-6">+++</span>
-                )}
-              </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
       
@@ -60,7 +46,7 @@ export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
             transform: translateX(0);
           }
           100% {
-            transform: translateX(calc(-100% - 2rem));
+            transform: translateX(-25%);
           }
         }
         
