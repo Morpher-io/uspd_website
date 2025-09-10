@@ -22,7 +22,7 @@ export function Features() {
                         </div>
                         <div className="flex-1">
                             <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Transparent On-Chain Reserves</h3>
-                            <p className="text-muted-foreground text-lg">Anyone can publicly verify the protocol's health and collateralization at any time as USPD holds all reserves on-chain in stETH.</p>
+                            <p className="text-muted-foreground text-lg">Anyone can publicly verify the protocol&apos;s health and collateralization at any time as USPD holds all reserves on-chain in stETH.</p>
                         </div>
                     </div>
 
@@ -32,7 +32,7 @@ export function Features() {
                             <Image src={layerIcon} alt="Box Icon" className="w-[100px]" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Sovereign & Unstoppable</h3>
+                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Sovereign &amp; Unstoppable</h3>
                             <p className="text-muted-foreground text-lg">As a non-custodial and permissionless protocol with no tradfi exposure, USPD is immune to freezing, guaranteeing you complete, unrestricted access and control over your assets at all times.</p>
                         </div>
                     </div>
@@ -55,7 +55,7 @@ export function Features() {
                         </div>
                         <div className="flex-1">
                             <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Over-collateralized for Market Stability</h3>
-                            <p className="text-muted-foreground text-lg">Every USPD is over-collateralized by a minimum of +25% of third-party Stabilizers' funds, ensuring the system can withstand market fluctuations to maintain its peg.</p>
+                            <p className="text-muted-foreground text-lg">Every USPD is over-collateralized by a minimum of +25% of third-party Stabilizers&apos; funds, ensuring the system can withstand market fluctuations to maintain its peg.</p>
                         </div>
                     </div>
 
