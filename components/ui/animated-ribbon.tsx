@@ -3,13 +3,11 @@
 import { cn } from "@/lib/utils"
 
 interface AnimatedRibbonProps {
-  text: string
+  segments: string[]
   className?: string
 }
 
-export function AnimatedRibbon({ text, className }: AnimatedRibbonProps) {
-  // Split text into segments
-  const segments = text.split(' +++ ')
+export function AnimatedRibbon({ segments, className }: AnimatedRibbonProps) {
 
   return (
     <div className={cn(

@@ -68,7 +68,11 @@ const navbar = (
     ><ConnectButton label="Connect" showBalance={false} accountStatus={"avatar"} chainStatus={"icon"} />
 
     </Navbar><AnimatedRibbon 
-      text="We are in Testnet +++ Mainnet Launch Q4 2025 +++ Follow on X, Discord or Telegram to stay up to date"
+      segments={[
+        "We are in Testnet",
+        "Mainnet Launch Q4 2025", 
+        "Follow on X, Discord or Telegram to stay up to date"
+      ]}
       className="border-b border-border/20"
     />
   </div>
