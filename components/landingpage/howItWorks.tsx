@@ -10,7 +10,7 @@ const timelineData = [
     {
         title: "1. Transparency",
         content: (
-            <div className="flex-col flex flex-1 gap-4">
+            <div className="flex-col flex flex-1 gap-4" id="transparency">
                 <h2 className="text-3xl uppercase font-medium">Radical Transparency</h2>
                 <div className="text-xl text-muted-foreground">
                     Beyond regular audits, USPD offers something more powerful: real-time, on-chain proof of reserves. Every dollar of USPD is backed by collateral that you can verify yourself, at any moment. There are no opaque bank accounts or off-chain assets. Just transparent smart contracts.

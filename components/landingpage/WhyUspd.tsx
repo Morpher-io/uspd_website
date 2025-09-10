@@ -33,7 +33,7 @@ export default function WhyUspd() {
                             <p className="text-muted-foreground mb-6 text-lg flex-grow">
                                 Your funds are overcollaterized in stETH, secured by smart contracts and transparently verifiable at all times.
                             </p>
-                            <Link href="#how-it-works">
+                            <Link href="#transparency">
                                 <InteractiveHoverButton className="border-morpher-secondary">Learn More</InteractiveHoverButton>
                             </Link>
                         </div>
@@ -46,7 +46,7 @@ export default function WhyUspd() {
                             <p className="text-muted-foreground mb-6 text-lg flex-grow">
                                 Automatically earn yield by holding USPD. The underlying collateral is stETH, and the rewards are passed directly to you, growing your USPD holdings over time.
                             </p>
-                            <Link href="#how-it-works">
+                            <Link href="#earn-yield">
                                 <InteractiveHoverButton className="border-morpher-secondary">Learn More</InteractiveHoverButton>
                             </Link>
                         </div>
@@ -59,7 +59,7 @@ export default function WhyUspd() {
                             <p className="text-muted-foreground mb-6 text-lg flex-grow">
                                 Permissionless, censorship-resistant, independent from TradFi and available on multiple chains.
                             </p>
-                            <Link href="/mint">
+                            <Link href="/mint-burn-uspd">
                                 <InteractiveHoverButton className="border-morpher-secondary">Learn More</InteractiveHoverButton>
                             </Link>
                         </div>
