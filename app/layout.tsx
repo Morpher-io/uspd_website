@@ -1,6 +1,6 @@
 import { Footer as NextraFooter, Layout, Navbar } from 'nextra-theme-docs'
 import { Footer } from '@/components/Footer';
-import { Head } from 'nextra/components'
+import { Banner, Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import { Toaster } from "@/components/ui/sonner" // if you re-export from ui                                                      
 
@@ -98,8 +98,6 @@ export default async function RootLayout({
               nextThemes={{defaultTheme: "dark"}}
             // ... Your additional layout options
             >
-
-
 
 
               {children}
