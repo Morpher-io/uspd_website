@@ -21,8 +21,8 @@ export function Features() {
                             <Image src={boxIcon} alt="Box Icon" className="w-[100px]" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Real-time transparent reserves</h3>
-                            <p className="text-muted-foreground text-lg">USPD ensures full transparency by maintaining real-time visibility of its reserves, fostering trust and reliability among users.</p>
+                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Transparent On-Chain Reserves</h3>
+                            <p className="text-muted-foreground text-lg">Anyone can publicly verify the protocol's health and collateralization at any time as USPD holds all reserves on-chain in stETH.</p>
                         </div>
                     </div>
 
@@ -32,8 +32,8 @@ export function Features() {
                             <Image src={layerIcon} alt="Box Icon" className="w-[100px]" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Over-collateralization</h3>
-                            <p className="text-muted-foreground text-lg">USPD is designed with an over-collateralized structure, providing a robust buffer against market volatility and enhancing stability.</p>
+                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Sovereign & Unstoppable</h3>
+                            <p className="text-muted-foreground text-lg">As a non-custodial and permissionless protocol with no tradfi exposure, USPD is immune to freezing, guaranteeing you complete, unrestricted access and control over your assets at all times.</p>
                         </div>
                     </div>
 
@@ -43,8 +43,8 @@ export function Features() {
                             <Image src={axisIcon} alt="Box Icon" className="w-[100px]" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Non-custodial framework</h3>
-                            <p className="text-muted-foreground text-lg">USPD operates on a non-custodial basis, ensuring that users retain complete control over their assets without intermediary oversight.</p>
+                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Native Yield for Holders</h3>
+                            <p className="text-muted-foreground text-lg">Every USPD you hold is collateralized in stETH. The native yield of staked ETH generates a sustainable, native yield. This yield is passed directly to you as long as you hold USPD, allowing your capital to remain productive.</p>
                         </div>
                     </div>
 
@@ -54,8 +54,8 @@ export function Features() {
                             <Image src={ethMonitor} alt="Box Icon" width={100} className="w-[100px]" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Permissionless</h3>
-                            <p className="text-muted-foreground text-lg">USPD allows for seamless and unrestricted conversion to and from ETH at any time, offering unparalleled flexibility and accessibility.</p>
+                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Over-collateralized for Market Stability</h3>
+                            <p className="text-muted-foreground text-lg">Every USPD is over-collateralized by a minimum of +25% of third-party Stabilizers' funds, ensuring the system can withstand market fluctuations to maintain its peg.</p>
                         </div>
                     </div>
 
@@ -65,8 +65,8 @@ export function Features() {
                             <Image src={freezingIcon} alt="Box Icon" width={100} className="w-[100px]" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Immunity to freezing</h3>
-                            <p className="text-muted-foreground text-lg">Decentralized nature makes USPD assets immune to freezing, guaranteeing uninterrupted access and control for users, regardless of external factors.</p>
+                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Abstracted Risk Management</h3>
+                            <p className="text-muted-foreground text-lg">The protocol abstracts volatility risk from the holder to third-party Stabilizers. This design removes the need for you to actively manage your own collateral positions.</p>
                         </div>
                     </div>
                     <div className="flex gap-4 items-start">
@@ -74,8 +74,8 @@ export function Features() {
                             <Image src={banksIcon} alt="Box Icon" width={100} className="w-[100px]" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">No reliance on banks</h3>
-                            <p className="text-muted-foreground text-lg">USPD does not have any exposure to banks or the traditional financial system.</p>
+                            <h3 className="text-2xl md:text-3xl font-semibold mb-2 uppercase">Protocol Safeguards</h3>
+                            <p className="text-muted-foreground text-lg">In a severe market crash, USPD holders have priority access to the collateral as Stabilizer positions are being liquidated. An insurance fund offers an additional layer of security for your funds.</p>
                         </div>
                     </div>
 
