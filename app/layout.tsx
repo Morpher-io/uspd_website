@@ -69,7 +69,7 @@ const navbar = (
 
     </Navbar><AnimatedRibbon 
       segments={[
-        "We are in Testnet",
+        "Sepolia Testnet launched",
         "Mainnet Launch Q4 2025", 
         "Follow on X, Discord or Telegram to stay up to date"
       ]}
