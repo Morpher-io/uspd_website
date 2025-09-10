@@ -13,7 +13,7 @@ export default function Team() {
                 <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-5xl text-balance text-center uppercase">
                     Team
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 justify-items-center">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center">
                     <div className="flex flex-col text-xl items-center text-center">
                         <Image src={imgMartin} alt="Martin" className="w-64" />
                         <div className="text-2xl font-bold uppercase my-4">Martin Froehler, CEO</div>
@@ -39,14 +39,14 @@ export default function Team() {
                         <div>15+ years in quant finance</div>
                         <div>PhD Computer Science</div>
                     </div>
-                    <div className="flex flex-col text-xl items-center text-center">
+                    {/* <div className="flex flex-col text-xl items-center text-center">
                         <Image src={imgWilly} alt="Willy" className="w-64" />
                         <div className="text-2xl font-bold uppercase my-4">Willy Woo, Advisor</div>
                         <div>Managing Partner</div>
                         <div className="text-morpher-secondary">CMCC Global &amp; Crest</div>
                         <div>Pioneer of on-chain analysis</div>
                         <div>BS Engineering</div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
 
