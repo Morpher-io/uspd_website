@@ -796,15 +796,13 @@ const scenes: SceneConfig[] = [
     title: "Price Goes Up",
     content: (
       <p>
-        The price of ETH increases to $4,800. Alice&apos;s USPD automatically benefits 
-        from this through stETH rebasing - her purchasing power grows without any 
-        action required. The system remains healthy and overcollateralized.
+        The price of ETH increases to $4,800. The system remains healthy and is even more overcollateralized. Alice&apos;s USPD is safe and stays pegged to the USD. She receives rebasing rewards through stETH.
       </p>
     ),
     actors: [
       {
         type: 'user',
-        position: { x: '50%', y: '20%' },
+        position: { x: '46%', y: '20%' },
         visible: true,
         labelVisible: true,
         scale: 1.5,
