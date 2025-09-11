@@ -37,6 +37,17 @@ export default {
     title: 'Become Stabilizer',
 
   },
+  blog: {
+    type: 'page',
+    title: 'Blog',
+    display: "hidden",
+    theme: {
+      sidebar: false,
+      breadcrumb: false,
+      layout: "full",
+      toc: false
+    }
+  }
 
 }
 

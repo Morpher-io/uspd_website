@@ -1,0 +1,10 @@
+import Link from 'next/link'
+import { getPosts, getTags } from '@/components/blog/get-posts'
+ 
+## USPD Blog
+      
+{(await getPosts()).map(post => (
+  <div key={post.route}>
+    <Link href={post.route}>{post.title} - {post.frontMatter.description}</Link>
+    </div>
+))}
