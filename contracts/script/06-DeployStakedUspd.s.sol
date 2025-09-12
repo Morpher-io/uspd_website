@@ -11,9 +11,7 @@ contract DeployStakedUspdScript is DeployScript {
     string public constant STUSPD_SYMBOL = "stUSPD";
     uint256 public constant INITIAL_SHARE_VALUE = 1e18; // 1 USD per share initially
     
-    // Salt for stUSPD deployment
-    bytes32 public STUSPD_SALT;
-    
+  
     // Deployed contract address
     address public stUspdAddress;
 
