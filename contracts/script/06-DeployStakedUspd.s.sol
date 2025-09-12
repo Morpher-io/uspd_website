@@ -106,19 +106,4 @@ contract DeployStakedUspdScript is DeployScript {
         console2.log("stUSPD proxy deployed at:", stUspdAddress);
     }
 
-    // Override saveDeploymentInfo to include stUSPD addresses
-    function saveDeploymentInfo() internal override {
-        // Call parent to save existing deployment info
-        super.saveDeploymentInfo();
-        
-        // Add stUSPD addresses to deployment file
-        if (stUspdTokenImplAddress != address(0)) {
-            vm.writeJson(vm.toString(stUspdTokenImplAddress), deploymentPath, ".contracts.stUspdTokenImpl");
-            console2.log("stUSPD implementation address saved to deployment file");
-        }
-        if (stUspdAddress != address(0)) {
-            vm.writeJson(vm.toString(stUspdAddress), deploymentPath, ".contracts.stUspd");
-            console2.log("stUSPD proxy address saved to deployment file");
-        }
-    }
 }
