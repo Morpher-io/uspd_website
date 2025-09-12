@@ -16,10 +16,12 @@ pragma solidity 0.8.29;
  *    This is the stUSPD Token for institutional investors                             
  */
 
-import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
-import "../lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "./interfaces/IPriceOracle.sol";
 
 /**
@@ -28,7 +30,7 @@ import "./interfaces/IPriceOracle.sol";
  * This token is designed for institutional investors and operates independently from the USPD ecosystem.
  * Share value is manually updated by authorized roles rather than being bound to on-chain values.
  */
-contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
+contract stUSPD is Initializable, ERC20Upgradeable, ERC20PermitUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     // --- State Variables ---
     uint256 public shareValue; // Value per share in USD (scaled by PRECISION)
     uint256 public constant PRECISION = 1e18; // Precision factor for share value calculations
@@ -77,6 +79,7 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     bytes32 public constant KYC_MANAGER_ROLE = keccak256("KYC_MANAGER_ROLE");
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
     bytes32 public constant WITHDRAW_PROCESSOR_ROLE = keccak256("WITHDRAW_PROCESSOR_ROLE");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // --- Events ---
     event ShareValueUpdated(uint256 oldValue, uint256 newValue, address indexed updater);
@@ -107,16 +110,27 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     error NotRequestOwner();
     error QueueEmpty();
 
-    // --- Constructor ---
-    constructor(
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    // --- Initializer ---
+    function initialize(
         string memory name, // e.g., "Institutional Staking USPD"
         string memory symbol, // e.g., "stUSPD"
         uint256 _initialShareValue, // Initial value per share in USD (scaled by PRECISION)
         address _admin,
         address _priceOracle
-    ) ERC20(name, symbol) ERC20Permit(name) {
+    ) public initializer {
         require(_admin != address(0), "stUSPD: Zero admin address");
         require(_initialShareValue > 0, "stUSPD: Invalid initial share value");
+
+        __ERC20_init(name, symbol);
+        __ERC20Permit_init(name);
+        __AccessControl_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
 
         shareValue = _initialShareValue;
         priceOracle = IPriceOracle(_priceOracle);
@@ -127,6 +141,7 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         _grantRole(KYC_MANAGER_ROLE, _admin);
         _grantRole(ORACLE_MANAGER_ROLE, _admin);
         _grantRole(WITHDRAW_PROCESSOR_ROLE, _admin);
+        _grantRole(UPGRADER_ROLE, _admin);
     }
 
     // --- Share Value Management ---
@@ -792,5 +807,21 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     function updateNextProcessIndex(uint256 newIndex) external onlyRole(WITHDRAW_PROCESSOR_ROLE) {
         require(newIndex <= withdrawQueue.length, "Index out of bounds");
         nextProcessIndex = newIndex;
+    }
+
+    // --- Upgrade Authorization ---
+
+    /**
+     * @dev Authorizes an upgrade to a new implementation contract.
+     *      Only callable by an address with the UPGRADER_ROLE.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {
+        // Intentional empty body: AccessControlUpgradeable's onlyRole modifier handles authorization.
+    }
+
+    // --- Interface Support ---
+
+    function supportsInterface(bytes4 interfaceId) public view override(AccessControlUpgradeable) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

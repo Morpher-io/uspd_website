@@ -28,32 +28,45 @@ contract DeployStakedUspdScript is DeployScript {
         console2.log("Deployer:", deployer);
     }
 
-    function deployStakedUspd() internal {
-        console2.log("Deploying stUSPD token...");
+    function deployStakedUspdImplementation() internal {
+        console2.log("Deploying stUSPD implementation...");
         
-        // Read oracle proxy address from deployment file
-        address oracleProxyAddress = _readAddressFromDeployment(".contracts.oracle");
-        require(oracleProxyAddress != address(0), "Oracle proxy not found in deployment file");
+        // Deploy implementation without constructor arguments (will be initialized via proxy)
+        bytes memory bytecode = type(stUSPD).creationCode;
+        stUspdTokenImplAddress = createX.deployCreate2{value: 0}(generateSalt("STUSPD_TOKEN_IMPL_v1"), bytecode);
+        console2.log("stUSPD implementation deployed at:", stUspdTokenImplAddress);
         
-        console2.log("Using Oracle at:", oracleProxyAddress);
+        require(stUspdTokenImplAddress != address(0), "Failed to deploy stUSPD implementation");
+    }
+
+    function deployStakedUspdProxy() internal {
+        console2.log("Deploying stUSPD proxy...");
         
-        // Prepare constructor arguments
-        bytes memory bytecode = abi.encodePacked(
-            type(stUSPD).creationCode,
-            abi.encode(
-                STUSPD_NAME,
-                STUSPD_SYMBOL,
-                INITIAL_SHARE_VALUE,
-                deployer, // admin
-                oracleProxyAddress // price oracle
-            )
+        require(stUspdTokenImplAddress != address(0), "stUSPD implementation not deployed");
+        
+        // For now, deploy without Oracle dependency - can be set later via setPriceOracle
+        address placeholderOracle = address(0x1); // Placeholder that won't cause constructor to revert
+        
+        // Prepare initialization data
+        bytes memory initData = abi.encodeWithSignature(
+            "initialize(string,string,uint256,address,address)",
+            STUSPD_NAME,
+            STUSPD_SYMBOL,
+            INITIAL_SHARE_VALUE,
+            deployer, // admin
+            placeholderOracle // placeholder oracle - will be updated later
         );
         
-        // Deploy using CREATE2
-        stUspdAddress = createX.deployCreate2{value: 0}(STUSPD_SALT, bytecode);
-        console2.log("stUSPD deployed at:", stUspdAddress);
+        // Deploy proxy with initialization
+        bytes memory proxyBytecode = abi.encodePacked(
+            type(ERC1967Proxy).creationCode,
+            abi.encode(stUspdTokenImplAddress, initData)
+        );
         
-        require(stUspdAddress != address(0), "Failed to deploy stUSPD");
+        stUspdAddress = createX.deployCreate2{value: 0}(STUSPD_SALT, proxyBytecode);
+        console2.log("stUSPD proxy deployed at:", stUspdAddress);
+        
+        require(stUspdAddress != address(0), "Failed to deploy stUSPD proxy");
     }
 
     function setupInitialRoles() internal {
@@ -74,8 +87,11 @@ contract DeployStakedUspdScript is DeployScript {
     function run() public {
         vm.startBroadcast();
 
-        // Deploy stUSPD token
-        deployStakedUspd();
+        // Deploy stUSPD implementation
+        deployStakedUspdImplementation();
+
+        // Deploy stUSPD proxy
+        deployStakedUspdProxy();
 
         // Setup initial roles
         setupInitialRoles();
@@ -86,18 +102,23 @@ contract DeployStakedUspdScript is DeployScript {
         vm.stopBroadcast();
 
         console2.log("stUSPD deployment complete.");
-        console2.log("stUSPD deployed at:", stUspdAddress);
+        console2.log("stUSPD implementation deployed at:", stUspdTokenImplAddress);
+        console2.log("stUSPD proxy deployed at:", stUspdAddress);
     }
 
-    // Override saveDeploymentInfo to include stUSPD address
+    // Override saveDeploymentInfo to include stUSPD addresses
     function saveDeploymentInfo() internal override {
         // Call parent to save existing deployment info
         super.saveDeploymentInfo();
         
-        // Add stUSPD address to deployment file
+        // Add stUSPD addresses to deployment file
+        if (stUspdTokenImplAddress != address(0)) {
+            vm.writeJson(vm.toString(stUspdTokenImplAddress), deploymentPath, ".contracts.stUspdTokenImpl");
+            console2.log("stUSPD implementation address saved to deployment file");
+        }
         if (stUspdAddress != address(0)) {
             vm.writeJson(vm.toString(stUspdAddress), deploymentPath, ".contracts.stUspd");
-            console2.log("stUSPD address saved to deployment file");
+            console2.log("stUSPD proxy address saved to deployment file");
         }
     }
 }

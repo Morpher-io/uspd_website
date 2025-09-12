@@ -117,6 +117,7 @@ contract DeployScript is Script {
     address public bridgeEscrowAddress;
     address public stabilizerEscrowImplAddress;
     address public positionEscrowImplAddress;
+    address public stUspdTokenImplAddress;
     address public stUspdAddress;
 
     // Configuration for PriceOracle (used in deployOracleProxy)
@@ -239,6 +240,7 @@ contract DeployScript is Script {
                 '"bridgeEscrow": "0x0000000000000000000000000000000000000000",'
                 '"stabilizerEscrowImpl": "0x0000000000000000000000000000000000000000",'
                 '"positionEscrowImpl": "0x0000000000000000000000000000000000000000",'
+                '"stUspdTokenImpl": "0x0000000000000000000000000000000000000000",'
                 '"stUspd": "0x0000000000000000000000000000000000000000"'
             '},'
             '"config": {'
@@ -299,6 +301,9 @@ contract DeployScript is Script {
         }
         if (positionEscrowImplAddress != address(0)) {
             vm.writeJson(vm.toString(positionEscrowImplAddress), deploymentPath, ".contracts.positionEscrowImpl");
+        }
+        if (stUspdTokenImplAddress != address(0)) {
+            vm.writeJson(vm.toString(stUspdTokenImplAddress), deploymentPath, ".contracts.stUspdTokenImpl");
         }
         if (stUspdAddress != address(0)) {
             vm.writeJson(vm.toString(stUspdAddress), deploymentPath, ".contracts.stUspd");
