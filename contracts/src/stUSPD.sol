@@ -20,6 +20,7 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
+import "./interfaces/IPriceOracle.sol";
 
 /**
  * @title stUSPD Token (Institutional Staking Token)
@@ -32,11 +33,8 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     uint256 public shareValue; // Value per share in USD (scaled by PRECISION)
     uint256 public constant PRECISION = 1e18; // Precision factor for share value calculations
     
-    // KYC signature validation
-    mapping(address => bool) public authorizedSigners; // Whitelisted KYC signers
-    mapping(uint256 => bool) public usedNonces; // Track used nonces to prevent double spending
-    uint256 public constant SIGNATURE_VALIDITY_WINDOW = 300; // 5 minutes in seconds
-    uint256 public constant SIGNATURE_FUTURE_TOLERANCE = 30; // 30 seconds tolerance for future timestamps
+    // Price Oracle for EUR/USD conversion
+    IPriceOracle public priceOracle;
     
     // KYC tracking
     enum KYCRegion { NONE, US, EU, OTHER }
@@ -48,7 +46,7 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     mapping(address => KYCInfo) public kycInfo; // Track KYC status and region for each address
     
     // Regional limits
-    uint256 public constant EU_MINIMUM_PURCHASE = 100000 * PRECISION; // 100k USD minimum for EU
+    uint256 public constant EU_MINIMUM_PURCHASE_EUR = 100000 * PRECISION; // 100k EUR minimum for EU
     uint256 public constant US_ESCROW_PERIOD = 7 days; // US accredited investor escrow period
     
     // US escrow tracking
@@ -63,51 +61,49 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes32 public constant SHAREVALUE_UPDATER_ROLE = keccak256("SHAREVALUE_UPDATER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant SIGNER_MANAGER_ROLE = keccak256("SIGNER_MANAGER_ROLE");
     bytes32 public constant KYC_MANAGER_ROLE = keccak256("KYC_MANAGER_ROLE");
+    bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
     // --- Events ---
     event ShareValueUpdated(uint256 oldValue, uint256 newValue, address indexed updater);
     event SharesMinted(address indexed to, uint256 sharesAmount, uint256 usdValue);
     event SharesBurned(address indexed from, uint256 sharesAmount, uint256 usdValue);
-    event AuthorizedSignerUpdated(address indexed signer, bool authorized);
     event KYCStatusUpdated(address indexed user, KYCRegion region, bool verified);
     event TokensEscrowed(address indexed user, uint256 amount, uint256 releaseTime);
     event TokensReleasedFromEscrow(address indexed user, uint256 amount);
+    event PriceOracleUpdated(address indexed oldOracle, address indexed newOracle);
 
     // --- Errors ---
     error ZeroAddress();
     error ZeroAmount();
     error InvalidShareValue();
-    error InvalidSignature();
-    error NonceAlreadyUsed();
-    error SignatureExpired();
-    error SignatureTooEarly();
-    error SignerNotAuthorized();
     error NotKYCVerified();
-    error RegionalRestrictionViolated();
     error InsufficientPurchaseAmount();
     error SelfMintingNotAllowed();
     error NoEscrowedTokens();
     error EscrowPeriodNotExpired();
+    error PriceOracleNotSet();
+    error PriceQueryFailed();
 
     // --- Constructor ---
     constructor(
         string memory name, // e.g., "Institutional Staking USPD"
         string memory symbol, // e.g., "stUSPD"
         uint256 _initialShareValue, // Initial value per share in USD (scaled by PRECISION)
-        address _admin
+        address _admin,
+        address _priceOracle
     ) ERC20(name, symbol) ERC20Permit(name) {
         require(_admin != address(0), "stUSPD: Zero admin address");
         require(_initialShareValue > 0, "stUSPD: Invalid initial share value");
 
         shareValue = _initialShareValue;
+        priceOracle = IPriceOracle(_priceOracle);
         
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(SHAREVALUE_UPDATER_ROLE, _admin);
         _grantRole(PAUSER_ROLE, _admin);
-        _grantRole(SIGNER_MANAGER_ROLE, _admin);
         _grantRole(KYC_MANAGER_ROLE, _admin);
+        _grantRole(ORACLE_MANAGER_ROLE, _admin);
     }
 
     // --- Share Value Management ---
@@ -146,18 +142,44 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         return (usdAmount * PRECISION) / shareValue;
     }
 
-    // --- Signer Management ---
+    // --- Oracle Management ---
 
     /**
-     * @notice Adds or removes an authorized KYC signer.
-     * @param signer The address of the signer.
-     * @param authorized Whether the signer should be authorized.
-     * @dev Callable only by addresses with SIGNER_MANAGER_ROLE.
+     * @notice Updates the price oracle contract address.
+     * @param _priceOracle The new price oracle contract address.
+     * @dev Callable only by addresses with ORACLE_MANAGER_ROLE.
      */
-    function setAuthorizedSigner(address signer, bool authorized) external onlyRole(SIGNER_MANAGER_ROLE) {
-        if (signer == address(0)) revert ZeroAddress();
-        authorizedSigners[signer] = authorized;
-        emit AuthorizedSignerUpdated(signer, authorized);
+    function setPriceOracle(address _priceOracle) external onlyRole(ORACLE_MANAGER_ROLE) {
+        if (_priceOracle == address(0)) revert ZeroAddress();
+        address oldOracle = address(priceOracle);
+        priceOracle = IPriceOracle(_priceOracle);
+        emit PriceOracleUpdated(oldOracle, _priceOracle);
+    }
+
+    /**
+     * @notice Gets EUR/USD exchange rate from the price oracle.
+     * @param priceQuery The price query for EUR/USD rate.
+     * @return eurToUsdRate The EUR/USD exchange rate (scaled by PRECISION).
+     */
+    function getEurToUsdRate(IPriceOracle.PriceAttestationQuery calldata priceQuery) public returns (uint256 eurToUsdRate) {
+        if (address(priceOracle) == address(0)) revert PriceOracleNotSet();
+        
+        try priceOracle.generalAttestationService(priceQuery) returns (IPriceOracle.PriceResponse memory response) {
+            return response.price;
+        } catch {
+            revert PriceQueryFailed();
+        }
+    }
+
+    /**
+     * @notice Converts EUR amount to USD using current exchange rate.
+     * @param eurAmount The amount in EUR (scaled by PRECISION).
+     * @param priceQuery The price query for EUR/USD rate.
+     * @return usdAmount The equivalent amount in USD (scaled by PRECISION).
+     */
+    function convertEurToUsd(uint256 eurAmount, IPriceOracle.PriceAttestationQuery calldata priceQuery) public returns (uint256 usdAmount) {
+        uint256 eurToUsdRate = getEurToUsdRate(priceQuery);
+        return (eurAmount * eurToUsdRate) / PRECISION;
     }
 
     // --- KYC Management ---
@@ -277,138 +299,23 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         }
     }
 
-    // --- Signature Verification ---
-
-    /**
-     * @notice Verifies a KYC signature for minting.
-     * @param to The address to receive the minted shares.
-     * @param sharesAmount The amount of shares to mint.
-     * @param nonce The nonce (timestamp) used in the signature.
-     * @param signature The KYC signature.
-     * @return The recovered signer address.
-     */
-    function verifyKYCSignature(
-        address to,
-        uint256 sharesAmount,
-        uint256 nonce,
-        bytes memory signature
-    ) internal returns (address) {
-        // Check nonce hasn't been used
-        if (usedNonces[nonce]) revert NonceAlreadyUsed();
-        
-        // Check timestamp validity (nonce is timestamp in seconds)
-        uint256 currentTime = block.timestamp;
-        if (nonce + SIGNATURE_VALIDITY_WINDOW < currentTime) revert SignatureExpired();
-        if (nonce > currentTime + SIGNATURE_FUTURE_TOLERANCE) revert SignatureTooEarly();
-        
-        // Mark nonce as used
-        usedNonces[nonce] = true;
-        
-        // Recreate the message hash
-        bytes32 messageHash = keccak256(abi.encodePacked(to, sharesAmount, nonce));
-        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-        
-        // Recover signer address
-        address recoveredSigner = recoverSigner(ethSignedMessageHash, signature);
-        
-        // Check if signer is authorized
-        if (!authorizedSigners[recoveredSigner]) revert SignerNotAuthorized();
-        
-        return recoveredSigner;
-    }
-
-    /**
-     * @notice Recovers the signer address from a signature.
-     * @param hash The hash that was signed.
-     * @param signature The signature.
-     * @return The recovered signer address.
-     */
-    function recoverSigner(bytes32 hash, bytes memory signature) internal pure returns (address) {
-        if (signature.length != 65) revert InvalidSignature();
-        
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        
-        assembly {
-            r := mload(add(signature, 32))
-            s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 96)))
-        }
-        
-        if (v < 27) {
-            v += 27;
-        }
-        
-        if (v != 27 && v != 28) revert InvalidSignature();
-        
-        address recoveredAddress = ecrecover(hash, v, r, s);
-        if (recoveredAddress == address(0)) revert InvalidSignature();
-        
-        return recoveredAddress;
-    }
 
     // --- Minting and Burning ---
 
-    /**
-     * @notice Mints stUSPD shares to a specified address with KYC signature verification.
-     * @param to The address to receive the minted shares.
-     * @param sharesAmount The amount of shares to mint.
-     * @param nonce The nonce (timestamp) used in the signature.
-     * @param signature The KYC signature from an authorized signer.
-     * @dev This function verifies the KYC signature before minting.
-     *      For US users, tokens are escrowed. For EU users, minimum purchase applies.
-     *      This function should only be called by admins for US/EU users.
-     */
-    function mintWithKYC(
-        address to,
-        uint256 sharesAmount,
-        uint256 nonce,
-        bytes memory signature
-    ) external whenNotPaused {
-        if (to == address(0)) revert ZeroAddress();
-        if (sharesAmount == 0) revert ZeroAmount();
-
-        // Verify KYC signature
-        verifyKYCSignature(to, sharesAmount, nonce, signature);
-
-        // Check KYC status
-        KYCInfo memory userKYC = kycInfo[to];
-        if (!userKYC.isVerified) revert NotKYCVerified();
-
-        uint256 usdValue = (sharesAmount * shareValue) / PRECISION;
-
-        // Apply regional restrictions
-        if (userKYC.region == KYCRegion.EU) {
-            if (usdValue < EU_MINIMUM_PURCHASE) revert InsufficientPurchaseAmount();
-            // EU users get tokens immediately
-            _mint(to, sharesAmount);
-            emit SharesMinted(to, sharesAmount, usdValue);
-        } else if (userKYC.region == KYCRegion.US) {
-            // US users get tokens escrowed
-            uint256 releaseTime = block.timestamp + US_ESCROW_PERIOD;
-            userEscrows[to].push(EscrowInfo({
-                amount: sharesAmount,
-                releaseTime: releaseTime
-            }));
-            emit TokensEscrowed(to, sharesAmount, releaseTime);
-            emit SharesMinted(to, sharesAmount, usdValue); // For accounting purposes
-        } else {
-            // OTHER region users get tokens immediately
-            _mint(to, sharesAmount);
-            emit SharesMinted(to, sharesAmount, usdValue);
-        }
-    }
 
     /**
      * @notice Mints stUSPD shares to a specified address (admin only).
      * @param to The address to receive the minted shares.
      * @param sharesAmount The amount of shares to mint.
+     * @param eurUsdPriceQuery Optional price query for EUR/USD conversion (required for EU users).
      * @dev Callable only by addresses with MINTER_ROLE.
-     *      This function is for administrative minting without KYC signature.
-     *      Applies the same regional restrictions as mintWithKYC.
+     *      For EU users, validates minimum purchase amount in EUR converted to USD.
      */
-    function mint(address to, uint256 sharesAmount) external onlyRole(MINTER_ROLE) whenNotPaused {
+    function mint(
+        address to, 
+        uint256 sharesAmount, 
+        IPriceOracle.PriceAttestationQuery calldata eurUsdPriceQuery
+    ) external onlyRole(MINTER_ROLE) whenNotPaused {
         if (to == address(0)) revert ZeroAddress();
         if (sharesAmount == 0) revert ZeroAmount();
 
@@ -420,7 +327,9 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
 
         // Apply regional restrictions
         if (userKYC.region == KYCRegion.EU) {
-            if (usdValue < EU_MINIMUM_PURCHASE) revert InsufficientPurchaseAmount();
+            // Convert minimum EUR amount to USD for comparison
+            uint256 minimumUsdValue = convertEurToUsd(EU_MINIMUM_PURCHASE_EUR, eurUsdPriceQuery);
+            if (usdValue < minimumUsdValue) revert InsufficientPurchaseAmount();
             // EU users get tokens immediately
             _mint(to, sharesAmount);
             emit SharesMinted(to, sharesAmount, usdValue);
@@ -443,15 +352,9 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     /**
      * @notice Self-minting function for non-US/EU users only.
      * @param sharesAmount The amount of shares to mint.
-     * @param nonce The nonce (timestamp) used in the signature.
-     * @param signature The KYC signature from an authorized signer.
      * @dev Only users from regions other than US/EU can self-mint.
      */
-    function selfMint(
-        uint256 sharesAmount,
-        uint256 nonce,
-        bytes memory signature
-    ) external whenNotPaused {
+    function selfMint(uint256 sharesAmount) external whenNotPaused {
         if (sharesAmount == 0) revert ZeroAmount();
 
         // Check KYC status
@@ -462,9 +365,6 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         if (userKYC.region == KYCRegion.US || userKYC.region == KYCRegion.EU) {
             revert SelfMintingNotAllowed();
         }
-
-        // Verify KYC signature
-        verifyKYCSignature(msg.sender, sharesAmount, nonce, signature);
 
         uint256 usdValue = (sharesAmount * shareValue) / PRECISION;
         

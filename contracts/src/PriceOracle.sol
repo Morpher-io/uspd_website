@@ -44,6 +44,8 @@ contract PriceOracle is
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE"); // <-- Define UPGRADER_ROLE
     bytes32 public constant ETH_USD_ASSET_PAIR =
         keccak256("MORPHER:ETH_USD");
+    bytes32 public constant EUR_USD_ASSET_PAIR =
+        keccak256("MORPHER:FOREX_EUR");
     uint256 public constant PRICE_PRECISION = 1e18;
     uint256 public constant MAX_DEVIATION_BPS = 500; // 5%
     uint256 public constant MAX_STALENESS_PERIOD_SECONDS = 120; // 2 minutes
@@ -222,15 +224,42 @@ contract PriceOracle is
     function attestationService(
         PriceAttestationQuery calldata priceQuery
     ) public payable whenNotPaused returns (PriceResponse memory) {
-        //custom error message
-        // if (paused()) {
-        //     revert OraclePaused();
-        // }
-
         if (priceQuery.assetPair != ETH_USD_ASSET_PAIR) {
             revert InvalidAssetPair(ETH_USD_ASSET_PAIR, priceQuery.assetPair);
         }
 
+        return _processAttestation(priceQuery, true); // true = use external price validation
+    }
+
+    /**
+     * @notice General attestation service for arbitrary asset pairs without external validation
+     * @param priceQuery The price query containing price data and signature
+     * @return PriceResponse containing the validated price data
+     * @dev This function is used for forex pairs and other assets that don't have Chainlink/Uniswap validation
+     */
+    function generalAttestationService(
+        PriceAttestationQuery calldata priceQuery
+    ) public payable whenNotPaused returns (PriceResponse memory) {
+        // Allow EUR_USD or other asset pairs
+        if (priceQuery.assetPair != EUR_USD_ASSET_PAIR && priceQuery.assetPair != ETH_USD_ASSET_PAIR) {
+            revert InvalidAssetPair(EUR_USD_ASSET_PAIR, priceQuery.assetPair);
+        }
+
+        // For EUR_USD, skip external validation; for ETH_USD, use external validation
+        bool useExternalValidation = (priceQuery.assetPair == ETH_USD_ASSET_PAIR);
+        return _processAttestation(priceQuery, useExternalValidation);
+    }
+
+    /**
+     * @notice Internal function to process price attestations
+     * @param priceQuery The price query to process
+     * @param useExternalValidation Whether to validate against Chainlink/Uniswap
+     * @return PriceResponse containing the validated price data
+     */
+    function _processAttestation(
+        PriceAttestationQuery calldata priceQuery,
+        bool useExternalValidation
+    ) internal returns (PriceResponse memory) {
         address signer = verifySignature(
             priceQuery.price,
             priceQuery.decimals,
@@ -289,9 +318,8 @@ contract PriceOracle is
             );
         }
 
-        if (block.chainid == 1) {
-            // use the attestation service from other sources if we do allocation/deallocation and mint/burn, otherwise just take the price for granted we get from backend.
-
+        // Only validate against external sources for ETH_USD on mainnet
+        if (useExternalValidation && block.chainid == 1) {
             // Get prices from other sources
             uint256 chainlinkPrice = uint256(
                 getChainlinkDataFeedLatestAnswer()
