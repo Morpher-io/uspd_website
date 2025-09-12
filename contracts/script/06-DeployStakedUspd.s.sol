@@ -10,10 +10,6 @@ contract DeployStakedUspdScript is DeployScript {
     string public constant STUSPD_NAME = "Institutional Staking USPD";
     string public constant STUSPD_SYMBOL = "stUSPD";
     uint256 public constant INITIAL_SHARE_VALUE = 1e18; // 1 USD per share initially
-    
-  
-    // Deployed contract address
-    address public stUspdAddress;
 
     function setUp() public virtual override {
         super.setUp(); // Call base setUp which handles network configuration
