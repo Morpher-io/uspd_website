@@ -72,6 +72,7 @@ contract DeployScript is Script {
     bytes32 public REPORTER_SALT;
     bytes32 public INSURANCE_ESCROW_SALT;
     bytes32 public BRIDGE_ESCROW_SALT;
+    bytes32 public STUSPD_SALT;
 
     // CreateX contract address
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
@@ -116,6 +117,7 @@ contract DeployScript is Script {
     address public bridgeEscrowAddress;
     address public stabilizerEscrowImplAddress;
     address public positionEscrowImplAddress;
+    address public stUspdAddress;
 
     // Configuration for PriceOracle (used in deployOracleProxy)
     uint256 public maxPriceDeviation = 500; // 5%
@@ -190,6 +192,7 @@ contract DeployScript is Script {
         REPORTER_SALT = generateSalt("USPD_REPORTER_v1");
         INSURANCE_ESCROW_SALT = generateSalt("USPD_INSURANCE_ESCROW_v1");
         BRIDGE_ESCROW_SALT = generateSalt("USPD_BRIDGE_ESCROW_v1");
+        STUSPD_SALT = generateSalt("STUSPD_TOKEN_v1");
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
@@ -235,7 +238,8 @@ contract DeployScript is Script {
                 '"insuranceEscrow": "0x0000000000000000000000000000000000000000",'
                 '"bridgeEscrow": "0x0000000000000000000000000000000000000000",'
                 '"stabilizerEscrowImpl": "0x0000000000000000000000000000000000000000",'
-                '"positionEscrowImpl": "0x0000000000000000000000000000000000000000"'
+                '"positionEscrowImpl": "0x0000000000000000000000000000000000000000",'
+                '"stUspd": "0x0000000000000000000000000000000000000000"'
             '},'
             '"config": {'
                 '"usdcAddress": "0x0000000000000000000000000000000000000000",'
@@ -295,6 +299,9 @@ contract DeployScript is Script {
         }
         if (positionEscrowImplAddress != address(0)) {
             vm.writeJson(vm.toString(positionEscrowImplAddress), deploymentPath, ".contracts.positionEscrowImpl");
+        }
+        if (stUspdAddress != address(0)) {
+            vm.writeJson(vm.toString(stUspdAddress), deploymentPath, ".contracts.stUspd");
         }
 
         // Config and metadata are generally fine to be updated by the latest script run
