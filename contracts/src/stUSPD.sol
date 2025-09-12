@@ -56,6 +56,19 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     }
     mapping(address => EscrowInfo[]) public userEscrows; // Track escrowed amounts for US users
     
+    // Withdraw queue system
+    struct WithdrawRequest {
+        address user;
+        uint256 sharesAmount;
+        uint256 requestedAt;
+        uint256 shareValueAtRequest; // Share value when request was made
+        bool processed;
+    }
+    
+    WithdrawRequest[] public withdrawQueue;
+    mapping(address => uint256[]) public userWithdrawRequests; // User address -> array of queue indices
+    uint256 public nextProcessIndex; // Next index to process in the queue
+    
     // --- Roles ---
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
@@ -63,6 +76,7 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant KYC_MANAGER_ROLE = keccak256("KYC_MANAGER_ROLE");
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
+    bytes32 public constant WITHDRAW_PROCESSOR_ROLE = keccak256("WITHDRAW_PROCESSOR_ROLE");
 
     // --- Events ---
     event ShareValueUpdated(uint256 oldValue, uint256 newValue, address indexed updater);
@@ -72,6 +86,9 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     event TokensEscrowed(address indexed user, uint256 amount, uint256 releaseTime);
     event TokensReleasedFromEscrow(address indexed user, uint256 amount);
     event PriceOracleUpdated(address indexed oldOracle, address indexed newOracle);
+    event WithdrawRequested(address indexed user, uint256 sharesAmount, uint256 queueIndex, uint256 shareValueAtRequest);
+    event WithdrawProcessed(address indexed user, uint256 queueIndex, uint256 sharesAmount, uint256 finalShareValue, uint256 payoutAmount);
+    event WithdrawCancelled(address indexed user, uint256 queueIndex, uint256 sharesAmount);
 
     // --- Errors ---
     error ZeroAddress();
@@ -84,6 +101,11 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     error EscrowPeriodNotExpired();
     error PriceOracleNotSet();
     error PriceQueryFailed();
+    error WithdrawRequestNotFound();
+    error WithdrawAlreadyProcessed();
+    error InvalidQueueIndex();
+    error NotRequestOwner();
+    error QueueEmpty();
 
     // --- Constructor ---
     constructor(
@@ -104,6 +126,7 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         _grantRole(PAUSER_ROLE, _admin);
         _grantRole(KYC_MANAGER_ROLE, _admin);
         _grantRole(ORACLE_MANAGER_ROLE, _admin);
+        _grantRole(WITHDRAW_PROCESSOR_ROLE, _admin);
     }
 
     // --- Share Value Management ---
@@ -372,14 +395,117 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         emit SharesMinted(msg.sender, sharesAmount, usdValue);
     }
 
+    // --- Withdraw Queue System ---
+
     /**
-     * @notice Burns stUSPD shares from a specified address.
+     * @notice Stages a withdraw request by adding it to the queue.
+     * @param sharesAmount The amount of shares to withdraw.
+     * @dev Users call this instead of burning directly. Tokens are locked until processed.
+     */
+    function stageWithdraw(uint256 sharesAmount) external whenNotPaused {
+        if (sharesAmount == 0) revert ZeroAmount();
+        if (balanceOf(msg.sender) < sharesAmount) revert("Insufficient balance");
+
+        // Transfer shares to this contract to lock them
+        _transfer(msg.sender, address(this), sharesAmount);
+
+        // Create withdraw request
+        WithdrawRequest memory request = WithdrawRequest({
+            user: msg.sender,
+            sharesAmount: sharesAmount,
+            requestedAt: block.timestamp,
+            shareValueAtRequest: shareValue,
+            processed: false
+        });
+
+        // Add to queue
+        uint256 queueIndex = withdrawQueue.length;
+        withdrawQueue.push(request);
+        userWithdrawRequests[msg.sender].push(queueIndex);
+
+        emit WithdrawRequested(msg.sender, sharesAmount, queueIndex, shareValue);
+    }
+
+    /**
+     * @notice Processes withdraw requests from the queue with final share value.
+     * @param queueIndices Array of queue indices to process.
+     * @param finalShareValues Array of final share values for each request.
+     * @param payoutAmounts Array of payout amounts for each request.
+     * @dev Callable only by addresses with WITHDRAW_PROCESSOR_ROLE.
+     */
+    function processWithdraws(
+        uint256[] calldata queueIndices,
+        uint256[] calldata finalShareValues,
+        uint256[] calldata payoutAmounts
+    ) external onlyRole(WITHDRAW_PROCESSOR_ROLE) whenNotPaused {
+        require(
+            queueIndices.length == finalShareValues.length && 
+            finalShareValues.length == payoutAmounts.length,
+            "Array length mismatch"
+        );
+
+        for (uint256 i = 0; i < queueIndices.length; i++) {
+            uint256 queueIndex = queueIndices[i];
+            
+            if (queueIndex >= withdrawQueue.length) revert InvalidQueueIndex();
+            
+            WithdrawRequest storage request = withdrawQueue[queueIndex];
+            
+            if (request.processed) revert WithdrawAlreadyProcessed();
+            
+            // Mark as processed
+            request.processed = true;
+            
+            // Burn the locked tokens from this contract
+            _burn(address(this), request.sharesAmount);
+            
+            // The actual payout (ETH/USDC/etc.) would be handled off-chain
+            // This event provides all necessary information for the off-chain system
+            emit WithdrawProcessed(
+                request.user,
+                queueIndex,
+                request.sharesAmount,
+                finalShareValues[i],
+                payoutAmounts[i]
+            );
+            
+            emit SharesBurned(request.user, request.sharesAmount, payoutAmounts[i]);
+        }
+    }
+
+    /**
+     * @notice Cancels a withdraw request and returns tokens to user.
+     * @param queueIndex The index of the request in the queue.
+     * @dev Can be called by the user who made the request or by admins.
+     */
+    function cancelWithdraw(uint256 queueIndex) external whenNotPaused {
+        if (queueIndex >= withdrawQueue.length) revert InvalidQueueIndex();
+        
+        WithdrawRequest storage request = withdrawQueue[queueIndex];
+        
+        if (request.processed) revert WithdrawAlreadyProcessed();
+        
+        // Only the user or admin can cancel
+        if (msg.sender != request.user && !hasRole(WITHDRAW_PROCESSOR_ROLE, msg.sender)) {
+            revert NotRequestOwner();
+        }
+        
+        // Mark as processed to prevent double-cancellation
+        request.processed = true;
+        
+        // Return tokens to user
+        _transfer(address(this), request.user, request.sharesAmount);
+        
+        emit WithdrawCancelled(request.user, queueIndex, request.sharesAmount);
+    }
+
+    /**
+     * @notice Emergency burn function for admin use only.
      * @param from The address to burn shares from.
      * @param sharesAmount The amount of shares to burn.
-     * @dev Callable only by addresses with BURNER_ROLE.
-     *      This function is intended to be called during redemption processes.
+     * @dev Callable only by addresses with BURNER_ROLE. Should only be used in emergencies.
      */
-    function burn(address from, uint256 sharesAmount) external onlyRole(BURNER_ROLE) whenNotPaused {
+    function emergencyBurn(address from, uint256 sharesAmount) external onlyRole(BURNER_ROLE) whenNotPaused {
         if (from == address(0)) revert ZeroAddress();
         if (sharesAmount == 0) revert ZeroAmount();
 
@@ -387,20 +513,6 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         
         _burn(from, sharesAmount);
         emit SharesBurned(from, sharesAmount, usdValue);
-    }
-
-    /**
-     * @notice Burns stUSPD shares from the caller's balance.
-     * @param sharesAmount The amount of shares to burn.
-     * @dev Callable by token holders to burn their own shares.
-     */
-    function burnSelf(uint256 sharesAmount) external whenNotPaused {
-        if (sharesAmount == 0) revert ZeroAmount();
-
-        uint256 usdValue = (sharesAmount * shareValue) / PRECISION;
-        
-        _burn(msg.sender, sharesAmount);
-        emit SharesBurned(msg.sender, sharesAmount, usdValue);
     }
 
     // --- Pausable Functions ---
@@ -538,5 +650,147 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         return userKYC.isVerified && 
                userKYC.region != KYCRegion.US && 
                userKYC.region != KYCRegion.EU;
+    }
+
+    // --- Withdraw Queue View Functions ---
+
+    /**
+     * @notice Gets the total number of requests in the withdraw queue.
+     * @return The total queue length.
+     */
+    function getWithdrawQueueLength() external view returns (uint256) {
+        return withdrawQueue.length;
+    }
+
+    /**
+     * @notice Gets withdraw request details by queue index.
+     * @param queueIndex The index in the withdraw queue.
+     * @return user The user who made the request.
+     * @return sharesAmount The amount of shares in the request.
+     * @return requestedAt When the request was made.
+     * @return shareValueAtRequest The share value when request was made.
+     * @return processed Whether the request has been processed.
+     */
+    function getWithdrawRequest(uint256 queueIndex) external view returns (
+        address user,
+        uint256 sharesAmount,
+        uint256 requestedAt,
+        uint256 shareValueAtRequest,
+        bool processed
+    ) {
+        if (queueIndex >= withdrawQueue.length) revert InvalidQueueIndex();
+        
+        WithdrawRequest memory request = withdrawQueue[queueIndex];
+        return (
+            request.user,
+            request.sharesAmount,
+            request.requestedAt,
+            request.shareValueAtRequest,
+            request.processed
+        );
+    }
+
+    /**
+     * @notice Gets all withdraw request indices for a user.
+     * @param user The user address.
+     * @return Array of queue indices for the user's requests.
+     */
+    function getUserWithdrawRequests(address user) external view returns (uint256[] memory) {
+        return userWithdrawRequests[user];
+    }
+
+    /**
+     * @notice Gets pending withdraw requests for a user.
+     * @param user The user address.
+     * @return indices Array of pending queue indices.
+     * @return amounts Array of pending share amounts.
+     * @return timestamps Array of request timestamps.
+     */
+    function getUserPendingWithdraws(address user) external view returns (
+        uint256[] memory indices,
+        uint256[] memory amounts,
+        uint256[] memory timestamps
+    ) {
+        uint256[] memory userRequests = userWithdrawRequests[user];
+        uint256 pendingCount = 0;
+        
+        // Count pending requests
+        for (uint256 i = 0; i < userRequests.length; i++) {
+            if (!withdrawQueue[userRequests[i]].processed) {
+                pendingCount++;
+            }
+        }
+        
+        // Populate arrays
+        indices = new uint256[](pendingCount);
+        amounts = new uint256[](pendingCount);
+        timestamps = new uint256[](pendingCount);
+        
+        uint256 index = 0;
+        for (uint256 i = 0; i < userRequests.length; i++) {
+            uint256 queueIndex = userRequests[i];
+            WithdrawRequest memory request = withdrawQueue[queueIndex];
+            
+            if (!request.processed) {
+                indices[index] = queueIndex;
+                amounts[index] = request.sharesAmount;
+                timestamps[index] = request.requestedAt;
+                index++;
+            }
+        }
+    }
+
+    /**
+     * @notice Gets the next batch of unprocessed requests for processing.
+     * @param batchSize The maximum number of requests to return.
+     * @return indices Array of queue indices ready for processing.
+     * @return users Array of user addresses.
+     * @return amounts Array of share amounts.
+     * @return shareValuesAtRequest Array of share values when requests were made.
+     */
+    function getNextWithdrawBatch(uint256 batchSize) external view returns (
+        uint256[] memory indices,
+        address[] memory users,
+        uint256[] memory amounts,
+        uint256[] memory shareValuesAtRequest
+    ) {
+        uint256 queueLength = withdrawQueue.length;
+        uint256 actualBatchSize = 0;
+        
+        // Count unprocessed requests from nextProcessIndex
+        for (uint256 i = nextProcessIndex; i < queueLength && actualBatchSize < batchSize; i++) {
+            if (!withdrawQueue[i].processed) {
+                actualBatchSize++;
+            }
+        }
+        
+        // Initialize arrays
+        indices = new uint256[](actualBatchSize);
+        users = new address[](actualBatchSize);
+        amounts = new uint256[](actualBatchSize);
+        shareValuesAtRequest = new uint256[](actualBatchSize);
+        
+        // Populate arrays
+        uint256 arrayIndex = 0;
+        for (uint256 i = nextProcessIndex; i < queueLength && arrayIndex < actualBatchSize; i++) {
+            WithdrawRequest memory request = withdrawQueue[i];
+            if (!request.processed) {
+                indices[arrayIndex] = i;
+                users[arrayIndex] = request.user;
+                amounts[arrayIndex] = request.sharesAmount;
+                shareValuesAtRequest[arrayIndex] = request.shareValueAtRequest;
+                arrayIndex++;
+            }
+        }
+    }
+
+    /**
+     * @notice Updates the next process index to skip processed requests.
+     * @param newIndex The new starting index for processing.
+     * @dev Callable only by addresses with WITHDRAW_PROCESSOR_ROLE.
+     */
+    function updateNextProcessIndex(uint256 newIndex) external onlyRole(WITHDRAW_PROCESSOR_ROLE) {
+        require(newIndex <= withdrawQueue.length, "Index out of bounds");
+        nextProcessIndex = newIndex;
     }
 }
