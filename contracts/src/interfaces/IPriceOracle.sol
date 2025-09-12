@@ -17,4 +17,5 @@ interface IPriceOracle {
     }
 
     function attestationService(PriceAttestationQuery calldata priceQuery) external payable returns (PriceResponse memory);
+    function generalAttestationService(PriceAttestationQuery calldata priceQuery) external payable returns (PriceResponse memory);
 }
