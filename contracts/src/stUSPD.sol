@@ -38,18 +38,42 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     uint256 public constant SIGNATURE_VALIDITY_WINDOW = 300; // 5 minutes in seconds
     uint256 public constant SIGNATURE_FUTURE_TOLERANCE = 30; // 30 seconds tolerance for future timestamps
     
+    // KYC tracking
+    enum KYCRegion { NONE, US, EU, OTHER }
+    struct KYCInfo {
+        KYCRegion region;
+        bool isVerified;
+        uint256 verifiedAt;
+    }
+    mapping(address => KYCInfo) public kycInfo; // Track KYC status and region for each address
+    
+    // Regional limits
+    uint256 public constant EU_MINIMUM_PURCHASE = 100000 * PRECISION; // 100k USD minimum for EU
+    uint256 public constant US_ESCROW_PERIOD = 7 days; // US accredited investor escrow period
+    
+    // US escrow tracking
+    struct EscrowInfo {
+        uint256 amount;
+        uint256 releaseTime;
+    }
+    mapping(address => EscrowInfo[]) public userEscrows; // Track escrowed amounts for US users
+    
     // --- Roles ---
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     bytes32 public constant SHAREVALUE_UPDATER_ROLE = keccak256("SHAREVALUE_UPDATER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant SIGNER_MANAGER_ROLE = keccak256("SIGNER_MANAGER_ROLE");
+    bytes32 public constant KYC_MANAGER_ROLE = keccak256("KYC_MANAGER_ROLE");
 
     // --- Events ---
     event ShareValueUpdated(uint256 oldValue, uint256 newValue, address indexed updater);
     event SharesMinted(address indexed to, uint256 sharesAmount, uint256 usdValue);
     event SharesBurned(address indexed from, uint256 sharesAmount, uint256 usdValue);
     event AuthorizedSignerUpdated(address indexed signer, bool authorized);
+    event KYCStatusUpdated(address indexed user, KYCRegion region, bool verified);
+    event TokensEscrowed(address indexed user, uint256 amount, uint256 releaseTime);
+    event TokensReleasedFromEscrow(address indexed user, uint256 amount);
 
     // --- Errors ---
     error ZeroAddress();
@@ -60,6 +84,12 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
     error SignatureExpired();
     error SignatureTooEarly();
     error SignerNotAuthorized();
+    error NotKYCVerified();
+    error RegionalRestrictionViolated();
+    error InsufficientPurchaseAmount();
+    error SelfMintingNotAllowed();
+    error NoEscrowedTokens();
+    error EscrowPeriodNotExpired();
 
     // --- Constructor ---
     constructor(
@@ -77,6 +107,7 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         _grantRole(SHAREVALUE_UPDATER_ROLE, _admin);
         _grantRole(PAUSER_ROLE, _admin);
         _grantRole(SIGNER_MANAGER_ROLE, _admin);
+        _grantRole(KYC_MANAGER_ROLE, _admin);
     }
 
     // --- Share Value Management ---
@@ -127,6 +158,123 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         if (signer == address(0)) revert ZeroAddress();
         authorizedSigners[signer] = authorized;
         emit AuthorizedSignerUpdated(signer, authorized);
+    }
+
+    // --- KYC Management ---
+
+    /**
+     * @notice Sets KYC status and region for a user.
+     * @param user The address of the user.
+     * @param region The user's region (US, EU, or OTHER).
+     * @param verified Whether the user is KYC verified.
+     * @dev Callable only by addresses with KYC_MANAGER_ROLE.
+     */
+    function setKYCStatus(address user, KYCRegion region, bool verified) external onlyRole(KYC_MANAGER_ROLE) {
+        if (user == address(0)) revert ZeroAddress();
+        
+        kycInfo[user] = KYCInfo({
+            region: region,
+            isVerified: verified,
+            verifiedAt: verified ? block.timestamp : 0
+        });
+        
+        emit KYCStatusUpdated(user, region, verified);
+    }
+
+    /**
+     * @notice Batch sets KYC status for multiple users.
+     * @param users Array of user addresses.
+     * @param regions Array of user regions.
+     * @param verified Array of verification statuses.
+     * @dev Callable only by addresses with KYC_MANAGER_ROLE.
+     */
+    function batchSetKYCStatus(
+        address[] calldata users,
+        KYCRegion[] calldata regions,
+        bool[] calldata verified
+    ) external onlyRole(KYC_MANAGER_ROLE) {
+        require(users.length == regions.length && regions.length == verified.length, "Array length mismatch");
+        
+        for (uint256 i = 0; i < users.length; i++) {
+            if (users[i] == address(0)) revert ZeroAddress();
+            
+            kycInfo[users[i]] = KYCInfo({
+                region: regions[i],
+                isVerified: verified[i],
+                verifiedAt: verified[i] ? block.timestamp : 0
+            });
+            
+            emit KYCStatusUpdated(users[i], regions[i], verified[i]);
+        }
+    }
+
+    // --- Escrow Management (US Users) ---
+
+    /**
+     * @notice Releases escrowed tokens for US users after the escrow period.
+     * @dev Can be called by the user or by admins with MINTER_ROLE.
+     */
+    function releaseEscrowedTokens() external {
+        _releaseEscrowedTokens(msg.sender);
+    }
+
+    /**
+     * @notice Releases escrowed tokens for a specific US user (admin function).
+     * @param user The address of the user.
+     * @dev Callable only by addresses with MINTER_ROLE.
+     */
+    function releaseEscrowedTokensFor(address user) external onlyRole(MINTER_ROLE) {
+        _releaseEscrowedTokens(user);
+    }
+
+    /**
+     * @notice Internal function to release escrowed tokens.
+     * @param user The address of the user.
+     */
+    function _releaseEscrowedTokens(address user) internal {
+        EscrowInfo[] storage escrows = userEscrows[user];
+        uint256 totalReleasable = 0;
+        uint256 currentTime = block.timestamp;
+        
+        // Find and sum all releasable amounts
+        for (uint256 i = 0; i < escrows.length; i++) {
+            if (escrows[i].amount > 0 && currentTime >= escrows[i].releaseTime) {
+                totalReleasable += escrows[i].amount;
+                escrows[i].amount = 0; // Mark as released
+            }
+        }
+        
+        if (totalReleasable == 0) revert NoEscrowedTokens();
+        
+        // Clean up empty escrow entries
+        _cleanupEscrows(user);
+        
+        // Mint the released tokens
+        _mint(user, totalReleasable);
+        emit TokensReleasedFromEscrow(user, totalReleasable);
+    }
+
+    /**
+     * @notice Cleans up empty escrow entries for a user.
+     * @param user The address of the user.
+     */
+    function _cleanupEscrows(address user) internal {
+        EscrowInfo[] storage escrows = userEscrows[user];
+        uint256 writeIndex = 0;
+        
+        for (uint256 readIndex = 0; readIndex < escrows.length; readIndex++) {
+            if (escrows[readIndex].amount > 0) {
+                if (writeIndex != readIndex) {
+                    escrows[writeIndex] = escrows[readIndex];
+                }
+                writeIndex++;
+            }
+        }
+        
+        // Remove empty entries at the end
+        while (escrows.length > writeIndex) {
+            escrows.pop();
+        }
     }
 
     // --- Signature Verification ---
@@ -209,6 +357,8 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
      * @param nonce The nonce (timestamp) used in the signature.
      * @param signature The KYC signature from an authorized signer.
      * @dev This function verifies the KYC signature before minting.
+     *      For US users, tokens are escrowed. For EU users, minimum purchase applies.
+     *      This function should only be called by admins for US/EU users.
      */
     function mintWithKYC(
         address to,
@@ -222,10 +372,32 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
         // Verify KYC signature
         verifyKYCSignature(to, sharesAmount, nonce, signature);
 
+        // Check KYC status
+        KYCInfo memory userKYC = kycInfo[to];
+        if (!userKYC.isVerified) revert NotKYCVerified();
+
         uint256 usdValue = (sharesAmount * shareValue) / PRECISION;
-        
-        _mint(to, sharesAmount);
-        emit SharesMinted(to, sharesAmount, usdValue);
+
+        // Apply regional restrictions
+        if (userKYC.region == KYCRegion.EU) {
+            if (usdValue < EU_MINIMUM_PURCHASE) revert InsufficientPurchaseAmount();
+            // EU users get tokens immediately
+            _mint(to, sharesAmount);
+            emit SharesMinted(to, sharesAmount, usdValue);
+        } else if (userKYC.region == KYCRegion.US) {
+            // US users get tokens escrowed
+            uint256 releaseTime = block.timestamp + US_ESCROW_PERIOD;
+            userEscrows[to].push(EscrowInfo({
+                amount: sharesAmount,
+                releaseTime: releaseTime
+            }));
+            emit TokensEscrowed(to, sharesAmount, releaseTime);
+            emit SharesMinted(to, sharesAmount, usdValue); // For accounting purposes
+        } else {
+            // OTHER region users get tokens immediately
+            _mint(to, sharesAmount);
+            emit SharesMinted(to, sharesAmount, usdValue);
+        }
     }
 
     /**
@@ -234,15 +406,70 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
      * @param sharesAmount The amount of shares to mint.
      * @dev Callable only by addresses with MINTER_ROLE.
      *      This function is for administrative minting without KYC signature.
+     *      Applies the same regional restrictions as mintWithKYC.
      */
     function mint(address to, uint256 sharesAmount) external onlyRole(MINTER_ROLE) whenNotPaused {
         if (to == address(0)) revert ZeroAddress();
         if (sharesAmount == 0) revert ZeroAmount();
 
+        // Check KYC status
+        KYCInfo memory userKYC = kycInfo[to];
+        if (!userKYC.isVerified) revert NotKYCVerified();
+
+        uint256 usdValue = (sharesAmount * shareValue) / PRECISION;
+
+        // Apply regional restrictions
+        if (userKYC.region == KYCRegion.EU) {
+            if (usdValue < EU_MINIMUM_PURCHASE) revert InsufficientPurchaseAmount();
+            // EU users get tokens immediately
+            _mint(to, sharesAmount);
+            emit SharesMinted(to, sharesAmount, usdValue);
+        } else if (userKYC.region == KYCRegion.US) {
+            // US users get tokens escrowed
+            uint256 releaseTime = block.timestamp + US_ESCROW_PERIOD;
+            userEscrows[to].push(EscrowInfo({
+                amount: sharesAmount,
+                releaseTime: releaseTime
+            }));
+            emit TokensEscrowed(to, sharesAmount, releaseTime);
+            emit SharesMinted(to, sharesAmount, usdValue); // For accounting purposes
+        } else {
+            // OTHER region users get tokens immediately
+            _mint(to, sharesAmount);
+            emit SharesMinted(to, sharesAmount, usdValue);
+        }
+    }
+
+    /**
+     * @notice Self-minting function for non-US/EU users only.
+     * @param sharesAmount The amount of shares to mint.
+     * @param nonce The nonce (timestamp) used in the signature.
+     * @param signature The KYC signature from an authorized signer.
+     * @dev Only users from regions other than US/EU can self-mint.
+     */
+    function selfMint(
+        uint256 sharesAmount,
+        uint256 nonce,
+        bytes memory signature
+    ) external whenNotPaused {
+        if (sharesAmount == 0) revert ZeroAmount();
+
+        // Check KYC status
+        KYCInfo memory userKYC = kycInfo[msg.sender];
+        if (!userKYC.isVerified) revert NotKYCVerified();
+        
+        // Only allow self-minting for non-US/EU users
+        if (userKYC.region == KYCRegion.US || userKYC.region == KYCRegion.EU) {
+            revert SelfMintingNotAllowed();
+        }
+
+        // Verify KYC signature
+        verifyKYCSignature(msg.sender, sharesAmount, nonce, signature);
+
         uint256 usdValue = (sharesAmount * shareValue) / PRECISION;
         
-        _mint(to, sharesAmount);
-        emit SharesMinted(to, sharesAmount, usdValue);
+        _mint(msg.sender, sharesAmount);
+        emit SharesMinted(msg.sender, sharesAmount, usdValue);
     }
 
     /**
@@ -335,5 +562,81 @@ contract stUSPD is ERC20, ERC20Permit, AccessControl, Pausable {
      */
     function getAccountValue(address account) external view returns (uint256) {
         return (balanceOf(account) * shareValue) / PRECISION;
+    }
+
+    // --- KYC and Escrow View Functions ---
+
+    /**
+     * @notice Gets KYC information for a user.
+     * @param user The address of the user.
+     * @return region The user's region.
+     * @return isVerified Whether the user is KYC verified.
+     * @return verifiedAt When the user was verified.
+     */
+    function getKYCInfo(address user) external view returns (KYCRegion region, bool isVerified, uint256 verifiedAt) {
+        KYCInfo memory info = kycInfo[user];
+        return (info.region, info.isVerified, info.verifiedAt);
+    }
+
+    /**
+     * @notice Gets the total escrowed amount for a US user.
+     * @param user The address of the user.
+     * @return totalEscrowed The total amount of tokens escrowed.
+     * @return releasableAmount The amount that can be released now.
+     */
+    function getEscrowInfo(address user) external view returns (uint256 totalEscrowed, uint256 releasableAmount) {
+        EscrowInfo[] memory escrows = userEscrows[user];
+        uint256 currentTime = block.timestamp;
+        
+        for (uint256 i = 0; i < escrows.length; i++) {
+            if (escrows[i].amount > 0) {
+                totalEscrowed += escrows[i].amount;
+                if (currentTime >= escrows[i].releaseTime) {
+                    releasableAmount += escrows[i].amount;
+                }
+            }
+        }
+    }
+
+    /**
+     * @notice Gets detailed escrow entries for a user.
+     * @param user The address of the user.
+     * @return amounts Array of escrowed amounts.
+     * @return releaseTimes Array of release times.
+     */
+    function getEscrowDetails(address user) external view returns (uint256[] memory amounts, uint256[] memory releaseTimes) {
+        EscrowInfo[] memory escrows = userEscrows[user];
+        uint256 activeCount = 0;
+        
+        // Count active escrows
+        for (uint256 i = 0; i < escrows.length; i++) {
+            if (escrows[i].amount > 0) {
+                activeCount++;
+            }
+        }
+        
+        amounts = new uint256[](activeCount);
+        releaseTimes = new uint256[](activeCount);
+        
+        uint256 index = 0;
+        for (uint256 i = 0; i < escrows.length; i++) {
+            if (escrows[i].amount > 0) {
+                amounts[index] = escrows[i].amount;
+                releaseTimes[index] = escrows[i].releaseTime;
+                index++;
+            }
+        }
+    }
+
+    /**
+     * @notice Checks if a user can self-mint based on their KYC status.
+     * @param user The address of the user.
+     * @return canSelfMint Whether the user can self-mint.
+     */
+    function canUserSelfMint(address user) external view returns (bool canSelfMint) {
+        KYCInfo memory userKYC = kycInfo[user];
+        return userKYC.isVerified && 
+               userKYC.region != KYCRegion.US && 
+               userKYC.region != KYCRegion.EU;
     }
 }
