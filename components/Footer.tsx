@@ -8,9 +8,13 @@ export const Footer = () => {
         {/* Left Column - Company */}
         <div className="text-center md:text-left">
           <p className="font-semibold">© Permissionless Technologies {new Date().getFullYear()}</p>
-          <Link href="https://t.me/+V9hBnsllQVY5YWU0" target="_blank" className="flex items-center justify-center md:justify-start gap-1 mt-3 font-semibold">
+          <Link href="https://discord.gg/uspd" target="_blank" className="flex items-center justify-center md:justify-start gap-1 mt-3 font-semibold">
             <MessageCircle size={16} />
-            Join Telegram
+            Join Discord
+          </Link>
+          <Link href="https://x.com/USPD_io" target="_blank" className="flex items-center justify-center md:justify-start gap-1 mt-3 font-semibold">
+            <MessageCircle size={16} />
+            Follow us on X
           </Link>
         </div>
         
