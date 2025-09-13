@@ -240,12 +240,13 @@ contract PriceOracle is
     function generalAttestationService(
         PriceAttestationQuery calldata priceQuery
     ) public payable whenNotPaused returns (PriceResponse memory) {
-        // Allow EUR_USD or other asset pairs
-        if (priceQuery.assetPair != EUR_USD_ASSET_PAIR && priceQuery.assetPair != ETH_USD_ASSET_PAIR) {
-            revert InvalidAssetPair(EUR_USD_ASSET_PAIR, priceQuery.assetPair);
-        }
+        // allow all asset pairs returned from the API backend with the correct signature.
+        // // Allow EUR_USD or other asset pairs
+        // if (priceQuery.assetPair != EUR_USD_ASSET_PAIR && priceQuery.assetPair != ETH_USD_ASSET_PAIR) {
+        //     revert InvalidAssetPair(EUR_USD_ASSET_PAIR, priceQuery.assetPair);
+        // }
 
-        // For EUR_USD, skip external validation; for ETH_USD, use external validation
+        // For ETH_USD use external validation
         bool useExternalValidation = (priceQuery.assetPair == ETH_USD_ASSET_PAIR);
         return _processAttestation(priceQuery, useExternalValidation);
     }

@@ -31,22 +31,22 @@ const WormholeBridge = () => {
 					USPD: [
 						{
 							chain: 'Sepolia',
-							manager: '0xe0BeEF7da23716e4418f27c15F931e12a10d8A2D',
-							token: '0x4dE19965Da7166eDa659E3966D127CC47ab0AeDc',
+							manager: '0x031848FAB320ABAa32Af848b25Ea34F04f9c1B70',
+							token: '0xcD322020E546e8aBC8d51B1228645F3217B31861',
 							transceiver: [
 								{
-									address: '0x4878480BFd6c7e70fF8F78dA8B8a02ed7bCe5718',
+									address: '0x483a709de0636F92e7E26287cE8654F9aaeeC261',
 									type: 'wormhole',
 								},
 							],
 						},
 						{
 							chain: 'BaseSepolia',
-							manager: '0x566DE48bc4d9198De6D657D0Aa5E36fd0980eA37',
-							token: '0x4dE19965Da7166eDa659E3966D127CC47ab0AeDc',
+							manager: '0xea3e4282452D4A75B0e93dD65AfEd658b74343d6',
+							token: '0xcD322020E546e8aBC8d51B1228645F3217B31861',
 							transceiver: [
 								{
-									address: '0x57f339d1718e19709c2aC2E96a16A34d9c107Bcf',
+									address: '0x23b0aA8E3C70da40CBf00306f1A7Ae1B6C9100fe',
 									type: 'wormhole',
 								},
 							],
@@ -60,7 +60,7 @@ const WormholeBridge = () => {
 				symbol: 'USPD',
 				tokenId: {
 					chain: 'Sepolia',
-					address: '0x4dE19965Da7166eDa659E3966D127CC47ab0AeDc'
+					address: '0xcD322020E546e8aBC8d51B1228645F3217B31861'
 				},
 				icon: 'https://uspd.io/images/logo_uspd.svg',
 				decimals: 18
@@ -69,7 +69,7 @@ const WormholeBridge = () => {
 				symbol: 'USPD',
 				tokenId: {
 					chain: 'BaseSepolia',
-					address: '0x4dE19965Da7166eDa659E3966D127CC47ab0AeDc'
+					address: '0xcD322020E546e8aBC8d51B1228645F3217B31861'
 				},
 				icon: 'https://uspd.io/images/logo_uspd.svg',
 				decimals: 18

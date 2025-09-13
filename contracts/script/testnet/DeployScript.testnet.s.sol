@@ -30,7 +30,7 @@ contract DeployScriptTestnet is DeployScript {
     address internal constant TESTNET_UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984; // Uniswap factory
 
     uint256 internal constant TESTNET_INITIAL_RATE_CONTRACT_DEPOSIT = 0.001 ether;
-    string internal constant TESTNET_BASE_URI = "https://uspd.io/api/stabilizer/metadata/";
+    string internal constant TESTNET_BASE_URI = "https://testnet.uspd.io/api/stabilizer/metadata/";
     // address internal constant TESTNET_ORACLE_SIGNER_ADDRESS = 0xYourTestnetOracleSignerAddress; // Example if needed
 
     function setUp() public virtual override {

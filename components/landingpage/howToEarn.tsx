@@ -32,7 +32,7 @@ export default function HowToEarn() {
                         <p className="text-muted-foreground mb-6 flex-grow">
                             Prefer a hands-off approach? Opt for a managed stabilizer position for a stable APY without the management risk. This option is currently in development. Join our community to learn more.
                         </p>
-                        <a href="https://t.me/+XKKeAZZwypM0MDFk" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
+                        <a href="https://t.me/USPDhub" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
                             <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">
                                 JOIN TELEGRAM FOR UPDATES
                             </InteractiveHoverButton>

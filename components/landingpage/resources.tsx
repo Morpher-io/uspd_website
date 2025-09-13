@@ -51,11 +51,11 @@ export default function Resources() {
                     <div className="flex flex-col items-center text-center p-8 border border-border rounded-lg bg-secondary/50">
                         <h3 className="text-2xl font-bold mb-4 font-heading">Join our Community</h3>
                         <p className="text-muted-foreground mb-6 flex-grow">
-                            Have questions or want to get involved? Join our Telegram community to connect with the team and other users. We&apos;re here to help and listen to your feedback.
+                            Have questions or want to get involved? Join our Discord community to connect with the team and other users. We&apos;re here to help and listen to your feedback.
                         </p>
-                        <a href="https://t.me/+XKKeAZZwypM0MDFk" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
+                        <a href="https://discord.gg/uspd" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
                             <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">
-                                JOIN TELEGRAM
+                                JOIN DISCORD
                             </InteractiveHoverButton>
                         </a>
                     </div>

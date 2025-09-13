@@ -16,3 +16,13 @@ extra_output = ["storageLayout"]
 
 # Allow reading the deployments directory
 fs_permissions = [{ access = "read-write", path = "./deployments" }]
+
+# try to have more deterministic output
+# auto_detect_remappings = false
+bytecode_hash = "none"
+cbor_metadata = false
+sparse_mode = false
+
+[profile.default.optimizer_details]
+# constantOptimizer = true
+yul = true

@@ -25,8 +25,8 @@
     "stabilizerBaseURI": "https://testnet.uspd.io/api/stabilizer/metadata/"
   },
   "metadata": {
-    "chainId": 11155111,
-    "deploymentTimestamp": 1757697168,
+    "chainId": 84532,
+    "deploymentTimestamp": 1757698434,
     "deployer": "0x555350445E1f1ca212edB8cF397a383695ff7a36"
   }
 }
