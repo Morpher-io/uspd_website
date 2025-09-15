@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWriteContract, useAccount, useReadContract, useConfig } from 'wagmi'
+import { useWriteContract, useAccount, useReadContract, useConfig, useChainId } from 'wagmi'
 import { waitForTransactionReceipt } from 'wagmi/actions'
 import { parseEther, Address, Abi } from 'viem'
 import { IPriceOracle } from '@/types/contracts'
@@ -13,9 +13,25 @@ import { IPriceOracle } from '@/types/contracts'
 // Import necessary ABIs
 import rewardsYieldBoosterAbiJson from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
 
+// Import deployment addresses
+import mainnetDeployment from '@/contracts/deployments/1.json'
+import sepoliaDeployment from '@/contracts/deployments/11155111.json'
+
 interface YieldBoostManagerProps {
-    rewardsYieldBoosterAddress: Address
+    rewardsYieldBoosterAddress?: Address
     rewardsYieldBoosterAbi?: Abi
+}
+
+// Helper function to get deployment addresses
+function getDeploymentAddresses(chainId: number) {
+    switch (chainId) {
+        case 1: // Mainnet
+            return mainnetDeployment
+        case 11155111: // Sepolia
+            return sepoliaDeployment
+        default:
+            return null
+    }
 }
 
 // Define an interface for the price data from the API
@@ -29,7 +45,7 @@ interface PriceData {
 }
 
 export function YieldBoostManager({
-    rewardsYieldBoosterAddress,
+    rewardsYieldBoosterAddress: propAddress,
     rewardsYieldBoosterAbi = rewardsYieldBoosterAbiJson.abi
 }: YieldBoostManagerProps) {
     const [error, setError] = useState<string | null>(null)
@@ -44,6 +60,13 @@ export function YieldBoostManager({
     const { address } = useAccount()
     const { writeContractAsync } = useWriteContract()
     const config = useConfig()
+    const chainId = useChainId()
+
+    // Get the contract address from props or deployment files
+    const rewardsYieldBoosterAddress = propAddress || (() => {
+        const deployment = getDeploymentAddresses(chainId)
+        return deployment?.contracts?.rewardsYieldBooster as Address
+    })()
 
     // Fetch current surplus yield factor
     const { data: surplusYieldFactor, isLoading: isLoadingSurplusYield, refetch: refetchSurplusYield } = useReadContract({
