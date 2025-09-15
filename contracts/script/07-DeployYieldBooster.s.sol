@@ -25,13 +25,11 @@ contract DeployYieldBoosterScript is DeployScript {
         console2.log("Deploying RewardsYieldBooster proxy...");
         
         // Read the deployed contract addresses for initialization
-        address cuspdTokenAddr = _readAddressFromDeployment(".contracts.cuspdToken");
         address uspdTokenAddr = _readAddressFromDeployment(".contracts.token");
         address oracleAddr = _readAddressFromDeployment(".contracts.oracle");
         address stabilizerAddr = _readAddressFromDeployment(".contracts.stabilizer");
         address rateContractAddr = _readAddressFromDeployment(".contracts.rateContract");
         
-        require(cuspdTokenAddr != address(0), "cUSPD token address not found for RewardsYieldBooster");
         require(uspdTokenAddr != address(0), "USPD token address not found for RewardsYieldBooster");
         require(oracleAddr != address(0), "Oracle address not found for RewardsYieldBooster");
         require(stabilizerAddr != address(0), "Stabilizer address not found for RewardsYieldBooster");
@@ -42,9 +40,8 @@ contract DeployYieldBoosterScript is DeployScript {
 
         // Prepare initialization data
         bytes memory initData = abi.encodeWithSignature(
-            "initialize(address,address,address,address,address,address)",
+            "initialize(address,address,address,address,address)",
             deployer,           // admin
-            cuspdTokenAddr,     // cUSPD token
             uspdTokenAddr,      // USPD token
             rateContractAddr,   // rate contract
             stabilizerAddr,     // stabilizer NFT
