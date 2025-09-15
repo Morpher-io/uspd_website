@@ -11,7 +11,7 @@ import { parseEther, Address, Abi } from 'viem'
 import { IPriceOracle } from '@/types/contracts'
 
 // Import necessary ABIs
-import rewardsYieldBoosterAbi from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
+import rewardsYieldBoosterAbiJson from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
 
 interface YieldBoostManagerProps {
     rewardsYieldBoosterAddress: Address
@@ -30,7 +30,7 @@ interface PriceData {
 
 export function YieldBoostManager({
     rewardsYieldBoosterAddress,
-    rewardsYieldBoosterAbi = rewardsYieldBoosterAbi.abi
+    rewardsYieldBoosterAbi = rewardsYieldBoosterAbiJson.abi
 }: YieldBoostManagerProps) {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
