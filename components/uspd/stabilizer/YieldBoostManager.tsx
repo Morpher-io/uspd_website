@@ -9,13 +9,18 @@ import { useWriteContract, useAccount, useReadContract, useConfig } from 'wagmi'
 import { waitForTransactionReceipt } from 'wagmi/actions'
 import { parseEther, Address, Abi } from 'viem'
 import { IPriceOracle } from '@/types/contracts'
+import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 
 // Import necessary ABIs
 import rewardsYieldBoosterAbiJson from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
 
-interface YieldBoostManagerProps {
+interface YieldBoostManagerCoreProps {
     rewardsYieldBoosterAddress: Address
     rewardsYieldBoosterAbi?: Abi
+}
+
+interface YieldBoostManagerProps {
+    // No props needed - will use ContractLoader internally
 }
 
 // Define an interface for the price data from the API
@@ -28,10 +33,10 @@ interface PriceData {
     signature: `0x${string}`;
 }
 
-export function YieldBoostManager({
+function YieldBoostManagerCore({
     rewardsYieldBoosterAddress,
     rewardsYieldBoosterAbi = rewardsYieldBoosterAbiJson.abi
-}: YieldBoostManagerProps) {
+}: YieldBoostManagerCoreProps) {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [isBoostingYield, setIsBoostingYield] = useState(false)
@@ -213,5 +218,17 @@ export function YieldBoostManager({
                 </Alert>
             )}
         </div>
+    )
+}
+
+export function YieldBoostManager({}: YieldBoostManagerProps) {
+    return (
+        <ContractLoader contractKeys={["rewardsYieldBooster"]}>
+            {(loadedAddresses) => (
+                <YieldBoostManagerCore 
+                    rewardsYieldBoosterAddress={loadedAddresses.rewardsYieldBooster}
+                />
+            )}
+        </ContractLoader>
     )
 }

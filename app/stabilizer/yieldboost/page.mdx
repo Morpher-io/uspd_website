@@ -1,12 +1,5 @@
 import { YieldBoostManager } from '@/components/uspd/stabilizer/YieldBoostManager'
-import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 
 # Yield Boost
 
-<ContractLoader contractKeys={["rewardsYieldBooster"]}>
-  {(loadedAddresses) => (
-    <YieldBoostManager 
-      rewardsYieldBoosterAddress={loadedAddresses.rewardsYieldBooster}
-    />
-  )}
-</ContractLoader>
+<YieldBoostManager />
