@@ -73,6 +73,8 @@ contract DeployScript is Script {
     bytes32 public INSURANCE_ESCROW_SALT;
     bytes32 public BRIDGE_ESCROW_SALT;
     bytes32 public STUSPD_SALT;
+    bytes32 public REWARDS_YIELD_BOOSTER_IMPL_SALT;
+    bytes32 public REWARDS_YIELD_BOOSTER_SALT;
 
     // CreateX contract address
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; 
@@ -119,6 +121,8 @@ contract DeployScript is Script {
     address public positionEscrowImplAddress;
     address public stUspdTokenImplAddress;
     address public stUspdAddress;
+    address public rewardsYieldBoosterImplAddress;
+    address public rewardsYieldBoosterAddress;
 
     // Configuration for PriceOracle (used in deployOracleProxy)
     uint256 public maxPriceDeviation = 500; // 5%
@@ -194,6 +198,8 @@ contract DeployScript is Script {
         INSURANCE_ESCROW_SALT = generateSalt("USPD_INSURANCE_ESCROW_v1");
         BRIDGE_ESCROW_SALT = generateSalt("USPD_BRIDGE_ESCROW_v1");
         STUSPD_SALT = generateSalt("STUSPD_TOKEN_v1");
+        REWARDS_YIELD_BOOSTER_IMPL_SALT = generateSalt("USPD_REWARDS_YIELD_BOOSTER_IMPL_v1");
+        REWARDS_YIELD_BOOSTER_SALT = generateSalt("USPD_REWARDS_YIELD_BOOSTER_v1");
 
         console2.log("Deploying to chain ID:", chainId);
         console2.log("Deployer address:", deployer);
@@ -241,7 +247,9 @@ contract DeployScript is Script {
                 '"stabilizerEscrowImpl": "0x0000000000000000000000000000000000000000",'
                 '"positionEscrowImpl": "0x0000000000000000000000000000000000000000",'
                 '"stUspdTokenImpl": "0x0000000000000000000000000000000000000000",'
-                '"stUspd": "0x0000000000000000000000000000000000000000"'
+                '"stUspd": "0x0000000000000000000000000000000000000000",'
+                '"rewardsYieldBoosterImpl": "0x0000000000000000000000000000000000000000",'
+                '"rewardsYieldBooster": "0x0000000000000000000000000000000000000000"'
             '},'
             '"config": {'
                 '"usdcAddress": "0x0000000000000000000000000000000000000000",'
@@ -307,6 +315,12 @@ contract DeployScript is Script {
         }
         if (stUspdAddress != address(0)) {
             vm.writeJson(vm.toString(stUspdAddress), deploymentPath, ".contracts.stUspd");
+        }
+        if (rewardsYieldBoosterImplAddress != address(0)) {
+            vm.writeJson(vm.toString(rewardsYieldBoosterImplAddress), deploymentPath, ".contracts.rewardsYieldBoosterImpl");
+        }
+        if (rewardsYieldBoosterAddress != address(0)) {
+            vm.writeJson(vm.toString(rewardsYieldBoosterAddress), deploymentPath, ".contracts.rewardsYieldBooster");
         }
 
         // Config and metadata are generally fine to be updated by the latest script run

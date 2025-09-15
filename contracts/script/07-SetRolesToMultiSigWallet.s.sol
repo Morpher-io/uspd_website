@@ -10,6 +10,7 @@ import "../src/USPDToken.sol";
 import "../src/OvercollateralizationReporter.sol";
 import "../src/PoolSharesConversionRate.sol";
 import "../src/stUSPD.sol";
+import "../src/RewardsYieldBooster.sol";
 
 contract SetRolesToMultiSigWalletScript is DeployScript {
     // HARDCODED MULTISIG WALLET ADDRESS - UPDATE THIS BEFORE DEPLOYMENT
@@ -29,6 +30,7 @@ contract SetRolesToMultiSigWalletScript is DeployScript {
         reporterAddress = _readAddressFromDeployment(".contracts.reporter");
         rateContractAddress = _readAddressFromDeployment(".contracts.rateContract");
         stUspdAddress = _readAddressFromDeployment(".contracts.stUspd");
+        rewardsYieldBoosterAddress = _readAddressFromDeployment(".contracts.rewardsYieldBooster");
 
         console2.log("SetRolesToMultiSigWalletScript: setUp complete.");
         console2.log("Multisig wallet address:", MULTISIG_WALLET);
@@ -195,6 +197,26 @@ contract SetRolesToMultiSigWalletScript is DeployScript {
         console2.log("stUSPD roles transferred successfully.");
     }
 
+    function transferRewardsYieldBoosterRoles() internal {
+        if (rewardsYieldBoosterAddress == address(0)) {
+            console2.log("Warning: RewardsYieldBooster address not found, skipping RewardsYieldBooster role transfer");
+            return;
+        }
+
+        console2.log("Transferring RewardsYieldBooster roles...");
+        RewardsYieldBooster yieldBooster = RewardsYieldBooster(payable(rewardsYieldBoosterAddress));
+
+        // Grant roles to multisig first
+        console2.log("Granting UPGRADER_ROLE to multisig on RewardsYieldBooster...");
+        yieldBooster.grantRole(yieldBooster.UPGRADER_ROLE(), MULTISIG_WALLET);
+
+        // Revoke roles from deployer (except DEFAULT_ADMIN_ROLE for now)
+        console2.log("Revoking UPGRADER_ROLE from deployer on RewardsYieldBooster...");
+        yieldBooster.revokeRole(yieldBooster.UPGRADER_ROLE(), deployer);
+
+        console2.log("RewardsYieldBooster roles transferred successfully.");
+    }
+
     function transferStabilizerNFTRoles() internal {
         if (stabilizerProxyAddress == address(0)) {
             console2.log("Warning: StabilizerNFT address not found, skipping StabilizerNFT role transfer");
@@ -284,6 +306,15 @@ contract SetRolesToMultiSigWalletScript is DeployScript {
             stUspd.revokeRole(stUspd.DEFAULT_ADMIN_ROLE(), deployer);
         }
 
+        if (rewardsYieldBoosterAddress != address(0)) {
+            console2.log("Granting DEFAULT_ADMIN_ROLE to multisig on RewardsYieldBooster...");
+            RewardsYieldBooster yieldBooster = RewardsYieldBooster(payable(rewardsYieldBoosterAddress));
+            yieldBooster.grantRole(yieldBooster.DEFAULT_ADMIN_ROLE(), MULTISIG_WALLET);
+            
+            console2.log("Revoking DEFAULT_ADMIN_ROLE from deployer on RewardsYieldBooster...");
+            yieldBooster.revokeRole(yieldBooster.DEFAULT_ADMIN_ROLE(), deployer);
+        }
+
         console2.log("All DEFAULT_ADMIN_ROLE transfers completed successfully.");
     }
 
@@ -301,6 +332,7 @@ contract SetRolesToMultiSigWalletScript is DeployScript {
         transferOvercollateralizationReporterRoles();
         transferPoolSharesConversionRateRoles();
         transferStUSPDRoles();
+        transferRewardsYieldBoosterRoles();
         transferStabilizerNFTRoles();
 
         // Transfer DEFAULT_ADMIN_ROLE last (most critical)
