@@ -14,15 +14,15 @@ import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 
 // Import necessary ABIs
 import rewardsYieldBoosterAbiJson from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
-import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
+import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
 import stabilizerNFTAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 
 interface YieldBoostManagerCoreProps {
     rewardsYieldBoosterAddress: Address
-    uspdTokenAddress: Address
+    cuspdTokenAddress: Address
     stabilizerAddress: Address
     rewardsYieldBoosterAbi?: Abi
-    uspdTokenAbi?: Abi
+    cuspdTokenAbi?: Abi
     stabilizerAbi?: Abi
 }
 
@@ -42,10 +42,10 @@ interface PriceData {
 
 function YieldBoostManagerCore({
     rewardsYieldBoosterAddress,
-    uspdTokenAddress,
+    cuspdTokenAddress,
     stabilizerAddress,
     rewardsYieldBoosterAbi = rewardsYieldBoosterAbiJson.abi,
-    uspdTokenAbi = uspdTokenAbiJson.abi,
+    cuspdTokenAbi = cuspdTokenAbiJson.abi,
     stabilizerAbi = stabilizerNFTAbiJson.abi
 }: YieldBoostManagerCoreProps) {
     const [error, setError] = useState<string | null>(null)
@@ -71,13 +71,13 @@ function YieldBoostManagerCore({
         query: { enabled: !!rewardsYieldBoosterAddress }
     })
 
-    // Fetch USPD total supply for yield calculation
-    const { data: uspdTotalSupply, isLoading: isLoadingUspdSupply } = useReadContract({
-        address: uspdTokenAddress,
-        abi: uspdTokenAbi,
+    // Fetch cUSPD total supply for yield calculation
+    const { data: cuspdTotalSupply, isLoading: isLoadingCuspdSupply } = useReadContract({
+        address: cuspdTokenAddress,
+        abi: cuspdTokenAbi,
         functionName: 'totalSupply',
         args: [],
-        query: { enabled: !!uspdTokenAddress }
+        query: { enabled: !!cuspdTokenAddress }
     })
 
     // Fetch user's NFT balance
@@ -187,19 +187,19 @@ function YieldBoostManagerCore({
     }
 
     const calculateYieldIncrease = () => {
-        if (!ethAmount || !priceData || !uspdTotalSupply || parseFloat(ethAmount) <= 0) return null
+        if (!ethAmount || !priceData || !cuspdTotalSupply || parseFloat(ethAmount) <= 0) return null
         
         const ethValue = parseFloat(ethAmount)
         const ethPrice = parseFloat(priceData.price) / (10 ** priceData.decimals)
         const usdValue = ethValue * ethPrice
         
-        // Calculate yield increase: (USD value * FACTOR_PRECISION) / total USPD supply
+        // Calculate yield increase: (USD value * FACTOR_PRECISION) / total cUSPD supply
         // FACTOR_PRECISION = 1e18, so we need to convert to percentage
-        const totalSupplyNumber = Number(uspdTotalSupply) / 1e18 // Convert from wei to tokens
-        const yieldIncrease = (usdValue / totalSupplyNumber) // This gives us the per-token increase
+        const totalSupplyNumber = Number(cuspdTotalSupply) / 1e18 // Convert from wei to tokens
+        const yieldIncrease = (usdValue / totalSupplyNumber) // This gives us the per-share increase
         
         return {
-            absoluteIncrease: yieldIncrease.toFixed(6), // Per token increase in USD
+            absoluteIncrease: yieldIncrease.toFixed(6), // Per share increase in USD
             percentageIncrease: (yieldIncrease * 100).toFixed(4) // Percentage increase
         }
     }
@@ -269,14 +269,14 @@ function YieldBoostManagerCore({
                             <p className="text-sm text-muted-foreground">
                                 ≈ ${usdValue} USD {isLoadingPrice && '(updating...)'}
                             </p>
-                            {yieldIncrease && !isLoadingUspdSupply && (
+                            {yieldIncrease && !isLoadingCuspdSupply && (
                                 <div className="text-sm text-muted-foreground">
                                     <p>Estimated yield impact:</p>
-                                    <p className="ml-2">• +${yieldIncrease.absoluteIncrease} per USPD token</p>
+                                    <p className="ml-2">• +${yieldIncrease.absoluteIncrease} per cUSPD share</p>
                                     <p className="ml-2">• +{yieldIncrease.percentageIncrease}% yield increase</p>
                                 </div>
                             )}
-                            {isLoadingUspdSupply && (
+                            {isLoadingCuspdSupply && (
                                 <p className="text-sm text-muted-foreground">
                                     Calculating yield impact...
                                 </p>
@@ -287,7 +287,7 @@ function YieldBoostManagerCore({
 
                 <Button
                     onClick={handleBoostYield}
-                    disabled={isBoostingYield || !ethAmount || parseFloat(ethAmount) <= 0 || isLoadingPrice || isLoadingUspdSupply || !address || !selectedNftId}
+                    disabled={isBoostingYield || !ethAmount || parseFloat(ethAmount) <= 0 || isLoadingPrice || isLoadingCuspdSupply || !address || !selectedNftId}
                     className="w-full h-10"
                     size="lg"
                 >
@@ -338,11 +338,11 @@ function YieldBoostManagerCore({
 
 export function YieldBoostManager({}: YieldBoostManagerProps) {
     return (
-        <ContractLoader contractKeys={["rewardsYieldBooster", "uspdToken", "stabilizer"]}>
+        <ContractLoader contractKeys={["rewardsYieldBooster", "cuspdToken", "stabilizer"]}>
             {(loadedAddresses) => (
                 <YieldBoostManagerCore 
                     rewardsYieldBoosterAddress={loadedAddresses.rewardsYieldBooster}
-                    uspdTokenAddress={loadedAddresses.uspdToken}
+                    cuspdTokenAddress={loadedAddresses.cuspdToken}
                     stabilizerAddress={loadedAddresses.stabilizer}
                 />
             )}

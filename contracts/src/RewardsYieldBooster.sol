@@ -5,10 +5,10 @@ import {Initializable} from "../lib/openzeppelin-contracts-upgradeable/contracts
 import {AccessControlUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "./interfaces/IRewardsYieldBooster.sol";
+import "./interfaces/IcUSPDToken.sol";
 import "./interfaces/IPoolSharesConversionRate.sol";
 import "./interfaces/IPositionEscrow.sol";
 import "./interfaces/IPriceOracle.sol";
-import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 // Minimal interface for NFT ownership check and position escrow access
 interface IERC721Minimal {
@@ -29,7 +29,7 @@ contract RewardsYieldBooster is
     IRewardsYieldBooster
 {
     // --- State Variables ---
-    IERC20 public uspdToken;
+    IcUSPDToken public cuspdToken;
     IPoolSharesConversionRate public rateContract;
     IERC721Minimal public stabilizerNFT; // For ownership checks and position escrow access
     IPriceOracle public oracle;
@@ -48,7 +48,7 @@ contract RewardsYieldBooster is
         uint256 newTotalSurplusYield
     );
     event DependenciesUpdated(
-        address newUspdToken,
+        address newCuspdToken,
         address newRateContract,
         address newStabilizerNFT,
         address newOracle
@@ -71,14 +71,14 @@ contract RewardsYieldBooster is
     /**
      * @notice Initializes the contract with its dependencies.
      * @param _admin The address to receive admin and upgrader roles.
-     * @param _uspdToken The address of the USPDToken contract.
+     * @param _cuspdToken The address of the cUSPDToken contract.
      * @param _rateContract The address of the PoolSharesConversionRate contract.
      * @param _stabilizerNFT The address of the StabilizerNFT contract.
      * @param _oracle The address of the PriceOracle contract.
      */
     function initialize(
         address _admin,
-        address _uspdToken,
+        address _cuspdToken,
         address _rateContract,
         address _stabilizerNFT,
         address _oracle
@@ -87,12 +87,12 @@ contract RewardsYieldBooster is
         __UUPSUpgradeable_init();
 
         require(_admin != address(0), "Zero admin address");
-        require(_uspdToken != address(0), "Zero uspdToken address");
+        require(_cuspdToken != address(0), "Zero cuspdToken address");
         require(_rateContract != address(0), "Zero rateContract address");
         require(_stabilizerNFT != address(0), "Zero stabilizerNFT address");
         require(_oracle != address(0), "Zero oracle address");
 
-        uspdToken = IERC20(_uspdToken);
+        cuspdToken = IcUSPDToken(_cuspdToken);
         rateContract = IPoolSharesConversionRate(_rateContract);
         stabilizerNFT = IERC721Minimal(_stabilizerNFT);
         oracle = IPriceOracle(_oracle);
@@ -115,20 +115,16 @@ contract RewardsYieldBooster is
         //intermittend permissioned configuration since it can be used to liquidate other stabilizers
         if (nftId != 1) revert InvalidNftId();
 
-        // 2. Get total USPD supply (rebased tokens) and validate
-        uint256 totalUspdSupply = uspdToken.totalSupply();
-        if (totalUspdSupply == 0) revert NoSharesToBoost();
+        // 2. Get total cUSPD shares and validate
+        uint256 totalCuspdShares = cuspdToken.totalSupply();
+        if (totalCuspdShares == 0) revert NoSharesToBoost();
 
         // 3. Get Price and calculate USD value of incoming ETH
         IPriceOracle.PriceResponse memory priceResponse = oracle.attestationService(priceQuery);
         if (priceResponse.price == 0) revert InvalidOraclePrice();
         uint256 usdValueFromEth = (msg.value * priceResponse.price) / (10**uint256(priceResponse.decimals));
 
-        // 4. Calculate underlying cUSPD shares by dividing USPD supply by current yield factor
-        uint256 currentYieldFactor = rateContract.getYieldFactor();
-        uint256 totalCuspdShares = (totalUspdSupply * FACTOR_PRECISION) / currentYieldFactor;
-
-        // 5. Calculate yield increase based on underlying cUSPD shares and update surplus factor
+        // 4. Calculate yield increase based on cUSPD shares and update surplus factor
         uint256 yieldIncrease = (usdValueFromEth * FACTOR_PRECISION) / totalCuspdShares;
         surplusYieldFactor += yieldIncrease;
 
@@ -153,19 +149,19 @@ contract RewardsYieldBooster is
      * @dev Callable only by admin.
      */
     function updateDependencies(
-        address _uspdToken,
+        address _cuspdToken,
         address _rateContract,
         address _stabilizerNFT,
         address _oracle
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_uspdToken == address(0) || _rateContract == address(0) || _stabilizerNFT == address(0) || _oracle == address(0)) {
+        if (_cuspdToken == address(0) || _rateContract == address(0) || _stabilizerNFT == address(0) || _oracle == address(0)) {
             revert ZeroAddress();
         }
-        uspdToken = IERC20(_uspdToken);
+        cuspdToken = IcUSPDToken(_cuspdToken);
         rateContract = IPoolSharesConversionRate(_rateContract);
         stabilizerNFT = IERC721Minimal(_stabilizerNFT);
         oracle = IPriceOracle(_oracle);
-        emit DependenciesUpdated(_uspdToken, _rateContract, _stabilizerNFT, _oracle);
+        emit DependenciesUpdated(_cuspdToken, _rateContract, _stabilizerNFT, _oracle);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {
