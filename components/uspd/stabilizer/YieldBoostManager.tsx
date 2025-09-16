@@ -71,6 +71,24 @@ function YieldBoostManagerCore({
         query: { enabled: !!rewardsYieldBoosterAddress }
     })
 
+    // Fetch current total yield factor from rate contract
+    const { data: currentYieldFactor, isLoading: isLoadingYieldFactor } = useReadContract({
+        address: rewardsYieldBoosterAddress,
+        abi: rewardsYieldBoosterAbi,
+        functionName: 'rateContract',
+        args: [],
+        query: { enabled: !!rewardsYieldBoosterAddress }
+    })
+
+    // Get the actual yield factor from the rate contract
+    const { data: totalYieldFactor, isLoading: isLoadingTotalYield } = useReadContract({
+        address: currentYieldFactor,
+        abi: [{"inputs":[],"name":"getYieldFactor","outputs":[{"internalType":"uint256","name":"yieldFactor","type":"uint256"}],"stateMutability":"view","type":"function"}],
+        functionName: 'getYieldFactor',
+        args: [],
+        query: { enabled: !!currentYieldFactor }
+    })
+
     // Fetch cUSPD total supply for yield calculation
     const { data: cuspdTotalSupply, isLoading: isLoadingCuspdSupply } = useReadContract({
         address: cuspdTokenAddress,
@@ -187,20 +205,29 @@ function YieldBoostManagerCore({
     }
 
     const calculateYieldIncrease = () => {
-        if (!ethAmount || !priceData || !cuspdTotalSupply || parseFloat(ethAmount) <= 0) return null
+        if (!ethAmount || !priceData || !cuspdTotalSupply || !totalYieldFactor || parseFloat(ethAmount) <= 0) return null
         
         const ethValue = parseFloat(ethAmount)
         const ethPrice = parseFloat(priceData.price) / (10 ** priceData.decimals)
         const usdValue = ethValue * ethPrice
         
-        // Calculate yield increase: (USD value * FACTOR_PRECISION) / total cUSPD supply
-        // FACTOR_PRECISION = 1e18, so we need to convert to percentage
+        // Calculate yield factor increase: (USD value * FACTOR_PRECISION) / total cUSPD supply
         const totalSupplyNumber = Number(cuspdTotalSupply) / 1e18 // Convert from wei to tokens
-        const yieldIncrease = (usdValue / totalSupplyNumber) // This gives us the per-share increase
+        const yieldFactorIncrease = (usdValue / totalSupplyNumber) // This gives us the yield factor increase
+        
+        // Current yield factor (convert from wei)
+        const currentYield = Number(totalYieldFactor) / 1e18
+        const newYield = currentYield + yieldFactorIncrease
+        
+        // Calculate percentage increase of the yield factor
+        const percentageIncrease = ((newYield - currentYield) / currentYield) * 100
         
         return {
-            absoluteIncrease: yieldIncrease.toFixed(6), // Per share increase in USD
-            percentageIncrease: (yieldIncrease * 100).toFixed(4) // Percentage increase
+            usdContribution: usdValue.toFixed(2),
+            currentYieldFactor: currentYield.toFixed(6),
+            newYieldFactor: newYield.toFixed(6),
+            yieldFactorIncrease: yieldFactorIncrease.toFixed(6),
+            percentageIncrease: percentageIncrease.toFixed(2)
         }
     }
 
@@ -269,14 +296,16 @@ function YieldBoostManagerCore({
                             <p className="text-sm text-muted-foreground">
                                 ≈ ${usdValue} USD {isLoadingPrice && '(updating...)'}
                             </p>
-                            {yieldIncrease && !isLoadingCuspdSupply && (
+                            {yieldIncrease && !isLoadingCuspdSupply && !isLoadingTotalYield && (
                                 <div className="text-sm text-muted-foreground">
                                     <p>Estimated yield impact:</p>
-                                    <p className="ml-2">• +${yieldIncrease.absoluteIncrease} per cUSPD share</p>
-                                    <p className="ml-2">• +{yieldIncrease.percentageIncrease}% yield increase</p>
+                                    <p className="ml-2">• ${yieldIncrease.usdContribution} USD contribution to system</p>
+                                    <p className="ml-2">• Yield factor: {yieldIncrease.currentYieldFactor} → {yieldIncrease.newYieldFactor}</p>
+                                    <p className="ml-2">• Yield factor increase: +{yieldIncrease.yieldFactorIncrease}</p>
+                                    <p className="ml-2">• Relative yield increase: +{yieldIncrease.percentageIncrease}%</p>
                                 </div>
                             )}
-                            {isLoadingCuspdSupply && (
+                            {(isLoadingCuspdSupply || isLoadingTotalYield) && (
                                 <p className="text-sm text-muted-foreground">
                                     Calculating yield impact...
                                 </p>
@@ -287,7 +316,7 @@ function YieldBoostManagerCore({
 
                 <Button
                     onClick={handleBoostYield}
-                    disabled={isBoostingYield || !ethAmount || parseFloat(ethAmount) <= 0 || isLoadingPrice || isLoadingCuspdSupply || !address || !selectedNftId}
+                    disabled={isBoostingYield || !ethAmount || parseFloat(ethAmount) <= 0 || isLoadingPrice || isLoadingCuspdSupply || isLoadingTotalYield || !address || !selectedNftId}
                     className="w-full h-10"
                     size="lg"
                 >
