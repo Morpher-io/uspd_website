@@ -11,6 +11,11 @@ import "./interfaces/IPositionEscrow.sol";
 import "./interfaces/IPriceOracle.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
+// Minimal interface for NFT ownership check
+interface IERC721Minimal {
+    function ownerOf(uint256 tokenId) external view returns (address);
+}
+
 /**
  * @title RewardsYieldBooster
  * @notice A contract to handle surplus collateral contributions to boost the overall system yield.
@@ -27,6 +32,7 @@ contract RewardsYieldBooster is
     IERC20 public uspdToken;
     IPoolSharesConversionRate public rateContract;
     IStabilizerNFT public stabilizerNFT;
+    IERC721Minimal public stabilizerNFTOwnership; // For ownership checks
     IPriceOracle public oracle;
 
     uint256 public surplusYieldFactor;
@@ -89,6 +95,7 @@ contract RewardsYieldBooster is
         uspdToken = IERC20(_uspdToken);
         rateContract = IPoolSharesConversionRate(_rateContract);
         stabilizerNFT = IStabilizerNFT(_stabilizerNFT);
+        stabilizerNFTOwnership = IERC721Minimal(_stabilizerNFT);
         oracle = IPriceOracle(_oracle);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -104,7 +111,7 @@ contract RewardsYieldBooster is
         if (msg.value == 0) revert ZeroAmount();
 
         // 1. Verify caller owns the NFT
-        if (stabilizerNFT.ownerOf(nftId) != msg.sender) revert NotNFTOwner();
+        if (stabilizerNFTOwnership.ownerOf(nftId) != msg.sender) revert NotNFTOwner();
 
         // 2. Get total USPD supply (rebased tokens) and validate
         uint256 totalUspdSupply = uspdToken.totalSupply();
@@ -151,6 +158,7 @@ contract RewardsYieldBooster is
         uspdToken = IERC20(_uspdToken);
         rateContract = IPoolSharesConversionRate(_rateContract);
         stabilizerNFT = IStabilizerNFT(_stabilizerNFT);
+        stabilizerNFTOwnership = IERC721Minimal(_stabilizerNFT);
         oracle = IPriceOracle(_oracle);
         emit DependenciesUpdated(_uspdToken, _rateContract, _stabilizerNFT, _oracle);
     }

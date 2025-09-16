@@ -50,11 +50,5 @@ interface IStabilizerNFT {
      */
     function positionEscrows(uint256 tokenId) external view returns (address);
 
-    /**
-     * @notice Returns the owner of the NFT token.
-     * @param tokenId The ID of the NFT token.
-     * @return The address of the owner.
-     */
-    function ownerOf(uint256 tokenId) external view returns (address);
 
 }
