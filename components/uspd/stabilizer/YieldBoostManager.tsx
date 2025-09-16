@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useWriteContract, useAccount, useReadContract, useConfig } from 'wagmi'
 import { waitForTransactionReceipt } from 'wagmi/actions'
 import { parseEther, Address, Abi } from 'viem'
@@ -14,12 +15,15 @@ import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 // Import necessary ABIs
 import rewardsYieldBoosterAbiJson from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
 import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/UspdToken.json'
+import stabilizerNFTAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 
 interface YieldBoostManagerCoreProps {
     rewardsYieldBoosterAddress: Address
     uspdTokenAddress: Address
+    stabilizerAddress: Address
     rewardsYieldBoosterAbi?: Abi
     uspdTokenAbi?: Abi
+    stabilizerAbi?: Abi
 }
 
 interface YieldBoostManagerProps {
@@ -39,13 +43,16 @@ interface PriceData {
 function YieldBoostManagerCore({
     rewardsYieldBoosterAddress,
     uspdTokenAddress,
+    stabilizerAddress,
     rewardsYieldBoosterAbi = rewardsYieldBoosterAbiJson.abi,
-    uspdTokenAbi = uspdTokenAbiJson.abi
+    uspdTokenAbi = uspdTokenAbiJson.abi,
+    stabilizerAbi = stabilizerNFTAbiJson.abi
 }: YieldBoostManagerCoreProps) {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [isBoostingYield, setIsBoostingYield] = useState(false)
     const [ethAmount, setEthAmount] = useState<string>('')
+    const [selectedNftId, setSelectedNftId] = useState<string>('')
     
     // Price data
     const [priceData, setPriceData] = useState<PriceData | null>(null)
@@ -71,6 +78,24 @@ function YieldBoostManagerCore({
         functionName: 'totalSupply',
         args: [],
         query: { enabled: !!uspdTokenAddress }
+    })
+
+    // Fetch user's NFT balance and token IDs
+    const { data: nftBalance } = useReadContract({
+        address: stabilizerAddress,
+        abi: stabilizerAbi,
+        functionName: 'balanceOf',
+        args: [address],
+        query: { enabled: !!address && !!stabilizerAddress }
+    })
+
+    // Fetch user's NFT token IDs (simplified - just get first few)
+    const { data: userNftIds } = useReadContract({
+        address: stabilizerAddress,
+        abi: stabilizerAbi,
+        functionName: 'tokenOfOwnerByIndex',
+        args: [address, 0],
+        query: { enabled: !!address && !!stabilizerAddress && nftBalance && Number(nftBalance) > 0 }
     })
 
     // --- Fetch Price Data ---
@@ -105,6 +130,10 @@ function YieldBoostManagerCore({
                 throw new Error('Please enter a valid ETH amount to contribute')
             }
 
+            if (!selectedNftId) {
+                throw new Error('Please select an NFT to boost')
+            }
+
             // Fetch fresh price data
             const freshPriceData = await fetchPriceData()
             if (!freshPriceData) {
@@ -124,14 +153,15 @@ function YieldBoostManagerCore({
                 address: rewardsYieldBoosterAddress,
                 abi: rewardsYieldBoosterAbi,
                 functionName: 'boostYield',
-                args: [priceQuery],
+                args: [BigInt(selectedNftId), priceQuery],
                 value: parseEther(ethAmount)
             })
 
             await waitForTransactionReceipt(config, { hash })
             
-            setSuccess(`Successfully contributed ${ethAmount} ETH to boost system yield!`)
+            setSuccess(`Successfully contributed ${ethAmount} ETH to boost system yield for NFT #${selectedNftId}!`)
             setEthAmount('')
+            setSelectedNftId('')
             refetchSurplusYield()
             
         } catch (err: unknown) {
@@ -193,6 +223,30 @@ function YieldBoostManagerCore({
                 </div>
 
                 <div className="space-y-2">
+                    <Label htmlFor="nft-select">Select NFT to Boost</Label>
+                    <Select value={selectedNftId} onValueChange={setSelectedNftId}>
+                        <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Select an NFT to boost" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {nftBalance && Number(nftBalance) > 0 ? (
+                                // For now, just show the first NFT - in a full implementation,
+                                // you'd fetch all token IDs owned by the user
+                                userNftIds && (
+                                    <SelectItem value={userNftIds.toString()}>
+                                        NFT #{userNftIds.toString()}
+                                    </SelectItem>
+                                )
+                            ) : (
+                                <SelectItem value="" disabled>
+                                    No NFTs owned
+                                </SelectItem>
+                            )}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
                     <Label htmlFor="eth-amount">ETH Amount to Contribute</Label>
                     <Input
                         id="eth-amount"
@@ -227,7 +281,7 @@ function YieldBoostManagerCore({
 
                 <Button
                     onClick={handleBoostYield}
-                    disabled={isBoostingYield || !ethAmount || parseFloat(ethAmount) <= 0 || isLoadingPrice || isLoadingUspdSupply || !address}
+                    disabled={isBoostingYield || !ethAmount || parseFloat(ethAmount) <= 0 || isLoadingPrice || isLoadingUspdSupply || !address || !selectedNftId}
                     className="w-full h-10"
                     size="lg"
                 >
@@ -241,6 +295,14 @@ function YieldBoostManagerCore({
                         </AlertDescription>
                     </Alert>
                 )}
+
+                {address && nftBalance && Number(nftBalance) === 0 && (
+                    <Alert>
+                        <AlertDescription>
+                            You need to own a Stabilizer NFT to contribute to yield boosting.
+                        </AlertDescription>
+                    </Alert>
+                )}
             </div>
 
             <div className="pt-4 border-t space-y-2">
@@ -248,7 +310,7 @@ function YieldBoostManagerCore({
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>Your ETH contribution is converted to USD value using current market prices</li>
                     <li>The USD value is distributed proportionally across all cUSPD holders</li>
-                    <li>Your ETH is deposited as collateral in the system's position (NFT #1)</li>
+                    <li>Your ETH is deposited as collateral in your selected NFT's position escrow</li>
                     <li>This increases the overall yield factor, benefiting all token holders</li>
                 </ul>
             </div>
@@ -270,11 +332,12 @@ function YieldBoostManagerCore({
 
 export function YieldBoostManager({}: YieldBoostManagerProps) {
     return (
-        <ContractLoader contractKeys={["rewardsYieldBooster", "uspdToken"]}>
+        <ContractLoader contractKeys={["rewardsYieldBooster", "uspdToken", "stabilizer"]}>
             {(loadedAddresses) => (
                 <YieldBoostManagerCore 
                     rewardsYieldBoosterAddress={loadedAddresses.rewardsYieldBooster}
                     uspdTokenAddress={loadedAddresses.uspdToken}
+                    stabilizerAddress={loadedAddresses.stabilizer}
                 />
             )}
         </ContractLoader>

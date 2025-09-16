@@ -55,6 +55,7 @@ contract RewardsYieldBooster is
     error InvalidOraclePrice();
     error NoSharesToBoost();
     error PositionEscrowNotFound();
+    error NotNFTOwner();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -96,26 +97,30 @@ contract RewardsYieldBooster is
 
     /**
      * @notice Receives ETH, boosts the system yield, and deposits the ETH as collateral.
+     * @param nftId The NFT ID to add collateral to (caller must own this NFT).
      * @param priceQuery The signed price attestation for the current ETH/USD price.
      */
-    function boostYield(IPriceOracle.PriceAttestationQuery calldata priceQuery) external payable {
+    function boostYield(uint256 nftId, IPriceOracle.PriceAttestationQuery calldata priceQuery) external payable {
         if (msg.value == 0) revert ZeroAmount();
 
-        // 1. Get total USPD supply (rebased tokens) and validate
+        // 1. Verify caller owns the NFT
+        if (stabilizerNFT.ownerOf(nftId) != msg.sender) revert NotNFTOwner();
+
+        // 2. Get total USPD supply (rebased tokens) and validate
         uint256 totalUspdSupply = uspdToken.totalSupply();
         if (totalUspdSupply == 0) revert NoSharesToBoost();
 
-        // 2. Get Price and calculate USD value of incoming ETH
+        // 3. Get Price and calculate USD value of incoming ETH
         IPriceOracle.PriceResponse memory priceResponse = oracle.attestationService(priceQuery);
         if (priceResponse.price == 0) revert InvalidOraclePrice();
         uint256 usdValueFromEth = (msg.value * priceResponse.price) / (10**uint256(priceResponse.decimals));
 
-        // 3. Calculate yield increase based on current USPD supply and update surplus factor
+        // 4. Calculate yield increase based on current USPD supply and update surplus factor
         uint256 yieldIncrease = (usdValueFromEth * FACTOR_PRECISION) / totalUspdSupply;
         surplusYieldFactor += yieldIncrease;
 
-        // 4. Deposit collateral into PositionEscrow for NFT ID 1
-        address positionEscrowAddress = stabilizerNFT.positionEscrows(1);
+        // 5. Deposit collateral into PositionEscrow for the specified NFT ID
+        address positionEscrowAddress = stabilizerNFT.positionEscrows(nftId);
         if (positionEscrowAddress == address(0)) revert PositionEscrowNotFound();
 
         IPositionEscrow(positionEscrowAddress).addCollateralEth{value: msg.value}();
