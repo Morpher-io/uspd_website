@@ -120,11 +120,15 @@ contract RewardsYieldBooster is
         if (priceResponse.price == 0) revert InvalidOraclePrice();
         uint256 usdValueFromEth = (msg.value * priceResponse.price) / (10**uint256(priceResponse.decimals));
 
-        // 4. Calculate yield increase based on current USPD supply and update surplus factor
-        uint256 yieldIncrease = (usdValueFromEth * FACTOR_PRECISION) / totalUspdSupply;
+        // 4. Calculate underlying cUSPD shares by dividing USPD supply by current yield factor
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        uint256 totalCuspdShares = (totalUspdSupply * FACTOR_PRECISION) / currentYieldFactor;
+
+        // 5. Calculate yield increase based on underlying cUSPD shares and update surplus factor
+        uint256 yieldIncrease = (usdValueFromEth * FACTOR_PRECISION) / totalCuspdShares;
         surplusYieldFactor += yieldIncrease;
 
-        // 5. Deposit collateral into PositionEscrow for the specified NFT ID
+        // 6. Deposit collateral into PositionEscrow for the specified NFT ID
         address positionEscrowAddress = stabilizerNFT.positionEscrows(nftId);
         if (positionEscrowAddress == address(0)) revert PositionEscrowNotFound();
 
