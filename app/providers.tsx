@@ -9,7 +9,7 @@ import {
 } from '@rainbow-me/rainbowkit';
 import { http, WagmiProvider } from 'wagmi';
 import {
-  // mainnet,
+  mainnet,
   // polygon,
   sepolia,
   // baseSepolia,
@@ -22,7 +22,7 @@ import {
 
 
 // Determine which chains to use based on environment
-const chains: [Chain, ...Chain[]] = [sepolia];
+const chains: [Chain, ...Chain[]] = [mainnet, sepolia];
 
 const config = getDefaultConfig({
   appName: 'My RainbowKit App',
@@ -30,6 +30,7 @@ const config = getDefaultConfig({
   chains: chains,
   ssr: true, // If your dApp uses server side rendering (SSR),
   transports: {
+    [mainnet.id]: http('https://mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
     [sepolia.id]: http('https://sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169')
   }
 });
