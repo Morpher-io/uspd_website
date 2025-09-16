@@ -13,10 +13,13 @@ import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 
 // Import necessary ABIs
 import rewardsYieldBoosterAbiJson from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
+import uspdTokenAbiJson from '@/contracts/out/USPDToken.sol/USPDToken.json'
 
 interface YieldBoostManagerCoreProps {
     rewardsYieldBoosterAddress: Address
+    uspdTokenAddress: Address
     rewardsYieldBoosterAbi?: Abi
+    uspdTokenAbi?: Abi
 }
 
 interface YieldBoostManagerProps {
@@ -35,7 +38,9 @@ interface PriceData {
 
 function YieldBoostManagerCore({
     rewardsYieldBoosterAddress,
-    rewardsYieldBoosterAbi = rewardsYieldBoosterAbiJson.abi
+    uspdTokenAddress,
+    rewardsYieldBoosterAbi = rewardsYieldBoosterAbiJson.abi,
+    uspdTokenAbi = uspdTokenAbiJson.abi
 }: YieldBoostManagerCoreProps) {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
@@ -57,6 +62,15 @@ function YieldBoostManagerCore({
         functionName: 'getSurplusYield',
         args: [],
         query: { enabled: !!rewardsYieldBoosterAddress }
+    })
+
+    // Fetch USPD total supply for yield calculation
+    const { data: uspdTotalSupply, isLoading: isLoadingUspdSupply } = useReadContract({
+        address: uspdTokenAddress,
+        abi: uspdTokenAbi,
+        functionName: 'totalSupply',
+        args: [],
+        query: { enabled: !!uspdTokenAddress }
     })
 
     // --- Fetch Price Data ---
@@ -138,7 +152,26 @@ function YieldBoostManagerCore({
         return (ethValue * ethPrice).toFixed(2)
     }
 
+    const calculateYieldIncrease = () => {
+        if (!ethAmount || !priceData || !uspdTotalSupply || parseFloat(ethAmount) <= 0) return null
+        
+        const ethValue = parseFloat(ethAmount)
+        const ethPrice = parseFloat(priceData.price) / (10 ** priceData.decimals)
+        const usdValue = ethValue * ethPrice
+        
+        // Calculate yield increase: (USD value * FACTOR_PRECISION) / total USPD supply
+        // FACTOR_PRECISION = 1e18, so we need to convert to percentage
+        const totalSupplyNumber = Number(uspdTotalSupply) / 1e18 // Convert from wei to tokens
+        const yieldIncrease = (usdValue / totalSupplyNumber) // This gives us the per-token increase
+        
+        return {
+            absoluteIncrease: yieldIncrease.toFixed(6), // Per token increase in USD
+            percentageIncrease: (yieldIncrease * 100).toFixed(4) // Percentage increase
+        }
+    }
+
     const usdValue = calculateUsdValue()
+    const yieldIncrease = calculateYieldIncrease()
 
     return (
         <div className="space-y-6 p-6 border rounded-lg">
@@ -172,15 +205,29 @@ function YieldBoostManagerCore({
                         className="h-10"
                     />
                     {usdValue && (
-                        <p className="text-sm text-muted-foreground">
-                            ≈ ${usdValue} USD {isLoadingPrice && '(updating...)'}
-                        </p>
+                        <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">
+                                ≈ ${usdValue} USD {isLoadingPrice && '(updating...)'}
+                            </p>
+                            {yieldIncrease && !isLoadingUspdSupply && (
+                                <div className="text-sm text-muted-foreground">
+                                    <p>Estimated yield impact:</p>
+                                    <p className="ml-2">• +${yieldIncrease.absoluteIncrease} per USPD token</p>
+                                    <p className="ml-2">• +{yieldIncrease.percentageIncrease}% yield increase</p>
+                                </div>
+                            )}
+                            {isLoadingUspdSupply && (
+                                <p className="text-sm text-muted-foreground">
+                                    Calculating yield impact...
+                                </p>
+                            )}
+                        </div>
                     )}
                 </div>
 
                 <Button
                     onClick={handleBoostYield}
-                    disabled={isBoostingYield || !ethAmount || parseFloat(ethAmount) <= 0 || isLoadingPrice || !address}
+                    disabled={isBoostingYield || !ethAmount || parseFloat(ethAmount) <= 0 || isLoadingPrice || isLoadingUspdSupply || !address}
                     className="w-full h-10"
                     size="lg"
                 >
@@ -223,10 +270,11 @@ function YieldBoostManagerCore({
 
 export function YieldBoostManager({}: YieldBoostManagerProps) {
     return (
-        <ContractLoader contractKeys={["rewardsYieldBooster"]}>
+        <ContractLoader contractKeys={["rewardsYieldBooster", "token"]}>
             {(loadedAddresses) => (
                 <YieldBoostManagerCore 
                     rewardsYieldBoosterAddress={loadedAddresses.rewardsYieldBooster}
+                    uspdTokenAddress={loadedAddresses.token}
                 />
             )}
         </ContractLoader>
