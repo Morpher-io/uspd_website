@@ -61,6 +61,7 @@ contract RewardsYieldBooster is
     error NoSharesToBoost();
     error PositionEscrowNotFound();
     error NotNFTOwner();
+    error InvalidNftId();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -110,6 +111,9 @@ contract RewardsYieldBooster is
 
         // 1. Verify caller owns the NFT
         if (stabilizerNFT.ownerOf(nftId) != msg.sender) revert NotNFTOwner();
+
+        //intermittend permissioned configuration since it can be used to liquidate other stabilizers
+        if (nftId != 1) revert InvalidNftId();
 
         // 2. Get total USPD supply (rebased tokens) and validate
         uint256 totalUspdSupply = uspdToken.totalSupply();
