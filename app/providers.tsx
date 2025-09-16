@@ -7,7 +7,7 @@ import {
   getDefaultConfig,
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit';
-import { WagmiProvider } from 'wagmi';
+import { http, WagmiProvider } from 'wagmi';
 import {
   // mainnet,
   // polygon,
@@ -26,9 +26,12 @@ const chains: [Chain, ...Chain[]] = [sepolia];
 
 const config = getDefaultConfig({
   appName: 'My RainbowKit App',
-  projectId: 'YOUR_PROJECT_ID',
+  projectId: 'e9dc12eac6024de7f39dcec33cdc30cf',
   chains: chains,
-  ssr: true, // If your dApp uses server side rendering (SSR)
+  ssr: true, // If your dApp uses server side rendering (SSR),
+  transports: {
+    [sepolia.id]: http('https://sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169')
+  }
 });
 
 const queryClient = new QueryClient();
