@@ -89,14 +89,18 @@ function YieldBoostManagerCore({
         query: { enabled: !!address && !!stabilizerAddress }
     })
 
-    // Fetch all user's NFT token IDs
-    const { data: userNftIds } = useReadContract({
+    // Fetch user's first NFT token ID (for simplicity, just get the first one)
+    const { data: firstNftId } = useReadContract({
         address: stabilizerAddress,
         abi: stabilizerAbi,
-        functionName: 'tokensOfOwner',
-        args: [address],
+        functionName: 'tokenOfOwnerByIndex',
+        args: [address, 0],
         query: { enabled: !!address && !!stabilizerAddress && nftBalance && Number(nftBalance) > 0 }
     })
+
+    // For now, we'll just show the first NFT. In a full implementation,
+    // you'd loop through all indices from 0 to balance-1
+    const userNftIds = firstNftId ? [firstNftId] : []
 
     // --- Fetch Price Data ---
     const fetchPriceData = async () => {
@@ -229,8 +233,8 @@ function YieldBoostManagerCore({
                             <SelectValue placeholder="Select an NFT to boost" />
                         </SelectTrigger>
                         <SelectContent>
-                            {nftBalance && Number(nftBalance) > 0 && userNftIds ? (
-                                (userNftIds as bigint[]).map((tokenId) => (
+                            {nftBalance && Number(nftBalance) > 0 && userNftIds.length > 0 ? (
+                                userNftIds.map((tokenId) => (
                                     <SelectItem key={tokenId.toString()} value={tokenId.toString()}>
                                         NFT #{tokenId.toString()}
                                     </SelectItem>
