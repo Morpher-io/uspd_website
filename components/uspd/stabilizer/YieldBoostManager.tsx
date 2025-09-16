@@ -80,7 +80,7 @@ function YieldBoostManagerCore({
         query: { enabled: !!uspdTokenAddress }
     })
 
-    // Fetch user's NFT balance and token IDs
+    // Fetch user's NFT balance
     const { data: nftBalance } = useReadContract({
         address: stabilizerAddress,
         abi: stabilizerAbi,
@@ -89,12 +89,12 @@ function YieldBoostManagerCore({
         query: { enabled: !!address && !!stabilizerAddress }
     })
 
-    // Fetch user's NFT token IDs (simplified - just get first few)
+    // Fetch all user's NFT token IDs
     const { data: userNftIds } = useReadContract({
         address: stabilizerAddress,
         abi: stabilizerAbi,
-        functionName: 'tokenOfOwnerByIndex',
-        args: [address, 0],
+        functionName: 'tokensOfOwner',
+        args: [address],
         query: { enabled: !!address && !!stabilizerAddress && nftBalance && Number(nftBalance) > 0 }
     })
 
@@ -229,17 +229,19 @@ function YieldBoostManagerCore({
                             <SelectValue placeholder="Select an NFT to boost" />
                         </SelectTrigger>
                         <SelectContent>
-                            {nftBalance && Number(nftBalance) > 0 ? (
-                                // For now, just show the first NFT - in a full implementation,
-                                // you'd fetch all token IDs owned by the user
-                                userNftIds && (
-                                    <SelectItem value={userNftIds.toString()}>
-                                        NFT #{userNftIds.toString()}
+                            {nftBalance && Number(nftBalance) > 0 && userNftIds ? (
+                                (userNftIds as bigint[]).map((tokenId) => (
+                                    <SelectItem key={tokenId.toString()} value={tokenId.toString()}>
+                                        NFT #{tokenId.toString()}
                                     </SelectItem>
-                                )
-                            ) : (
-                                <SelectItem value="" disabled>
+                                ))
+                            ) : nftBalance && Number(nftBalance) === 0 ? (
+                                <SelectItem value="no-nfts" disabled>
                                     No NFTs owned
+                                </SelectItem>
+                            ) : (
+                                <SelectItem value="loading" disabled>
+                                    Loading NFTs...
                                 </SelectItem>
                             )}
                         </SelectContent>
