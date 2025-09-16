@@ -14,7 +14,7 @@ import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 
 // Import necessary ABIs
 import rewardsYieldBoosterAbiJson from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
-import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/UspdToken.json'
+import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import stabilizerNFTAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
 
 interface YieldBoostManagerCoreProps {
