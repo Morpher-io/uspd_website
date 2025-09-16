@@ -13,7 +13,7 @@ import { ContractLoader } from '@/components/uspd/common/ContractLoader'
 
 // Import necessary ABIs
 import rewardsYieldBoosterAbiJson from '@/contracts/out/RewardsYieldBooster.sol/RewardsYieldBooster.json'
-import uspdTokenAbiJson from '@/contracts/out/USPDToken.sol/USPDToken.json'
+import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/UspdToken.json'
 
 interface YieldBoostManagerCoreProps {
     rewardsYieldBoosterAddress: Address
@@ -270,7 +270,7 @@ function YieldBoostManagerCore({
 
 export function YieldBoostManager({}: YieldBoostManagerProps) {
     return (
-        <ContractLoader contractKeys={["rewardsYieldBooster", "token"]}>
+        <ContractLoader contractKeys={["rewardsYieldBooster", "uspdToken"]}>
             {(loadedAddresses) => (
                 <YieldBoostManagerCore 
                     rewardsYieldBoosterAddress={loadedAddresses.rewardsYieldBooster}
