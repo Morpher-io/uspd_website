@@ -49,6 +49,39 @@ contract UpgradeYieldBoosterScript is UpgradeScript {
         // bytes memory callData = abi.encodeWithSignature("reinitialize(uint256)", 123);
         // RewardsYieldBooster(payable(yieldBoosterProxyAddress)).upgradeToAndCall(newYieldBoosterImplAddress, callData);
         console2.log("RewardsYieldBooster proxy upgraded successfully.");
+        
+        // Update dependencies to ensure correct contract addresses are set
+        updateDependenciesAfterUpgrade();
+    }
+
+    function updateDependenciesAfterUpgrade() internal {
+        console2.log("Updating RewardsYieldBooster dependencies after upgrade...");
+        
+        // Read the current contract addresses from deployment file
+        address uspdTokenAddr = _readAddressFromDeployment(".contracts.token");
+        address rateContractAddr = _readAddressFromDeployment(".contracts.rateContract");
+        address stabilizerAddr = _readAddressFromDeployment(".contracts.stabilizer");
+        address oracleAddr = _readAddressFromDeployment(".contracts.oracle");
+        
+        require(uspdTokenAddr != address(0), "USPD token address not found for dependency update");
+        require(rateContractAddr != address(0), "RateContract address not found for dependency update");
+        require(stabilizerAddr != address(0), "Stabilizer address not found for dependency update");
+        require(oracleAddr != address(0), "Oracle address not found for dependency update");
+        
+        // Call updateDependencies to ensure all contract references are correct
+        RewardsYieldBooster yieldBooster = RewardsYieldBooster(payable(yieldBoosterProxyAddress));
+        yieldBooster.updateDependencies(
+            uspdTokenAddr,      // USPD token (was cUSPD before)
+            rateContractAddr,   // rate contract
+            stabilizerAddr,     // stabilizer NFT
+            oracleAddr          // oracle
+        );
+        
+        console2.log("RewardsYieldBooster dependencies updated successfully:");
+        console2.log("  USPD Token:", uspdTokenAddr);
+        console2.log("  Rate Contract:", rateContractAddr);
+        console2.log("  Stabilizer NFT:", stabilizerAddr);
+        console2.log("  Oracle:", oracleAddr);
     }
 
     function updateDeploymentInfo() internal override {
