@@ -26,9 +26,6 @@ interface YieldBoostManagerCoreProps {
     stabilizerAbi?: Abi
 }
 
-interface YieldBoostManagerProps {
-    // No props needed - will use ContractLoader internally
-}
 
 // Define an interface for the price data from the API
 interface PriceData {
@@ -43,10 +40,7 @@ interface PriceData {
 function YieldBoostManagerCore({
     rewardsYieldBoosterAddress,
     cuspdTokenAddress,
-    stabilizerAddress,
-    rewardsYieldBoosterAbi = rewardsYieldBoosterAbiJson.abi,
-    cuspdTokenAbi = cuspdTokenAbiJson.abi,
-    stabilizerAbi = stabilizerNFTAbiJson.abi
+    stabilizerAddress
 }: YieldBoostManagerCoreProps) {
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
@@ -65,7 +59,7 @@ function YieldBoostManagerCore({
     // Fetch current surplus yield factor
     const { data: surplusYieldFactor, isLoading: isLoadingSurplusYield, refetch: refetchSurplusYield } = useReadContract({
         address: rewardsYieldBoosterAddress,
-        abi: rewardsYieldBoosterAbi,
+        abi: rewardsYieldBoosterAbiJson.abi,
         functionName: 'getSurplusYield',
         args: [],
         query: { enabled: !!rewardsYieldBoosterAddress }
@@ -74,7 +68,7 @@ function YieldBoostManagerCore({
     // Fetch current total yield factor from rate contract
     const { data: currentYieldFactor, isLoading: isLoadingYieldFactor } = useReadContract({
         address: rewardsYieldBoosterAddress,
-        abi: rewardsYieldBoosterAbi,
+        abi: cuspdTokenAbiJson.abi,
         functionName: 'rateContract',
         args: [],
         query: { enabled: !!rewardsYieldBoosterAddress }
@@ -92,7 +86,7 @@ function YieldBoostManagerCore({
     // Fetch cUSPD total supply for yield calculation
     const { data: cuspdTotalSupply, isLoading: isLoadingCuspdSupply } = useReadContract({
         address: cuspdTokenAddress,
-        abi: cuspdTokenAbi,
+        abi: cuspdTokenAbiJson.abi,
         functionName: 'totalSupply',
         args: [],
         query: { enabled: !!cuspdTokenAddress }
@@ -101,7 +95,7 @@ function YieldBoostManagerCore({
     // Fetch user's NFT balance
     const { data: nftBalance } = useReadContract({
         address: stabilizerAddress,
-        abi: stabilizerAbi,
+        abi: stabilizerNFTAbiJson.abi,
         functionName: 'balanceOf',
         args: [address],
         query: { enabled: !!address && !!stabilizerAddress }
@@ -110,7 +104,7 @@ function YieldBoostManagerCore({
     // Fetch user's first NFT token ID (for simplicity, just get the first one)
     const { data: firstNftId } = useReadContract({
         address: stabilizerAddress,
-        abi: stabilizerAbi,
+        abi: stabilizerNFTAbiJson.abi,
         functionName: 'tokenOfOwnerByIndex',
         args: [address, 0],
         query: { enabled: !!address && !!stabilizerAddress && nftBalance && Number(nftBalance) > 0 }
@@ -173,7 +167,7 @@ function YieldBoostManagerCore({
 
             const hash = await writeContractAsync({
                 address: rewardsYieldBoosterAddress,
-                abi: rewardsYieldBoosterAbi,
+                abi: rewardsYieldBoosterAbiJson.abi,
                 functionName: 'boostYield',
                 args: [BigInt(selectedNftId), priceQuery],
                 value: parseEther(ethAmount)
@@ -345,7 +339,7 @@ function YieldBoostManagerCore({
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>Your ETH contribution is converted to USD value using current market prices</li>
                     <li>The USD value is distributed proportionally across all cUSPD holders</li>
-                    <li>Your ETH is deposited as collateral in your selected NFT's position escrow</li>
+                    <li>Your ETH is deposited as collateral in your selected NFT&apos;s position escrow</li>
                     <li>This increases the overall yield factor, benefiting all token holders</li>
                 </ul>
             </div>
@@ -365,7 +359,7 @@ function YieldBoostManagerCore({
     )
 }
 
-export function YieldBoostManager({}: YieldBoostManagerProps) {
+export function YieldBoostManager() {
     return (
         <ContractLoader contractKeys={["rewardsYieldBooster", "cuspdToken", "stabilizer"]}>
             {(loadedAddresses) => (
