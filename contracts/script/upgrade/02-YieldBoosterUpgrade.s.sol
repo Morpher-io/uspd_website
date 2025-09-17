@@ -58,7 +58,7 @@ contract UpgradeYieldBoosterScript is UpgradeScript {
         console2.log("Updating RewardsYieldBooster dependencies after upgrade...");
         
         // Read the current contract addresses from deployment file
-        address uspdTokenAddr = _readAddressFromDeployment(".contracts.token");
+        address uspdTokenAddr = _readAddressFromDeployment(".contracts.uspdToken");
         address rateContractAddr = _readAddressFromDeployment(".contracts.rateContract");
         address stabilizerAddr = _readAddressFromDeployment(".contracts.stabilizer");
         address oracleAddr = _readAddressFromDeployment(".contracts.oracle");

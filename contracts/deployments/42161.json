@@ -1,0 +1,34 @@
+{
+  "contracts": {
+    "oracleImpl": "0xa601f9D92022C83E4f0d110A049f3F2314406074",
+    "oracle": "0x8415e83E9a7CF07a297221054e949374Eb13bbDf",
+    "stabilizerImpl": "0x11A880B0c9D50b4AEf7527d458497e60fa602429",
+    "stabilizer": "0x1346B4d6867a382B02b19A8D131D9b96b18585f2",
+    "cuspdToken": "0x93486B98e64de344d6A5A322A4Bd80e65d83E5CA",
+    "uspdToken": "0xE58867673428E50146D2A3d10d28A6314D038238",
+    "rateContract": "0xdcCC443758a713B57123A86c940398981c6D0f95",
+    "reporterImpl": "0x90f4496c54CB5D1B41367700403287116F87007E",
+    "reporter": "0x35D0f86c78BB3679389660952d27dB23CA6c54a0",
+    "insuranceEscrow": "0x14aAF0a4E11Ac90b1dF18F3DF7f562B9444fD0b0",
+    "bridgeEscrow": "0x3BbCF508b1503440072a74450d01Bbf3d7FF59aa",
+    "stabilizerEscrowImpl": "0xDC730c996D68DC47FC984F895f791939e9FB8c79",
+    "positionEscrowImpl": "0x563B452cF01562A9E129Cb65014F1cE9120E2469",
+    "stUspdTokenImpl": "0x0000000000000000000000000000000000000000",
+    "stUspd": "0x0000000000000000000000000000000000000000",
+    "rewardsYieldBoosterImpl": "0x0000000000000000000000000000000000000000",
+    "rewardsYieldBooster": "0x0000000000000000000000000000000000000000"
+  },
+  "config": {
+    "usdcAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "uniswapRouter": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "chainlinkAggregator": "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+    "lidoAddress": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+    "stETHAddress": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+    "stabilizerBaseURI": "https://uspd.io/api/stabilizer/metadata/"
+  },
+  "metadata": {
+    "chainId": 42161,
+    "deploymentTimestamp": 1758097153,
+    "deployer": "0x555350445E1f1ca212edB8cF397a383695ff7a36"
+  }
+}

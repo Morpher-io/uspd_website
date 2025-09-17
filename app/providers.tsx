@@ -25,7 +25,7 @@ import {
 const chains: [Chain, ...Chain[]] = [mainnet, sepolia];
 
 const config = getDefaultConfig({
-  appName: 'My RainbowKit App',
+  appName: 'USPD - US Permissionless Dollar',
   projectId: 'e9dc12eac6024de7f39dcec33cdc30cf',
   chains: chains,
   ssr: true, // If your dApp uses server side rendering (SSR),
