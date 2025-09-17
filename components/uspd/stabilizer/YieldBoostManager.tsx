@@ -99,7 +99,7 @@ function YieldBoostManagerCore({
         functionName: 'balanceOf',
         args: [address],
         query: { enabled: !!address && !!stabilizerAddress }
-    })
+    }) as { data: bigint | undefined }
 
     // Fetch user's first NFT token ID (for simplicity, just get the first one)
     const { data: firstNftId } = useReadContract({
@@ -108,7 +108,7 @@ function YieldBoostManagerCore({
         functionName: 'tokenOfOwnerByIndex',
         args: [address, 0],
         query: { enabled: !!address && !!stabilizerAddress && nftBalance && Number(nftBalance) > 0 }
-    })
+    }) as { data: bigint | undefined }
 
     // For now, we'll just show the first NFT. In a full implementation,
     // you'd loop through all indices from 0 to balance-1
