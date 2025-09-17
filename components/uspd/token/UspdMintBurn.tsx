@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useAccount, useSwitchChain } from 'wagmi'
+import { useAccount, useSwitchChain, useWalletClient } from 'wagmi'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
@@ -13,6 +13,7 @@ import { StEthBalanceCard } from './StEthBalanceCard'
 import tokenJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import cuspdTokenJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
 import { Abi } from 'viem'
+import { toast } from 'sonner'
 
 // Helper to get chain name
 const getChainName = (chainId: number | undefined): string => {
@@ -35,7 +36,9 @@ const isTestnet = (chainId: number | undefined): boolean => {
 export default function UspdMintBurn() {
     const { isConnected, chainId } = useAccount()
     const { switchChain, isPending: isSwitching } = useSwitchChain()
+    const { data: walletClient } = useWalletClient()
     const [activeTab, setActiveTab] = useState('mint')
+    const [addTokenMessage, setAddTokenMessage] = useState<string | null>(null)
 
     const liquidityChainId = process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID
         ? parseInt(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID, 10)
@@ -46,6 +49,45 @@ export default function UspdMintBurn() {
     const handleSwitchChain = () => {
         if (liquidityChainId) {
             switchChain({ chainId: liquidityChainId });
+        }
+    };
+
+    const handleAddTokenToWallet = async (uspdTokenAddress: `0x${string}`) => {
+        setAddTokenMessage(null);
+        if (!walletClient) {
+            setAddTokenMessage("Wallet client is not available. Ensure your wallet is connected properly.");
+            toast.error("Wallet client is not available.");
+            return;
+        }
+        if (chainId !== liquidityChainId) {
+            setAddTokenMessage("Please switch to the correct network in your wallet to add this token.");
+            toast.error("Wrong network. Cannot add token.");
+            return;
+        }
+        try {
+            const success = await walletClient.request({
+                method: 'wallet_watchAsset',
+                params: {
+                    type: 'ERC20',
+                    options: {
+                        address: uspdTokenAddress,
+                        symbol: 'USPD',
+                        decimals: 18,
+                        // image: 'URL_TO_USPD_LOGO.png', // Optional
+                    },
+                },
+            });
+            if (success) {
+                setAddTokenMessage('USPD token added to your wallet successfully!');
+                toast.success('USPD token added to wallet!');
+            } else {
+                setAddTokenMessage('Could not add USPD token. User may have rejected the request.');
+                toast.warning('Add USPD token rejected or failed.');
+            }
+        } catch (error) {
+            console.error('Failed to add token to wallet:', error);
+            setAddTokenMessage(`Error adding token: ${(error as Error).message}`);
+            toast.error(`Error adding token: ${(error as Error).message}`);
         }
     };
 
@@ -126,6 +168,22 @@ export default function UspdMintBurn() {
                                                     isLocked={isWrongChain}
                                                 />
                                             </TabsContent>
+
+                                            {/* Add USPD Token to Wallet Button */}
+                                            <div className="mt-6 flex justify-center">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleAddTokenToWallet(uspdTokenAddress)}
+                                                    disabled={!walletClient || !uspdTokenAddress || chainId !== liquidityChainId || isWrongChain}
+                                                >
+                                                    Add USPD to Wallet
+                                                </Button>
+                                            </div>
+                                            {addTokenMessage && (
+                                                <p className={`mt-2 text-center text-sm ${addTokenMessage.startsWith('Error') || addTokenMessage.startsWith('Could not') ? 'text-red-500' : 'text-green-500'}`}>
+                                                    {addTokenMessage}
+                                                </p>
+                                            )}
                                         </>
                                     );
                                 }}
