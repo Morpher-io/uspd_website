@@ -30,7 +30,7 @@ import {
 const isProduction = process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID === '1';
 
 const chains: [Chain, ...Chain[]] = isProduction 
-  ? [mainnet, base, polygon, optimism, arbitrum, avalanche, bsc, sepolia]
+  ? [mainnet, base, polygon, optimism, arbitrum, avalanche, bsc]
   : [sepolia, baseSepolia];
 
 const config = getDefaultConfig({
@@ -39,17 +39,16 @@ const config = getDefaultConfig({
   chains: chains,
   ssr: true, // If your dApp uses server side rendering (SSR),
   transports: isProduction ? {
-    [mainnet.id]: http('https://mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [base.id]: http('https://base-mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [polygon.id]: http('https://polygon-mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [optimism.id]: http('https://optimism-mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [arbitrum.id]: http('https://arbitrum-mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [avalanche.id]: http('https://avalanche-mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [bsc.id]: http('https://bsc-mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [sepolia.id]: http('https://sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169')
+    [mainnet.id]: http('https://mainnet.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959'),
+    [base.id]: http('https://base-mainnet.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959'),
+    [polygon.id]: http('https://polygon-mainnet.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959'),
+    [optimism.id]: http('https://optimism-mainnet.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959'),
+    [arbitrum.id]: http('https://arbitrum-mainnet.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959'),
+    [avalanche.id]: http('https://avalanche-mainnet.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959'),
+    [bsc.id]: http('https://bsc-mainnet.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959')
   } : {
-    [sepolia.id]: http('https://sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [baseSepolia.id]: http('https://base-sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169')
+    [sepolia.id]: http('https://sepolia.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959'),
+    [baseSepolia.id]: http('https://base-sepolia.infura.io/v3/08158a54c7d44a20b4a2a26ad942a959')
   }
 });
 
