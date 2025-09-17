@@ -66,9 +66,9 @@ function YieldBoostManagerCore({
     })
 
     // Fetch current total yield factor from rate contract
-    const { data: currentYieldFactor, isLoading: isLoadingYieldFactor } = useReadContract({
+    const { data: rateContractAddress, isLoading: isLoadingRateContract } = useReadContract({
         address: rewardsYieldBoosterAddress,
-        abi: cuspdTokenAbiJson.abi,
+        abi: rewardsYieldBoosterAbiJson.abi,
         functionName: 'rateContract',
         args: [],
         query: { enabled: !!rewardsYieldBoosterAddress }
@@ -76,11 +76,11 @@ function YieldBoostManagerCore({
 
     // Get the actual yield factor from the rate contract
     const { data: totalYieldFactor, isLoading: isLoadingTotalYield } = useReadContract({
-        address: currentYieldFactor,
+        address: rateContractAddress as Address,
         abi: [{"inputs":[],"name":"getYieldFactor","outputs":[{"internalType":"uint256","name":"yieldFactor","type":"uint256"}],"stateMutability":"view","type":"function"}],
         functionName: 'getYieldFactor',
         args: [],
-        query: { enabled: !!currentYieldFactor }
+        query: { enabled: !!rateContractAddress }
     })
 
     // Fetch cUSPD total supply for yield calculation
