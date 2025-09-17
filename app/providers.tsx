@@ -17,7 +17,7 @@ import {
   arbitrum,
   avalanche,
   bsc,
-  // baseSepolia,
+  baseSepolia,
   type Chain,
 } from 'wagmi/chains';
 import {
@@ -31,7 +31,7 @@ const isProduction = process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID === '1';
 
 const chains: [Chain, ...Chain[]] = isProduction 
   ? [mainnet, base, polygon, optimism, arbitrum, avalanche, bsc, sepolia]
-  : [mainnet, sepolia];
+  : [sepolia, baseSepolia];
 
 const config = getDefaultConfig({
   appName: 'USPD - US Permissionless Dollar',
@@ -48,8 +48,8 @@ const config = getDefaultConfig({
     [bsc.id]: http('https://bsc-mainnet.infura.io/v3/f33699f28a4b4afe8a75dcaf101a50c8'),
     [sepolia.id]: http('https://sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169')
   } : {
-    [mainnet.id]: http('https://mainnet.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
-    [sepolia.id]: http('https://sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169')
+    [sepolia.id]: http('https://sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169'),
+    [baseSepolia.id]: http('https://base-sepolia.infura.io/v3/e0d5f0b61d16435bb6d7b40471d0a169')
   }
 });
 
