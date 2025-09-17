@@ -25,9 +25,11 @@ interface MintWidgetProps {
     cuspdTokenAddress: `0x${string}` // cUSPDToken address (for minting)
     cuspdTokenAbi: Abi
     isLocked?: boolean
+    onAddToWallet?: () => void
+    showAddToWallet?: boolean
 }
 
-export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTokenAbi, isLocked = false }: MintWidgetProps) {
+export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTokenAbi, isLocked = false, onAddToWallet, showAddToWallet = false }: MintWidgetProps) {
     const [ethAmount, setEthAmount] = useState('')
     const [uspdAmount, setUspdAmount] = useState('') // Estimated amount
     const [error, setError] = useState<string | null>(null)
@@ -191,6 +193,8 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 setAmount={setUspdAmount} // Should not be settable here
                 balance={isConnected ? (uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0') : '--'}
                 readOnly={true}
+                onAddToWallet={onAddToWallet}
+                showAddToWallet={showAddToWallet}
             />
 
             <Alert className="mt-4">

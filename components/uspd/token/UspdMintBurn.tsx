@@ -157,6 +157,8 @@ export default function UspdMintBurn() {
                                                     cuspdTokenAddress={cuspdTokenAddress} // cUSPD address for minting
                                                     cuspdTokenAbi={cuspdTokenJson.abi as Abi}
                                                     isLocked={isWrongChain}
+                                                    onAddToWallet={() => handleAddTokenToWallet(uspdTokenAddress)}
+                                                    showAddToWallet={!isWrongChain && !!walletClient}
                                                 />
                                             </TabsContent>
                                             <TabsContent value="burn">
@@ -166,23 +168,18 @@ export default function UspdMintBurn() {
                                                     cuspdTokenAddress={cuspdTokenAddress} // cUSPD address for burning
                                                     cuspdTokenAbi={cuspdTokenJson.abi as Abi}
                                                     isLocked={isWrongChain}
+                                                    onAddToWallet={() => handleAddTokenToWallet(uspdTokenAddress)}
+                                                    showAddToWallet={!isWrongChain && !!walletClient}
                                                 />
                                             </TabsContent>
 
-                                            {/* Add USPD Token to Wallet Button */}
-                                            <div className="mt-6 flex justify-center">
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => handleAddTokenToWallet(uspdTokenAddress)}
-                                                    disabled={!walletClient || !uspdTokenAddress || chainId !== liquidityChainId || isWrongChain}
-                                                >
-                                                    Add USPD to Wallet
-                                                </Button>
-                                            </div>
+                                            {/* Status message for add to wallet */}
                                             {addTokenMessage && (
-                                                <p className={`mt-2 text-center text-sm ${addTokenMessage.startsWith('Error') || addTokenMessage.startsWith('Could not') ? 'text-red-500' : 'text-green-500'}`}>
-                                                    {addTokenMessage}
-                                                </p>
+                                                <div className="mt-4 text-center">
+                                                    <p className={`text-sm ${addTokenMessage.startsWith('Error') || addTokenMessage.startsWith('Could not') ? 'text-red-500' : 'text-green-500'}`}>
+                                                        {addTokenMessage}
+                                                    </p>
+                                                </div>
                                             )}
                                         </>
                                     );
