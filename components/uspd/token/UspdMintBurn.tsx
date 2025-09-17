@@ -65,6 +65,13 @@ export default function UspdMintBurn() {
             return;
         }
         try {
+            console.log('Attempting to add token:', {
+                address: uspdTokenAddress,
+                symbol: 'USPD',
+                decimals: 18,
+                chainId: chainId
+            });
+
             const success = await walletClient.request({
                 method: 'wallet_watchAsset',
                 params: {
@@ -77,17 +84,32 @@ export default function UspdMintBurn() {
                     },
                 },
             });
+            
+            console.log('wallet_watchAsset result:', success);
+            
             if (success) {
                 setAddTokenMessage('USPD token added to your wallet successfully!');
                 toast.success('USPD token added to wallet!');
             } else {
-                setAddTokenMessage('Could not add USPD token. User may have rejected the request.');
-                toast.warning('Add USPD token rejected or failed.');
+                // More specific messaging for false result
+                setAddTokenMessage('Token addition was not completed. This could mean: the token is already in your wallet, you declined the request, or your wallet doesn\'t support this feature.');
+                toast.warning('Token addition not completed - check if it\'s already in your wallet');
             }
         } catch (error) {
             console.error('Failed to add token to wallet:', error);
-            setAddTokenMessage(`Error adding token: ${(error as Error).message}`);
-            toast.error(`Error adding token: ${(error as Error).message}`);
+            
+            // More specific error handling
+            const errorMessage = (error as Error).message;
+            if (errorMessage.includes('User rejected')) {
+                setAddTokenMessage('You declined to add the token to your wallet.');
+                toast.warning('Token addition declined');
+            } else if (errorMessage.includes('not supported')) {
+                setAddTokenMessage('Your wallet does not support adding custom tokens via this method. Please add the token manually.');
+                toast.error('Wallet does not support automatic token addition');
+            } else {
+                setAddTokenMessage(`Error adding token: ${errorMessage}`);
+                toast.error(`Error adding token: ${errorMessage}`);
+            }
         }
     };
 
