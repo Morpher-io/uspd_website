@@ -107,7 +107,7 @@ function YieldBoostManagerCore({
         abi: stabilizerNFTAbiJson.abi,
         functionName: 'tokenOfOwnerByIndex',
         args: [address, 0],
-        query: { enabled: !!address && !!stabilizerAddress && nftBalance && Number(nftBalance) > 0 }
+        query: { enabled: !!address && !!stabilizerAddress && nftBalance !== undefined && Number(nftBalance) > 0 }
     }) as { data: bigint | undefined }
 
     // For now, we'll just show the first NFT. In a full implementation,
