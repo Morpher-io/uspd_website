@@ -20,9 +20,9 @@ interface PriceData {
 }
 
 interface MintWidgetProps {
-    tokenAddress: `0x${string}` // USPDToken address (for balance display)
+    tokenAddress: `0x${string}` // USPDToken address (for minting and balance display)
     tokenAbi: Abi
-    cuspdTokenAddress: `0x${string}` // cUSPDToken address (for minting)
+    cuspdTokenAddress: `0x${string}` // cUSPDToken address (not used for minting anymore)
     cuspdTokenAbi: Abi
     isLocked?: boolean
     onAddToWallet?: () => void
@@ -142,11 +142,11 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
 
             const ethValue = parseEther(ethAmount)
 
-            // Call the mintShares function on the cUSPDToken contract
+            // Call the mint function on the USPDToken contract
             await writeContractAsync({
-                address: cuspdTokenAddress, // Use the cUSPDToken address
-                abi: cuspdTokenAbi,         // Use the cUSPDToken ABI
-                functionName: 'mintShares',
+                address: tokenAddress, // Use the USPDToken address
+                abi: tokenAbi,         // Use the USPDToken ABI
+                functionName: 'mint',
                 args: [address, priceQuery], // Pass recipient (self) and price query
                 value: ethValue
             })
