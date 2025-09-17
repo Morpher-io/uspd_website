@@ -16,11 +16,18 @@ export default function HeroSection() {
             <p className="max-w-lg text-center lg:text-left text-muted-foreground text-3xl tracking-wide">
                 The decentralized, permissionless stablecoin with native yield and on-chain proof of reserves.
             </p>
+            <div className="flex flex-row gap-2">
             <Link href="https://discord.gg/uspd" target="_blank" className="w-full md:w-auto">
                             <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">
                                 Join us on Discord
                             </InteractiveHoverButton>
                         </Link>
+            <Link href="/mint-burn-uspd" className="w-full md:w-auto">
+                            <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">
+                                Mint USPD
+                            </InteractiveHoverButton>
+                        </Link>
+                        </div>
         </div>
         <div className="relative flex-1">
             <DynamicLottie animationData={uspdCoinAnimation} />

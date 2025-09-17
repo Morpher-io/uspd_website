@@ -70,8 +70,7 @@ const navbar = (
     </Navbar>
     </div><AnimatedRibbon 
       segments={[
-        "Sepolia Testnet launched",
-        "Mainnet Launch Q4 2025", 
+        "USPD Beta now live on Mainnet", 
         "Follow on X, Discord or Telegram to stay up to date"
       ]}
       className="border-b border-border/20"

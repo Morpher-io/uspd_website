@@ -80,7 +80,7 @@ export default function UspdMintBurn() {
                         address: uspdTokenAddress,
                         symbol: 'USPD',
                         decimals: 18,
-                        // image: 'URL_TO_USPD_LOGO.png', // Optional
+                        image: 'https://uspd.io/images/logo_uspd.svg', // Optional
                     },
                 },
             });
