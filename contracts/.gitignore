@@ -13,6 +13,7 @@ out/*
 !out/IERC20.sol
 !out/ERC20.sol
 !out/StabilizerEscrow.sol
+!out/RewardsYieldBooster.sol
 
 # Ignores development broadcast logs
 !/broadcast
