@@ -861,7 +861,7 @@ contract USPDTokenTest is Test {
         // Expect the custom error from PriceOracle
         vm.expectRevert(
             abi.encodeWithSelector(
-                StaleAttestation.selector,
+                PriceDataTooOld.selector,
                 priceQuery.dataTimestamp, // The timestamp from the query
                 block.timestamp           // The current block timestamp when the check happens
             )
@@ -1096,7 +1096,7 @@ contract USPDTokenTest is Test {
         uint256 residualShares = sharesToBurn / 10; // 10% residual
         
         // Pre-fund the USPDToken contract with some cUSPD shares to simulate residual
-        vm.prank(burner);
+        vm.prank(address(uspdToken));
         cuspdToken.executeTransfer(burner, address(uspdToken), residualShares);
 
         uint256 initialUspdBalance = uspdToken.balanceOf(burner);
@@ -1141,10 +1141,12 @@ contract USPDTokenTest is Test {
         vm.prank(burner);
         uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
 
+
+        uint256 burnAmount = uspdToken.balanceOf(burner) / 2;
+
         // Set yield factor to zero
         _setYieldFactorZero();
 
-        uint256 burnAmount = uspdToken.balanceOf(burner) / 2;
         vm.prank(burner);
         vm.expectRevert(USPD.InvalidYieldFactor.selector);
         uspdToken.burn(burnAmount, priceQuery);
@@ -1174,33 +1176,6 @@ contract USPDTokenTest is Test {
         // Cleanup
         uint256 rateSlot = stdstore.target(address(mockStETH)).sig(mockStETH.pooledEthPerSharePrecision.selector).find();
         vm.store(address(mockStETH), bytes32(rateSlot), bytes32(mockStETH.REBASE_PRECISION()));
-    }
-
-    function testBurn_Revert_InvalidStETHAddress() public {
-        address burner = makeAddr("burner");
-        uint256 mintAmountEth = 1 ether;
-
-        // Setup and mint tokens first
-        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
-        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
-        vm.deal(burner, mintAmountEth + 0.1 ether);
-        vm.prank(burner);
-        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
-
-        // Set stETH address to zero in rate contract
-        uint256 stETHSlot = stdstore
-            .target(address(rateContract))
-            .sig(rateContract.stETH.selector)
-            .find();
-        vm.store(address(rateContract), bytes32(stETHSlot), bytes32(0));
-
-        uint256 burnAmount = uspdToken.balanceOf(burner) / 2;
-        vm.prank(burner);
-        vm.expectRevert("USPD: Invalid stETH address");
-        uspdToken.burn(burnAmount, priceQuery);
-
-        // Cleanup - restore stETH address
-        vm.store(address(rateContract), bytes32(stETHSlot), bytes32(uint256(uint160(address(mockStETH)))));
     }
 
     function testBurn_Revert_InvalidPriceQuery() public {

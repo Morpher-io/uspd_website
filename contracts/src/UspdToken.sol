@@ -346,11 +346,12 @@ contract USPDToken is
         uint256 uspdAmount,
         IPriceOracle.PriceAttestationQuery calldata priceQuery
     ) external {
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        if (yieldFactor == 0) revert InvalidYieldFactor();
+
         require(uspdAmount > 0, "USPD: Burn amount must be positive");
         require(balanceOf(msg.sender) >= uspdAmount, "USPD: Insufficient balance");
 
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        if (yieldFactor == 0) revert InvalidYieldFactor();
 
         // Calculate cUSPD shares to burn
         uint256 sharesToBurn = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
