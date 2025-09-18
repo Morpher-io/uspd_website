@@ -18,6 +18,14 @@ This page lists all deployed contract addresses and configuration details for ea
 - Click the copy icon to copy full addresses to your clipboard
 - Click the external link icon to view contracts on the respective block explorer
 
+## USPD Versions with Mint and Burn
+
+The USPD contract is a view layer on top of cUSPD. cUSPD holds user shares which are increasing in value. The value increase is calculated based on the Yield Factor and then presented as USPD tokens in the USPD contract. When minting or burning, the user is indirectly minting or burning both, cUSPD shares and USPD tokens and usually wallets present both values at the same time in the UI, like so:
+
+![uspd minting simulation](./images/mint_uspd_simulation.png)
+
+There are currently two versions of the USPD contract deployed. The first version did not emit a Transfer event when minting and did not include a burn functionality which a lot of DeFi-Applications require. The new version includes the correct Transfer event and includes a burn function that works just as you would expect from any Mintable/Burnable ERC20 token. Both USPD versions work in parallel though, as they are just transparently forwarding transfer/mint/etc to the cUSPD contract. The old contract version is deployed on address `0xE58867673428E50146D2A3d10d28A6314D038238` across major blockchains. This website is updated to work with the new version.
+
 ## Programmatic Access
 
 Instead of hard-coding contract addresses in your application, you can fetch the latest deployment data programmatically using our API endpoint:
