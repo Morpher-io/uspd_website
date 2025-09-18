@@ -224,30 +224,16 @@ export function BurnWidget({
 
             // const uspdValue = parseEther(uspdAmount) // We use sharesToBurn now
 
-            // TODO: Update functionName and args for the new cUSPDToken burn function - DONE
-            // Need to convert USPD amount to cUSPD shares before calling burnShares - DONE
-            // This requires the yieldFactor from PoolSharesConversionRate - DONE
-            // const yieldFactor = ... fetch yield factor ... - DONE
-            // const sharesToBurn = (uspdValue * FACTOR_PRECISION) / yieldFactor; - DONE
-
-            if (sharesToBurn <= BigInt(0)) {
-                setError('Calculated shares to burn is zero')
-                setIsLoading(false)
-                return
-            }
-
-            // TODO: Check cUSPD share balance if possible/needed for more accurate check
-            // const { data: cuspdShareBalance } = useReadContract(...)
-            // if (cuspdShareBalance && sharesToBurn > cuspdShareBalance) { ... }
+            const uspdValue = parseEther(uspdAmount)
 
             await writeContractAsync({
-                address: cuspdTokenAddress, // Target cUSPDToken contract
-                abi: cuspdTokenAbi, // Use cUSPDToken ABI
-                functionName: 'burnShares', // Call burnShares
-                args: [sharesToBurn, address, priceQuery] // Pass calculated shares, recipient, priceQuery
+                address: tokenAddress, // Target USPDToken contract
+                abi: tokenAbi, // Use USPDToken ABI
+                functionName: 'burn', // Call burn function
+                args: [uspdValue, priceQuery] // Pass USPD amount and priceQuery
             })
 
-            setSuccess(`Successfully initiated burn of ${uspdAmount} USPD (approx. ${formatUnits(sharesToBurn, 18)} shares) for estimated ${stEthAmount} stETH`)
+            setSuccess(`Successfully burned ${uspdAmount} USPD for estimated ${stEthAmount} stETH`)
             setStEthAmount('')
             setUspdAmount('')
             refetchUspdBalance()
