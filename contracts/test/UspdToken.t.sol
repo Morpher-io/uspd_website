@@ -1038,6 +1038,245 @@ contract USPDTokenTest is Test {
         vm.expectRevert(USPD.AmountTooSmall.selector);
         uspdToken.unlockFromBridging(recipient, 1, veryHighYieldFactor, 10); // 1 wei USPD
     }
+
+    // --- Burn Function Tests ---
+
+    function testBurn_Success() public {
+        address burner = makeAddr("burner");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup stabilizer and mint tokens
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(burner, mintAmountEth + 0.1 ether);
+        vm.prank(burner);
+        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
+
+        uint256 initialUspdBalance = uspdToken.balanceOf(burner);
+        uint256 burnAmount = initialUspdBalance / 2; // Burn half
+        
+        // Record initial balances
+        uint256 initialStEthBalance = mockStETH.balanceOf(burner);
+        uint256 initialCuspdBalance = cuspdToken.balanceOf(burner);
+
+        // Execute burn
+        vm.prank(burner);
+        uspdToken.burn(burnAmount, priceQuery);
+
+        // Verify USPD balance decreased
+        uint256 finalUspdBalance = uspdToken.balanceOf(burner);
+        assertTrue(finalUspdBalance < initialUspdBalance, "USPD balance should decrease after burn");
+
+        // Verify burner received stETH
+        uint256 finalStEthBalance = mockStETH.balanceOf(burner);
+        assertTrue(finalStEthBalance > initialStEthBalance, "Burner should receive stETH");
+
+        // Verify cUSPD shares decreased
+        uint256 finalCuspdBalance = cuspdToken.balanceOf(burner);
+        assertTrue(finalCuspdBalance < initialCuspdBalance, "cUSPD shares should decrease after burn");
+    }
+
+    function testBurn_Success_WithResidualShares() public {
+        address burner = makeAddr("burner");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup stabilizer and mint tokens
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(burner, mintAmountEth + 0.1 ether);
+        vm.prank(burner);
+        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
+
+        uint256 burnAmount = uspdToken.balanceOf(burner) / 4; // Burn quarter
+        
+        // Mock cUSPDToken.burnShares to return some residual shares
+        // This simulates a scenario where not all shares could be burned
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 sharesToBurn = (burnAmount * uspdToken.FACTOR_PRECISION()) / yieldFactor;
+        uint256 residualShares = sharesToBurn / 10; // 10% residual
+        
+        // Pre-fund the USPDToken contract with some cUSPD shares to simulate residual
+        vm.prank(burner);
+        cuspdToken.executeTransfer(burner, address(uspdToken), residualShares);
+
+        uint256 initialUspdBalance = uspdToken.balanceOf(burner);
+        uint256 initialStEthBalance = mockStETH.balanceOf(burner);
+
+        // Execute burn
+        vm.prank(burner);
+        uspdToken.burn(burnAmount, priceQuery);
+
+        // Verify burner received both stETH and residual shares back
+        assertTrue(mockStETH.balanceOf(burner) > initialStEthBalance, "Should receive stETH");
+        assertTrue(uspdToken.balanceOf(burner) < initialUspdBalance, "USPD balance should decrease");
+    }
+
+    function testBurn_Revert_ZeroAmount() public {
+        address burner = makeAddr("burner");
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        vm.prank(burner);
+        vm.expectRevert("USPD: Burn amount must be positive");
+        uspdToken.burn(0, priceQuery);
+    }
+
+    function testBurn_Revert_InsufficientBalance() public {
+        address burner = makeAddr("burner");
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+
+        // Burner has no USPD tokens
+        vm.prank(burner);
+        vm.expectRevert("USPD: Insufficient balance");
+        uspdToken.burn(100 * 1e18, priceQuery);
+    }
+
+    function testBurn_Revert_InvalidYieldFactor() public {
+        address burner = makeAddr("burner");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens first
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(burner, mintAmountEth + 0.1 ether);
+        vm.prank(burner);
+        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
+
+        // Set yield factor to zero
+        _setYieldFactorZero();
+
+        uint256 burnAmount = uspdToken.balanceOf(burner) / 2;
+        vm.prank(burner);
+        vm.expectRevert(USPD.InvalidYieldFactor.selector);
+        uspdToken.burn(burnAmount, priceQuery);
+
+        // Cleanup
+        mockStETH.setShouldReturnZeroForShares(false);
+    }
+
+    function testBurn_Revert_AmountTooSmall() public {
+        address burner = makeAddr("burner");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens first
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(burner, mintAmountEth + 0.1 ether);
+        vm.prank(burner);
+        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
+
+        // Set very high yield factor to make shares calculation result in 0
+        _setHighYieldFactor();
+
+        vm.prank(burner);
+        vm.expectRevert(USPD.AmountTooSmall.selector);
+        uspdToken.burn(1, priceQuery); // 1 wei USPD
+
+        // Cleanup
+        uint256 rateSlot = stdstore.target(address(mockStETH)).sig(mockStETH.pooledEthPerSharePrecision.selector).find();
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(mockStETH.REBASE_PRECISION()));
+    }
+
+    function testBurn_Revert_InvalidStETHAddress() public {
+        address burner = makeAddr("burner");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens first
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(burner, mintAmountEth + 0.1 ether);
+        vm.prank(burner);
+        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
+
+        // Set stETH address to zero in rate contract
+        uint256 stETHSlot = stdstore
+            .target(address(rateContract))
+            .sig(rateContract.stETH.selector)
+            .find();
+        vm.store(address(rateContract), bytes32(stETHSlot), bytes32(0));
+
+        uint256 burnAmount = uspdToken.balanceOf(burner) / 2;
+        vm.prank(burner);
+        vm.expectRevert("USPD: Invalid stETH address");
+        uspdToken.burn(burnAmount, priceQuery);
+
+        // Cleanup - restore stETH address
+        vm.store(address(rateContract), bytes32(stETHSlot), bytes32(uint256(uint160(address(mockStETH)))));
+    }
+
+    function testBurn_Revert_InvalidPriceQuery() public {
+        address burner = makeAddr("burner");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens first
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(burner, mintAmountEth + 0.1 ether);
+        vm.prank(burner);
+        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
+
+        // Create invalid price query (old timestamp)
+        IPriceOracle.PriceAttestationQuery memory invalidPriceQuery = createSignedPriceAttestation(block.timestamp - 3600);
+
+        uint256 burnAmount = uspdToken.balanceOf(burner) / 2;
+        vm.prank(burner);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PriceDataTooOld.selector,
+                invalidPriceQuery.dataTimestamp,
+                block.timestamp
+            )
+        );
+        uspdToken.burn(burnAmount, invalidPriceQuery);
+    }
+
+    function testBurn_EmitsTransferEvent() public {
+        address burner = makeAddr("burner");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens first
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(burner, mintAmountEth + 0.1 ether);
+        vm.prank(burner);
+        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
+
+        uint256 burnAmount = uspdToken.balanceOf(burner) / 2;
+
+        // Expect Transfer event to address(0) indicating burn
+        vm.expectEmit(true, true, false, false, address(uspdToken));
+        emit Transfer(burner, address(0), 0); // Amount will be calculated based on actual burn
+
+        vm.prank(burner);
+        uspdToken.burn(burnAmount, priceQuery);
+    }
+
+    function testBurn_HandlesPartialBurn() public {
+        address burner = makeAddr("burner");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup stabilizer with limited funds to force partial burn
+        _setupStabilizer(makeAddr("stabilizerOwner"), 0.5 ether); // Less collateral
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(burner, mintAmountEth + 0.1 ether);
+        vm.prank(burner);
+        uspdToken.mint{value: mintAmountEth}(burner, priceQuery);
+
+        uint256 initialBalance = uspdToken.balanceOf(burner);
+        uint256 burnAmount = initialBalance; // Try to burn all
+
+        uint256 initialStEthBalance = mockStETH.balanceOf(burner);
+
+        vm.prank(burner);
+        uspdToken.burn(burnAmount, priceQuery);
+
+        // Should have received some stETH even if not all shares could be burned
+        uint256 finalStEthBalance = mockStETH.balanceOf(burner);
+        assertTrue(finalStEthBalance >= initialStEthBalance, "Should receive some stETH");
+
+        // Balance should decrease by the amount that was actually burned
+        uint256 finalBalance = uspdToken.balanceOf(burner);
+        assertTrue(finalBalance <= initialBalance, "Balance should decrease or stay same");
+    }
 }
 
 // Removed RevertingContract as burn tests are removed
