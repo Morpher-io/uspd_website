@@ -7,7 +7,7 @@ import { parseEther, Abi } from 'viem'
 import { ArrowRight } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
-import cuspdTokenJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
+import uspdTokenJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import { toast } from 'sonner'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Input } from "@/components/ui/input"
@@ -39,11 +39,11 @@ const getChainName = (chainId: number | undefined): string => {
 
 interface HorizontalMintWidgetCoreProps {
     isLocked: boolean;
-    cuspdTokenAddress: `0x${string}`;
-    cuspdTokenAbi: Abi;
+    uspdTokenAddress: `0x${string}`;
+    uspdTokenAbi: Abi;
 }
 
-function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }: HorizontalMintWidgetCoreProps) {
+function HorizontalMintWidgetCore({ isLocked, uspdTokenAddress, uspdTokenAbi }: HorizontalMintWidgetCoreProps) {
     const { address, isConnected } = useAccount()
     const { writeContractAsync } = useWriteContract()
     const { data: ethBalance, refetch: refetchEthBalance } = useBalance({ 
@@ -118,9 +118,9 @@ function HorizontalMintWidgetCore({ isLocked, cuspdTokenAddress, cuspdTokenAbi }
 
             const ethValue = parseEther(ethAmount)
             await writeContractAsync({
-                address: cuspdTokenAddress,
-                abi: cuspdTokenAbi,
-                functionName: 'mintShares',
+                address: uspdTokenAddress,
+                abi: uspdTokenAbi,
+                functionName: 'mint',
                 args: [address, priceQuery],
                 value: ethValue
             })
@@ -276,10 +276,10 @@ export function HorizontalMintSection() {
                     </AlertDescription>
                 </Alert>
             ) : (
-                <ContractLoader contractKeys={["cuspdToken"]}>
+                <ContractLoader contractKeys={["uspdToken"]}>
                     {(loadedAddresses) => {
-                        const cuspdTokenAddress = loadedAddresses["cuspdToken"];
-                        if (!cuspdTokenAddress) {
+                        const uspdTokenAddress = loadedAddresses["uspdToken"];
+                        if (!uspdTokenAddress) {
                             return (
                                 <Alert variant="destructive">
                                     <AlertDescription className='text-center'>
@@ -292,8 +292,8 @@ export function HorizontalMintSection() {
                         return (
                             <HorizontalMintWidgetCore
                                 isLocked={isWrongChain}
-                                cuspdTokenAddress={cuspdTokenAddress}
-                                cuspdTokenAbi={cuspdTokenJson.abi as Abi}
+                                uspdTokenAddress={uspdTokenAddress}
+                                uspdTokenAbi={uspdTokenJson.abi as Abi}
                             />
                         );
                     }}
