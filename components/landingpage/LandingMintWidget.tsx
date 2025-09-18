@@ -10,7 +10,7 @@ import useDebounce from '@/components/utils/debounce'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
-import cuspdTokenJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
+import uspdTokenJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import { toast } from 'sonner'
 import { Alert, AlertDescription } from '../ui/alert'
 
@@ -96,7 +96,7 @@ function MintWidgetCore({ isLocked }: { isLocked: boolean }) {
         }
     }
 
-    const handleMint = async (cuspdTokenAddress: `0x${string}`, cuspdTokenAbi: Abi) => {
+    const handleMint = async (uspdTokenAddress: `0x${string}`, uspdTokenAbi: Abi) => {
         setIsLoading(true)
         const promise = async () => {
             if (!ethAmount || parseFloat(ethAmount) <= 0) {
@@ -118,9 +118,9 @@ function MintWidgetCore({ isLocked }: { isLocked: boolean }) {
 
             const ethValue = parseEther(ethAmount)
             await writeContractAsync({
-                address: cuspdTokenAddress,
-                abi: cuspdTokenAbi,
-                functionName: 'mintShares',
+                address: uspdTokenAddress,
+                abi: uspdTokenAbi,
+                functionName: 'mint',
                 args: [address, priceQuery],
                 value: ethValue
             })
@@ -140,10 +140,10 @@ function MintWidgetCore({ isLocked }: { isLocked: boolean }) {
     }
 
     return (
-        <ContractLoader contractKeys={["cuspdToken"]}>
+        <ContractLoader contractKeys={["uspdToken"]}>
             {(loadedAddresses) => {
-                const cuspdTokenAddress = loadedAddresses["cuspdToken"];
-                if (!cuspdTokenAddress) {
+                const uspdTokenAddress = loadedAddresses["uspdToken"];
+                if (!uspdTokenAddress) {
                     return (
                         <Alert variant="destructive">
                             <AlertDescription className='text-center'>
@@ -191,7 +191,7 @@ function MintWidgetCore({ isLocked }: { isLocked: boolean }) {
                         ) : (
                             <Button
                                 className="w-full"
-                                onClick={() => handleMint(cuspdTokenAddress, cuspdTokenJson.abi as Abi)}
+                                onClick={() => handleMint(uspdTokenAddress, uspdTokenJson.abi as Abi)}
                                 disabled={
                                     isLocked ||
                                     isLoading ||
