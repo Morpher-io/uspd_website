@@ -6,7 +6,6 @@ import "./DeployScript.sol"; // Import the base script
 import "../src/PriceOracle.sol";
 import "../src/StabilizerNFT.sol";
 import "../src/cUSPDToken.sol";
-import "../src/USPDToken.sol";
 import "../src/OvercollateralizationReporter.sol";
 import "../src/PoolSharesConversionRate.sol";
 import "../src/stUSPD.sol";
@@ -96,20 +95,7 @@ contract SetRolesToMultiSigWalletScript is DeployScript {
     }
 
     function transferUSPDTokenRoles() internal {
-        if (uspdTokenAddress == address(0)) {
-            console2.log("Warning: USPDToken address not found, skipping USPDToken role transfer");
-            return;
-        }
-
-        console2.log("Transferring USPDToken roles...");
-        USPDToken uspdToken = USPDToken(payable(uspdTokenAddress));
-
-        // Grant roles to multisig first
-        console2.log("Granting BRIDGE_ROLE to multisig on USPDToken...");
-        uspdToken.grantRole(uspdToken.BRIDGE_ROLE(), MULTISIG_WALLET);
-
-        // Note: We don't revoke BRIDGE_ROLE from deployer as it may have been granted to BridgeEscrow
-        // Only revoke if deployer was explicitly granted this role for admin purposes
+        //nothing to transfer here
 
         console2.log("USPDToken roles transferred successfully.");
     }

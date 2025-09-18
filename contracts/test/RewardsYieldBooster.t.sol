@@ -202,14 +202,20 @@ contract RewardsYieldBoosterTest is Test {
     function testBoostYield_Revert_ZeroEth() public {
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
         vm.expectRevert(RewardsYieldBooster.ZeroAmount.selector);
-        rewardsYieldBooster.boostYield{value: 0}(priceQuery);
+        rewardsYieldBooster.boostYield{value: 0}(1, priceQuery);
     }
     
     function testBoostYield_Revert_NoShares() public {
+        
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        vm.deal(stabilizerOwner, 1 ether);
+        uint256 tokenId = stabilizerNFT.mint(stabilizerOwner);
         IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
         assertEq(cuspdToken.totalSupply(), 0, "Pre-condition fail: total supply should be 0");
+        vm.startPrank(stabilizerOwner);
         vm.expectRevert(RewardsYieldBooster.NoSharesToBoost.selector);
-        rewardsYieldBooster.boostYield{value: 1 ether}(priceQuery);
+        rewardsYieldBooster.boostYield{value: 1 ether}(1, priceQuery);
+        vm.stopPrank();
     }
 
     function _mintForMultipleUsers(
@@ -258,7 +264,8 @@ contract RewardsYieldBoosterTest is Test {
     function testIntegration_BoostYieldWithMultipleHoldersAndRebase() public {
         // 1. Setup: Create 10 users and mint USPD for them
         uint256 STABILIZER_FUNDING = 20 ether;
-        _setupStabilizer(makeAddr("stabilizerOwner"), STABILIZER_FUNDING);
+        address stabilizerOwner = makeAddr("stabilizerOwner");
+        _setupStabilizer(stabilizerOwner, STABILIZER_FUNDING);
 
         (address[] memory users, uint256[] memory userCuspdBalances) = _mintForMultipleUsers(10);
 
@@ -292,13 +299,16 @@ contract RewardsYieldBoosterTest is Test {
             initialTotalSupplyCuspd;
         vm.expectEmit(true, true, true, true, address(rewardsYieldBooster));
         emit RewardsYieldBooster.YieldBoosted(
-            address(this),
+            stabilizerOwner,
             boostAmount,
             (boostAmount * priceQuery.price) / 1e18,
             rewardsYieldBooster.surplusYieldFactor() + expectedSurplus
         );
 
-        rewardsYieldBooster.boostYield{value: boostAmount}(priceQuery);
+        vm.deal(stabilizerOwner, boostAmount);
+
+        vm.prank(stabilizerOwner);
+        rewardsYieldBooster.boostYield{value: boostAmount}(1, priceQuery);
 
         uint256 surplusYield = rewardsYieldBooster.getSurplusYield();
         assertTrue(surplusYield > 0, "Yield boost failed: surplus yield is zero");

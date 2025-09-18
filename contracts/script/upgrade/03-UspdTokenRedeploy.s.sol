@@ -35,7 +35,7 @@ contract RedeployUSPDTokenScript is UpgradeScript {
     // --- !! Manually increment this version number for each new deployment !! ---
     uint256 public constant USPD_TOKEN_VERSION = 2;
 
-    string constant USPD_TOKEN_SALT_IDENTIFIER = "USPD_TOKEN_v1";
+    string constant USPD_TOKEN_SALT_IDENTIFIER = "USPD_TOKEN_v2";
 
     // Contract addresses
     address public oldUspdTokenAddress;
@@ -66,9 +66,9 @@ contract RedeployUSPDTokenScript is UpgradeScript {
     }
 
     function run() public override {
-        console2.log("⚠️  WARNING: This will deploy a NEW USPDToken contract, not upgrade the existing one!");
-        console2.log("⚠️  The old token will continue to exist and function!");
-        console2.log("⚠️  You must re-verify the new contract on block explorers!");
+        console2.log("!!! WARNING: This will deploy a NEW USPDToken contract, not upgrade the existing one!");
+        console2.log("!!! The old token will continue to exist and function!");
+        console2.log("!!! You must re-verify the new contract on block explorers!");
         
         super.run();
         
@@ -76,7 +76,7 @@ contract RedeployUSPDTokenScript is UpgradeScript {
         console2.log("Old USPDToken address:", oldUspdTokenAddress);
         console2.log("New USPDToken address:", newUspdTokenAddress);
         console2.log("======================================");
-        console2.log("⚠️  NEXT STEPS REQUIRED:");
+        console2.log("!!! NEXT STEPS REQUIRED:");
         console2.log("1. Verify the new contract on Etherscan/block explorer");
         console2.log("2. Update frontend to use new token address");
         console2.log("3. Notify users about the new token address");
@@ -177,7 +177,7 @@ contract RedeployUSPDTokenScript is UpgradeScript {
 
     function updateDeploymentInfo() internal override {
         console2.log("Updating deployment file with new USPDToken address...");
-        console2.log("⚠️  WARNING: Overwriting USPDToken address in deployment file!");
+        console2.log("!!! WARNING: Overwriting USPDToken address in deployment file!");
         console2.log("Old address was:", oldUspdTokenAddress);
         console2.log("New address is:", newUspdTokenAddress);
         

@@ -13,6 +13,9 @@ abstract contract UpgradeScript is Script {
     string public deploymentPath;
 
     // CreateX contract address - this should be the deployed CreateX contract on the target network
+
+    uint256 internal constant ETH_MAINNET_CHAIN_ID = 1;
+    uint256 internal constant SEPOLIA_CHAIN_ID = 11155111; // For L1 check
     address constant CREATE_X_ADDRESS = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
     ICreateX public createX;
 

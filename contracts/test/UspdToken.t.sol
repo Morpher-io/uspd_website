@@ -1244,7 +1244,7 @@ contract USPDTokenTest is Test {
 
         // Expect Transfer event to address(0) indicating burn
         vm.expectEmit(true, true, false, false, address(uspdToken));
-        emit Transfer(burner, address(0), 0); // Amount will be calculated based on actual burn
+        emit IERC20.Transfer(burner, address(0), 0); // Amount will be calculated based on actual burn
 
         vm.prank(burner);
         uspdToken.burn(burnAmount, priceQuery);
