@@ -19,9 +19,11 @@ pragma solidity 0.8.29;
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPoolSharesConversionRate.sol"; // Import Rate Contract interface
 import "./interfaces/IcUSPDToken.sol"; // Import cUSPD interface
 import "./interfaces/IBridgeEscrow.sol"; // Import BridgeEscrow interface
+import "./interfaces/IPriceOracle.sol"; // Import PriceOracle interface
 
 /**
  * @title USPDToken (Rebasing View Layer)
@@ -329,6 +331,79 @@ contract USPDToken is
             sourceChainYieldFactor,
             cUSPDShareAmountToUnlock
         );
+    }
+
+    // --- Burn Function ---
+
+    /**
+     * @notice Burns USPD tokens by redeeming underlying cUSPD shares for stETH collateral.
+     * @param uspdAmount The amount of USPD tokens to burn.
+     * @param priceQuery The signed price attestation for the current ETH price.
+     * @dev Converts USPD to cUSPD shares, burns them via cUSPDToken, and transfers
+     *      the resulting stETH and any residual cUSPD shares to the caller.
+     */
+    function burn(
+        uint256 uspdAmount,
+        IPriceOracle.PriceAttestationQuery calldata priceQuery
+    ) external {
+        require(uspdAmount > 0, "USPD: Burn amount must be positive");
+        require(balanceOf(msg.sender) >= uspdAmount, "USPD: Insufficient balance");
+
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        if (yieldFactor == 0) revert InvalidYieldFactor();
+
+        // Calculate cUSPD shares to burn
+        uint256 sharesToBurn = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
+        if (sharesToBurn == 0) revert AmountTooSmall();
+
+        // Get stETH address for balance tracking
+        address stETHAddress = rateContract.stETH();
+        require(stETHAddress != address(0), "USPD: Invalid stETH address");
+        IERC20 stETH = IERC20(stETHAddress);
+
+        // Record balances before burning
+        uint256 stETHBalanceBefore = stETH.balanceOf(address(this));
+        uint256 cuspdBalanceBefore = cuspdToken.balanceOf(address(this));
+
+        // Transfer cUSPD shares from user to this contract
+        cuspdToken.executeTransfer(msg.sender, address(this), sharesToBurn);
+
+        // Burn the cUSPD shares to get stETH
+        uint256 unallocatedStEth = cuspdToken.burnShares(
+            sharesToBurn,
+            payable(address(this)),
+            priceQuery
+        );
+
+        // Record balances after burning
+        uint256 stETHBalanceAfter = stETH.balanceOf(address(this));
+        uint256 cuspdBalanceAfter = cuspdToken.balanceOf(address(this));
+
+        // Calculate actual stETH received
+        uint256 stETHReceived = stETHBalanceAfter - stETHBalanceBefore;
+        
+        // Calculate residual cUSPD shares (if any)
+        uint256 residualCuspdShares = cuspdBalanceAfter - cuspdBalanceBefore;
+
+        // Transfer stETH to user if any was received
+        if (stETHReceived > 0) {
+            require(stETH.transfer(msg.sender, stETHReceived), "USPD: stETH transfer failed");
+        }
+
+        // Transfer any residual cUSPD shares back to user
+        if (residualCuspdShares > 0) {
+            cuspdToken.executeTransfer(address(this), msg.sender, residualCuspdShares);
+        }
+
+        // Calculate actual USPD amount burned based on shares that were actually burned
+        // This accounts for any shares that weren't burned due to insufficient collateral
+        uint256 actualSharesBurned = sharesToBurn - residualCuspdShares;
+        uint256 actualUspdBurned = (actualSharesBurned * yieldFactor) / FACTOR_PRECISION;
+
+        // Emit Transfer event to indicate burning (transfer to zero address)
+        if (actualUspdBurned > 0) {
+            emit Transfer(msg.sender, address(0), actualUspdBurned);
+        }
     }
 
     // --- Fallback ---
