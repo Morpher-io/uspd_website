@@ -105,8 +105,19 @@ contract USPDToken is
         require(to != address(0), "USPD: Mint to zero address");
         if (address(cuspdToken) == address(0)) revert ZeroAddress(); // Using custom error
 
+        // Get balance before minting to calculate the difference
+        uint256 balanceBefore = balanceOf(to);
+
         // Forward the call and value to cUSPDToken.mintShares
         uint256 leftoverEth = cuspdToken.mintShares{value: msg.value}(to, priceQuery);
+
+        // Get balance after minting and emit Transfer event for the difference
+        uint256 balanceAfter = balanceOf(to);
+        uint256 mintedAmount = balanceAfter - balanceBefore;
+        
+        if (mintedAmount > 0) {
+            emit Transfer(address(0), to, mintedAmount);
+        }
 
         // Refund any leftover ETH to the original caller
         if (leftoverEth > 0) {
