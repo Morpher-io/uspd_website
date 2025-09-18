@@ -10,7 +10,7 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {USPDToken as USPD} from "../src/UspdToken.sol";
 import {cUSPDToken} from "../src/cUSPDToken.sol"; // Import cUSPD implementation
 import {IcUSPDToken} from "../src/interfaces/IcUSPDToken.sol"; // Import cUSPD interface
-import {IPriceOracle, PriceOracle, PriceDataTooOld} from "../src/PriceOracle.sol";
+import {IPriceOracle, PriceOracle, PriceDataTooOld, StaleAttestation} from "../src/PriceOracle.sol";
 import {IERC20Errors} from "../lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol"; // Import ERC20 errors
 import "../lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -861,7 +861,7 @@ contract USPDTokenTest is Test {
         // Expect the custom error from PriceOracle
         vm.expectRevert(
             abi.encodeWithSelector(
-                PriceDataTooOld.selector,
+                StaleAttestation.selector,
                 priceQuery.dataTimestamp, // The timestamp from the query
                 block.timestamp           // The current block timestamp when the check happens
             )
@@ -1221,9 +1221,9 @@ contract USPDTokenTest is Test {
         vm.prank(burner);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PriceDataTooOld.selector,
-                invalidPriceQuery.dataTimestamp,
-                block.timestamp
+                StaleAttestation.selector,
+                block.timestamp * 1000,
+                invalidPriceQuery.dataTimestamp
             )
         );
         uspdToken.burn(burnAmount, invalidPriceQuery);
