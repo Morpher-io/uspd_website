@@ -370,7 +370,7 @@ contract USPDToken is
         cuspdToken.executeTransfer(msg.sender, address(this), sharesToBurn);
 
         // Burn the cUSPD shares to get stETH
-        uint256 unallocatedStEth = cuspdToken.burnShares(
+        /**uint256 unallocatedStEth = */ cuspdToken.burnShares(
             sharesToBurn,
             payable(address(this)),
             priceQuery
