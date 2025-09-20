@@ -1325,10 +1325,10 @@ contract USPDTokenTest is Test {
         
         // Calculate expected shares and remainder
         uint256 expectedShares = (transferAmount * uspdToken.FACTOR_PRECISION()) / yieldFactor;
-        uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
-        console.log("Expected shares (without round-up):", expectedShares);
-        console.log("Remainder:", remainder);
-        console.log("Has remainder?", remainder > 0);
+        // uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
+        // console.log("Expected shares (without round-up):", expectedShares);
+        // console.log("Remainder:", remainder);
+        // console.log("Has remainder?", remainder > 0);
         
         // Calculate ceiling division (what round-up should produce)
         uint256 expectedSharesWithRoundUp = (transferAmount * uspdToken.FACTOR_PRECISION() + yieldFactor - 1) / yieldFactor;
