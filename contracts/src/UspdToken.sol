@@ -186,7 +186,8 @@ contract USPDToken is
         if (roundUpEnabled[msg.sender]) {
             uint256 remainder = (uspdAmount * FACTOR_PRECISION) % yieldFactor;
             if (remainder > 0) {
-                sharesToTransfer += 1;
+                // Calculate ceiling division to ensure recipient gets at least the requested amount
+                sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
             }
         }
 
@@ -227,7 +228,8 @@ contract USPDToken is
         if (roundUpEnabled[from]) {
             uint256 remainder = (uspdAmount * FACTOR_PRECISION) % yieldFactor;
             if (remainder > 0) {
-                sharesToTransfer += 1;
+                // Calculate ceiling division to ensure recipient gets at least the requested amount
+                sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
                 // Recalculate actual USPD amount that will be transferred
                 actualUspdAmount = (sharesToTransfer * yieldFactor) / FACTOR_PRECISION;
             }
