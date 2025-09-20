@@ -1316,12 +1316,36 @@ contract USPDTokenTest is Test {
 
         // Set an odd yield factor that will create remainders for most transfer amounts
         _setOddYieldFactor();
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        console.log("Yield factor after setting odd:", yieldFactor);
         
         // Use a simple transfer amount that will create a remainder with the odd yield factor
         uint256 transferAmount = uspdToken.FACTOR_PRECISION(); // 1e18, will create remainder with odd yield factor
+        console.log("Transfer amount:", transferAmount);
+        
+        // Calculate expected shares and remainder
+        uint256 expectedShares = (transferAmount * uspdToken.FACTOR_PRECISION()) / yieldFactor;
+        uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
+        console.log("Expected shares (without round-up):", expectedShares);
+        console.log("Remainder:", remainder);
+        console.log("Has remainder?", remainder > 0);
+        
+        // Calculate ceiling division (what round-up should produce)
+        uint256 expectedSharesWithRoundUp = (transferAmount * uspdToken.FACTOR_PRECISION() + yieldFactor - 1) / yieldFactor;
+        console.log("Expected shares with round-up:", expectedSharesWithRoundUp);
+        console.log("Difference in shares:", expectedSharesWithRoundUp - expectedShares);
+        
+        // Calculate what the actual USPD amounts would be
+        uint256 uspdWithoutRoundUp = (expectedShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
+        uint256 uspdWithRoundUp = (expectedSharesWithRoundUp * yieldFactor) / uspdToken.FACTOR_PRECISION();
+        console.log("USPD without round-up:", uspdWithoutRoundUp);
+        console.log("USPD with round-up:", uspdWithRoundUp);
+        console.log("USPD difference:", uspdWithRoundUp - uspdWithoutRoundUp);
 
         uint256 initialReceiverBalance = uspdToken.balanceOf(receiver);
         uint256 initialSenderBalance = uspdToken.balanceOf(sender);
+        console.log("Initial sender balance:", initialSenderBalance);
+        console.log("Initial receiver balance:", initialReceiverBalance);
 
         vm.prank(sender);
         uspdToken.transfer(receiver, transferAmount);
@@ -1329,11 +1353,18 @@ contract USPDTokenTest is Test {
         // Verify receiver got at least the requested amount (the key test for round-up)
         uint256 finalReceiverBalance = uspdToken.balanceOf(receiver);
         uint256 actualTransferred = finalReceiverBalance - initialReceiverBalance;
+        console.log("Final receiver balance:", finalReceiverBalance);
+        console.log("Actual transferred:", actualTransferred);
+        console.log("Requested amount:", transferAmount);
+        console.log("Got at least requested?", actualTransferred >= transferAmount);
+        console.log("Got more than requested?", actualTransferred > transferAmount);
         
         assertTrue(actualTransferred >= transferAmount, "Receiver should get at least the requested amount");
         
         // Verify sender balance decreased by the actual amount transferred
         uint256 finalSenderBalance = uspdToken.balanceOf(sender);
+        console.log("Final sender balance:", finalSenderBalance);
+        console.log("Expected sender balance:", initialSenderBalance - actualTransferred);
         assertEq(finalSenderBalance, initialSenderBalance - actualTransferred, "Sender balance should decrease by actual transferred amount");
     }
 
