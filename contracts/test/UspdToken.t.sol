@@ -438,6 +438,25 @@ contract USPDTokenTest is Test {
         assertTrue(newYieldFactor > uspdToken.FACTOR_PRECISION(), "Yield factor should be very high");
     }
 
+    // Helper function to set an odd yield factor that creates remainders
+    function _setOddYieldFactor() private {
+        // Get current yield factor and add 111 to make it odd and indivisible
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        uint256 oddYieldFactor = currentYieldFactor + 111;
+
+        // Find the storage slot for pooledEthPerSharePrecision in mockStETH
+        uint256 rateSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.pooledEthPerSharePrecision.selector)
+            .find();
+        
+        // Store the new odd value
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(oddYieldFactor));
+        
+        uint256 newYieldFactor = rateContract.getYieldFactor();
+        assertEq(newYieldFactor, oddYieldFactor, "Yield factor was not set to odd value");
+    }
+
 
     // --- Transfer Tests ---
     function testTransfer_Success() public {
@@ -1295,15 +1314,18 @@ contract USPDTokenTest is Test {
         vm.prank(sender);
         uspdToken.setRoundUpEnabled(true);
 
-        // Create a transfer amount that will have a remainder when converted to shares
+        // Set an odd yield factor that will create remainders for most transfer amounts
+        _setOddYieldFactor();
         uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 transferAmount = (yieldFactor / 2) + 1; // This will create a remainder
+        
+        // Use a simple transfer amount that will create a remainder with the odd yield factor
+        uint256 transferAmount = uspdToken.FACTOR_PRECISION(); // 1e18, will create remainder with odd yield factor
         
         uint256 expectedShares = (transferAmount * uspdToken.FACTOR_PRECISION()) / yieldFactor;
-        // uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
+        uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
         
-        // // Verify there is a remainder
-        // assertTrue(remainder > 0, "Test setup should create a remainder");
+        // Verify there is a remainder
+        assertTrue(remainder > 0, "Test setup should create a remainder with odd yield factor");
         
         uint256 expectedSharesWithRoundUp = expectedShares + 1;
         uint256 expectedActualUspdTransferred = (expectedSharesWithRoundUp * yieldFactor) / uspdToken.FACTOR_PRECISION();
@@ -1346,15 +1368,18 @@ contract USPDTokenTest is Test {
         // Round-up is disabled by default
         assertFalse(uspdToken.roundUpEnabled(sender), "Round-up should be disabled by default");
 
-        // Create a transfer amount that will have a remainder when converted to shares
+        // Set an odd yield factor that will create remainders for most transfer amounts
+        _setOddYieldFactor();
         uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 transferAmount = (yieldFactor / 2) + 1; // This will create a remainder
+        
+        // Use a simple transfer amount that will create a remainder with the odd yield factor
+        uint256 transferAmount = uspdToken.FACTOR_PRECISION(); // 1e18, will create remainder with odd yield factor
         
         uint256 expectedShares = (transferAmount * uspdToken.FACTOR_PRECISION()) / yieldFactor;
         uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
         
         // Verify there is a remainder
-        assertTrue(remainder > 0, "Test setup should create a remainder");
+        assertTrue(remainder > 0, "Test setup should create a remainder with odd yield factor");
         
         uint256 expectedActualUspdTransferred = (expectedShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
 
@@ -1388,9 +1413,11 @@ contract USPDTokenTest is Test {
         vm.prank(owner);
         uspdToken.setRoundUpEnabled(true);
 
-        // Create a transfer amount that will have a remainder
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 transferAmount = (yieldFactor / 2) + 1;
+        // Set an odd yield factor that will create remainders
+        _setOddYieldFactor();
+        
+        // Use a simple transfer amount that will create a remainder with the odd yield factor
+        uint256 transferAmount = uspdToken.FACTOR_PRECISION(); // 1e18, will create remainder with odd yield factor
         
         // Approve spender
         vm.prank(owner);
@@ -1428,9 +1455,11 @@ contract USPDTokenTest is Test {
         // Round-up is disabled by default
         assertFalse(uspdToken.roundUpEnabled(owner), "Round-up should be disabled by default");
 
-        // Create a transfer amount that will have a remainder
-        uint256 yieldFactor = rateContract.getYieldFactor();
-        uint256 transferAmount = (yieldFactor / 2) + 1;
+        // Set an odd yield factor that will create remainders
+        _setOddYieldFactor();
+        
+        // Use a simple transfer amount that will create a remainder with the odd yield factor
+        uint256 transferAmount = uspdToken.FACTOR_PRECISION(); // 1e18, will create remainder with odd yield factor
         
         // Approve spender
         vm.prank(owner);
