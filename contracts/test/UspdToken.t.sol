@@ -1252,6 +1252,253 @@ contract USPDTokenTest is Test {
         uint256 finalBalance = uspdToken.balanceOf(burner);
         assertTrue(finalBalance <= initialBalance, "Balance should decrease or stay same");
     }
+
+    // --- Round-up Feature Tests ---
+
+    function testSetRoundUpEnabled_Success() public {
+        address user = makeAddr("user");
+        
+        // Initially disabled
+        assertFalse(uspdToken.roundUpEnabled(user), "Round-up should be disabled by default");
+        
+        // Enable round-up
+        vm.expectEmit(true, false, false, true, address(uspdToken));
+        emit USPD.RoundUpSettingUpdated(user, true);
+        vm.prank(user);
+        uspdToken.setRoundUpEnabled(true);
+        
+        assertTrue(uspdToken.roundUpEnabled(user), "Round-up should be enabled");
+        
+        // Disable round-up
+        vm.expectEmit(true, false, false, true, address(uspdToken));
+        emit USPD.RoundUpSettingUpdated(user, false);
+        vm.prank(user);
+        uspdToken.setRoundUpEnabled(false);
+        
+        assertFalse(uspdToken.roundUpEnabled(user), "Round-up should be disabled");
+    }
+
+    function testSetRoundUpEnabledFor_Success() public {
+        address user = makeAddr("user");
+        
+        // Admin can set for any user
+        vm.expectEmit(true, false, false, true, address(uspdToken));
+        emit USPD.RoundUpSettingUpdated(user, true);
+        uspdToken.setRoundUpEnabledFor(user, true);
+        
+        assertTrue(uspdToken.roundUpEnabled(user), "Round-up should be enabled by admin");
+    }
+
+    function testSetRoundUpEnabledFor_Revert_NotAdmin() public {
+        address user = makeAddr("user");
+        address nonAdmin = makeAddr("nonAdmin");
+        
+        vm.prank(nonAdmin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        uspdToken.setRoundUpEnabledFor(user, true);
+    }
+
+    function testTransfer_WithRoundUp() public {
+        address sender = makeAddr("sender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(sender, mintAmountEth + 0.1 ether);
+        vm.prank(sender);
+        uspdToken.mint{value: mintAmountEth}(sender, priceQuery);
+
+        // Enable round-up for sender
+        vm.prank(sender);
+        uspdToken.setRoundUpEnabled(true);
+
+        // Create a transfer amount that will have a remainder when converted to shares
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 transferAmount = (yieldFactor / 2) + 1; // This will create a remainder
+        
+        uint256 expectedShares = (transferAmount * uspdToken.FACTOR_PRECISION()) / yieldFactor;
+        uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
+        
+        // Verify there is a remainder
+        assertTrue(remainder > 0, "Test setup should create a remainder");
+        
+        uint256 expectedSharesWithRoundUp = expectedShares + 1;
+        uint256 expectedActualUspdTransferred = (expectedSharesWithRoundUp * yieldFactor) / uspdToken.FACTOR_PRECISION();
+
+        uint256 initialReceiverBalance = uspdToken.balanceOf(receiver);
+        uint256 initialSenderBalance = uspdToken.balanceOf(sender);
+
+        // Expect Transfer event with actual amount (which may be more due to round-up)
+        vm.expectEmit(true, true, false, false, address(uspdToken));
+        emit IERC20.Transfer(sender, receiver, expectedActualUspdTransferred);
+
+        vm.prank(sender);
+        uspdToken.transfer(receiver, transferAmount);
+
+        // Verify receiver got at least the requested amount (likely more due to round-up)
+        uint256 finalReceiverBalance = uspdToken.balanceOf(receiver);
+        uint256 actualTransferred = finalReceiverBalance - initialReceiverBalance;
+        
+        assertTrue(actualTransferred >= transferAmount, "Receiver should get at least the requested amount");
+        assertTrue(actualTransferred > transferAmount, "With round-up, receiver should get more than requested");
+        assertEq(actualTransferred, expectedActualUspdTransferred, "Actual transferred amount should match expected");
+        
+        // Verify sender balance decreased by the actual amount transferred
+        uint256 finalSenderBalance = uspdToken.balanceOf(sender);
+        assertEq(finalSenderBalance, initialSenderBalance - actualTransferred, "Sender balance should decrease by actual transferred amount");
+    }
+
+    function testTransfer_WithoutRoundUp() public {
+        address sender = makeAddr("sender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(sender, mintAmountEth + 0.1 ether);
+        vm.prank(sender);
+        uspdToken.mint{value: mintAmountEth}(sender, priceQuery);
+
+        // Round-up is disabled by default
+        assertFalse(uspdToken.roundUpEnabled(sender), "Round-up should be disabled by default");
+
+        // Create a transfer amount that will have a remainder when converted to shares
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 transferAmount = (yieldFactor / 2) + 1; // This will create a remainder
+        
+        uint256 expectedShares = (transferAmount * uspdToken.FACTOR_PRECISION()) / yieldFactor;
+        uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
+        
+        // Verify there is a remainder
+        assertTrue(remainder > 0, "Test setup should create a remainder");
+        
+        uint256 expectedActualUspdTransferred = (expectedShares * yieldFactor) / uspdToken.FACTOR_PRECISION();
+
+        uint256 initialReceiverBalance = uspdToken.balanceOf(receiver);
+
+        vm.prank(sender);
+        uspdToken.transfer(receiver, transferAmount);
+
+        // Verify receiver got less than requested due to truncation
+        uint256 finalReceiverBalance = uspdToken.balanceOf(receiver);
+        uint256 actualTransferred = finalReceiverBalance - initialReceiverBalance;
+        
+        assertTrue(actualTransferred < transferAmount, "Without round-up, receiver should get less than requested due to truncation");
+        assertEq(actualTransferred, expectedActualUspdTransferred, "Actual transferred amount should match expected truncated amount");
+    }
+
+    function testTransferFrom_WithRoundUp() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(owner, mintAmountEth + 0.1 ether);
+        vm.prank(owner);
+        uspdToken.mint{value: mintAmountEth}(owner, priceQuery);
+
+        // Enable round-up for owner
+        vm.prank(owner);
+        uspdToken.setRoundUpEnabled(true);
+
+        // Create a transfer amount that will have a remainder
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 transferAmount = (yieldFactor / 2) + 1;
+        
+        // Approve spender
+        vm.prank(owner);
+        uspdToken.approve(spender, transferAmount * 2); // Approve more than needed
+
+        uint256 initialAllowance = uspdToken.allowance(owner, spender);
+        uint256 initialReceiverBalance = uspdToken.balanceOf(receiver);
+
+        vm.prank(spender);
+        uspdToken.transferFrom(owner, receiver, transferAmount);
+
+        // Verify allowance was reduced by the original requested amount, not the rounded-up amount
+        uint256 finalAllowance = uspdToken.allowance(owner, spender);
+        assertEq(finalAllowance, initialAllowance - transferAmount, "Allowance should be reduced by original amount");
+
+        // Verify receiver got at least the requested amount
+        uint256 finalReceiverBalance = uspdToken.balanceOf(receiver);
+        uint256 actualTransferred = finalReceiverBalance - initialReceiverBalance;
+        assertTrue(actualTransferred >= transferAmount, "Receiver should get at least the requested amount");
+    }
+
+    function testTransferFrom_WithoutRoundUp() public {
+        address owner = makeAddr("owner");
+        address spender = makeAddr("spender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(owner, mintAmountEth + 0.1 ether);
+        vm.prank(owner);
+        uspdToken.mint{value: mintAmountEth}(owner, priceQuery);
+
+        // Round-up is disabled by default
+        assertFalse(uspdToken.roundUpEnabled(owner), "Round-up should be disabled by default");
+
+        // Create a transfer amount that will have a remainder
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 transferAmount = (yieldFactor / 2) + 1;
+        
+        // Approve spender
+        vm.prank(owner);
+        uspdToken.approve(spender, transferAmount);
+
+        uint256 initialReceiverBalance = uspdToken.balanceOf(receiver);
+
+        vm.prank(spender);
+        uspdToken.transferFrom(owner, receiver, transferAmount);
+
+        // Verify receiver got less than requested due to truncation
+        uint256 finalReceiverBalance = uspdToken.balanceOf(receiver);
+        uint256 actualTransferred = finalReceiverBalance - initialReceiverBalance;
+        assertTrue(actualTransferred < transferAmount, "Without round-up, receiver should get less than requested");
+    }
+
+    function testRoundUp_NoEffectOnExactDivision() public {
+        address sender = makeAddr("sender");
+        address receiver = makeAddr("receiver");
+        uint256 mintAmountEth = 1 ether;
+
+        // Setup and mint tokens
+        _setupStabilizer(makeAddr("stabilizerOwner"), mintAmountEth);
+        IPriceOracle.PriceAttestationQuery memory priceQuery = createSignedPriceAttestation(block.timestamp);
+        vm.deal(sender, mintAmountEth + 0.1 ether);
+        vm.prank(sender);
+        uspdToken.mint{value: mintAmountEth}(sender, priceQuery);
+
+        // Enable round-up for sender
+        vm.prank(sender);
+        uspdToken.setRoundUpEnabled(true);
+
+        // Create a transfer amount that divides exactly (no remainder)
+        uint256 yieldFactor = rateContract.getYieldFactor();
+        uint256 transferAmount = yieldFactor; // This will have no remainder
+        
+        uint256 remainder = (transferAmount * uspdToken.FACTOR_PRECISION()) % yieldFactor;
+        assertEq(remainder, 0, "Test setup should create no remainder");
+
+        uint256 initialReceiverBalance = uspdToken.balanceOf(receiver);
+
+        vm.prank(sender);
+        uspdToken.transfer(receiver, transferAmount);
+
+        // Verify receiver got exactly the requested amount (no round-up applied)
+        uint256 finalReceiverBalance = uspdToken.balanceOf(receiver);
+        uint256 actualTransferred = finalReceiverBalance - initialReceiverBalance;
+        assertEq(actualTransferred, transferAmount, "With exact division, transfer amount should be exact even with round-up enabled");
+    }
 }
 
 // Removed RevertingContract as burn tests are removed

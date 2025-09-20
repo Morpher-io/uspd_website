@@ -40,6 +40,9 @@ contract USPDToken is
     IPoolSharesConversionRate public rateContract; // Tracks yield factor
     address public bridgeEscrowAddress; // Address of the BridgeEscrow contract
     uint256 public constant FACTOR_PRECISION = 1e18; // Assuming rate contract uses 1e18
+    
+    // --- Round-up Settings ---
+    mapping(address => bool) public roundUpEnabled; // Per-user round-up setting
 
     // --- Roles ---
     // DEFAULT_ADMIN_ROLE for managing dependencies.
@@ -51,6 +54,7 @@ contract USPDToken is
     event RateContractUpdated(address indexed oldRateContract, address indexed newRateContract);
     event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
     event BridgeEscrowAddressUpdated(address indexed oldAddress, address indexed newAddress);
+    event RoundUpSettingUpdated(address indexed user, bool enabled);
     event LockForBridgingInitiated(
         // originalUser removed
         address indexed tokenAdapter,
@@ -172,14 +176,25 @@ contract USPDToken is
         if(uspdAmount == 0) {
             revert AmountTooSmall();
         }
+        
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
         if (sharesToTransfer == 0 && uspdAmount > 0) {
             revert AmountTooSmall();  
-        } 
+        }
+        
+        // Apply round-up logic if enabled for sender
+        if (roundUpEnabled[msg.sender]) {
+            uint256 remainder = (uspdAmount * FACTOR_PRECISION) % yieldFactor;
+            if (remainder > 0) {
+                sharesToTransfer += 1;
+            }
+        }
 
         cuspdToken.executeTransfer(msg.sender, to, sharesToTransfer);
-                    
-        emit Transfer(msg.sender, to, uspdAmount);
+        
+        // Calculate actual USPD amount transferred (may be slightly more due to round-up)
+        uint256 actualUspdTransferred = (sharesToTransfer * yieldFactor) / FACTOR_PRECISION;
+        emit Transfer(msg.sender, to, actualUspdTransferred);
 
         return true; // Assuming executeTransfer does not return bool or reverts on failure
     }
@@ -201,18 +216,31 @@ contract USPDToken is
     function transferFrom(address from, address to, uint256 uspdAmount) public virtual override returns (bool) {
         uint256 yieldFactor = rateContract.getYieldFactor();
         if (yieldFactor == 0) revert InvalidYieldFactor();
+        
         uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
         if (sharesToTransfer == 0 && uspdAmount > 0) { 
             revert AmountTooSmall();
         }
+        
+        // Apply round-up logic if enabled for sender (from address)
+        uint256 actualUspdAmount = uspdAmount;
+        if (roundUpEnabled[from]) {
+            uint256 remainder = (uspdAmount * FACTOR_PRECISION) % yieldFactor;
+            if (remainder > 0) {
+                sharesToTransfer += 1;
+                // Recalculate actual USPD amount that will be transferred
+                actualUspdAmount = (sharesToTransfer * yieldFactor) / FACTOR_PRECISION;
+            }
+        }
 
         // Use the inherited _spendAllowance from ERC20.sol to check and update the allowance.
-        // _spendAllowance will revert if allowance is insufficient and emit an Approval event.
+        // Note: We spend the original requested amount from allowance, not the rounded-up amount
+        // This ensures users don't accidentally spend more allowance than intended
         _spendAllowance(from, msg.sender, uspdAmount);
 
         // USPDToken orchestrates the transfer of 'from's cUSPD shares.
         cuspdToken.executeTransfer(from, to, sharesToTransfer);
-        emit Transfer(from, to, uspdAmount);
+        emit Transfer(from, to, actualUspdAmount);
         return true;
     }
 
@@ -249,6 +277,33 @@ contract USPDToken is
         if (_bridgeEscrowAddress == address(0)) revert ZeroAddress();
         emit BridgeEscrowAddressUpdated(bridgeEscrowAddress, _bridgeEscrowAddress);
         bridgeEscrowAddress = _bridgeEscrowAddress;
+    }
+
+    // --- Round-up Settings ---
+
+    /**
+     * @notice Enables or disables round-up for the caller's transfers.
+     * @param enabled Whether to enable round-up for this user's transfers.
+     * @dev When enabled, if there's a remainder when converting USPD to cUSPD shares,
+     *      an additional share will be transferred to ensure the recipient gets at least
+     *      the requested USPD amount. This is useful for DeFi integrations that require
+     *      exact balance increases.
+     */
+    function setRoundUpEnabled(bool enabled) external {
+        roundUpEnabled[msg.sender] = enabled;
+        emit RoundUpSettingUpdated(msg.sender, enabled);
+    }
+
+    /**
+     * @notice Admin function to set round-up setting for any address.
+     * @param user The address to set the round-up setting for.
+     * @param enabled Whether to enable round-up for this user's transfers.
+     * @dev This allows admins to enable round-up for contracts that cannot call
+     *      setRoundUpEnabled themselves, such as legacy DeFi protocols.
+     */
+    function setRoundUpEnabledFor(address user, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        roundUpEnabled[user] = enabled;
+        emit RoundUpSettingUpdated(user, enabled);
     }
 
     // --- Bridging Functions ---
