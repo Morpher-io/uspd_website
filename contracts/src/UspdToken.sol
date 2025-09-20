@@ -294,17 +294,6 @@ contract USPDToken is
         emit RoundUpSettingUpdated(msg.sender, enabled);
     }
 
-    /**
-     * @notice Admin function to set round-up setting for any address.
-     * @param user The address to set the round-up setting for.
-     * @param enabled Whether to enable round-up for this user's transfers.
-     * @dev This allows admins to enable round-up for contracts that cannot call
-     *      setRoundUpEnabled themselves, such as legacy DeFi protocols.
-     */
-    function setRoundUpEnabledFor(address user, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        roundUpEnabled[user] = enabled;
-        emit RoundUpSettingUpdated(user, enabled);
-    }
 
     // --- Bridging Functions ---
 

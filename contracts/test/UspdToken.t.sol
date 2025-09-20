@@ -1278,25 +1278,6 @@ contract USPDTokenTest is Test {
         assertFalse(uspdToken.roundUpEnabled(user), "Round-up should be disabled");
     }
 
-    function testSetRoundUpEnabledFor_Success() public {
-        address user = makeAddr("user");
-        
-        // Admin can set for any user
-        vm.expectEmit(true, false, false, true, address(uspdToken));
-        emit USPD.RoundUpSettingUpdated(user, true);
-        uspdToken.setRoundUpEnabledFor(user, true);
-        
-        assertTrue(uspdToken.roundUpEnabled(user), "Round-up should be enabled by admin");
-    }
-
-    function testSetRoundUpEnabledFor_Revert_NotAdmin() public {
-        address user = makeAddr("user");
-        address nonAdmin = makeAddr("nonAdmin");
-        
-        vm.prank(nonAdmin);
-        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
-        uspdToken.setRoundUpEnabledFor(user, true);
-    }
 
     function testTransfer_WithRoundUp() public {
         address sender = makeAddr("sender");
