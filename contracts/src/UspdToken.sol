@@ -178,6 +178,9 @@ contract USPDToken is
         } 
 
         cuspdToken.executeTransfer(msg.sender, to, sharesToTransfer);
+                    
+        emit Transfer(msg.sender, to, uspdAmount);
+
         return true; // Assuming executeTransfer does not return bool or reverts on failure
     }
 
@@ -209,6 +212,7 @@ contract USPDToken is
 
         // USPDToken orchestrates the transfer of 'from's cUSPD shares.
         cuspdToken.executeTransfer(from, to, sharesToTransfer);
+        emit Transfer(from, to, uspdAmount);
         return true;
     }
 
