@@ -177,18 +177,17 @@ contract USPDToken is
             revert AmountTooSmall();
         }
         
-        uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
-        if (sharesToTransfer == 0 && uspdAmount > 0) {
-            revert AmountTooSmall();  
+        uint256 sharesToTransfer;
+        if (roundUpEnabled[msg.sender]) {
+            // Use ceiling division to ensure recipient gets at least the requested amount
+            sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
+        } else {
+            // Use regular division (truncates)
+            sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
         }
         
-        // Apply round-up logic if enabled for sender
-        if (roundUpEnabled[msg.sender]) {
-            uint256 remainder = (uspdAmount * FACTOR_PRECISION) % yieldFactor;
-            if (remainder > 0) {
-                // Calculate ceiling division to ensure recipient gets at least the requested amount
-                sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
-            }
+        if (sharesToTransfer == 0 && uspdAmount > 0) {
+            revert AmountTooSmall();  
         }
 
         cuspdToken.executeTransfer(msg.sender, to, sharesToTransfer);
@@ -218,22 +217,21 @@ contract USPDToken is
         uint256 yieldFactor = rateContract.getYieldFactor();
         if (yieldFactor == 0) revert InvalidYieldFactor();
         
-        uint256 sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
+        uint256 sharesToTransfer;
+        if (roundUpEnabled[from]) {
+            // Use ceiling division to ensure recipient gets at least the requested amount
+            sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
+        } else {
+            // Use regular division (truncates)
+            sharesToTransfer = (uspdAmount * FACTOR_PRECISION) / yieldFactor;
+        }
+        
         if (sharesToTransfer == 0 && uspdAmount > 0) { 
             revert AmountTooSmall();
         }
         
-        // Apply round-up logic if enabled for sender (from address)
-        uint256 actualUspdAmount = uspdAmount;
-        if (roundUpEnabled[from]) {
-            uint256 remainder = (uspdAmount * FACTOR_PRECISION) % yieldFactor;
-            if (remainder > 0) {
-                // Calculate ceiling division to ensure recipient gets at least the requested amount
-                sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
-                // Recalculate actual USPD amount that will be transferred
-                actualUspdAmount = (sharesToTransfer * yieldFactor) / FACTOR_PRECISION;
-            }
-        }
+        // Calculate actual USPD amount that will be transferred (may be more due to round-up)
+        uint256 actualUspdAmount = (sharesToTransfer * yieldFactor) / FACTOR_PRECISION;
 
         // Use the inherited _spendAllowance from ERC20.sol to check and update the allowance.
         // Note: We spend the original requested amount from allowance, not the rounded-up amount
