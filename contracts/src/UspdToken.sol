@@ -42,7 +42,13 @@ contract USPDToken is
     uint256 public constant FACTOR_PRECISION = 1e18; // Assuming rate contract uses 1e18
     
     // --- Round-up Settings ---
-    mapping(address => bool) public roundUpEnabled; // Per-user round-up setting
+    enum RoundUpPreference { SYSTEM_DEFAULT, ALWAYS_ROUND_UP, ALWAYS_ROUND_DOWN }
+    
+    mapping(address => RoundUpPreference) public userRoundUpPreference; // Per-user round-up preference
+    
+    // System-wide default settings
+    uint256 public maxYieldFactorForRoundUp = 2 * FACTOR_PRECISION; // 2x yield factor limit
+    bool public systemDefaultRoundUp = true; // Default system behavior
 
     // --- Roles ---
     // DEFAULT_ADMIN_ROLE for managing dependencies.
@@ -55,6 +61,9 @@ contract USPDToken is
     event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
     event BridgeEscrowAddressUpdated(address indexed oldAddress, address indexed newAddress);
     event RoundUpSettingUpdated(address indexed user, bool enabled);
+    event UserRoundUpPreferenceUpdated(address indexed user, RoundUpPreference preference);
+    event SystemRoundUpDefaultUpdated(bool enabled);
+    event MaxYieldFactorForRoundUpUpdated(uint256 oldLimit, uint256 newLimit);
     event LockForBridgingInitiated(
         // originalUser removed
         address indexed tokenAdapter,
@@ -178,7 +187,7 @@ contract USPDToken is
         }
         
         uint256 sharesToTransfer;
-        if (roundUpEnabled[msg.sender]) {
+        if (_shouldRoundUp(msg.sender, yieldFactor)) {
             // Use ceiling division to ensure recipient gets at least the requested amount
             sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
         } else {
@@ -218,7 +227,7 @@ contract USPDToken is
         if (yieldFactor == 0) revert InvalidYieldFactor();
         
         uint256 sharesToTransfer;
-        if (roundUpEnabled[from]) {
+        if (_shouldRoundUp(from, yieldFactor)) {
             // Use ceiling division to ensure recipient gets at least the requested amount
             sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
         } else {
@@ -282,16 +291,84 @@ contract USPDToken is
     // --- Round-up Settings ---
 
     /**
-     * @notice Enables or disables round-up for the caller's transfers.
+     * @notice Sets the user's round-up preference.
+     * @param preference The user's preferred round-up behavior:
+     *                  - SYSTEM_DEFAULT: Follow the system-wide default based on yield factor
+     *                  - ALWAYS_ROUND_UP: Always round up regardless of yield factor
+     *                  - ALWAYS_ROUND_DOWN: Always round down regardless of yield factor
+     */
+    function setRoundUpPreference(RoundUpPreference preference) external {
+        userRoundUpPreference[msg.sender] = preference;
+        emit UserRoundUpPreferenceUpdated(msg.sender, preference);
+    }
+
+    /**
+     * @notice Legacy function for backward compatibility.
      * @param enabled Whether to enable round-up for this user's transfers.
-     * @dev When enabled, if there's a remainder when converting USPD to cUSPD shares,
-     *      an additional share will be transferred to ensure the recipient gets at least
-     *      the requested USPD amount. This is useful for DeFi integrations that require
-     *      exact balance increases.
+     * @dev Maps to new preference system: true = ALWAYS_ROUND_UP, false = ALWAYS_ROUND_DOWN
      */
     function setRoundUpEnabled(bool enabled) external {
-        roundUpEnabled[msg.sender] = enabled;
+        RoundUpPreference preference = enabled ? RoundUpPreference.ALWAYS_ROUND_UP : RoundUpPreference.ALWAYS_ROUND_DOWN;
+        userRoundUpPreference[msg.sender] = preference;
         emit RoundUpSettingUpdated(msg.sender, enabled);
+        emit UserRoundUpPreferenceUpdated(msg.sender, preference);
+    }
+
+    /**
+     * @notice Legacy function for backward compatibility.
+     * @param user The user to check round-up status for.
+     * @return True if user has round-up enabled (either always or via system default)
+     */
+    function roundUpEnabled(address user) external view returns (bool) {
+        uint256 currentYieldFactor = rateContract.getYieldFactor();
+        return _shouldRoundUp(user, currentYieldFactor);
+    }
+
+    /**
+     * @notice Sets the system-wide default round-up behavior.
+     * @param enabled Whether the system should round up by default.
+     * @dev Only callable by admin. This affects users with SYSTEM_DEFAULT preference.
+     */
+    function setSystemDefaultRoundUp(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        systemDefaultRoundUp = enabled;
+        emit SystemRoundUpDefaultUpdated(enabled);
+    }
+
+    /**
+     * @notice Sets the maximum yield factor threshold for automatic round-up.
+     * @param newLimit The new yield factor limit (scaled by FACTOR_PRECISION).
+     * @dev When yield factor exceeds this limit, system default switches to round down
+     *      to prevent excessive overpayment. Only callable by admin.
+     */
+    function setMaxYieldFactorForRoundUp(uint256 newLimit) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newLimit > FACTOR_PRECISION, "USPD: Limit must be greater than 1x");
+        emit MaxYieldFactorForRoundUpUpdated(maxYieldFactorForRoundUp, newLimit);
+        maxYieldFactorForRoundUp = newLimit;
+    }
+
+    /**
+     * @notice Internal function to determine if round-up should be applied for a user.
+     * @param user The user address to check.
+     * @param yieldFactor The current yield factor.
+     * @return True if round-up should be applied.
+     */
+    function _shouldRoundUp(address user, uint256 yieldFactor) internal view returns (bool) {
+        RoundUpPreference preference = userRoundUpPreference[user];
+        
+        if (preference == RoundUpPreference.ALWAYS_ROUND_UP) {
+            return true;
+        } else if (preference == RoundUpPreference.ALWAYS_ROUND_DOWN) {
+            return false;
+        } else {
+            // SYSTEM_DEFAULT: Use system logic based on yield factor
+            if (yieldFactor > maxYieldFactorForRoundUp) {
+                // Yield factor too high, round down to prevent excessive overpayment
+                return false;
+            } else {
+                // Use system default
+                return systemDefaultRoundUp;
+            }
+        }
     }
 
 

@@ -1277,10 +1277,10 @@ contract USPDTokenTest is Test {
     function testSetRoundUpEnabled_Success() public {
         address user = makeAddr("user");
         
-        // Initially disabled
-        assertFalse(uspdToken.roundUpEnabled(user), "Round-up should be disabled by default");
+        // Initially follows system default (which is true by default)
+        assertTrue(uspdToken.roundUpEnabled(user), "Round-up should follow system default (enabled) initially");
         
-        // Enable round-up
+        // Enable round-up explicitly
         vm.expectEmit(true, false, false, true, address(uspdToken));
         emit USPD.RoundUpSettingUpdated(user, true);
         vm.prank(user);
@@ -1288,13 +1288,150 @@ contract USPDTokenTest is Test {
         
         assertTrue(uspdToken.roundUpEnabled(user), "Round-up should be enabled");
         
-        // Disable round-up
+        // Disable round-up explicitly
         vm.expectEmit(true, false, false, true, address(uspdToken));
         emit USPD.RoundUpSettingUpdated(user, false);
         vm.prank(user);
         uspdToken.setRoundUpEnabled(false);
         
         assertFalse(uspdToken.roundUpEnabled(user), "Round-up should be disabled");
+    }
+
+    function testSetRoundUpPreference_Success() public {
+        address user = makeAddr("user");
+        
+        // Test setting to ALWAYS_ROUND_UP
+        vm.expectEmit(true, false, false, true, address(uspdToken));
+        emit USPD.UserRoundUpPreferenceUpdated(user, USPD.RoundUpPreference.ALWAYS_ROUND_UP);
+        vm.prank(user);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_UP);
+        
+        assertTrue(uspdToken.roundUpEnabled(user), "Should always round up");
+        
+        // Test setting to ALWAYS_ROUND_DOWN
+        vm.expectEmit(true, false, false, true, address(uspdToken));
+        emit USPD.UserRoundUpPreferenceUpdated(user, USPD.RoundUpPreference.ALWAYS_ROUND_DOWN);
+        vm.prank(user);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_DOWN);
+        
+        assertFalse(uspdToken.roundUpEnabled(user), "Should always round down");
+        
+        // Test setting to SYSTEM_DEFAULT
+        vm.expectEmit(true, false, false, true, address(uspdToken));
+        emit USPD.UserRoundUpPreferenceUpdated(user, USPD.RoundUpPreference.SYSTEM_DEFAULT);
+        vm.prank(user);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.SYSTEM_DEFAULT);
+        
+        assertTrue(uspdToken.roundUpEnabled(user), "Should follow system default (enabled)");
+    }
+
+    function testSystemDefaultRoundUp_Success() public {
+        address user = makeAddr("user");
+        
+        // User follows system default
+        vm.prank(user);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.SYSTEM_DEFAULT);
+        
+        // Initially system default is true
+        assertTrue(uspdToken.roundUpEnabled(user), "Should follow system default (enabled)");
+        
+        // Admin disables system default
+        vm.expectEmit(false, false, false, true, address(uspdToken));
+        emit USPD.SystemRoundUpDefaultUpdated(false);
+        uspdToken.setSystemDefaultRoundUp(false);
+        
+        assertFalse(uspdToken.roundUpEnabled(user), "Should follow system default (disabled)");
+        
+        // Admin enables system default again
+        vm.expectEmit(false, false, false, true, address(uspdToken));
+        emit USPD.SystemRoundUpDefaultUpdated(true);
+        uspdToken.setSystemDefaultRoundUp(true);
+        
+        assertTrue(uspdToken.roundUpEnabled(user), "Should follow system default (enabled)");
+    }
+
+    function testMaxYieldFactorForRoundUp_Success() public {
+        address user = makeAddr("user");
+        
+        // User follows system default
+        vm.prank(user);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.SYSTEM_DEFAULT);
+        
+        // Initially yield factor is 1e18, system default is true
+        assertTrue(uspdToken.roundUpEnabled(user), "Should round up with normal yield factor");
+        
+        // Set a very high yield factor that exceeds the limit
+        uint256 veryHighYieldFactor = uspdToken.maxYieldFactorForRoundUp() + 1;
+        uint256 rateSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.pooledEthPerSharePrecision.selector)
+            .find();
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(veryHighYieldFactor));
+        
+        // Now should round down due to high yield factor
+        assertFalse(uspdToken.roundUpEnabled(user), "Should round down with very high yield factor");
+        
+        // Admin increases the limit
+        uint256 newLimit = veryHighYieldFactor + uspdToken.FACTOR_PRECISION();
+        vm.expectEmit(false, false, false, true, address(uspdToken));
+        emit USPD.MaxYieldFactorForRoundUpUpdated(uspdToken.maxYieldFactorForRoundUp(), newLimit);
+        uspdToken.setMaxYieldFactorForRoundUp(newLimit);
+        
+        // Now should round up again
+        assertTrue(uspdToken.roundUpEnabled(user), "Should round up after increasing limit");
+        
+        // Cleanup
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(mockStETH.REBASE_PRECISION()));
+    }
+
+    function testMaxYieldFactorForRoundUp_Revert_InvalidLimit() public {
+        vm.expectRevert("USPD: Limit must be greater than 1x");
+        uspdToken.setMaxYieldFactorForRoundUp(uspdToken.FACTOR_PRECISION()); // Exactly 1x
+        
+        vm.expectRevert("USPD: Limit must be greater than 1x");
+        uspdToken.setMaxYieldFactorForRoundUp(uspdToken.FACTOR_PRECISION() - 1); // Less than 1x
+    }
+
+    function testSystemRoundUpSettings_Revert_NotAdmin() public {
+        address nonAdmin = makeAddr("nonAdmin");
+        
+        vm.prank(nonAdmin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        uspdToken.setSystemDefaultRoundUp(false);
+        
+        vm.prank(nonAdmin);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        uspdToken.setMaxYieldFactorForRoundUp(3 * uspdToken.FACTOR_PRECISION());
+    }
+
+    function testUserPreferenceOverridesSystem() public {
+        address user = makeAddr("user");
+        
+        // Set very high yield factor that would normally disable round-up
+        uint256 veryHighYieldFactor = uspdToken.maxYieldFactorForRoundUp() + 1;
+        uint256 rateSlot = stdstore
+            .target(address(mockStETH))
+            .sig(mockStETH.pooledEthPerSharePrecision.selector)
+            .find();
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(veryHighYieldFactor));
+        
+        // User with SYSTEM_DEFAULT should round down
+        vm.prank(user);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.SYSTEM_DEFAULT);
+        assertFalse(uspdToken.roundUpEnabled(user), "System default should round down with high yield factor");
+        
+        // User with ALWAYS_ROUND_UP should still round up
+        vm.prank(user);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_UP);
+        assertTrue(uspdToken.roundUpEnabled(user), "User preference should override system default");
+        
+        // User with ALWAYS_ROUND_DOWN should round down
+        vm.prank(user);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_DOWN);
+        assertFalse(uspdToken.roundUpEnabled(user), "User should always round down");
+        
+        // Cleanup
+        vm.store(address(mockStETH), bytes32(rateSlot), bytes32(mockStETH.REBASE_PRECISION()));
     }
 
 
@@ -1310,9 +1447,9 @@ contract USPDTokenTest is Test {
         vm.prank(sender);
         uspdToken.mint{value: mintAmountEth}(sender, priceQuery);
 
-        // Enable round-up for sender
+        // Enable round-up for sender (always round up)
         vm.prank(sender);
-        uspdToken.setRoundUpEnabled(true);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_UP);
 
         // Set a higher yield factor to create more significant remainders
         // Simulate real-world yield where stETH has grown significantly
@@ -1351,8 +1488,12 @@ contract USPDTokenTest is Test {
         vm.prank(sender);
         uspdToken.mint{value: mintAmountEth}(sender, priceQuery);
 
-        // Round-up is disabled by default
-        assertFalse(uspdToken.roundUpEnabled(sender), "Round-up should be disabled by default");
+        // Round-up follows system default (enabled by default)
+        assertTrue(uspdToken.roundUpEnabled(sender), "Round-up should follow system default (enabled)");
+        
+        // Explicitly disable round-up for this test
+        vm.prank(sender);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_DOWN);
 
         // Set an odd yield factor that will create remainders for most transfer amounts
         _setOddYieldFactor();
@@ -1395,9 +1536,9 @@ contract USPDTokenTest is Test {
         vm.prank(owner);
         uspdToken.mint{value: mintAmountEth}(owner, priceQuery);
 
-        // Enable round-up for owner
+        // Enable round-up for owner (always round up)
         vm.prank(owner);
-        uspdToken.setRoundUpEnabled(true);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_UP);
 
         // Set an odd yield factor that will create remainders
         _setOddYieldFactor();
@@ -1438,8 +1579,12 @@ contract USPDTokenTest is Test {
         vm.prank(owner);
         uspdToken.mint{value: mintAmountEth}(owner, priceQuery);
 
-        // Round-up is disabled by default
-        assertFalse(uspdToken.roundUpEnabled(owner), "Round-up should be disabled by default");
+        // Round-up follows system default (enabled by default)
+        assertTrue(uspdToken.roundUpEnabled(owner), "Round-up should follow system default (enabled)");
+        
+        // Explicitly disable round-up for this test
+        vm.prank(owner);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_DOWN);
 
         // Set an odd yield factor that will create remainders
         _setOddYieldFactor();
@@ -1474,9 +1619,9 @@ contract USPDTokenTest is Test {
         vm.prank(sender);
         uspdToken.mint{value: mintAmountEth}(sender, priceQuery);
 
-        // Enable round-up for sender
+        // Enable round-up for sender (always round up)
         vm.prank(sender);
-        uspdToken.setRoundUpEnabled(true);
+        uspdToken.setRoundUpPreference(USPD.RoundUpPreference.ALWAYS_ROUND_UP);
 
         // Create a transfer amount that divides exactly (no remainder)
         uint256 yieldFactor = rateContract.getYieldFactor();
