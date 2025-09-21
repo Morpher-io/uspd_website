@@ -184,7 +184,7 @@ contract USPDToken is
         }
         
         uint256 sharesToTransfer;
-        if (_shouldRoundUp(msg.sender, yieldFactor)) {
+        if (_shouldRoundUp(msg.sender)) {
             // Use ceiling division to ensure recipient gets at least the requested amount
             sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
         } else {
@@ -224,7 +224,7 @@ contract USPDToken is
         if (yieldFactor == 0) revert InvalidYieldFactor();
         
         uint256 sharesToTransfer;
-        if (_shouldRoundUp(from, yieldFactor)) {
+        if (_shouldRoundUp(from)) {
             // Use ceiling division to ensure recipient gets at least the requested amount
             sharesToTransfer = (uspdAmount * FACTOR_PRECISION + yieldFactor - 1) / yieldFactor;
         } else {
@@ -305,8 +305,7 @@ contract USPDToken is
      * @return True if user has round-up enabled (either always or via system default)
      */
     function roundUpEnabled(address user) external view returns (bool) {
-        uint256 currentYieldFactor = rateContract.getYieldFactor();
-        return _shouldRoundUp(user, currentYieldFactor);
+        return _shouldRoundUp(user);
     }
 
     /**
@@ -323,10 +322,9 @@ contract USPDToken is
     /**
      * @notice Internal function to determine if round-up should be applied for a user.
      * @param user The user address to check.
-     * @param yieldFactor The current yield factor.
      * @return True if round-up should be applied.
      */
-    function _shouldRoundUp(address user, uint256 yieldFactor) internal view returns (bool) {
+    function _shouldRoundUp(address user) internal view returns (bool) {
         RoundUpPreference preference = userRoundUpPreference[user];
         
         if (preference == RoundUpPreference.ALWAYS_ROUND_UP) {
