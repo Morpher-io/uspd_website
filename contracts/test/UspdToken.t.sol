@@ -1274,28 +1274,6 @@ contract USPDTokenTest is Test {
 
     // --- Round-up Feature Tests ---
 
-    function testSetRoundUpEnabled_Success() public {
-        address user = makeAddr("user");
-        
-        // Initially follows system default (which is true by default)
-        assertTrue(uspdToken.roundUpEnabled(user), "Round-up should follow system default (enabled) initially");
-        
-        // Enable round-up explicitly
-        vm.expectEmit(true, false, false, true, address(uspdToken));
-        emit USPD.RoundUpSettingUpdated(user, true);
-        vm.prank(user);
-        uspdToken.setRoundUpEnabled(true);
-        
-        assertTrue(uspdToken.roundUpEnabled(user), "Round-up should be enabled");
-        
-        // Disable round-up explicitly
-        vm.expectEmit(true, false, false, true, address(uspdToken));
-        emit USPD.RoundUpSettingUpdated(user, false);
-        vm.prank(user);
-        uspdToken.setRoundUpEnabled(false);
-        
-        assertFalse(uspdToken.roundUpEnabled(user), "Round-up should be disabled");
-    }
 
     function testSetRoundUpPreference_Success() public {
         address user = makeAddr("user");

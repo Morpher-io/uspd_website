@@ -60,7 +60,6 @@ contract USPDToken is
     event RateContractUpdated(address indexed oldRateContract, address indexed newRateContract);
     event CUSPDAddressUpdated(address indexed oldCUSPDAddress, address indexed newCUSPDAddress);
     event BridgeEscrowAddressUpdated(address indexed oldAddress, address indexed newAddress);
-    event RoundUpSettingUpdated(address indexed user, bool enabled);
     event UserRoundUpPreferenceUpdated(address indexed user, RoundUpPreference preference);
     event SystemRoundUpDefaultUpdated(bool enabled);
     event MaxYieldFactorForRoundUpUpdated(uint256 oldLimit, uint256 newLimit);
@@ -303,19 +302,7 @@ contract USPDToken is
     }
 
     /**
-     * @notice Legacy function for backward compatibility.
-     * @param enabled Whether to enable round-up for this user's transfers.
-     * @dev Maps to new preference system: true = ALWAYS_ROUND_UP, false = ALWAYS_ROUND_DOWN
-     */
-    function setRoundUpEnabled(bool enabled) external {
-        RoundUpPreference preference = enabled ? RoundUpPreference.ALWAYS_ROUND_UP : RoundUpPreference.ALWAYS_ROUND_DOWN;
-        userRoundUpPreference[msg.sender] = preference;
-        emit RoundUpSettingUpdated(msg.sender, enabled);
-        emit UserRoundUpPreferenceUpdated(msg.sender, preference);
-    }
-
-    /**
-     * @notice Legacy function for backward compatibility.
+     * @notice Checks if round-up is enabled for a user.
      * @param user The user to check round-up status for.
      * @return True if user has round-up enabled (either always or via system default)
      */
