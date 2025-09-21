@@ -47,7 +47,6 @@ contract USPDToken is
     mapping(address => RoundUpPreference) public userRoundUpPreference; // Per-user round-up preference
     
     // System-wide default settings
-    uint256 public maxYieldFactorForRoundUp = 2 * FACTOR_PRECISION; // 2x yield factor limit
     bool public systemDefaultRoundUp = true; // Default system behavior
 
     // --- Roles ---
@@ -62,7 +61,6 @@ contract USPDToken is
     event BridgeEscrowAddressUpdated(address indexed oldAddress, address indexed newAddress);
     event UserRoundUpPreferenceUpdated(address indexed user, RoundUpPreference preference);
     event SystemRoundUpDefaultUpdated(bool enabled);
-    event MaxYieldFactorForRoundUpUpdated(uint256 oldLimit, uint256 newLimit);
     event LockForBridgingInitiated(
         // originalUser removed
         address indexed tokenAdapter,
@@ -321,17 +319,6 @@ contract USPDToken is
         emit SystemRoundUpDefaultUpdated(enabled);
     }
 
-    /**
-     * @notice Sets the maximum yield factor threshold for automatic round-up.
-     * @param newLimit The new yield factor limit (scaled by FACTOR_PRECISION).
-     * @dev When yield factor exceeds this limit, system default switches to round down
-     *      to prevent excessive overpayment. Only callable by admin.
-     */
-    function setMaxYieldFactorForRoundUp(uint256 newLimit) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newLimit > FACTOR_PRECISION, "USPD: Limit must be greater than 1x");
-        emit MaxYieldFactorForRoundUpUpdated(maxYieldFactorForRoundUp, newLimit);
-        maxYieldFactorForRoundUp = newLimit;
-    }
 
     /**
      * @notice Internal function to determine if round-up should be applied for a user.
@@ -347,14 +334,8 @@ contract USPDToken is
         } else if (preference == RoundUpPreference.ALWAYS_ROUND_DOWN) {
             return false;
         } else {
-            // SYSTEM_DEFAULT: Use system logic based on yield factor
-            if (yieldFactor > maxYieldFactorForRoundUp) {
-                // Yield factor too high, round down to prevent excessive overpayment
-                return false;
-            } else {
-                // Use system default
-                return systemDefaultRoundUp;
-            }
+            // SYSTEM_DEFAULT: Use system default
+            return systemDefaultRoundUp;
         }
     }
 
