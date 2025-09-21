@@ -1316,7 +1316,7 @@ contract USPDTokenTest is Test {
 
         // Set a higher yield factor to create more significant remainders
         // Simulate real-world yield where stETH has grown significantly
-        uint256 highYieldFactor = uspdToken.FACTOR_PRECISION() * 12 / 10 + 12345; // 1.2x + odd number
+        uint256 highYieldFactor = 10000290575982000136; //uspdToken.FACTOR_PRECISION() + 1234567; // 1.2x + odd number
         uint256 rateSlot = stdstore
             .target(address(mockStETH))
             .sig(mockStETH.pooledEthPerSharePrecision.selector)
@@ -1324,7 +1324,7 @@ contract USPDTokenTest is Test {
         vm.store(address(mockStETH), bytes32(rateSlot), bytes32(highYieldFactor));
         
         // Use a transfer amount that will create a meaningful remainder
-        uint256 transferAmount = uspdToken.FACTOR_PRECISION() / 3; // 0.333... ETH worth
+        uint256 transferAmount = uspdToken.FACTOR_PRECISION(); // 0.333... ETH worth
         
         uint256 initialReceiverBalance = uspdToken.balanceOf(receiver);
 
@@ -1336,6 +1336,7 @@ contract USPDTokenTest is Test {
         uint256 actualTransferred = finalReceiverBalance - initialReceiverBalance;
         
         assertTrue(actualTransferred >= transferAmount, "Receiver should get at least the requested amount");
+        assertTrue(actualTransferred > transferAmount, "Receiver should get more than the requested amount");
     }
 
     function testTransfer_WithoutRoundUp() public {
