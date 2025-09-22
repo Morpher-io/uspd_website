@@ -507,9 +507,10 @@ contract USPDTokenTest is Test {
         uspdToken.mint{value: mintAmountEth}(sender, priceQuery); // Mint some tokens
 
         _setHighYieldFactor(); // Set a very high yield factor
+        uspdToken.setSystemDefaultRoundUp(false);
 
-        vm.prank(sender);
         vm.expectRevert(USPD.AmountTooSmall.selector);
+        vm.prank(sender);
         uspdToken.transfer(receiver, 1); // 1 wei of USPD, should result in 0 shares
 
         // Cleanup
@@ -631,9 +632,10 @@ contract USPDTokenTest is Test {
         uspdToken.approve(spender, 10 * 1e18); // Approve some amount
 
         _setHighYieldFactor(); // Set a very high yield factor
+        uspdToken.setSystemDefaultRoundUp(false);
 
-        vm.prank(spender);
         vm.expectRevert(USPD.AmountTooSmall.selector);
+        vm.prank(spender);
         uspdToken.transferFrom(owner, receiver, 1); // 1 wei of USPD
 
         // Cleanup
@@ -1332,8 +1334,8 @@ contract USPDTokenTest is Test {
     function testSystemRoundUpSettings_Revert_NotAdmin() public {
         address nonAdmin = makeAddr("nonAdmin");
         
-        vm.prank(nonAdmin);
         vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, nonAdmin, uspdToken.DEFAULT_ADMIN_ROLE()));
+        vm.prank(nonAdmin);
         uspdToken.setSystemDefaultRoundUp(false);
     }
 

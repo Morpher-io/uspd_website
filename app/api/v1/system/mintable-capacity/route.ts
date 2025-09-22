@@ -26,7 +26,7 @@ const cache = new Map<string, CacheEntry>();
 function getChainConfig(chainId: number) {
   switch (chainId) {
     case 1:
-      return { chain: mainnet, rpcUrl: process.env.MAINNET_RPC_URL };
+      return { chain: mainnet, rpcUrl: (process.env.RPC_URL || "https://mainnet.infura.io/v3/f33699f28a4b4afe8a75dcaf101a50c8") };
     case 11155111:
       return { chain: sepolia, rpcUrl: process.env.SEPOLIA_RPC_URL };
     default:
@@ -55,7 +55,7 @@ async function calculateMintableCapacity(chainId: number): Promise<{ totalMintab
   const stabilizerNftAddress = addresses.stabilizer as Address;
 
   // Get current ETH/USD price
-  const priceResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/v1/price/eth-usd`);
+  const priceResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://uspd.io'}/api/v1/price/eth-usd`);
   if (!priceResponse.ok) {
     throw new Error('Failed to fetch ETH price');
   }
