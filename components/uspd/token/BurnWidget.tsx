@@ -322,8 +322,6 @@ export function BurnWidget({
                 </Button>
             )}
 
-            )}
-
             {showAddToWallet && (
                 <Button
                     variant="outline"
