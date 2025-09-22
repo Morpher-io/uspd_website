@@ -30,7 +30,7 @@ function getChainConfig(chainId: number) {
     case 11155111:
       return { chain: sepolia, rpcUrl: process.env.SEPOLIA_RPC_URL };
     default:
-      return { chain: sepolia, rpcUrl: process.env.SEPOLIA_RPC_URL };
+      throw new Error(`Unsupported liquidity chainId: ${chainId}`);
   }
 }
 
