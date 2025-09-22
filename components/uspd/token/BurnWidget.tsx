@@ -7,7 +7,7 @@ import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi
 import { parseEther, formatUnits, Address, Abi } from 'viem' // Add Abi
 import { IPriceOracle } from '@/types/contracts'
 import { TokenDisplay } from './TokenDisplay'
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, Wallet } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 // Import necessary ABIs (assuming paths are correct)
@@ -262,8 +262,6 @@ export function BurnWidget({
                 balance={isConnected ? (uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0') : '--'}
                 onMax={isConnected ? handleMaxUspd : undefined}
                 readOnly={isLocked}
-                onAddToWallet={onAddToWallet}
-                showAddToWallet={showAddToWallet}
             />
              {sharesToBurn > 0 && (
                 <div className="text-xs text-muted-foreground text-right -mt-2">
@@ -321,6 +319,19 @@ export function BurnWidget({
                     }
                 >
                     {isLoading ? 'Burning...' : 'Burn USPD'}
+                </Button>
+            )}
+
+            )}
+
+            {showAddToWallet && (
+                <Button
+                    variant="outline"
+                    className="w-full flex items-center gap-2"
+                    onClick={onAddToWallet}
+                >
+                    <Wallet className="h-4 w-4" />
+                    Add USPD to Wallet
                 </Button>
             )}
 

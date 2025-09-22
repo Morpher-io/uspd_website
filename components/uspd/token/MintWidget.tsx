@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi'
 import { parseEther, formatUnits, Abi } from 'viem'
 import { TokenDisplay } from './TokenDisplay'
-import { ArrowDown } from 'lucide-react'
+import { ArrowDown, Wallet } from 'lucide-react'
 import useDebounce from '@/components/utils/debounce'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
@@ -17,6 +17,11 @@ interface PriceData {
     dataTimestamp: number;
     assetPair: `0x${string}`;
     signature: `0x${string}`;
+}
+
+interface MintableCapacity {
+    totalMintableEth: string;
+    mintableUspdValue: string;
 }
 
 interface MintWidgetProps {
@@ -37,6 +42,8 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
     const [isLoading, setIsLoading] = useState(false)
     const [priceData, setPriceData] = useState<PriceData | null>(null)
     const [isLoadingPrice, setIsLoadingPrice] = useState(false)
+    const [mintableCapacity, setMintableCapacity] = useState<MintableCapacity | null>(null);
+    const [isLoadingMintableCapacity, setIsLoadingMintableCapacity] = useState(true);
 
     const debouncedEthAmount = useDebounce(ethAmount, 500)
 
@@ -57,6 +64,30 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
         args: [address as `0x${string}`],
         query: { enabled: !!address }
     })
+
+    // Fetch mintable capacity from API
+    useEffect(() => {
+        const fetchMintableCapacity = async () => {
+            try {
+                // Do not set loading to true on refetches
+                if (!mintableCapacity) setIsLoadingMintableCapacity(true);
+                const response = await fetch('/api/v1/system/mintable-capacity');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data: MintableCapacity = await response.json();
+                setMintableCapacity(data);
+            } catch (err) {
+                console.error('Failed to fetch mintable capacity:', err);
+                // Don't show an error to the user, just log it. The mint button will be disabled if capacity is unknown.
+            } finally {
+                setIsLoadingMintableCapacity(false);
+            }
+        };
+
+        fetchMintableCapacity();
+        const interval = setInterval(fetchMintableCapacity, 30000); // Refresh every 30 seconds
+        return () => clearInterval(interval);
+    }, [mintableCapacity]);
+
 
     // Fetch price data from API
     const fetchPriceData = async () => {
@@ -101,14 +132,20 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
 
     const handleMaxEth = () => {
         if (ethBalance && isConnected) {
-            const maxEth = parseFloat(ethBalance.formatted) - 0.01
+            // Leave a small amount for gas fees
+            const userMax = parseFloat(ethBalance.formatted) - 0.01;
+            // Get system max mintable in ETH
+            const systemMaxEth = mintableCapacity ? parseFloat(formatUnits(BigInt(mintableCapacity.totalMintableEth), 18)) : Infinity;
+            
+            const maxEth = Math.min(userMax, systemMaxEth);
+
             if (maxEth > 0) {
-                setEthAmount(maxEth.toFixed(6))
+                setEthAmount(maxEth.toFixed(6));
             } else {
-                setEthAmount('0')
+                setEthAmount('0');
             }
         }
-    }
+    };
 
     const handleMint = async () => {
         // ... (Keep the existing handleMint logic) ...
@@ -193,8 +230,6 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 setAmount={setUspdAmount} // Should not be settable here
                 balance={isConnected ? (uspdBalance ? formatUnits(uspdBalance as bigint, 18) : '0') : '--'}
                 readOnly={true}
-                onAddToWallet={onAddToWallet}
-                showAddToWallet={showAddToWallet}
             />
 
             <Alert className="mt-4">
@@ -204,11 +239,18 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 </AlertDescription>
             </Alert>
 
-            {priceData && (
-                <div className="text-xs text-muted-foreground text-right">
-                    Rate: 1 ETH ≈ {(parseFloat(priceData.price) / (10 ** priceData.decimals)).toFixed(4)} USPD 
-                </div>
-            )}
+            <div className="space-y-2 text-xs text-muted-foreground text-right">
+                {mintableCapacity && (
+                    <div>
+                        System Capacity: {parseFloat(formatUnits(BigInt(mintableCapacity.totalMintableEth), 18)).toFixed(4)} ETH
+                    </div>
+                )}
+                {priceData && (
+                    <div>
+                        Rate: 1 ETH ≈ {(parseFloat(priceData.price) / (10 ** priceData.decimals)).toFixed(4)} USPD
+                    </div>
+                )}
+            </div>
 
             {!isConnected ? (
                 <ConnectButton.Custom>
@@ -226,12 +268,27 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                         isLocked ||
                         isLoading ||
                         isLoadingPrice ||
+                        isLoadingMintableCapacity ||
                         !ethAmount ||
                         parseFloat(ethAmount) <= 0 ||
-                        (ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted))
+                        (ethBalance && parseFloat(ethAmount) > parseFloat(ethBalance.formatted)) ||
+                        (!!mintableCapacity && ethAmount.length > 0 && parseEther(ethAmount) > BigInt(mintableCapacity.totalMintableEth))
                     }
                 >
                     {isLoading ? 'Minting...' : 'Mint USPD'}
+                </Button>
+            )}
+
+            )}
+
+            {showAddToWallet && (
+                <Button
+                    variant="outline"
+                    className="w-full flex items-center gap-2"
+                    onClick={onAddToWallet}
+                >
+                    <Wallet className="h-4 w-4" />
+                    Add USPD to Wallet
                 </Button>
             )}
 

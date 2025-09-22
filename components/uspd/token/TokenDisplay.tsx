@@ -1,7 +1,6 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Wallet } from "lucide-react"
 
 interface TokenDisplayProps {
   label: string
@@ -11,8 +10,6 @@ interface TokenDisplayProps {
   balance: string
   onMax?: () => void
   readOnly?: boolean
-  onAddToWallet?: () => void
-  showAddToWallet?: boolean
 }
 
 export function TokenDisplay({
@@ -22,9 +19,7 @@ export function TokenDisplay({
   setAmount,
   balance,
   onMax,
-  readOnly = false,
-  onAddToWallet,
-  showAddToWallet = false
+  readOnly = false
 }: TokenDisplayProps) {
   const formattedBalance = balance === '--' ? '--' : parseFloat(balance).toFixed(4) // Handle disconnected state
   
@@ -36,17 +31,6 @@ export function TokenDisplay({
           <div className="text-xs text-muted-foreground">
             Balance: {formattedBalance}
           </div>
-          {showAddToWallet && onAddToWallet && symbol === 'USPD' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onAddToWallet}
-              className="h-6 px-2 text-xs"
-              title="Add USPD to Wallet"
-            >
-              <Wallet className="h-3 w-3" />
-            </Button>
-          )}
         </div>
       </div>
       
