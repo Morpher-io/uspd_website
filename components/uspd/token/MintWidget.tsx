@@ -69,8 +69,6 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
     useEffect(() => {
         const fetchMintableCapacity = async () => {
             try {
-                // Do not set loading to true on refetches
-                if (!mintableCapacity) setIsLoadingMintableCapacity(true);
                 const response = await fetch('/api/v1/system/mintable-capacity');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data: MintableCapacity = await response.json();
@@ -83,10 +81,11 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
             }
         };
 
+        setIsLoadingMintableCapacity(true);
         fetchMintableCapacity();
         const interval = setInterval(fetchMintableCapacity, 30000); // Refresh every 30 seconds
         return () => clearInterval(interval);
-    }, [mintableCapacity]);
+    }, []);
 
 
     // Fetch price data from API
