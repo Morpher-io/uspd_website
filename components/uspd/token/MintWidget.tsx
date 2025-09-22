@@ -279,8 +279,6 @@ export function MintWidget({ tokenAddress, tokenAbi, cuspdTokenAddress, cuspdTok
                 </Button>
             )}
 
-            )}
-
             {showAddToWallet && (
                 <Button
                     variant="outline"
