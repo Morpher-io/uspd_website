@@ -1,13 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useReadContract } from 'wagmi'
-import { formatUnits, Address } from 'viem'
-import { ContractLoader } from '@/components/uspd/common/ContractLoader'
+import { useState, useEffect, useCallback } from 'react'
+import { formatUnits } from 'viem'
 import { Skeleton } from "@/components/ui/skeleton"
-
-import reporterAbiJson from '@/contracts/out/OvercollateralizationReporter.sol/OvercollateralizationReporter.json'
-import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import Link from 'next/link'
 
 // The primary chain for liquidity and reporting, defaulting to Sepolia.
@@ -16,15 +11,9 @@ const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11
 // Solidity's type(uint256).max
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
 
-interface PriceApiResponse {
-    price: string;
-    decimals: number;
-    dataTimestamp: number;
-}
-
-interface NavbarStatsInnerProps {
-    reporterAddress: Address;
-    uspdTokenAddress: Address;
+interface SystemStats {
+    systemRatio?: bigint;
+    uspdTotalSupply?: bigint;
 }
 
 function getCollateralizationColor(ratio: bigint | undefined): string {
@@ -52,74 +41,33 @@ function formatBigIntToCompact(value: bigint | undefined | null, decimals: numbe
     return num.toFixed(2);
 }
 
-function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInnerProps) {
-    const [priceData, setPriceData] = useState<PriceApiResponse | null>(null);
-    const [isInitialLoadingPrice, setIsInitialLoadingPrice] = useState(true);
-    const fetchPriceData = useCallback(async (isInitialLoad = false) => {
-        if (isInitialLoad) {
-            setIsInitialLoadingPrice(true);
-        }
+export default function NavbarStats() {
+    const [stats, setStats] = useState<SystemStats>({});
+    const [isLoading, setIsLoading] = useState(true);
 
+    const fetchStats = useCallback(async () => {
         try {
-            const response = await fetch('/api/v1/price/eth-usd');
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const response = await fetch(`/api/v1/system/stats?chainId=${liquidityChainId}`);
+            if (!response.ok) throw new Error('Failed to fetch system stats');
             const data = await response.json();
-            setPriceData(data);
-        } catch (err) {
-            console.error('Failed to fetch price data for navbar stats:', err);
+            setStats({
+                systemRatio: BigInt(data.systemRatio),
+                uspdTotalSupply: BigInt(data.uspdTotalSupply),
+            });
+        } catch (error) {
+            console.error("Failed to fetch navbar stats:", error);
         } finally {
-            if (isInitialLoad) {
-                setIsInitialLoadingPrice(false);
-            }
+            setIsLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchPriceData(true); // Initial load
-        const interval = setInterval(() => fetchPriceData(false), 30000); // Background refresh every 30 seconds
+        fetchStats();
+        const interval = setInterval(fetchStats, 30000);
         return () => clearInterval(interval);
-    }, [fetchPriceData]);
+    }, [fetchStats]);
 
-    const priceResponseForContract = useMemo(() => {
-        if (!priceData) return undefined;
-        return {
-            price: BigInt(priceData.price),
-            decimals: Number(priceData.decimals),
-            timestamp: BigInt(priceData.dataTimestamp),
-        };
-    }, [priceData]);
-
-    const {
-        data: systemRatioData,
-        isLoading: isInitialLoadingRatio,
-        refetch: refetchRatio
-    } = useReadContract({
-        address: reporterAddress,
-        abi: reporterAbiJson.abi,
-        functionName: 'getSystemCollateralizationRatio',
-        args: priceResponseForContract ? [priceResponseForContract] : undefined,
-        chainId: liquidityChainId,
-        query: {
-            enabled: !!reporterAddress && !!priceResponseForContract,
-        }
-    });
-
-    useEffect(() => {
-        if (priceResponseForContract) {
-            refetchRatio();
-        }
-    }, [priceResponseForContract, refetchRatio]);
-
-    const { data: uspdTotalSupplyData, isLoading: isInitialLoadingUspdTotalSupply } = useReadContract({
-        address: uspdTokenAddress,
-        abi: uspdTokenAbiJson.abi,
-        functionName: 'totalSupply',
-        chainId: liquidityChainId,
-        query: { enabled: !!uspdTokenAddress }
-    });
-
-    const systemRatio = systemRatioData as bigint | undefined;
-    const uspdTotalSupply = uspdTotalSupplyData as bigint | undefined;
+    const { systemRatio, uspdTotalSupply } = stats;
 
     let displaySystemRatio: string;
     if (systemRatio === undefined) {
@@ -130,57 +78,16 @@ function NavbarStatsInner({ reporterAddress, uspdTokenAddress }: NavbarStatsInne
         displaySystemRatio = `${(Number(systemRatio) / 100).toFixed(2)}%`;
     }
 
-    const isInitialLoading = isInitialLoadingRatio || isInitialLoadingPrice || isInitialLoadingUspdTotalSupply;
-
     return (
-
-
         <Link href="/health" className="hidden md:flex items-center gap-4 border-r border-border pr-4 text-sm">
             <div className="flex flex-col items-start">
                 <span className="text-xs text-muted-foreground">Collateralization</span>
-                {isInitialLoading ? <Skeleton className="h-5 w-20" /> : <span className={`font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
+                {isLoading ? <Skeleton className="h-5 w-20" /> : <span className={`font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
             </div>
             <div className="flex flex-col items-start">
                 <span className="text-xs text-muted-foreground">USPD Supply</span>
-                {isInitialLoading ? <Skeleton className="h-5 w-20" /> : <span className="font-semibold">{formatBigIntToCompact(uspdTotalSupply, 18)}</span>}
+                {isLoading ? <Skeleton className="h-5 w-20" /> : <span className="font-semibold">{formatBigIntToCompact(uspdTotalSupply, 18)}</span>}
             </div>
         </Link>
-    );
-}
-
-export default function NavbarStats() {
-    const contractKeysToLoad = ["reporter", "uspdToken"];
-
-    return (
-        <ContractLoader contractKeys={contractKeysToLoad} chainId={liquidityChainId}>
-            {(loadedAddresses) => {
-                const reporterAddress = loadedAddresses["reporter"];
-                const uspdTokenAddress = loadedAddresses["uspdToken"];
-
-                if (!reporterAddress || !uspdTokenAddress) {
-                    // Render skeletons if addresses are not yet loaded
-                    return (
-
-                        <div className="hidden md:flex items-center gap-4 border-r border-border pr-4 text-sm">
-                            <div className="flex flex-col items-start">
-                                <span className="text-xs text-muted-foreground">Collateralization</span>
-                                <Skeleton className="h-5 w-20" />
-                            </div>
-                            <div className="flex flex-col items-start">
-                                <span className="text-xs text-muted-foreground">USPD Supply</span>
-                                <Skeleton className="h-5 w-20" />
-                            </div>
-                        </div>
-                    );
-                }
-
-                return (
-                    <NavbarStatsInner
-                        reporterAddress={reporterAddress}
-                        uspdTokenAddress={uspdTokenAddress}
-                    />
-                );
-            }}
-        </ContractLoader>
     );
 }

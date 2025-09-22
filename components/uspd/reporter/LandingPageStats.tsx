@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useReadContract } from 'wagmi'
+import { useState, useEffect, useCallback } from 'react'
 import { formatUnits, Address } from 'viem'
 import Link from 'next/link'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
@@ -36,11 +35,6 @@ const isTestnet = !MAINNET_CHAIN_IDS.includes(liquidityChainId);
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
 const MAX_STABILIZERS_TO_CHECK = 10;
 
-interface PriceApiResponse {
-    price: string;
-    decimals: number;
-    dataTimestamp: number;
-}
 
 interface LandingPageStatsInnerProps {
     reporterAddress: Address;
@@ -95,77 +89,40 @@ function renderAddressCell(address: Address, label: string, targetChainId: numbe
 }
 
 function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNftAddress }: LandingPageStatsInnerProps) {
-    const [priceData, setPriceData] = useState<PriceApiResponse | null>(null);
-    const [isLoadingPrice, setIsLoadingPrice] = useState(true);
-    const [priceError, setPriceError] = useState<string | null>(null);
+    const [stats, setStats] = useState<{ systemRatio?: bigint, totalEthEquivalent?: bigint, uspdTotalSupply?: bigint }>({});
+    const [isLoadingStats, setIsLoadingStats] = useState(true);
+    const [statsError, setStatsError] = useState<string | null>(null);
 
     const [mintableUspdValue, setMintableUspdValue] = useState<bigint | null>(null);
     const [isLoadingMintableCapacity, setIsLoadingMintableCapacity] = useState(false);
     const [mintableCapacityError, setMintableCapacityError] = useState<string | null>(null);
 
-    const fetchPriceData = useCallback(async () => {
-        setIsLoadingPrice(true);
-        setPriceError(null);
+    const fetchSystemStats = useCallback(async () => {
+        // Only show loader on initial fetch
+        if (!stats.systemRatio) setIsLoadingStats(true);
+        setStatsError(null);
         try {
-            const response = await fetch('/api/v1/price/eth-usd');
+            const response = await fetch(`/api/v1/system/stats?chainId=${liquidityChainId}`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-            setPriceData(data);
+            setStats({
+                systemRatio: BigInt(data.systemRatio),
+                totalEthEquivalent: BigInt(data.totalEthEquivalent),
+                uspdTotalSupply: BigInt(data.uspdTotalSupply),
+            });
         } catch (err) {
-            console.error('Failed to fetch price data:', err);
-            setPriceError((err as Error).message || 'Failed to fetch ETH price data');
+            console.error('Failed to fetch system stats:', err);
+            setStatsError((err as Error).message || 'Failed to fetch system stats');
         } finally {
-            setIsLoadingPrice(false);
+            setIsLoadingStats(false);
         }
-    }, []);
+    }, [stats.systemRatio]);
 
     useEffect(() => {
-        fetchPriceData();
-        const interval = setInterval(fetchPriceData, 30000);
+        fetchSystemStats();
+        const interval = setInterval(fetchSystemStats, 30000);
         return () => clearInterval(interval);
-    }, [fetchPriceData]);
-
-    const priceResponseForContract = useMemo(() => {
-        if (!priceData) return undefined;
-        return {
-            price: BigInt(priceData.price),
-            decimals: Number(priceData.decimals),
-            timestamp: BigInt(priceData.dataTimestamp),
-        };
-    }, [priceData]);
-
-    const { data: systemRatioData, isLoading: isLoadingRatio, refetch: refetchRatio } = useReadContract({
-        address: reporterAddress,
-        abi: reporterAbiJson.abi,
-        functionName: 'getSystemCollateralizationRatio',
-        args: priceResponseForContract ? [priceResponseForContract] : undefined,
-        chainId: liquidityChainId,
-        query: { enabled: !!reporterAddress && !!priceResponseForContract }
-    });
-
-    const { data: totalEthEquivalentData, isLoading: isLoadingEthEquivalent, refetch: refetchEthEquivalent } = useReadContract({
-        address: reporterAddress,
-        abi: reporterAbiJson.abi,
-        functionName: 'totalEthEquivalentAtLastSnapshot',
-        args: [],
-        chainId: liquidityChainId,
-        query: { enabled: !!reporterAddress }
-    });
-
-    const { data: uspdTotalSupplyData, isLoading: isLoadingUspdTotalSupply } = useReadContract({
-        address: uspdTokenAddress,
-        abi: uspdTokenAbiJson.abi,
-        functionName: 'totalSupply',
-        chainId: liquidityChainId,
-        query: { enabled: !!uspdTokenAddress }
-    });
-
-    useEffect(() => {
-        if (priceResponseForContract) {
-            refetchRatio();
-            refetchEthEquivalent();
-        }
-    }, [priceResponseForContract, refetchRatio, refetchEthEquivalent]);
+    }, [fetchSystemStats]);
 
     const fetchMintableCapacity = useCallback(async () => {
         setIsLoadingMintableCapacity(true);
@@ -195,9 +152,7 @@ function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNf
         return () => clearInterval(intervalId);
     }, [fetchMintableCapacity]);
 
-    const systemRatio = systemRatioData as bigint | undefined;
-    const totalEthEquivalent = totalEthEquivalentData as bigint | undefined;
-    const uspdTotalSupply = uspdTotalSupplyData as bigint | undefined;
+    const { systemRatio, totalEthEquivalent, uspdTotalSupply } = stats;
 
     let displaySystemRatio: string;
     if (systemRatio === undefined) {
@@ -222,19 +177,19 @@ function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNf
                         <TableRow>
                             <TableCell className="font-medium text-muted-foreground">Collateralization Ratio</TableCell>
                             <TableCell className="text-right">
-                                {isLoadingRatio || isLoadingPrice ? <Skeleton className="h-5 w-24 float-right" /> : <span className={`font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
+                                {isLoadingStats ? <Skeleton className="h-5 w-24 float-right" /> : <span className={`font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
                             </TableCell>
                         </TableRow>
                         <TableRow>
                             <TableCell className="font-medium text-muted-foreground">Total Collateral</TableCell>
                             <TableCell className="text-right">
-                                {isLoadingEthEquivalent ? <Skeleton className="h-5 w-32 float-right" /> : <span>{formatBigIntToFixed(totalEthEquivalent, 18, 4)} stETH</span>}
+                                {isLoadingStats ? <Skeleton className="h-5 w-32 float-right" /> : <span>{formatBigIntToFixed(totalEthEquivalent, 18, 4)} stETH</span>}
                             </TableCell>
                         </TableRow>
                         <TableRow>
                             <TableCell className="font-medium text-muted-foreground">Est. Mintable Capacity</TableCell>
                             <TableCell className="text-right">
-                                {isLoadingMintableCapacity || isLoadingPrice ? <Skeleton className="h-5 w-36 float-right" /> : <span>{formatBigIntToFixed(mintableUspdValue, 18, 2)} USPD</span>}
+                                {isLoadingMintableCapacity ? <Skeleton className="h-5 w-36 float-right" /> : <span>{formatBigIntToFixed(mintableUspdValue, 18, 2)} USPD</span>}
                             </TableCell>
                         </TableRow>
                         <TableRow>
@@ -244,13 +199,13 @@ function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNf
                         <TableRow>
                             <TableCell className="font-medium text-muted-foreground">USPD Total Supply</TableCell>
                             <TableCell className="text-right">
-                                {isLoadingUspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(uspdTotalSupply, 18, 2)} USPD</span>}
+                                {isLoadingStats ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(uspdTotalSupply, 18, 2)} USPD</span>}
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
                 {mintableCapacityError && <Alert variant="destructive" className="mt-2 text-xs"><AlertDescription>{mintableCapacityError}</AlertDescription></Alert>}
-                {priceError && <Alert variant="destructive" className="mt-2 text-xs"><AlertDescription>{priceError}</AlertDescription></Alert>}
+                {statsError && <Alert variant="destructive" className="mt-2 text-xs"><AlertDescription>{statsError}</AlertDescription></Alert>}
             </CardContent>
             <CardFooter>
                 <Button asChild className="w-full">

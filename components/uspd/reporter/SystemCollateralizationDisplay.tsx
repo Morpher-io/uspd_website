@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useReadContract, useChainId, useAccount, useWalletClient } from 'wagmi'
+import { useState, useEffect, useCallback } from 'react'
+import { useChainId, useAccount, useWalletClient, useReadContract } from 'wagmi'
 import { formatUnits, Address } from 'viem'
 import Link from 'next/link'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
@@ -83,10 +83,18 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     const { data: walletClient } = useWalletClient();
     const connectedChainId = useChainId();
 
-    // Price and general stats state
-    const [priceData, setPriceData] = useState<PriceApiResponse | null>(null)
-    const [isLoadingPrice, setIsLoadingPrice] = useState(true)
-    const [priceError, setPriceError] = useState<string | null>(null)
+    // Global system stats from API
+    const [stats, setStats] = useState<{
+        systemRatio?: bigint;
+        totalEthEquivalent?: bigint;
+        yieldFactorSnapshot?: bigint;
+        uspdTotalSupply?: bigint;
+        cuspdTotalSupply?: bigint;
+        ethPrice?: string;
+        priceDecimals?: number;
+    }>({});
+    const [isLoadingStats, setIsLoadingStats] = useState(true);
+    const [statsError, setStatsError] = useState<string | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [addTokenMessage, setAddTokenMessage] = useState<string | null>(null);
 
@@ -96,108 +104,41 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     const [isLoadingMintableCapacity, setIsLoadingMintableCapacity] = useState(false);
     const [mintableCapacityError, setMintableCapacityError] = useState<string | null>(null);
 
-
-    const fetchPriceData = useCallback(async () => {
-        setIsLoadingPrice(true)
-        setPriceError(null)
+    const fetchSystemStats = useCallback(async () => {
+        if (isLoadingStats) { // Only set loading on the very first load
+          setIsLoadingStats(true)
+        }
+        setStatsError(null)
         try {
-            const response = await fetch('/api/v1/price/eth-usd')
+            const response = await fetch(`/api/v1/system/stats?chainId=${liquidityChainId}`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json()
-            setPriceData(data)
+            setStats({
+                systemRatio: BigInt(data.systemRatio),
+                totalEthEquivalent: BigInt(data.totalEthEquivalent),
+                yieldFactorSnapshot: BigInt(data.yieldFactorSnapshot),
+                uspdTotalSupply: BigInt(data.uspdTotalSupply),
+                cuspdTotalSupply: BigInt(data.cuspdTotalSupply),
+                ethPrice: data.ethPrice,
+                priceDecimals: data.priceDecimals,
+            })
             setLastUpdated(new Date());
-            return data
         } catch (err) {
-            console.error('Failed to fetch price data:', err)
-            setPriceError((err as Error).message || 'Failed to fetch ETH price data')
-            return null
+            console.error('Failed to fetch system stats:', err)
+            setStatsError((err as Error).message || 'Failed to fetch system stats')
         } finally {
-            setIsLoadingPrice(false)
+            setIsLoadingStats(false)
         }
-    }, [])
+    }, [isLoadingStats])
 
     useEffect(() => {
-        fetchPriceData()
-        const interval = setInterval(fetchPriceData, 30000) // Refresh price every 30 seconds
-        return () => clearInterval(interval)
-    }, [fetchPriceData])
+        fetchSystemStats();
+        const interval = setInterval(fetchSystemStats, 30000); // Refresh stats every 30 seconds
+        return () => clearInterval(interval);
+    }, [fetchSystemStats]);
 
-    // Prepare the priceResponse object for the contract call based on IPriceOracle.PriceResponse struct
-    const priceResponseForContract = useMemo(() => {
-        if (!priceData) return undefined;
 
-        return {
-            price: BigInt(priceData.price),
-            decimals: Number(priceData.decimals),
-            timestamp: BigInt(priceData.dataTimestamp), // Corresponds to PriceResponse.timestamp
-        };
-    }, [priceData]);
-
-    const {
-        data: systemRatioData,
-        isLoading: isLoadingRatio,
-        error: errorRatio,
-        refetch: refetchRatio
-    } = useReadContract({
-        address: reporterAddress,
-        abi: reporterAbiJson.abi,
-        functionName: 'getSystemCollateralizationRatio',
-        args: priceResponseForContract ? [priceResponseForContract] : undefined,
-        chainId: liquidityChainId,
-        query: {
-            enabled: !!reporterAddress && !!priceResponseForContract,
-        }
-    })
-
-    const {
-        data: totalEthEquivalentData,
-        isLoading: isLoadingEthEquivalent,
-        error: errorEthEquivalent,
-        refetch: refetchEthEquivalent
-    } = useReadContract({
-        address: reporterAddress,
-        abi: reporterAbiJson.abi,
-        functionName: 'totalEthEquivalentAtLastSnapshot',
-        args: [],
-        chainId: liquidityChainId,
-        query: {
-            enabled: !!reporterAddress,
-        }
-    })
-
-    const {
-        data: yieldFactorSnapshotData,
-        isLoading: isLoadingYieldFactor,
-        error: errorYieldFactor,
-        refetch: refetchYieldFactor
-    } = useReadContract({
-        address: reporterAddress,
-        abi: reporterAbiJson.abi,
-        functionName: 'yieldFactorAtLastSnapshot',
-        args: [],
-        chainId: liquidityChainId,
-        query: {
-            enabled: !!reporterAddress,
-        }
-    })
-
-    useEffect(() => {
-        if (priceResponseForContract) {
-            refetchRatio();
-            // These don't directly depend on price for their args, but refetching ensures data consistency
-            refetchEthEquivalent();
-            refetchYieldFactor();
-        }
-    }, [priceResponseForContract, refetchRatio, refetchEthEquivalent, refetchYieldFactor]);
-
-    // --- Token Data Fetching ---
-    const { data: uspdTotalSupplyData, isLoading: isLoadingUspdTotalSupply } = useReadContract({
-        address: uspdTokenAddress,
-        abi: uspdTokenAbiJson.abi,
-        functionName: 'totalSupply',
-        chainId: liquidityChainId,
-        query: { enabled: !!uspdTokenAddress }
-    });
+    // --- Token Data Fetching (User specific) ---
     const { data: userUspdBalanceData, isLoading: isLoadingUserUspdBalance } = useReadContract({
         address: uspdTokenAddress,
         abi: uspdTokenAbiJson.abi,
@@ -205,13 +146,6 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         args: [userAddress!],
         chainId: liquidityChainId,
         query: { enabled: !!uspdTokenAddress && !!userAddress }
-    });
-    const { data: cuspdTotalSupplyData, isLoading: isLoadingCuspdTotalSupply } = useReadContract({
-        address: cuspdTokenAddress,
-        abi: cuspdTokenAbiJson.abi,
-        functionName: 'totalSupply',
-        chainId: liquidityChainId,
-        query: { enabled: !!cuspdTokenAddress }
     });
     const { data: userCuspdBalanceData, isLoading: isLoadingUserCuspdBalance } = useReadContract({
         address: cuspdTokenAddress,
@@ -222,9 +156,8 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         query: { enabled: !!cuspdTokenAddress && !!userAddress }
     });
 
-    const uspdTotalSupply = uspdTotalSupplyData as bigint | undefined;
+    const { uspdTotalSupply, cuspdTotalSupply } = stats;
     const userUspdBalance = userUspdBalanceData as bigint | undefined;
-    const cuspdTotalSupply = cuspdTotalSupplyData as bigint | undefined;
     const userCuspdBalance = userCuspdBalanceData as bigint | undefined;
 
     // --- End Token Data Fetching ---
@@ -263,9 +196,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     }, [fetchMintableCapacity]);
     // --- End Fetch Mintable Capacity ---
 
-    const systemRatio = systemRatioData as bigint | undefined;
-    const totalEthEquivalent = totalEthEquivalentData as bigint | undefined;
-    const yieldFactorSnapshot = yieldFactorSnapshotData as bigint | undefined;
+    const { systemRatio, totalEthEquivalent, yieldFactorSnapshot } = stats;
 
     const displayEthEquivalent = totalEthEquivalent !== undefined ? formatUnits(totalEthEquivalent, 18) : "N/A";
     const displayYieldFactor = yieldFactorSnapshot !== undefined ? (Number(yieldFactorSnapshot) / 1e18).toFixed(4) : "N/A";
@@ -279,9 +210,9 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         displaySystemRatio = `${(Number(systemRatio) / 100).toFixed(2)}%`;
     }
 
-    const currentEthPrice = priceData ? `$${(Number(priceData.price) / (10 ** Number(priceData.decimals))).toFixed(2)}` : "N/A";
+    const currentEthPrice = stats.ethPrice ? `$${(Number(stats.ethPrice) / (10 ** Number(stats.priceDecimals))).toFixed(2)}` : "N/A";
 
-    const anyError = errorRatio || errorEthEquivalent || errorYieldFactor || priceError;
+    const anyError = statsError;
 
     const handleAddTokenToWallet = async () => {
         setAddTokenMessage(null);
@@ -374,8 +305,8 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                 </div>
                 <CardDescription>
                     Live statistics from the Overcollateralization Reporter contract.
-                    {lastUpdated && !isLoadingPrice && <span className="block text-xs text-muted-foreground mt-1">Last updated: {lastUpdated.toLocaleTimeString()}</span>}
-                    {isLoadingPrice && <Skeleton className="h-4 w-32 mt-1" />}
+                    {lastUpdated && !isLoadingStats && <span className="block text-xs text-muted-foreground mt-1">Last updated: {lastUpdated.toLocaleTimeString()}</span>}
+                    {isLoadingStats && <Skeleton className="h-4 w-32 mt-1" />}
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -386,25 +317,25 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">System Collateralization Ratio</TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingRatio || isLoadingPrice ? <Skeleton className="h-5 w-24 float-right" /> : <span className={`text-lg font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
+                                    {isLoadingStats ? <Skeleton className="h-5 w-24 float-right" /> : <span className={`text-lg font-semibold ${getCollateralizationColor(systemRatio)}`}>{displaySystemRatio}</span>}
                                 </TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">Total Collateral (stETH Snapshot)</TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingEthEquivalent ? <Skeleton className="h-5 w-32 float-right" /> : <span>{displayEthEquivalent} stETH</span>}
+                                    {isLoadingStats ? <Skeleton className="h-5 w-32 float-right" /> : <span>{displayEthEquivalent} stETH</span>}
                                 </TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">Yield Factor at Snapshot</TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingYieldFactor ? <Skeleton className="h-5 w-20 float-right" /> : <span>{displayYieldFactor}</span>}
+                                    {isLoadingStats ? <Skeleton className="h-5 w-20 float-right" /> : <span>{displayYieldFactor}</span>}
                                 </TableCell>
                             </TableRow>
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">Current ETH/USD Price</TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingPrice ? <Skeleton className="h-5 w-28 float-right" /> : <span>{currentEthPrice}</span>}
+                                    {isLoadingStats ? <Skeleton className="h-5 w-28 float-right" /> : <span>{currentEthPrice}</span>}
                                 </TableCell>
                             </TableRow>
                             <TableRow>
@@ -424,7 +355,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                                      <p className="text-xs text-muted-foreground font-normal">(Based on first {MAX_STABILIZERS_TO_CHECK} unallocated stabilizers)</p>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingMintableCapacity || isLoadingPrice ? <Skeleton className="h-5 w-36 float-right" /> :
+                                    {isLoadingMintableCapacity || isLoadingStats ? <Skeleton className="h-5 w-36 float-right" /> :
                                         <span>{formatBigIntToFixed(mintableUspdValue, 18, 4)} USPD</span>
                                     }
                                 </TableCell>
@@ -445,7 +376,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">USPD Total Supply</TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingUspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(uspdTotalSupply, 18, 4)} USPD</span>}
+                                    {isLoadingStats ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(uspdTotalSupply, 18, 4)} USPD</span>}
                                 </TableCell>
                             </TableRow>
                             {userAddress && (
@@ -463,7 +394,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">cUSPD Total Supply</TableCell>
                                 <TableCell className="text-right">
-                                    {isLoadingCuspdTotalSupply ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(cuspdTotalSupply, 18, 4)} cUSPD</span>}
+                                    {isLoadingStats ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(cuspdTotalSupply, 18, 4)} cUSPD</span>}
                                 </TableCell>
                             </TableRow>
                             {userAddress && (
@@ -495,10 +426,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                 {anyError &&
                     <Alert variant="destructive" className="mt-4">
                         <AlertDescription>
-                            {priceError && <div>Price Error: {priceError}</div>}
-                            {errorRatio && <div>Ratio Error: {(errorRatio as Error).message}</div>}
-                            {errorEthEquivalent && <div>ETH Equiv. Error: {(errorEthEquivalent as Error).message}</div>}
-                            {errorYieldFactor && <div>Yield Factor Error: {(errorYieldFactor as Error).message}</div>}
+                            {statsError && <div>Stats Error: {statsError}</div>}
                         </AlertDescription>
                     </Alert>
                 }
