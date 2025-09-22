@@ -24,7 +24,11 @@ The USPD contract is a view layer on top of cUSPD. cUSPD holds user shares which
 
 ![uspd minting simulation](./images/mint_uspd_simulation.png)
 
-There are currently two versions of the USPD contract deployed. The first version did not emit a Transfer event when minting and did not include a burn functionality which a lot of DeFi-Applications require. The new version includes the correct Transfer event and includes a burn function that works just as you would expect from any Mintable/Burnable ERC20 token. Both USPD versions work in parallel though, as they are just transparently forwarding transfer/mint/etc to the cUSPD contract. The old contract version is deployed on address `0xE58867673428E50146D2A3d10d28A6314D038238` across major blockchains. This website is updated to work with the new version.
+There are currently three versions of the USPD contract deployed. The first version did not emit a Transfer event when minting and did not include a burn functionality which a lot of DeFi-Applications require. The second version includes the correct Transfer event and includes a burn function that works just as you would expect from any Mintable/Burnable ERC20 token. The third and latest version (deployed at `0x476ef9ac6D8673E220d0E8BC0a810C2Dc6A2AA84`) addresses precision issues with DeFi integrations by implementing intelligent round-up logic for token transfers.
+
+The latest version solves a critical problem where integer division truncation could cause recipients to receive slightly less than the intended transfer amount (often just 1-2 wei), which would break DeFi protocols that require exact balance increases. The new contract defaults to round-up behavior to ensure recipients always get at least the requested amount, but users can override this setting to choose their preferred rounding behavior (always round up, always round down, or follow the system default).
+
+All USPD versions work in parallel as they transparently forward transfer/mint/burn operations to the underlying cUSPD contract. The first version is deployed on address `0xE58867673428E50146D2A3d10d28A6314D038238` across major blockchains. This website is updated to work with the latest version.
 
 ## Programmatic Access
 
