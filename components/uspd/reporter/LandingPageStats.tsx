@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useReadContract, useConfig } from 'wagmi'
+import { useReadContract } from 'wagmi'
 import { formatUnits, Address } from 'viem'
 import Link from 'next/link'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
@@ -17,8 +17,6 @@ import { toast } from 'sonner'
 import reporterAbiJson from '@/contracts/out/OvercollateralizationReporter.sol/OvercollateralizationReporter.json'
 import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import stabilizerNftAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
-import stabilizerEscrowAbiJson from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json'
-import { readContract as viewReadContract } from 'wagmi/actions'
 
 // The primary chain for liquidity and reporting, defaulting to Sepolia.
 const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11155111;
@@ -36,7 +34,6 @@ const isTestnet = !MAINNET_CHAIN_IDS.includes(liquidityChainId);
 
 // Constants
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
-const FACTOR_10000 = BigInt(10000);
 const MAX_STABILIZERS_TO_CHECK = 10;
 
 interface PriceApiResponse {
@@ -98,7 +95,6 @@ function renderAddressCell(address: Address, label: string, targetChainId: numbe
 }
 
 function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNftAddress }: LandingPageStatsInnerProps) {
-    const config = useConfig();
     const [priceData, setPriceData] = useState<PriceApiResponse | null>(null);
     const [isLoadingPrice, setIsLoadingPrice] = useState(true);
     const [priceError, setPriceError] = useState<string | null>(null);
@@ -171,93 +167,33 @@ function LandingPageStatsInner({ reporterAddress, uspdTokenAddress, stabilizerNf
         }
     }, [priceResponseForContract, refetchRatio, refetchEthEquivalent]);
 
-    const calculateMintableCapacity = useCallback(async () => {
-        if (!stabilizerNftAddress || !priceData) return;
+    const fetchMintableCapacity = useCallback(async () => {
         setIsLoadingMintableCapacity(true);
         setMintableCapacityError(null);
         setMintableUspdValue(null);
 
-        let currentTotalEthCanBeBacked = BigInt(0);
-
         try {
-            let currentTokenId = await viewReadContract(config, {
-                address: stabilizerNftAddress,
-                abi: stabilizerNftAbiJson.abi,
-                functionName: 'lowestUnallocatedId',
-                chainId: liquidityChainId,
-            }) as bigint;
-
-            for (let i = 0; i < MAX_STABILIZERS_TO_CHECK && currentTokenId !== BigInt(0); i++) {
-                const position = await viewReadContract(config, {
-                    address: stabilizerNftAddress,
-                    abi: stabilizerNftAbiJson.abi,
-                    functionName: 'positions',
-                    args: [currentTokenId],
-                    chainId: liquidityChainId,
-                }) as [bigint, bigint, bigint, bigint, bigint];
-                const minCollateralRatio = position[0];
-                const nextUnallocatedTokenId = position[2];
-
-                if (minCollateralRatio <= FACTOR_10000) {
-                    currentTokenId = nextUnallocatedTokenId;
-                    continue;
-                }
-
-                const stabilizerEscrowAddress = await viewReadContract(config, {
-                    address: stabilizerNftAddress,
-                    abi: stabilizerNftAbiJson.abi,
-                    functionName: 'stabilizerEscrows',
-                    args: [currentTokenId],
-                    chainId: liquidityChainId,
-                }) as Address;
-
-                if (stabilizerEscrowAddress === '0x0000000000000000000000000000000000000000') {
-                    currentTokenId = nextUnallocatedTokenId;
-                    continue;
-                }
-                
-                const stabilizerStEthAvailable = await viewReadContract(config, {
-                    address: stabilizerEscrowAddress,
-                    abi: stabilizerEscrowAbiJson.abi,
-                    functionName: 'unallocatedStETH',
-                    chainId: liquidityChainId,
-                }) as bigint;
-
-                if (stabilizerStEthAvailable > BigInt(0)) {
-                    const denominator = BigInt(minCollateralRatio) - FACTOR_10000;
-                    if (denominator > BigInt(0)) {
-                        const userEthForStabilizer = (BigInt(stabilizerStEthAvailable) * FACTOR_10000) / denominator;
-                        currentTotalEthCanBeBacked += userEthForStabilizer;
-                    }
-                }
-                currentTokenId = nextUnallocatedTokenId;
+            const response = await fetch(`/api/v1/system/mintable-capacity?chainId=${liquidityChainId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-
-            if (currentTotalEthCanBeBacked > BigInt(0) && priceData?.price && typeof priceData?.decimals === 'number') {
-                const ethPriceBigInt = BigInt(priceData.price);
-                const priceDecimalsFactor = BigInt(10) ** BigInt(Math.floor(priceData.decimals));
-                if (priceDecimalsFactor > BigInt(0)) {
-                    const uspdVal = (currentTotalEthCanBeBacked * ethPriceBigInt) / priceDecimalsFactor;
-                    setMintableUspdValue(uspdVal);
-                } else {
-                    setMintableUspdValue(BigInt(0));
-                }
-            } else {
-                setMintableUspdValue(BigInt(0));
-            }
+            
+            const data = await response.json();
+            setMintableUspdValue(BigInt(data.mintableUspdValue));
         } catch (err) {
-            console.error('Error calculating mintable capacity:', err);
-            setMintableCapacityError((err as Error).message || 'Failed to calculate');
+            console.error('Error fetching mintable capacity:', err);
+            setMintableCapacityError((err as Error).message || 'Failed to fetch');
         } finally {
             setIsLoadingMintableCapacity(false);
         }
-    }, [config, stabilizerNftAddress, priceData]);
+    }, []);
 
     useEffect(() => {
-        if (config && stabilizerNftAddress && priceData) {
-            calculateMintableCapacity();
-        }
-    }, [config, calculateMintableCapacity, stabilizerNftAddress, priceData]);
+        fetchMintableCapacity();
+        // Refresh every 60 seconds
+        const intervalId = setInterval(fetchMintableCapacity, 60000);
+        return () => clearInterval(intervalId);
+    }, [fetchMintableCapacity]);
 
     const systemRatio = systemRatioData as bigint | undefined;
     const totalEthEquivalent = totalEthEquivalentData as bigint | undefined;

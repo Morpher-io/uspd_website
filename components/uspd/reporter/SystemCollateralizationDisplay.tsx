@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useReadContract, useChainId, useAccount, useWalletClient, useConfig } from 'wagmi' // Added useConfig
+import { useReadContract, useChainId, useAccount, useWalletClient } from 'wagmi'
 import { formatUnits, Address } from 'viem'
 import Link from 'next/link'
 import { ContractLoader } from '@/components/uspd/common/ContractLoader'
@@ -18,8 +18,6 @@ import reporterAbiJson from '@/contracts/out/OvercollateralizationReporter.sol/O
 import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
 import stabilizerNftAbiJson from '@/contracts/out/StabilizerNFT.sol/StabilizerNFT.json'
-import stabilizerEscrowAbiJson from '@/contracts/out/StabilizerEscrow.sol/StabilizerEscrow.json' // For StabilizerEscrow interactions
-import { readContract as viewReadContract } from 'wagmi/actions' // Renamed to avoid conflict
 
 // The primary chain for liquidity and reporting, defaulting to Sepolia.
 const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11155111;
@@ -37,7 +35,6 @@ const isTestnet = !MAINNET_CHAIN_IDS.includes(liquidityChainId);
 
 // Solidity's type(uint256).max
 const MAX_UINT256 = BigInt('115792089237316195423570985008687907853269984665640564039457584007913129639935');
-const FACTOR_10000 = BigInt(10000);
 const MAX_STABILIZERS_TO_CHECK = 10; // Limit for iterating unallocated stabilizers
 
 interface PriceApiResponse {
@@ -85,7 +82,6 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     const { address: userAddress } = useAccount();
     const { data: walletClient } = useWalletClient();
     const connectedChainId = useChainId();
-    const config = useConfig(); // Get config from WagmiProvider context
 
     // Price and general stats state
     const [priceData, setPriceData] = useState<PriceApiResponse | null>(null)
@@ -235,142 +231,37 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
 
 
 
-    // --- Calculate Mintable Capacity ---
-    const calculateMintableCapacity = useCallback(async () => {
-        if (!stabilizerNftAddress || !priceData) {
-            return;
-        }
+    // --- Fetch Mintable Capacity from API ---
+    const fetchMintableCapacity = useCallback(async () => {
         setIsLoadingMintableCapacity(true);
         setMintableCapacityError(null);
         setTotalMintableEth(null);
         setMintableUspdValue(null);
 
-        let currentTotalEthCanBeBacked = BigInt(0);
-
         try {
-            let currentTokenId = await viewReadContract(config, {
-                address: stabilizerNftAddress,
-                abi: stabilizerNftAbiJson.abi,
-                functionName: 'lowestUnallocatedId',
-                chainId: liquidityChainId,
-            }) as bigint;
-
-            for (let i = 0; i < MAX_STABILIZERS_TO_CHECK && currentTokenId !== BigInt(0); i++) {
-                const position = await viewReadContract(config, {
-                    address: stabilizerNftAddress,
-                    abi: stabilizerNftAbiJson.abi,
-                    functionName: 'positions',
-                    args: [currentTokenId],
-                    chainId: liquidityChainId,
-                }) as [bigint, bigint, bigint, bigint, bigint]; // Array of 5 bigints
-
-                // position[0] is minCollateralRatio
-                // position[1] is prevUnallocated
-                // position[2] is nextUnallocated
-                // position[3] is prevAllocated
-                // position[4] is nextAllocated
-                const minCollateralRatio = position[0];
-                const nextUnallocatedTokenId = position[2];
-
-
-                if (minCollateralRatio <= FACTOR_10000) { // Ratio must be > 100%
-                    currentTokenId = nextUnallocatedTokenId;
-                    continue;
-                }
-
-                const stabilizerEscrowAddress = await viewReadContract(config, {
-                    address: stabilizerNftAddress,
-                    abi: stabilizerNftAbiJson.abi,
-                    functionName: 'stabilizerEscrows',
-                    args: [currentTokenId],
-                    chainId: liquidityChainId,
-                }) as Address;
-
-                if (stabilizerEscrowAddress === '0x0000000000000000000000000000000000000000') {
-                    currentTokenId = nextUnallocatedTokenId;
-                    continue;
-                }
-                
-                const stabilizerStEthAvailable = await viewReadContract(config, {
-                    address: stabilizerEscrowAddress,
-                    abi: stabilizerEscrowAbiJson.abi,
-                    functionName: 'unallocatedStETH',
-                    chainId: liquidityChainId,
-                }) as bigint;
-
-                if (stabilizerStEthAvailable > BigInt(0)) {
-                    // Explicitly ensure all operands are BigInts before arithmetic
-                    const ssaAsBigInt = BigInt(stabilizerStEthAvailable);
-                    const mcrAsBigInt = BigInt(minCollateralRatio);
-
-                    // The check `if (minCollateralRatio <= FACTOR_10000)` ensures mcrAsBigInt - FACTOR_10000 is positive.
-                    const denominator = mcrAsBigInt - FACTOR_10000;
-                    
-                    if (denominator === BigInt(0)) {
-                        // This case should ideally be caught by `minCollateralRatio <= FACTOR_10000`,
-                        // but as an extra safeguard or if logic changes, handle division by zero.
-                        console.warn(`Denominator is zero for mintable ETH calculation (tokenId: ${currentTokenId}). Skipping this stabilizer.`);
-                    } else {
-                        const userEthForStabilizer = (ssaAsBigInt * FACTOR_10000) / denominator;
-                        currentTotalEthCanBeBacked += userEthForStabilizer;
-                    }
-                }
-                currentTokenId = nextUnallocatedTokenId; // Use the correctly accessed nextUnallocatedTokenId
+            const response = await fetch(`/api/v1/system/mintable-capacity?chainId=${liquidityChainId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-
-            setTotalMintableEth(currentTotalEthCanBeBacked);
-
-            // More robust check for priceData and its properties
-            if (currentTotalEthCanBeBacked > BigInt(0) && 
-                priceData && 
-                typeof priceData.price === 'string' && // Ensure price is a string
-                typeof priceData.decimals === 'number' && // Ensure decimals is a number
-                !isNaN(priceData.decimals)) { // Ensure decimals is not NaN
-
-                const ethPriceBigInt = BigInt(priceData.price);
-                
-                // Explicitly convert priceData.decimals to a whole number then to BigInt for the exponent
-                const decimalsValueAsNumber = Math.floor(priceData.decimals);
-                const decimalsForExponent = BigInt(decimalsValueAsNumber);
-                
-                const priceDecimalsFactor = BigInt(10) ** decimalsForExponent;
-
-                if (priceDecimalsFactor === BigInt(0)) { // Avoid division by zero if decimals was unexpectedly huge
-                    console.error("priceDecimalsFactor is zero, cannot calculate uspdVal");
-                    setMintableUspdValue(BigInt(0));
-                } else {
-                    const uspdVal = (currentTotalEthCanBeBacked * ethPriceBigInt) / priceDecimalsFactor;
-                    setMintableUspdValue(uspdVal);
-                }
-            } else {
-                // Log why the calculation for uspdVal might be skipped
-                // console.log('Skipping uspdVal calculation due to unmet conditions:', {
-                //     currentTotalEthCanBeBacked: currentTotalEthCanBeBacked.toString(),
-                //     priceDataExists: !!priceData,
-                //     priceIsString: priceData && typeof priceData.price === 'string',
-                //     decimalsIsNumber: priceData && typeof priceData.decimals === 'number',
-                //     decimalsIsNotNaN: priceData && typeof priceData.decimals === 'number' && !isNaN(priceData.decimals),
-                // });
-                setMintableUspdValue(BigInt(0));
-            }
-
+            
+            const data = await response.json();
+            setTotalMintableEth(BigInt(data.totalMintableEth));
+            setMintableUspdValue(BigInt(data.mintableUspdValue));
         } catch (err) {
-            console.error('Error calculating mintable capacity:', err);
-            setMintableCapacityError((err as Error).message || 'Failed to calculate mintable capacity');
+            console.error('Error fetching mintable capacity:', err);
+            setMintableCapacityError((err as Error).message || 'Failed to fetch mintable capacity');
         } finally {
             setIsLoadingMintableCapacity(false);
         }
-    }, [config, stabilizerNftAddress, priceData]); // Added config to dependency array
+    }, []);
 
     useEffect(() => {
-        if (config && stabilizerNftAddress && priceData) { // Ensure config is also available
-            calculateMintableCapacity();
-            // Optionally, set up an interval to refresh this calculation
-            // const intervalId = setInterval(calculateMintableCapacity, 60000); // e.g., every 60 seconds
-            // return () => clearInterval(intervalId);
-        }
-    }, [config, calculateMintableCapacity, stabilizerNftAddress, priceData]);
-    // --- End Calculate Mintable Capacity ---
+        fetchMintableCapacity();
+        // Refresh every 60 seconds
+        const intervalId = setInterval(fetchMintableCapacity, 60000);
+        return () => clearInterval(intervalId);
+    }, [fetchMintableCapacity]);
+    // --- End Fetch Mintable Capacity ---
 
     const systemRatio = systemRatioData as bigint | undefined;
     const totalEthEquivalent = totalEthEquivalentData as bigint | undefined;
