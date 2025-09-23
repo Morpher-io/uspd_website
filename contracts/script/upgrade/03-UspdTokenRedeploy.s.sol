@@ -112,6 +112,7 @@ contract RedeployUSPDTokenScript is UpgradeScript {
         
         setupUSPDTokenPermissions();
         updateBridgeEscrowIfExists();
+        setDefaultRoundUp();
     }
 
     function setupUSPDTokenPermissions() internal {
@@ -126,6 +127,16 @@ contract RedeployUSPDTokenScript is UpgradeScript {
         // Note: We intentionally do NOT revoke the role from the old token
         // This allows both tokens to coexist
         console2.log("Note: Old USPDToken retains its permissions for coexistence");
+    }
+
+    function setDefaultRoundUp() internal {
+        console2.log("Setting System-Wide round up...");
+        
+        try USPDToken(payable(newUspdTokenAddress)).setSystemDefaultRoundUp(true) {
+            console2.log("Default Round-Up is set to true");
+        } catch {
+            console2.log("Warning: Failed to set Default Round-Up");
+        }
     }
 
     function updateBridgeEscrowIfExists() internal {
