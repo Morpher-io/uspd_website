@@ -1,10 +1,20 @@
 import Link from 'next/link'
-import { getPosts, getTags } from '@/components/blog/get-posts'
- 
-## USPD Blog
-      
+import { getPosts } from '@/components/blog/get-posts'
+
+# USPD Blog
+
 {(await getPosts()).map(post => (
-  <div key={post.route}>
-    <Link href={post.route}>{post.title} - {post.frontMatter.description}</Link>
-    </div>
+  <div key={post.route} className="mb-8 border-b border-border pb-8 last:mb-0 last:border-b-0 last:pb-0">
+    <h2 className="text-2xl font-bold">
+      <Link href={post.route}>{post.title}</Link>
+    </h2>
+    <p className="text-muted-foreground mt-2">{post.frontMatter.description}</p>
+    <time dateTime={post.frontMatter.date} className="text-sm text-muted-foreground mt-2 block">
+      {new Date(post.frontMatter.date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })}
+    </time>
+  </div>
 ))}
