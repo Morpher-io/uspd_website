@@ -21,7 +21,6 @@ export const Footer = () => {
         {/* Center Column - Main Links */}
         <div className="flex flex-col items-center gap-3 font-semibold">
           <Link href="https://docsend.com/view/ifeip6bksazscjf8" target="_blank">Deck</Link>
-          <Link href="https://docsend.com/view/8w2gispsuwcjqx6f" target="_blank">Risk Analysis</Link>
           <Link href="https://docsend.com/view/tdqrj9us6hp7dn2b" target="_blank">Litepaper</Link>
         </div>
         
@@ -32,6 +31,7 @@ export const Footer = () => {
             Security Audits
           </Link>
           <Link href="/brand-guidelines">Brand Guidelines</Link>
+          <Link href="/blog">Blog</Link>
         </div>
       </div>
     </div>

@@ -1,10 +1,13 @@
+---
+asIndexPage: true
+---
 import Link from 'next/link'
 import { getPosts } from '@/components/blog/get-posts'
 
 # USPD Blog
 
 {(await getPosts()).map(post => (
-  <div key={post.route} className="mb-8 border-b border-border pb-8 last:mb-0 last:border-b-0 last:pb-0">
+  <div key={post.route} className="mt-8 border-b border-border pb-8 last:mb-0 last:border-b-0 last:pb-0">
     <h2 className="text-2xl font-bold">
       <Link href={post.route}>{post.title}</Link>
     </h2>

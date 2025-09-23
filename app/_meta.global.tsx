@@ -26,28 +26,33 @@ export default {
     title: 'Documentation',
 
   },
+  _: {
+        type: 'separator',
+        title: 'Other'
+      },
+  blog: {
+    title: 'Blog',
+    theme: {
+      // typesetting: 'article',
+      breadcrumb: false,
+      layout: "default",
+      toc: false
+    }
+  },
   "brand-guidelines": {
-    type: 'page',
+    // type: 'page',
     title: 'Brand Guidelines',
-    display: "hidden"
+    // display: "hidden"
 
   },
   stabilizer: {
     // type: 'page',
     title: 'Become Stabilizer',
+    theme: {
+      collapsed: true
+    }
 
   },
-  blog: {
-    type: 'page',
-    title: 'Blog',
-    display: "hidden",
-    theme: {
-      sidebar: false,
-      breadcrumb: false,
-      layout: "full",
-      toc: false
-    }
-  }
 
 }
 
