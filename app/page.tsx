@@ -1,4 +1,5 @@
 import HeroSection from "@/components/landingpage/hero";
+import EarlyCitizensDividend from "@/components/landingpage/EarlyCitizensDividend";
 import { Features } from '@/components/landingpage/features';
 import ComparisonTable from '@/components/landingpage/comparisonTable';
 import HowItWorks from '@/components/landingpage/howItWorks';
@@ -13,6 +14,7 @@ export default function IndexPage() {
     return (
         <div>
             <HeroSection />
+            <EarlyCitizensDividend />
             <WhyUspd />
             <Features />
             {/* <HowToEarn /> */}
