@@ -70,7 +70,8 @@ const navbar = (
     </Navbar>
     </div><AnimatedRibbon 
       segments={[
-        "USPD Beta now live on Mainnet", 
+        "USPD Beta now live on Mainnet",
+        "Now live: Claim Early Citizens Dividend",
         "Follow on X, Discord or Telegram to stay up to date"
       ]}
       className="border-b border-border/20"
