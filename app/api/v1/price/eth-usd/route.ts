@@ -39,9 +39,10 @@ export async function GET() {
 
         const dataTimestamp = Date.now();
 
-        // Convert price to 18 decimals (multiply by 10^18)
-        // Use a more precise conversion to avoid scientific notation issues
-        const priceInWei = BigInt(Math.round(parseFloat(priceFromRedis) * 10 ** PRICE_DECIMALS)).toString();
+        // Convert price to 18 decimals without using floating-point math to avoid precision issues
+        const [integerPart, fractionalPart] = priceFromRedis.split('.');
+        const fractionalWithPadding = (fractionalPart || '').padEnd(PRICE_DECIMALS, '0');
+        const priceInWei = integerPart + fractionalWithPadding.substring(0, PRICE_DECIMALS);
 
         // Create asset pair string - this will be hashed in the contract
         const assetPairString = 'MORPHER:ETH_USD';
