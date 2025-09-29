@@ -182,8 +182,9 @@ export function BurnWidget({
 
     const handleMaxUspd = () => {
         if (uspdBalance && isConnected) {
-            const maxUspd = parseFloat(formatUnits(uspdBalance as bigint, 18))
-            setUspdAmount(maxUspd.toFixed(6))
+            const maxUspd = formatUnits(uspdBalance as bigint, 18)
+            const dotIndex = maxUspd.indexOf('.')
+            setUspdAmount(dotIndex === -1 ? maxUspd : maxUspd.substring(0, dotIndex + 3))
         }
     }
 
