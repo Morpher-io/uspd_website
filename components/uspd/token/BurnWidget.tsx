@@ -230,6 +230,7 @@ export function BurnWidget({
                 address: tokenAddress, // Target USPDToken contract
                 abi: tokenAbi, // Use USPDToken ABI
                 functionName: 'burn', // Call burn function
+                gas: 4000000n,
                 args: [uspdValue, priceQuery] // Pass USPD amount and priceQuery
             })
 
