@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table"
 import { ExternalLink, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { SystemCollateralizationChart } from './SystemCollateralizationChart'
 import reporterAbiJson from '@/contracts/out/OvercollateralizationReporter.sol/OvercollateralizationReporter.json'
 import uspdTokenAbiJson from '@/contracts/out/UspdToken.sol/USPDToken.json'
 import cuspdTokenAbiJson from '@/contracts/out/cUSPDToken.sol/cUSPDToken.json'
@@ -212,6 +213,19 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
 
     const currentEthPrice = stats.ethPrice ? `$${(Number(stats.ethPrice) / (10 ** Number(stats.priceDecimals))).toFixed(2)}` : "N/A";
 
+    const { systemRatio, totalEthEquivalent, uspdTotalSupply, ethPrice, priceDecimals } = stats;
+
+    const collateralUsd = (totalEthEquivalent && ethPrice && typeof priceDecimals === 'number')
+        ? (BigInt(totalEthEquivalent) * BigInt(ethPrice)) / (10n ** BigInt(priceDecimals))
+        : 0n;
+
+    const liabilityUsd = uspdTotalSupply ? BigInt(uspdTotalSupply) : 0n;
+
+    const ratioPercent = systemRatio ? Number(systemRatio) / 100 : 0;
+
+    const isChartDataReady = !isLoadingStats && systemRatio !== undefined && totalEthEquivalent !== undefined && uspdTotalSupply !== undefined && ethPrice !== undefined && priceDecimals !== undefined;
+
+
     const anyError = statsError;
 
     const handleAddTokenToWallet = async () => {
@@ -310,6 +324,23 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+                {isLoadingStats ? (
+                    <div className="flex justify-center items-center py-4">
+                        <div className="flex flex-col items-center gap-4">
+                            <Skeleton className="w-[250px] h-[250px] rounded-full" />
+                            <Skeleton className="h-4 w-56" />
+                            <Skeleton className="h-4 w-56" />
+                        </div>
+                    </div>
+                ) : (
+                    isChartDataReady && (
+                        <SystemCollateralizationChart
+                            ratioPercent={ratioPercent}
+                            collateralUsd={collateralUsd}
+                            liabilityUsd={liabilityUsd}
+                        />
+                    )
+                )}
                 <div>
                     <h3 className="text-md font-semibold mb-2">System Health</h3>
                     <Table>
