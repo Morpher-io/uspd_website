@@ -29,8 +29,8 @@ export function SystemCollateralizationChart({
     const chartData = [{ value: chartValue }]
 
     const getRatioColor = (ratio: number) => {
-        if (ratio >= 150) return "hsl(142.1 76.2% 40.0%)" // ~green-600
-        if (ratio >= 120) return "hsl(47.9 95.8% 53.1%)" // ~yellow-500
+        if (ratio >= 120) return "hsl(142.1 76.2% 40.0%)" // ~green-600
+        if (ratio >= 110) return "hsl(47.9 95.8% 53.1%)" // ~yellow-500
         return "hsl(0 84.2% 60.2%)" // ~red-500
     }
 
