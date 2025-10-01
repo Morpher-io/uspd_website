@@ -67,7 +67,7 @@ export function SystemCollateralizationChart({
                 >
                     <ChartTooltip
                         cursor={false}
-                        content={<ChartTooltipContent hideLabel />}
+                        content={(props) => <ChartTooltipContent {...props} hideLabel />}
                     />
                     <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
                         <Label
