@@ -45,3 +45,5 @@ next-env.d.ts
 scripts/dist
 public/_pagefind
 pagefind-source
+.pki
+.cache
