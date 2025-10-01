@@ -157,7 +157,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
         query: { enabled: !!cuspdTokenAddress && !!userAddress }
     });
 
-    const { uspdTotalSupply, cuspdTotalSupply } = stats;
+    const { systemRatio, totalEthEquivalent, uspdTotalSupply, cuspdTotalSupply, ethPrice, priceDecimals, yieldFactorSnapshot } = stats;
     const userUspdBalance = userUspdBalanceData as bigint | undefined;
     const userCuspdBalance = userCuspdBalanceData as bigint | undefined;
 
@@ -197,8 +197,7 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
     }, [fetchMintableCapacity]);
     // --- End Fetch Mintable Capacity ---
 
-    const { systemRatio, totalEthEquivalent, yieldFactorSnapshot } = stats;
-
+    
     const displayEthEquivalent = totalEthEquivalent !== undefined ? formatUnits(totalEthEquivalent, 18) : "N/A";
     const displayYieldFactor = yieldFactorSnapshot !== undefined ? (Number(yieldFactorSnapshot) / 1e18).toFixed(4) : "N/A";
 
@@ -213,7 +212,6 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
 
     const currentEthPrice = stats.ethPrice ? `$${(Number(stats.ethPrice) / (10 ** Number(stats.priceDecimals))).toFixed(2)}` : "N/A";
 
-    const { systemRatio, totalEthEquivalent, uspdTotalSupply, ethPrice, priceDecimals } = stats;
 
     const collateralUsd = (totalEthEquivalent && ethPrice && typeof priceDecimals === 'number')
         ? (BigInt(totalEthEquivalent) * BigInt(ethPrice)) / (10n ** BigInt(priceDecimals))
