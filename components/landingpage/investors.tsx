@@ -15,7 +15,7 @@ export default function Investors() {
                         <Image
                             src={draperLogo}
                             alt="Draper Associates"
-                            className="h-10 w-auto grayscale dark:invert hover:grayscale-0 dark:hover:invert-0 transition-all"
+                            className="h-10 w-auto grayscale dark:invert hover:grayscale-0 dark:hover:invert-0 transition-all dark:brightness-300 dark:hover:brightness-100"
                         />
                     </a>
                     <a href="https://gateway.ventures/" target="_blank" rel="noopener noreferrer">

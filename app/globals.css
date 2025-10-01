@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @import 'nextra-theme-docs/style.css';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
   ---break---
 */

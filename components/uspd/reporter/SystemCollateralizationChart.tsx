@@ -35,8 +35,8 @@ export function SystemCollateralizationChart({
     const liabilityValue = parseFloat(formatUnits(liabilityUsd, 18));
 
     const chartData = [
-        { name: "liability", value: liabilityValue, fill: "var(--color-liability)" },
         { name: "collateral", value: collateralValue, fill: "var(--color-collateral)" },
+        { name: "liability", value: liabilityValue, fill: "var(--color-liability)" },
     ];
 
     const getRatioColor = (ratio: number) => {
@@ -57,7 +57,7 @@ export function SystemCollateralizationChart({
             </div>
             <ChartContainer
                 config={chartConfig}
-                className="mx-auto aspect-square w-full max-w-[250px]"
+                className="mx-auto aspect-square w-full max-w-[350px]"
             >
                 <PieChart>
                     <ChartTooltip
@@ -103,7 +103,7 @@ export function SystemCollateralizationChart({
                     </Pie>
                 </PieChart>
             </ChartContainer>
-            <div className="flex-col gap-2 text-sm mt-4 text-center">
+            <div className="flex-col gap-2 text-sm -mt-20 text-center">
                 <div className="text-muted-foreground leading-none">
                     Collateral: ${formattedCollateral} &bull; Liability: ${formattedLiability}
                 </div>
