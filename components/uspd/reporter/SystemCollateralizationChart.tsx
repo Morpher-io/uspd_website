@@ -98,7 +98,6 @@ export function SystemCollateralizationChart({
                     </PolarRadiusAxis>
                     <RadialBar
                         dataKey="collateral"
-                        stackId="a"
                         cornerRadius={5}
                         fill="var(--color-collateral)"
                         className="stroke-transparent stroke-2"
@@ -106,7 +105,6 @@ export function SystemCollateralizationChart({
                     <RadialBar
                         dataKey="liability"
                         fill="var(--color-liability)"
-                        stackId="a"
                         cornerRadius={5}
                         className="stroke-transparent stroke-2"
                     />
