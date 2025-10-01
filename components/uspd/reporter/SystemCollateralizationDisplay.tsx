@@ -66,8 +66,8 @@ function getBlockExplorerUrl(chainId: number, address: Address): string {
 function getCollateralizationColor(ratio: bigint | undefined): string {
     if (ratio === undefined || ratio === MAX_UINT256) return "text-gray-500"; // Neutral for N/A or Infinite
     const numericRatio = Number(ratio) / 100;
-    if (numericRatio >= 150) return "text-green-500";
-    if (numericRatio >= 120) return "text-yellow-500";
+    if (numericRatio >= 125) return "text-green-500";
+    if (numericRatio >= 110) return "text-yellow-500";
     return "text-red-500";
 }
 

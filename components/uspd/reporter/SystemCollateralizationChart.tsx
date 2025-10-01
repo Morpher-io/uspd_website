@@ -21,7 +21,7 @@ const chartConfig = {
         color: "hsl(0 84.2% 60.2%)", // red
     },
     collateral: {
-        label: "Surplus Collateral",
+        label: "Collateral (stETH)",
         color: "hsl(142.1 76.2% 40.0%)", // green
     },
 } satisfies ChartConfig
@@ -33,18 +33,15 @@ export function SystemCollateralizationChart({
 }: SystemCollateralizationChartProps) {
     const collateralValue = parseFloat(formatUnits(collateralUsd, 18));
     const liabilityValue = parseFloat(formatUnits(liabilityUsd, 18));
-    
-    // The chart shows liability in red, and the extra collateral (surplus) in green.
-    const overcollateralValue = Math.max(0, collateralValue - liabilityValue);
-    const chartData = [{ 
-        name: 'stats', // for tooltip label
-        liability: liabilityValue, 
-        collateral: overcollateralValue, // 'collateral' key matches chartConfig
-    }];
+
+    const chartData = [
+        { name: 'collateral', value: collateralValue, fill: 'var(--color-collateral)' },
+        { name: 'liability', value: liabilityValue, fill: 'var(--color-liability)' },
+    ];
 
     const getRatioColor = (ratio: number) => {
-        if (ratio >= 150) return "hsl(142.1 76.2% 40.0%)" // ~green-600
-        if (ratio >= 120) return "hsl(47.9 95.8% 53.1%)" // ~yellow-500
+        if (ratio >= 125) return "hsl(142.1 76.2% 40.0%)" // ~green-600
+        if (ratio >= 110) return "hsl(47.9 95.8% 53.1%)" // ~yellow-500
         return "hsl(0 84.2% 60.2%)" // ~red-500
     }
     const color = getRatioColor(ratioPercent)
@@ -67,13 +64,13 @@ export function SystemCollateralizationChart({
                     startAngle={180}
                     endAngle={0}
                     innerRadius={80}
-                    outerRadius={130}
+                    outerRadius={105}
                 >
                     <ChartTooltip
                         cursor={false}
-                        content={<ChartTooltipContent hideLabel />}
+                        content={<ChartTooltipContent hideIndicator nameKey="name" formatter={(value) => `$${(value as number).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />}
                     />
-                    <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                    <PolarRadiusAxis tick={false} tickLine={false} axisLine={false} domain={[0, Math.max(collateralValue, liabilityValue)]}>
                         <Label
                             content={({ viewBox }) => {
                                 if (viewBox && "cx" in viewBox && "cy" in viewBox) {
@@ -101,18 +98,9 @@ export function SystemCollateralizationChart({
                         />
                     </PolarRadiusAxis>
                     <RadialBar
-                        dataKey="liability"
-                        stackId="a"
+                        dataKey="value"
+                        background
                         cornerRadius={5}
-                        fill="var(--color-liability)"
-                        className="stroke-transparent stroke-2"
-                    />
-                    <RadialBar
-                        dataKey="collateral"
-                        fill="var(--color-collateral)"
-                        stackId="a"
-                        cornerRadius={5}
-                        className="stroke-transparent stroke-2"
                     />
                 </RadialBarChart>
             </ChartContainer>
