@@ -321,6 +321,12 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                                 </TableCell>
                             </TableRow>
                             <TableRow>
+                                <TableCell className="font-medium text-muted-foreground">USPD Circulating Supply</TableCell>
+                                <TableCell className="text-right">
+                                    {isLoadingStats ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(uspdTotalSupply, 18, 4)} USPD</span>}
+                                </TableCell>
+                            </TableRow>
+                            <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">Total Collateral (stETH Snapshot)</TableCell>
                                 <TableCell className="text-right">
                                     {isLoadingStats ? <Skeleton className="h-5 w-32 float-right" /> : <span>{displayEthEquivalent} stETH</span>}
@@ -372,12 +378,6 @@ function SystemDataDisplay({ reporterAddress, uspdTokenAddress, cuspdTokenAddres
                             <TableRow>
                                 <TableCell className="font-medium text-muted-foreground">USPD Token Address</TableCell>
                                 <TableCell className="text-right">{renderAddressCell(uspdTokenAddress, "USPD Token", liquidityChainId)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell className="font-medium text-muted-foreground">USPD Total Supply</TableCell>
-                                <TableCell className="text-right">
-                                    {isLoadingStats ? <Skeleton className="h-5 w-24 float-right" /> : <span>{formatBigIntToFixed(uspdTotalSupply, 18, 4)} USPD</span>}
-                                </TableCell>
                             </TableRow>
                             {userAddress && (
                                 <TableRow>
