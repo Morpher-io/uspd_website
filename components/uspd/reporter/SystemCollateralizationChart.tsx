@@ -6,7 +6,7 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from "@/components/ui/chart"
-import { Label, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts"
+import { Label, Pie, PieChart } from "recharts"
 import { formatUnits } from 'viem'
 
 interface SystemCollateralizationChartProps {
@@ -35,7 +35,8 @@ export function SystemCollateralizationChart({
     const liabilityValue = parseFloat(formatUnits(liabilityUsd, 18));
 
     const chartData = [
-        { collateral: collateralValue, liability: liabilityValue },
+        { name: "liability", value: liabilityValue, fill: "var(--color-liability)" },
+        { name: "collateral", value: collateralValue, fill: "var(--color-collateral)" },
     ];
 
     const getRatioColor = (ratio: number) => {
@@ -58,18 +59,22 @@ export function SystemCollateralizationChart({
                 config={chartConfig}
                 className="mx-auto aspect-square w-full max-w-[250px]"
             >
-                <RadialBarChart
-                    data={chartData}
-                    startAngle={180}
-                    endAngle={0}
-                    innerRadius={80}
-                    outerRadius={130}
-                >
+                <PieChart>
                     <ChartTooltip
                         cursor={false}
                         content={(props) => <ChartTooltipContent {...props} hideLabel />}
                     />
-                    <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                    <Pie
+                        data={chartData}
+                        dataKey="value"
+                        nameKey="name"
+                        startAngle={180}
+                        endAngle={0}
+                        innerRadius={80}
+                        outerRadius={130}
+                        cornerRadius={5}
+                        paddingAngle={1}
+                    >
                         <Label
                             content={({ viewBox }) => {
                                 if (viewBox && "cx" in viewBox && "cy" in viewBox) {
@@ -95,20 +100,8 @@ export function SystemCollateralizationChart({
                                 }
                             }}
                         />
-                    </PolarRadiusAxis>
-                    <RadialBar
-                        dataKey="collateral"
-                        cornerRadius={5}
-                        fill="var(--color-collateral)"
-                        className="stroke-transparent stroke-2"
-                    />
-                    <RadialBar
-                        dataKey="liability"
-                        fill="var(--color-liability)"
-                        cornerRadius={5}
-                        className="stroke-transparent stroke-2"
-                    />
-                </RadialBarChart>
+                    </Pie>
+                </PieChart>
             </ChartContainer>
             <div className="flex-col gap-2 text-sm mt-4 text-center">
                 <div className="text-muted-foreground leading-none">
