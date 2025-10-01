@@ -3,8 +3,10 @@
 import {
     ChartConfig,
     ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
 } from "@/components/ui/chart"
-import { Label, PolarAngleAxis, RadialBar, RadialBarChart } from "recharts"
+import { Label, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts"
 import { formatUnits } from 'viem'
 
 interface SystemCollateralizationChartProps {
@@ -14,8 +16,13 @@ interface SystemCollateralizationChartProps {
 }
 
 const chartConfig = {
-    value: {
-        label: "Collateralization",
+    liability: {
+        label: "Liability (USPD)",
+        color: "hsl(0 84.2% 60.2%)", // red
+    },
+    collateral: {
+        label: "Surplus Collateral",
+        color: "hsl(142.1 76.2% 40.0%)", // green
     },
 } satisfies ChartConfig
 
@@ -24,20 +31,26 @@ export function SystemCollateralizationChart({
     collateralUsd,
     liabilityUsd,
 }: SystemCollateralizationChartProps) {
-    // Cap at 200% for visualization, but display real value.
-    const chartValue = Math.min(ratioPercent, 200)
-    const chartData = [{ value: chartValue }]
+    const collateralValue = parseFloat(formatUnits(collateralUsd, 18));
+    const liabilityValue = parseFloat(formatUnits(liabilityUsd, 18));
+    
+    // The chart shows liability in red, and the extra collateral (surplus) in green.
+    const overcollateralValue = Math.max(0, collateralValue - liabilityValue);
+    const chartData = [{ 
+        name: 'stats', // for tooltip label
+        liability: liabilityValue, 
+        collateral: overcollateralValue, // 'collateral' key matches chartConfig
+    }];
 
     const getRatioColor = (ratio: number) => {
-        if (ratio >= 120) return "hsl(142.1 76.2% 40.0%)" // ~green-600
-        if (ratio >= 110) return "hsl(47.9 95.8% 53.1%)" // ~yellow-500
+        if (ratio >= 150) return "hsl(142.1 76.2% 40.0%)" // ~green-600
+        if (ratio >= 120) return "hsl(47.9 95.8% 53.1%)" // ~yellow-500
         return "hsl(0 84.2% 60.2%)" // ~red-500
     }
-
     const color = getRatioColor(ratioPercent)
 
-    const formattedCollateral = parseFloat(formatUnits(collateralUsd, 18)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const formattedLiability = parseFloat(formatUnits(liabilityUsd, 18)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formattedCollateral = collateralValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formattedLiability = liabilityValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
         <div className='mb-6 border rounded-xl p-4 sm:p-6'>
@@ -51,54 +64,64 @@ export function SystemCollateralizationChart({
             >
                 <RadialBarChart
                     data={chartData}
-                    startAngle={90}
-                    endAngle={-270}
+                    startAngle={180}
+                    endAngle={0}
                     innerRadius={80}
-                    outerRadius={110}
-                    barSize={10}
+                    outerRadius={130}
                 >
-                    <PolarAngleAxis type="number" domain={[0, 200]} tick={false} />
-                    <RadialBar
-                        background={{ fill: 'hsl(var(--muted))' }}
-                        dataKey="value"
-                        cornerRadius={10}
-                        style={{ fill: color } as React.CSSProperties}
+                    <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
                     />
-                    <Label
-                        content={({ viewBox }) => {
-                            if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                                return (
-                                    <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
-                                        <tspan
-                                            x={viewBox.cx}
-                                            y={(viewBox.cy || 0) - 10}
-                                            className="fill-foreground text-3xl font-bold"
-                                            style={{ fill: color }}
-                                        >
-                                            {`${ratioPercent.toFixed(2)}%`}
-                                        </tspan>
-                                        <tspan
-                                            x={viewBox.cx}
-                                            y={(viewBox.cy || 0) + 20}
-                                            className="fill-muted-foreground text-sm"
-                                        >
-                                            Collateralization
-                                        </tspan>
-                                    </text>
-                                )
-                            }
-                        }}
+                    <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
+                        <Label
+                            content={({ viewBox }) => {
+                                if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                    return (
+                                        <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
+                                            <tspan
+                                                x={viewBox.cx}
+                                                y={(viewBox.cy || 0) - 10}
+                                                className="fill-foreground text-3xl font-bold"
+                                                style={{ fill: color }}
+                                            >
+                                                {`${ratioPercent.toFixed(2)}%`}
+                                            </tspan>
+                                            <tspan
+                                                x={viewBox.cx}
+                                                y={(viewBox.cy || 0) + 20}
+                                                className="fill-muted-foreground text-sm"
+                                            >
+                                                Collateralization
+                                            </tspan>
+                                        </text>
+                                    )
+                                }
+                            }}
+                        />
+                    </PolarRadiusAxis>
+                    <RadialBar
+                        dataKey="liability"
+                        stackId="a"
+                        cornerRadius={5}
+                        fill="var(--color-liability)"
+                        className="stroke-transparent stroke-2"
+                    />
+                    <RadialBar
+                        dataKey="collateral"
+                        fill="var(--color-collateral)"
+                        stackId="a"
+                        cornerRadius={5}
+                        className="stroke-transparent stroke-2"
                     />
                 </RadialBarChart>
             </ChartContainer>
-            <div className="flex flex-col gap-2 text-sm mt-4">
-                <div className="w-full flex justify-between px-4">
-                    <span className="text-muted-foreground">Total Collateral (USD)</span>
-                    <span className="font-medium">${formattedCollateral}</span>
+            <div className="flex-col gap-2 text-sm mt-4 text-center">
+                <div className="text-muted-foreground leading-none">
+                    Collateral: ${formattedCollateral} &bull; Liability: ${formattedLiability}
                 </div>
-                <div className="w-full flex justify-between px-4">
-                    <span className="text-muted-foreground">Total Liability (USPD)</span>
-                    <span className="font-medium">${formattedLiability}</span>
+                <div className="leading-none font-medium mt-1">
+                    Overcollateralization Ratio: <span className="font-bold" style={{ color: color }}>{ratioPercent.toFixed(2)}%</span>
                 </div>
             </div>
         </div>
