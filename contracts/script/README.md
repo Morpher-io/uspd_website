@@ -51,6 +51,12 @@ Set the right roles, give relayer role on each network to NTT Manager (annyoing,
 cast send TOKEN_ADDR "grantRole(bytes32,address)" $(cast keccak256 RELAYER_ROLE) WORMHOLE_NTT_MANAGER --rpc-url ${RPC_ENDPOINT_TESTNET} --private-key ${DEPLOY_PRIVATE_KEY}
 ```
 
+for mainchain e.g. 
+
+```sh
+cast send 0x476ef9ac6D8673E220d0E8BC0a810C2Dc6A2AA84 "grantRole(bytes32,address)" $(cast keccak256 RELAYER_ROLE) 0xDB6615d342D0610A6F3b9589dC319c8003c51a0a --rpc-url ${RPC_ENDPOINT_TESTNET} --private-key ${DEPLOY_PRIVATE_KEY}
+```
+
 ## Renounce Roles
 
 ```sh
