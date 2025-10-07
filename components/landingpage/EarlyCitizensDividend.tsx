@@ -214,7 +214,7 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                     <div className="text-center">
                         <div className="flex items-center justify-center gap-2 mb-4"><span className="text-2xl">📈</span><h3 className="text-lg font-semibold text-emerald-400">Projected Total APY</h3></div>
                         <div className="relative">
-                            <div className="text-7xl md:text-8xl font-bold text-emerald-400 mb-2 font-mono">
+                            <div className="text-7xl xl:text-8xl font-bold text-emerald-400 mb-2 font-mono">
                                 {!isNaN(animatedYield) ? animatedYield.toFixed(2) : '0.00'}%
                             </div>
                             {isConnected && userUspdBalance > 0 && <div className="text-base text-emerald-400/70">Current APY: {!isNaN(currentTotalAPY) ? currentTotalAPY.toFixed(2) : '0.00'}%</div>}
