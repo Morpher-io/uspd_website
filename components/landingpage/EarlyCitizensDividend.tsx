@@ -319,7 +319,7 @@ export default function EarlyCitizensDividend() {
 
                 <ContractLoader contractKeys={["uspdToken"]} chainId={liquidityChainId}>
                     {(loadedAddresses) => (
-                        <EarlyCitizensDividendContent uspdTokenAddress={loadedAddresses["uspdToken"] || null} />
+                        <EarlyCitizensDividendCalculator uspdTokenAddress={loadedAddresses["uspdToken"] || null} />
                     )}
                 </ContractLoader>
 
