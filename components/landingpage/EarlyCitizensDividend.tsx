@@ -257,11 +257,16 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                     {/* Total Supply Display */}
                     <div>
                         <label className="block text-sm font-medium mb-3 text-gray-200">Live Total USPD Supply</label>
-                        {isLoadingSupply ? <Skeleton className="h-12 w-full" /> : 
-                        <div className="relative">
-                            <Input type="text" value={!isNaN(totalSupply) ? totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 }) : 'Loading...'} readOnly className="bg-black border-gray-700 text-white text-lg h-12 pr-20" />
-                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
-                        </div>}
+                        {isLoadingSupply ? <Skeleton className="h-12 w-full" /> :
+                            <div className="relative">
+                                <Input type="text" value={!isNaN(totalSupply) ? totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 }) : 'Loading...'} readOnly className="bg-black border-gray-700 text-white text-lg h-12 pr-20" />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
+                            </div>}
+                        {!isLoadingSupply && (
+                            <div className="text-xs text-muted-foreground mt-2 text-center bg-black/20 p-2 rounded-md">
+                                New Total Supply: {totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} + {simulatedAmountToAdd.toLocaleString()} = <span className="font-semibold text-gray-200">{(totalSupply + simulatedAmountToAdd).toLocaleString(undefined, { maximumFractionDigits: 0 })} USPD</span>
+                            </div>
+                        )}
                         {supplyError && <p className="text-xs text-red-400 mt-2">Failed to load live supply. Using estimate.</p>}
                     </div>
                 </div>
