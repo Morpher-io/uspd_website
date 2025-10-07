@@ -271,8 +271,6 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                 </Card>
             </div>
 
-            </div>
-
             <div className="mt-8 max-w-2xl mx-auto w-full">
                 {/* Minting section */}
                 {isConnected && (
