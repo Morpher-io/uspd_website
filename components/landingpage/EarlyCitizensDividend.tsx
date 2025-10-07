@@ -9,10 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAccount, useReadContract } from "wagmi";
-import { formatUnits, Abi } from "viem";
+import { useAccount, useReadContract, useBalance, useWriteContract } from "wagmi";
+import { formatUnits, Abi, parseEther } from "viem";
 import { ContractLoader } from "@/components/uspd/common/ContractLoader";
 import tokenJson from '@/contracts/out/UspdToken.sol/USPDToken.json';
+import { Button } from "../ui/button";
+import { Alert, AlertDescription } from "../ui/alert";
+import { toast } from "sonner";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11155111;
 
@@ -20,28 +24,42 @@ const BASE_APY = 3;
 const DAILY_REWARD = 1000;
 const ANNUAL_REWARD = DAILY_REWARD * 365;
 
-// Reusable calculator component
-function EarningsCalculator({
-    title,
-    initialUspdAmount = 10000,
-    isReadOnly = false,
-}: {
-    title: React.ReactNode;
-    initialUspdAmount?: number;
-    isReadOnly?: boolean;
-}) {
-    const [uspdAmount, setUspdAmount] = useState(initialUspdAmount);
+interface PriceData {
+    price: string;
+    decimals: number;
+    dataTimestamp: number;
+    assetPair: `0x${string}`;
+    signature: `0x${string}`;
+}
+
+// The new, consolidated calculator component
+function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddress: `0x${string}` | null }) {
+    const { address, isConnected } = useAccount();
+
+    // === STATE ===
+    const [simulatedUspdAmount, setSimulatedUspdAmount] = useState(10000);
     const [totalSupply, setTotalSupply] = useState(5000000);
     const [animatedYield, setAnimatedYield] = useState(0);
     const [isLoadingSupply, setIsLoadingSupply] = useState(true);
     const [supplyError, setSupplyError] = useState<string | null>(null);
+    const [priceData, setPriceData] = useState<PriceData | null>(null);
+    const [isLoadingPrice, setIsLoadingPrice] = useState(false);
+    const [mintError, setMintError] = useState<string | null>(null);
+    const [isMinting, setIsMinting] = useState(false);
 
+    // === HOOKS ===
+    const { writeContractAsync } = useWriteContract();
+    const { data: uspdBalanceRaw, refetch: refetchUspdBalance } = useReadContract({
+        address: uspdTokenAddress || undefined,
+        abi: tokenJson.abi as Abi,
+        functionName: 'balanceOf',
+        args: [address!],
+        query: { enabled: !!address && !!uspdTokenAddress, refetchInterval: 5000 }
+    });
+    const { data: ethBalance } = useBalance({ address, query: { enabled: isConnected } });
+    const userUspdBalance = uspdBalanceRaw && typeof uspdBalanceRaw === 'bigint' ? parseFloat(formatUnits(uspdBalanceRaw, 18)) : 0;
 
-    useEffect(() => {
-        setUspdAmount(initialUspdAmount);
-    }, [initialUspdAmount]);
-
-    // Fetch actual total supply from API
+    // === DATA FETCHING ===
     const fetchTotalSupply = useCallback(async () => {
         setIsLoadingSupply(true);
         setSupplyError(null);
@@ -52,7 +70,6 @@ function EarningsCalculator({
             const supply = Number(BigInt(data.uspdTotalSupply) / BigInt(10 ** 18));
             setTotalSupply(supply > 0 ? supply : 5000000);
         } catch (err) {
-            console.error('Failed to fetch total supply:', err);
             setSupplyError((err as Error).message || 'Failed to fetch total supply');
             setTotalSupply(5000000);
         } finally {
@@ -60,238 +77,221 @@ function EarningsCalculator({
         }
     }, []);
 
+    const fetchPriceData = useCallback(async () => {
+        setIsLoadingPrice(true);
+        try {
+            const response = await fetch('/api/v1/price/eth-usd');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            setPriceData(await response.json());
+            return response.json();
+        } catch (err) {
+            console.error('Failed to fetch price data:', err);
+        } finally {
+            setIsLoadingPrice(false);
+        }
+    }, []);
+
     useEffect(() => {
         fetchTotalSupply();
-    }, [fetchTotalSupply]);
+        fetchPriceData();
+        const priceInterval = setInterval(fetchPriceData, 30000);
+        return () => clearInterval(priceInterval);
+    }, [fetchTotalSupply, fetchPriceData]);
 
-    // Calculations
-    const userShare = totalSupply > 0 ? uspdAmount / totalSupply : 0;
-    const annualUserReward = ANNUAL_REWARD * userShare;
-    const boostAPY = uspdAmount > 0 ? (annualUserReward / uspdAmount) * 100 : 0;
-    const totalAPY = BASE_APY + boostAPY;
-    const dailyEarnings = (uspdAmount * totalAPY) / 365 / 100;
-    const monthlyEarnings = dailyEarnings * 30;
-    const yearlyEarnings = uspdAmount * (totalAPY / 100);
-
-    // Animate the total APY counter
+    // === EFFECT to set initial slider amount ===
     useEffect(() => {
-        if (isNaN(totalAPY)) return;
-        const duration = 1000;
-        const steps = 60;
-        const increment = totalAPY / steps;
-        let current = 0;
-
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= totalAPY) {
-                setAnimatedYield(totalAPY);
-                clearInterval(timer);
-            } else {
-                setAnimatedYield(current);
+        if (isConnected && userUspdBalance >= 0) { // Check >=0 to handle 0 balance correctly
+            let amountToAdd = 1000;
+            if (userUspdBalance > 1000 && userUspdBalance <= 10000) {
+                amountToAdd = 10000;
+            } else if (userUspdBalance > 10000) {
+                amountToAdd = 25000;
             }
-        }, duration / steps);
+            const nudgedAmount = Math.ceil((userUspdBalance + amountToAdd) / 1000) * 1000;
+            setSimulatedUspdAmount(nudgedAmount);
+        } else {
+            setSimulatedUspdAmount(10000);
+        }
+    }, [isConnected, userUspdBalance]);
 
+
+    // === CALCULATIONS ===
+    // --- Current (based on actual balance) ---
+    const currentUserShare = totalSupply > 0 ? userUspdBalance / totalSupply : 0;
+    const currentBoostAPY = userUspdBalance > 0 ? (ANNUAL_REWARD * currentUserShare / userUspdBalance) * 100 : 0;
+    const currentTotalAPY = BASE_APY + currentBoostAPY;
+    const currentDailyEarnings = (userUspdBalance * currentTotalAPY) / 365 / 100;
+    const currentMonthlyEarnings = currentDailyEarnings * 30;
+    const currentYearlyEarnings = userUspdBalance * (currentTotalAPY / 100);
+
+    // --- Projected (based on slider) ---
+    const uspdToAdd = isConnected ? Math.max(0, simulatedUspdAmount - userUspdBalance) : simulatedUspdAmount;
+    const projectedTotalSupply = totalSupply + uspdToAdd;
+    const projectedUserShare = projectedTotalSupply > 0 ? simulatedUspdAmount / projectedTotalSupply : 0;
+    const projectedBoostAPY = simulatedUspdAmount > 0 ? (ANNUAL_REWARD * projectedUserShare / simulatedUspdAmount) * 100 : 0;
+    const projectedTotalAPY = BASE_APY + projectedBoostAPY;
+    const projectedDailyEarnings = (simulatedUspdAmount * projectedTotalAPY) / 365 / 100;
+    const projectedMonthlyEarnings = projectedDailyEarnings * 30;
+    const projectedYearlyEarnings = simulatedUspdAmount * (projectedTotalAPY / 100);
+
+    useEffect(() => {
+        if (isNaN(projectedTotalAPY)) return;
+        const timer = setInterval(() => setAnimatedYield(prev => {
+            const diff = projectedTotalAPY - prev;
+            if (Math.abs(diff) < 0.01) {
+                clearInterval(timer);
+                return projectedTotalAPY;
+            }
+            return prev + diff * 0.1;
+        }), 50);
         return () => clearInterval(timer);
-    }, [totalAPY]);
+    }, [projectedTotalAPY]);
+
+    // === MINTING LOGIC ===
+    const uspdToMint = isConnected ? Math.max(0, simulatedUspdAmount - userUspdBalance) : 0;
+    const ethPriceInUsd = priceData ? parseFloat(priceData.price) / (10 ** priceData.decimals) : 0;
+    const ethNeeded = ethPriceInUsd > 0 ? uspdToMint / ethPriceInUsd : 0;
+    const hasEnoughEth = ethBalance ? parseFloat(ethBalance.formatted) - 0.01 > ethNeeded : false; // Keep some for gas
+
+    const handleMint = async () => {
+        if (!uspdTokenAddress || !address) return;
+        setMintError(null);
+        setIsMinting(true);
+        try {
+            const freshPriceData = await fetchPriceData();
+            if (!freshPriceData) throw new Error('Could not fetch latest price data for minting.');
+
+            const priceQuery = {
+                price: BigInt(freshPriceData.price),
+                decimals: Number(freshPriceData.decimals),
+                dataTimestamp: BigInt(freshPriceData.dataTimestamp),
+                assetPair: freshPriceData.assetPair as `0x${string}`,
+                signature: freshPriceData.signature as `0x${string}`
+            };
+
+            await writeContractAsync({
+                address: uspdTokenAddress,
+                abi: tokenJson.abi as Abi,
+                functionName: 'mint',
+                args: [address, priceQuery],
+                value: parseEther(ethNeeded.toFixed(18))
+            });
+
+            toast.success(`Successfully initiated mint for ${uspdToMint.toFixed(2)} USPD.`);
+            refetchUspdBalance();
+        } catch (err) {
+            const errorMessage = (err as Error).message || 'An unknown error occurred.';
+            setMintError(errorMessage);
+            toast.error(errorMessage);
+        } finally {
+            setIsMinting(false);
+        }
+    };
+    
+    const EarningRow = ({ label, current, projected }: { label: string, current: number, projected: number }) => (
+         <div className="flex justify-between items-center p-4 bg-black/50 rounded-lg border border-gray-800">
+            <span className="text-gray-300">{label}</span>
+            <div className="flex gap-4 sm:gap-6 text-right items-baseline">
+                {isConnected && userUspdBalance > 0 && (
+                    <div>
+                        <div className="text-xs text-muted-foreground">Current</div>
+                        <div className="text-lg font-semibold text-emerald-400/70">${!isNaN(current) ? current.toFixed(2) : '0.00'}</div>
+                    </div>
+                )}
+                <div>
+                    <div className="text-xs text-muted-foreground">Projected</div>
+                    <div className="text-2xl font-bold text-emerald-400">${!isNaN(projected) ? projected.toFixed(2) : '0.00'}</div>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div>
-            {typeof title === 'string' && title.length > 0 && (
-                <h3 className="font-heading text-2xl font-semibold tracking-tight sm:text-4xl text-balance text-center mb-8">
-                    {title}
-                </h3>
-            )}
-
             <div className="grid md:grid-cols-2 gap-6 mb-8">
                 {/* APY Display */}
-                <Card className="bg-gradient-to-br from-emerald-950/50 to-black border-emerald-500/30 p-8">
+                <Card className="bg-gradient-to-br from-emerald-950/50 to-black border-emerald-500/30 p-8 flex flex-col justify-center">
                     <div className="text-center">
-                        <div className="flex items-center justify-center gap-2 mb-4">
-                            <span className="text-2xl">📈</span>
-                            <h3 className="text-lg font-semibold text-emerald-400">Your Total APY</h3>
-                        </div>
+                        <div className="flex items-center justify-center gap-2 mb-4"><span className="text-2xl">📈</span><h3 className="text-lg font-semibold text-emerald-400">Projected Total APY</h3></div>
                         <div className="relative">
                             <div className="text-7xl md:text-8xl font-bold text-emerald-400 mb-2 font-mono">
                                 {!isNaN(animatedYield) ? animatedYield.toFixed(2) : '0.00'}%
                             </div>
-                            <div className="flex items-center justify-center gap-4 text-sm">
-                                <div className="flex items-center gap-1">
-                                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                                    <span className="text-gray-300">Base: {BASE_APY}%</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                                    <span className="text-gray-300">Boost: +{!isNaN(boostAPY) ? boostAPY.toFixed(2) : '0.00'}%</span>
-                                </div>
-                            </div>
+                             {isConnected && userUspdBalance > 0 && <div className="text-base text-emerald-400/70">Current APY: {!isNaN(currentTotalAPY) ? currentTotalAPY.toFixed(2) : '0.00'}%</div>}
                         </div>
-                        <div className="mt-6 h-4 bg-gray-900 rounded-full overflow-hidden flex">
-                            <div
-                                className="bg-blue-500 transition-all duration-500"
-                                style={{ width: `${(BASE_APY / (totalAPY || 1)) * 100}%` }}
-                            ></div>
-                            <div
-                                className="bg-emerald-500 transition-all duration-500"
-                                style={{ width: `${(boostAPY / (totalAPY || 1)) * 100}%` }}
-                            ></div>
+                        <div className="mt-6 flex items-center justify-center gap-4 text-sm">
+                            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-500"></div><span className="text-gray-300">Base: {BASE_APY}%</span></div>
+                            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-emerald-500"></div><span className="text-gray-300">Boost: +{!isNaN(projectedBoostAPY) ? projectedBoostAPY.toFixed(2) : '0.00'}%</span></div>
                         </div>
                     </div>
                 </Card>
 
                 {/* Earnings Breakdown */}
                 <Card className="bg-gray-950/50 border-gray-800 p-8">
-                    <div className="flex items-center gap-2 mb-6">
-                        <span className="text-xl">🧮</span>
-                        <h3 className="text-lg font-semibold text-white">Your Projected Earnings</h3>
-                    </div>
+                    <div className="flex items-center gap-2 mb-6"><span className="text-xl">🧮</span><h3 className="text-lg font-semibold text-white">Your Earnings</h3></div>
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center p-4 bg-black/50 rounded-lg border border-gray-800">
-                            <span className="text-gray-300">Daily</span>
-                            <span className="text-2xl font-bold text-emerald-400">${!isNaN(dailyEarnings) ? dailyEarnings.toFixed(2) : '0.00'}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-4 bg-black/50 rounded-lg border border-gray-800">
-                            <span className="text-gray-300">Monthly</span>
-                            <span className="text-2xl font-bold text-emerald-400">${!isNaN(monthlyEarnings) ? monthlyEarnings.toFixed(2) : '0.00'}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-4 bg-black/50 rounded-lg border border-emerald-800/50">
-                            <span className="text-gray-300">Yearly</span>
-                            <span className="text-3xl font-bold text-emerald-400">${!isNaN(yearlyEarnings) ? yearlyEarnings.toFixed(2) : '0.00'}</span>
-                        </div>
+                        <EarningRow label="Daily" current={currentDailyEarnings} projected={projectedDailyEarnings} />
+                        <EarningRow label="Monthly" current={currentMonthlyEarnings} projected={projectedMonthlyEarnings} />
+                        <EarningRow label="Yearly" current={currentYearlyEarnings} projected={projectedYearlyEarnings} />
                     </div>
                 </Card>
             </div>
 
             <Card className="bg-gray-950/50 border-gray-800 p-8 mb-8">
-                <div className="grid md:grid-cols-2 gap-8">
+                <div className="grid md:grid-cols-2 gap-8 items-start">
                     {/* USPD Amount Input */}
                     <div>
-                        <label className="block text-sm font-medium mb-3 text-gray-200">
-                            {isReadOnly ? 'Your Current USPD Holdings' : 'Simulate Your USPD Holdings'}
-                        </label>
+                        <label className="block text-sm font-medium mb-3 text-gray-200">Simulate Your USPD Holdings</label>
                         <div className="relative">
-                            <Input
-                                type="number"
-                                value={isReadOnly ? uspdAmount.toFixed(2) : uspdAmount}
-                                onChange={(e) => !isReadOnly && setUspdAmount(Number(e.target.value) || 0)}
-                                className="bg-black border-gray-700 text-white text-lg h-12 pr-20"
-                                min="0"
-                                readOnly={isReadOnly}
-                            />
+                            <Input type="number" value={simulatedUspdAmount} onChange={(e) => setSimulatedUspdAmount(Number(e.target.value) || 0)} className="bg-black border-gray-700 text-white text-lg h-12 pr-20" min="0" />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
                         </div>
-                        <Slider
-                            value={[uspdAmount]}
-                            onValueChange={(value) => !isReadOnly && setUspdAmount(value[0])}
-                            max={isReadOnly ? uspdAmount * 2 : 100000}
-                            step={1000}
-                            className="mt-4"
-                            disabled={isReadOnly}
-                        />
-                        <div className="flex justify-between text-xs text-gray-400 mt-2">
-                            <span>$0</span>
-                            <span>${(isReadOnly && uspdAmount > 0 ? uspdAmount * 2 : 100000).toLocaleString()}</span>
-                        </div>
+                        <Slider value={[simulatedUspdAmount]} onValueChange={(v) => setSimulatedUspdAmount(v[0])} max={100000} step={1000} className="mt-4" />
+                        <div className="flex justify-between text-xs text-gray-400 mt-2"><span>$0</span><span>$100,000</span></div>
                     </div>
 
-                    {/* Total Supply Input */}
+                    {/* Total Supply Display */}
                     <div>
-                        <label className="block text-sm font-medium mb-3 text-gray-200">
-                            Total USPD Supply {isLoadingSupply && <span className="text-xs">(Loading...)</span>}
-                        </label>
+                        <label className="block text-sm font-medium mb-3 text-gray-200">Live Total USPD Supply</label>
+                        {isLoadingSupply ? <Skeleton className="h-12 w-full" /> : 
                         <div className="relative">
-                            {isLoadingSupply ? (
-                                <Skeleton className="h-12 w-full" />
-                            ) : (
-                                <>
-                                    <Input
-                                        type="number"
-                                        value={totalSupply}
-                                        onChange={(e) => setTotalSupply(Number(e.target.value) || 1)}
-                                        className="bg-black border-gray-700 text-white text-lg h-12 pr-20"
-                                        min="1"
-                                    />
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
-                                </>
-                            )}
-                        </div>
-                        {!isLoadingSupply && (
-                            <>
-                                <Slider
-                                    value={[totalSupply]}
-                                    onValueChange={(value) => setTotalSupply(value[0])}
-                                    max={50000000}
-                                    step={100000}
-                                    className="mt-4"
-                                />
-                                <div className="flex justify-between text-xs text-gray-400 mt-2">
-                                    <span>$1M</span>
-                                    <span>$50M</span>
-                                </div>
-                            </>
-                        )}
+                            <Input type="text" value={!isNaN(totalSupply) ? totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 }) : 'Loading...'} readOnly className="bg-black border-gray-700 text-white text-lg h-12 pr-20" />
+                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
+                        </div>}
                         {supplyError && <p className="text-xs text-red-400 mt-2">Failed to load live supply. Using estimate.</p>}
                     </div>
                 </div>
-
+                
+                {/* Minting section */}
+                {isConnected && uspdToMint > 0.01 && (
+                    <div className="mt-6 p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
+                        <p className="text-base text-gray-200 mb-2">You are simulating adding <strong>{uspdToMint.toFixed(2)} USPD</strong> to your holdings.</p>
+                        {isLoadingPrice ? <Skeleton className="h-5 w-48 mx-auto" /> : <p className="text-sm text-muted-foreground mb-4">This will require approximately <strong>{ethNeeded.toFixed(5)} ETH</strong> to mint.</p>}
+                        <Button onClick={handleMint} disabled={isMinting || isLoadingPrice || !hasEnoughEth || !uspdTokenAddress} className="w-full max-w-xs">
+                             {isMinting ? "Minting..." : `Mint ${uspdToMint.toFixed(2)} USPD`}
+                        </Button>
+                        {!hasEnoughEth && !isMinting && <p className="text-xs text-yellow-400 mt-2">You have insufficient ETH balance to perform this mint.</p>}
+                         {mintError && <Alert variant="destructive" className="mt-4 text-left"><AlertDescription>{mintError}</AlertDescription></Alert>}
+                    </div>
+                )}
+                 {!isConnected && 
+                    <div className="mt-6 p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
+                         <p className="text-base text-gray-200 mb-4">Connect your wallet to calculate your earnings and mint USPD.</p>
+                        <ConnectButton.Custom>
+                            {({ openConnectModal }) => <Button onClick={openConnectModal}>Connect Wallet</Button>}
+                        </ConnectButton.Custom>
+                    </div>
+                 }
+                
                 <div className="mt-6 p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-lg">
                     <p className="text-sm text-emerald-200">
                         <strong>💡 Pro Tip:</strong> The earlier you mint, the larger your share of the daily ${DAILY_REWARD.toLocaleString()} reward
-                        pool. Your share: <strong>{(!isNaN(userShare) ? userShare * 100 : 0).toFixed(4)}%</strong> ={" "}
-                        <strong>${(!isNaN(DAILY_REWARD * userShare) ? (DAILY_REWARD * userShare) : 0).toFixed(2)}/day</strong> from treasury boost alone!
+                        pool. Your projected share: <strong>{(!isNaN(projectedUserShare) ? projectedUserShare * 100 : 0).toFixed(4)}%</strong> ={" "}
+                        <strong>${(!isNaN(DAILY_REWARD * projectedUserShare) ? (DAILY_REWARD * projectedUserShare) : 0).toFixed(2)}/day</strong> from treasury boost alone!
                     </p>
                 </div>
             </Card>
         </div>
-    );
-}
-
-// Renders content based on wallet connection
-function EarlyCitizensDividendContent({ uspdTokenAddress }: { uspdTokenAddress: `0x${string}` | null }) {
-    const { address, isConnected } = useAccount();
-
-    const { data: uspdBalanceRaw, isLoading: isLoadingBalance } = useReadContract({
-        address: uspdTokenAddress || undefined,
-        abi: tokenJson.abi as Abi,
-        functionName: 'balanceOf',
-        args: [address!],
-        query: { enabled: !!address && !!uspdTokenAddress, refetchInterval: 5000 }
-    });
-
-    const userUspdBalance = uspdBalanceRaw && typeof uspdBalanceRaw == "bigint" ? parseFloat(formatUnits(uspdBalanceRaw, 18)) : 0;
-    const showMyEarnings = isConnected && userUspdBalance > 0;
-
-    let potentialAmountToAdd = 10000;
-    if (showMyEarnings) {
-        if (userUspdBalance <= 1000) {
-            potentialAmountToAdd = 1000;
-        } else if (userUspdBalance <= 10000) {
-            potentialAmountToAdd = 10000;
-        } else {
-            potentialAmountToAdd = 25000;
-        }
-    }
-
-    if (isLoadingBalance && isConnected) {
-        return <Skeleton className="h-96 w-full" />;
-    }
-
-    return (
-        <>
-            {showMyEarnings && (
-                <div className="mb-16">
-                    <EarningsCalculator
-                        title="My Real-Time Earnings"
-                        initialUspdAmount={userUspdBalance}
-                        isReadOnly={true}
-                    />
-                </div>
-            )}
-
-            <EarningsCalculator
-                title={showMyEarnings ? "Calculate Potential Earnings" : ""}
-                initialUspdAmount={showMyEarnings ? userUspdBalance + potentialAmountToAdd : 10000}
-            />
-        </>
     );
 }
 
