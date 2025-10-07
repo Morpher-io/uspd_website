@@ -82,8 +82,9 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
         try {
             const response = await fetch('/api/v1/price/eth-usd');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            setPriceData(await response.json());
-            return response.json();
+            const data = await response.json();
+            setPriceData(data);
+            return data;
         } catch (err) {
             console.error('Failed to fetch price data:', err);
         } finally {
