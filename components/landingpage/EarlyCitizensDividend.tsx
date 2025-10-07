@@ -209,43 +209,58 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
         <div>
             <div className="grid md:grid-cols-2 gap-6 mb-8">
                 {/* APY Display */}
-                <Card className="bg-gradient-to-br from-emerald-950/50 to-black border-emerald-500/30 p-8 flex flex-col justify-center">
+                <Card className="bg-gradient-to-br from-emerald-950/50 to-black border-emerald-500/30 p-8 flex flex-col justify-between h-full">
                     <div className="text-center">
                         <div className="flex items-center justify-center gap-2 mb-4"><span className="text-2xl">📈</span><h3 className="text-lg font-semibold text-emerald-400">Projected Total APY</h3></div>
                         <div className="relative">
                             <div className="text-7xl md:text-8xl font-bold text-emerald-400 mb-2 font-mono">
                                 {!isNaN(animatedYield) ? animatedYield.toFixed(2) : '0.00'}%
                             </div>
-                             {isConnected && userUspdBalance > 0 && <div className="text-base text-emerald-400/70">Current APY: {!isNaN(currentTotalAPY) ? currentTotalAPY.toFixed(2) : '0.00'}%</div>}
+                            {isConnected && userUspdBalance > 0 && <div className="text-base text-emerald-400/70">Current APY: {!isNaN(currentTotalAPY) ? currentTotalAPY.toFixed(2) : '0.00'}%</div>}
                         </div>
                         <div className="mt-6 flex items-center justify-center gap-4 text-sm">
                             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-500"></div><span className="text-gray-300">Base: {BASE_APY}%</span></div>
                             <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-emerald-500"></div><span className="text-gray-300">Boost: +{!isNaN(projectedBoostAPY) ? projectedBoostAPY.toFixed(2) : '0.00'}%</span></div>
                         </div>
                     </div>
+                    {/* USPD Amount Input */}
+                    <div className="mt-8 pt-6 border-t border-emerald-500/20">
+                        <label className="block text-sm font-medium mb-3 text-gray-200 text-center">Simulate USPD to Mint</label>
+                        <div className="relative">
+                            <Input type="number" value={simulatedAmountToAdd} onChange={(e) => setSimulatedAmountToAdd(Number(e.target.value) || 0)} className="bg-black border-gray-700 text-white text-lg h-12 pr-20" min="0" />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
+                        </div>
+                        <Slider value={[simulatedAmountToAdd]} onValueChange={(v) => setSimulatedAmountToAdd(v[0])} max={100000} step={1000} className="mt-4" />
+                        <div className="flex justify-between text-xs text-gray-400 mt-2"><span>$0</span><span>$100,000</span></div>
+                    </div>
                 </Card>
 
                 {/* Earnings Breakdown */}
                 <Card className="bg-gray-950/50 border-gray-800 p-8">
-                    <div className="flex items-center gap-2 mb-4"><span className="text-xl">🧮</span><h3 className="text-lg font-semibold text-white">Your Earnings</h3></div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-muted-foreground mb-4 border-b border-gray-800 pb-4">
-                        {isConnected && (
+                    <div className="flex justify-between items-start gap-4 mb-4 border-b border-gray-800 pb-4">
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xl">🧮</span>
+                            <h3 className="text-lg font-semibold text-white">Your Earnings</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-muted-foreground text-right">
+                            {isConnected && (
+                                <div>
+                                    <div className="font-semibold text-gray-300">Current Balance</div>
+                                    <div>{userUspdBalance.toFixed(2)} USPD</div>
+                                </div>
+                            )}
                             <div>
-                                <div className="font-semibold text-gray-300">Current Balance</div>
-                                <div>{userUspdBalance.toFixed(2)} USPD</div>
+                                <div className="font-semibold text-gray-300">Projected Balance</div>
+                                <div>{projectedUspdAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} USPD</div>
                             </div>
-                        )}
-                        <div>
-                            <div className="font-semibold text-gray-300">Projected Balance</div>
-                            <div>{projectedUspdAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} USPD</div>
-                        </div>
-                        <div>
-                            <div className="font-semibold text-gray-300">Current Supply</div>
-                            {isLoadingSupply ? <Skeleton className="h-4 w-20" /> : <div>{totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} USPD</div>}
-                        </div>
-                        <div>
-                            <div className="font-semibold text-gray-300">Projected Supply</div>
-                            {isLoadingSupply ? <Skeleton className="h-4 w-20" /> : <div>{projectedTotalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} USPD</div>}
+                            <div>
+                                <div className="font-semibold text-gray-300">Current Supply</div>
+                                {isLoadingSupply ? <Skeleton className="h-4 w-20" /> : <div>{totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} USPD</div>}
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-300">Projected Supply</div>
+                                {isLoadingSupply ? <Skeleton className="h-4 w-20" /> : <div>{projectedTotalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} USPD</div>}
+                            </div>
                         </div>
                     </div>
                     <div className="space-y-4">
@@ -256,23 +271,12 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                 </Card>
             </div>
 
-            <Card className="bg-gray-950/50 border-gray-800 p-8 mb-8">
-                <div className="grid grid-cols-1 gap-8 items-start max-w-md mx-auto">
-                    {/* USPD Amount Input */}
-                    <div>
-                        <label className="block text-sm font-medium mb-3 text-gray-200">Simulate USPD to Mint</label>
-                        <div className="relative">
-                            <Input type="number" value={simulatedAmountToAdd} onChange={(e) => setSimulatedAmountToAdd(Number(e.target.value) || 0)} className="bg-black border-gray-700 text-white text-lg h-12 pr-20" min="0" />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
-                        </div>
-                        <Slider value={[simulatedAmountToAdd]} onValueChange={(v) => setSimulatedAmountToAdd(v[0])} max={100000} step={1000} className="mt-4" />
-                        <div className="flex justify-between text-xs text-gray-400 mt-2"><span>$0</span><span>$100,000</span></div>
-                    </div>
-                </div>
-                
+            </div>
+
+            <div className="mt-8 max-w-2xl mx-auto w-full">
                 {/* Minting section */}
                 {isConnected && (
-                    <div className="mt-6 p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
+                    <div className="p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
                         {uspdToMint > 0.01 ? (
                             <>
                                 <p className="text-base text-gray-200 mb-2">You are simulating adding <strong>{uspdToMint.toFixed(2)} USPD</strong> to your holdings.</p>
@@ -288,15 +292,15 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                         )}
                     </div>
                 )}
-                 {!isConnected && 
-                    <div className="mt-6 p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
-                         <p className="text-base text-gray-200 mb-4">Connect your wallet to calculate your earnings and mint USPD.</p>
+                {!isConnected &&
+                    <div className="p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
+                        <p className="text-base text-gray-200 mb-4">Connect your wallet to calculate your earnings and mint USPD.</p>
                         <ConnectButton.Custom>
                             {({ openConnectModal }) => <Button onClick={openConnectModal}>Connect Wallet</Button>}
                         </ConnectButton.Custom>
                     </div>
-                 }
-                
+                }
+
                 <div className="mt-6 p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-lg">
                     <p className="text-sm text-emerald-200">
                         <strong>💡 Pro Tip:</strong> The earlier you mint, the larger your share of the daily ${DAILY_REWARD.toLocaleString()} reward
@@ -304,7 +308,7 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                         <strong>${(!isNaN(DAILY_REWARD * projectedUserShare) ? (DAILY_REWARD * projectedUserShare) : 0).toFixed(2)}/day</strong> from treasury boost alone!
                     </p>
                 </div>
-            </Card>
+            </div>
         </div>
     );
 }
