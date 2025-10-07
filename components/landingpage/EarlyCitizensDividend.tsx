@@ -16,6 +16,10 @@ import tokenJson from '@/contracts/out/UspdToken.sol/USPDToken.json';
 
 const liquidityChainId = Number(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID) || 11155111;
 
+const BASE_APY = 3;
+const DAILY_REWARD = 1000;
+const ANNUAL_REWARD = DAILY_REWARD * 365;
+
 // Reusable calculator component
 function EarningsCalculator({
     title,
@@ -32,9 +36,6 @@ function EarningsCalculator({
     const [isLoadingSupply, setIsLoadingSupply] = useState(true);
     const [supplyError, setSupplyError] = useState<string | null>(null);
 
-    const BASE_APY = 3;
-    const DAILY_REWARD = 1000;
-    const ANNUAL_REWARD = DAILY_REWARD * 365;
 
     useEffect(() => {
         setUspdAmount(initialUspdAmount);
@@ -100,41 +101,41 @@ function EarningsCalculator({
                     {title}
                 </h3>
             )}
-            
+
             <div className="grid md:grid-cols-2 gap-6 mb-8">
                 {/* APY Display */}
                 <Card className="bg-gradient-to-br from-emerald-950/50 to-black border-emerald-500/30 p-8">
-                     <div className="text-center">
-                            <div className="flex items-center justify-center gap-2 mb-4">
-                                <span className="text-2xl">📈</span>
-                                <h3 className="text-lg font-semibold text-emerald-400">Your Total APY</h3>
+                    <div className="text-center">
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                            <span className="text-2xl">📈</span>
+                            <h3 className="text-lg font-semibold text-emerald-400">Your Total APY</h3>
+                        </div>
+                        <div className="relative">
+                            <div className="text-7xl md:text-8xl font-bold text-emerald-400 mb-2 font-mono">
+                                {!isNaN(animatedYield) ? animatedYield.toFixed(2) : '0.00'}%
                             </div>
-                            <div className="relative">
-                                <div className="text-7xl md:text-8xl font-bold text-emerald-400 mb-2 font-mono">
-                                    {!isNaN(animatedYield) ? animatedYield.toFixed(2) : '0.00'}%
+                            <div className="flex items-center justify-center gap-4 text-sm">
+                                <div className="flex items-center gap-1">
+                                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                    <span className="text-gray-300">Base: {BASE_APY}%</span>
                                 </div>
-                                <div className="flex items-center justify-center gap-4 text-sm">
-                                    <div className="flex items-center gap-1">
-                                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                                        <span className="text-gray-300">Base: {BASE_APY}%</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                                        <span className="text-gray-300">Boost: +{!isNaN(boostAPY) ? boostAPY.toFixed(2) : '0.00'}%</span>
-                                    </div>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                                    <span className="text-gray-300">Boost: +{!isNaN(boostAPY) ? boostAPY.toFixed(2) : '0.00'}%</span>
                                 </div>
-                            </div>
-                            <div className="mt-6 h-4 bg-gray-900 rounded-full overflow-hidden flex">
-                                <div
-                                    className="bg-blue-500 transition-all duration-500"
-                                    style={{ width: `${(BASE_APY / (totalAPY || 1)) * 100}%` }}
-                                ></div>
-                                <div
-                                    className="bg-emerald-500 transition-all duration-500"
-                                    style={{ width: `${(boostAPY / (totalAPY || 1)) * 100}%` }}
-                                ></div>
                             </div>
                         </div>
+                        <div className="mt-6 h-4 bg-gray-900 rounded-full overflow-hidden flex">
+                            <div
+                                className="bg-blue-500 transition-all duration-500"
+                                style={{ width: `${(BASE_APY / (totalAPY || 1)) * 100}%` }}
+                            ></div>
+                            <div
+                                className="bg-emerald-500 transition-all duration-500"
+                                style={{ width: `${(boostAPY / (totalAPY || 1)) * 100}%` }}
+                            ></div>
+                        </div>
+                    </div>
                 </Card>
 
                 {/* Earnings Breakdown */}
@@ -197,37 +198,37 @@ function EarningsCalculator({
                         <label className="block text-sm font-medium mb-3 text-gray-200">
                             Total USPD Supply {isLoadingSupply && <span className="text-xs">(Loading...)</span>}
                         </label>
-                         <div className="relative">
-                                {isLoadingSupply ? (
-                                    <Skeleton className="h-12 w-full" />
-                                ) : (
-                                    <>
-                                        <Input
-                                            type="number"
-                                            value={totalSupply}
-                                            onChange={(e) => setTotalSupply(Number(e.target.value) || 1)}
-                                            className="bg-black border-gray-700 text-white text-lg h-12 pr-20"
-                                            min="1"
-                                        />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
-                                    </>
-                                )}
-                            </div>
-                            {!isLoadingSupply && (
+                        <div className="relative">
+                            {isLoadingSupply ? (
+                                <Skeleton className="h-12 w-full" />
+                            ) : (
                                 <>
-                                    <Slider
-                                        value={[totalSupply]}
-                                        onValueChange={(value) => setTotalSupply(value[0])}
-                                        max={50000000}
-                                        step={100000}
-                                        className="mt-4"
+                                    <Input
+                                        type="number"
+                                        value={totalSupply}
+                                        onChange={(e) => setTotalSupply(Number(e.target.value) || 1)}
+                                        className="bg-black border-gray-700 text-white text-lg h-12 pr-20"
+                                        min="1"
                                     />
-                                    <div className="flex justify-between text-xs text-gray-400 mt-2">
-                                        <span>$1M</span>
-                                        <span>$50M</span>
-                                    </div>
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
                                 </>
                             )}
+                        </div>
+                        {!isLoadingSupply && (
+                            <>
+                                <Slider
+                                    value={[totalSupply]}
+                                    onValueChange={(value) => setTotalSupply(value[0])}
+                                    max={50000000}
+                                    step={100000}
+                                    className="mt-4"
+                                />
+                                <div className="flex justify-between text-xs text-gray-400 mt-2">
+                                    <span>$1M</span>
+                                    <span>$50M</span>
+                                </div>
+                            </>
+                        )}
                         {supplyError && <p className="text-xs text-red-400 mt-2">Failed to load live supply. Using estimate.</p>}
                     </div>
                 </div>
@@ -256,7 +257,7 @@ function EarlyCitizensDividendContent({ uspdTokenAddress }: { uspdTokenAddress: 
         query: { enabled: !!address && !!uspdTokenAddress, refetchInterval: 5000 }
     });
 
-    const userUspdBalance = uspdBalanceRaw ? parseFloat(formatUnits(uspdBalanceRaw, 18)) : 0;
+    const userUspdBalance = uspdBalanceRaw && typeof uspdBalanceRaw == "bigint" ? parseFloat(formatUnits(uspdBalanceRaw, 18)) : 0;
     const showMyEarnings = isConnected && userUspdBalance > 0;
 
     let potentialAmountToAdd = 10000;
@@ -321,10 +322,10 @@ export default function EarlyCitizensDividend() {
                         <EarlyCitizensDividendContent uspdTokenAddress={loadedAddresses["uspdToken"] || null} />
                     )}
                 </ContractLoader>
-                
+
                 {/* How It Works & CTA Section */}
                 <div className="mt-12">
-                     <div className="grid md:grid-cols-3 gap-6 mb-8">
+                    <div className="grid md:grid-cols-3 gap-6 mb-8">
                         <Card className="bg-gray-950/50 border-gray-800 p-6">
                             <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
                                 <span className="text-2xl">🪙</span>
@@ -353,7 +354,7 @@ export default function EarlyCitizensDividend() {
                             </p>
                         </Card>
                     </div>
-                     <div className="rounded-lg border bg-card p-8 text-left mb-8">
+                    <div className="rounded-lg border bg-card p-8 text-left mb-8">
                         <h3 className="text-2xl font-bold font-heading mb-6 text-center">How the Yield Boost Works:</h3>
                         <ul className="space-y-4 text-lg">
                             <li className="flex items-start gap-4">
