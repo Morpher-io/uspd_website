@@ -125,8 +125,7 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
 
     // --- Projected (based on slider) ---
     const projectedUspdAmount = isConnected ? userUspdBalance + simulatedAmountToAdd : simulatedAmountToAdd;
-    const uspdToAdd = simulatedAmountToAdd;
-    const projectedTotalSupply = totalSupply + uspdToAdd;
+    const projectedTotalSupply = totalSupply + simulatedAmountToAdd; // Correctly include the new mint in total supply
     const projectedUserShare = projectedTotalSupply > 0 ? projectedUspdAmount / projectedTotalSupply : 0;
     const projectedBoostAPY = projectedUspdAmount > 0 ? (ANNUAL_REWARD * projectedUserShare / projectedUspdAmount) * 100 : 0;
     const projectedTotalAPY = BASE_APY + projectedBoostAPY;
