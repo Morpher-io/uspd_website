@@ -37,7 +37,7 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
     const { address, isConnected } = useAccount();
 
     // === STATE ===
-    const [simulatedUspdAmount, setSimulatedUspdAmount] = useState(10000);
+    const [simulatedAmountToAdd, setSimulatedAmountToAdd] = useState(10000);
     const [totalSupply, setTotalSupply] = useState(5000000);
     const [animatedYield, setAnimatedYield] = useState(0);
     const [isLoadingSupply, setIsLoadingSupply] = useState(true);
@@ -107,9 +107,9 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
             } else if (userUspdBalance > 10000) {
                 amountToAdd = 20000;
             }
-            setSimulatedUspdAmount(userUspdBalance + amountToAdd);
+            setSimulatedAmountToAdd(amountToAdd);
         } else {
-            setSimulatedUspdAmount(10000);
+            setSimulatedAmountToAdd(10000);
         }
     }, [isConnected, userUspdBalance]);
 
@@ -124,14 +124,15 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
     const currentYearlyEarnings = userUspdBalance * (currentTotalAPY / 100);
 
     // --- Projected (based on slider) ---
-    const uspdToAdd = isConnected ? Math.max(0, simulatedUspdAmount - userUspdBalance) : simulatedUspdAmount;
+    const projectedUspdAmount = isConnected ? userUspdBalance + simulatedAmountToAdd : simulatedAmountToAdd;
+    const uspdToAdd = simulatedAmountToAdd;
     const projectedTotalSupply = totalSupply + uspdToAdd;
-    const projectedUserShare = projectedTotalSupply > 0 ? simulatedUspdAmount / projectedTotalSupply : 0;
-    const projectedBoostAPY = simulatedUspdAmount > 0 ? (ANNUAL_REWARD * projectedUserShare / simulatedUspdAmount) * 100 : 0;
+    const projectedUserShare = projectedTotalSupply > 0 ? projectedUspdAmount / projectedTotalSupply : 0;
+    const projectedBoostAPY = projectedUspdAmount > 0 ? (ANNUAL_REWARD * projectedUserShare / projectedUspdAmount) * 100 : 0;
     const projectedTotalAPY = BASE_APY + projectedBoostAPY;
-    const projectedDailyEarnings = (simulatedUspdAmount * projectedTotalAPY) / 365 / 100;
+    const projectedDailyEarnings = (projectedUspdAmount * projectedTotalAPY) / 365 / 100;
     const projectedMonthlyEarnings = projectedDailyEarnings * 30;
-    const projectedYearlyEarnings = simulatedUspdAmount * (projectedTotalAPY / 100);
+    const projectedYearlyEarnings = projectedUspdAmount * (projectedTotalAPY / 100);
 
     useEffect(() => {
         if (isNaN(projectedTotalAPY)) return;
@@ -147,7 +148,7 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
     }, [projectedTotalAPY]);
 
     // === MINTING LOGIC ===
-    const uspdToMint = isConnected ? Math.max(0, simulatedUspdAmount - userUspdBalance) : 0;
+    const uspdToMint = simulatedAmountToAdd;
     const ethPriceInUsd = priceData ? parseFloat(priceData.price) / (10 ** priceData.decimals) : 0;
     const ethNeeded = ethPriceInUsd > 0 ? uspdToMint / ethPriceInUsd : 0;
     const hasEnoughEth = ethBalance ? parseFloat(ethBalance.formatted) - 0.01 > ethNeeded : false; // Keep some for gas
@@ -240,13 +241,18 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                 <div className="grid md:grid-cols-2 gap-8 items-start">
                     {/* USPD Amount Input */}
                     <div>
-                        <label className="block text-sm font-medium mb-3 text-gray-200">Simulate Your USPD Holdings</label>
+                        <label className="block text-sm font-medium mb-3 text-gray-200">Simulate USPD to Mint</label>
                         <div className="relative">
-                            <Input type="number" value={simulatedUspdAmount} onChange={(e) => setSimulatedUspdAmount(Number(e.target.value) || 0)} className="bg-black border-gray-700 text-white text-lg h-12 pr-20" min="0" />
+                            <Input type="number" value={simulatedAmountToAdd} onChange={(e) => setSimulatedAmountToAdd(Number(e.target.value) || 0)} className="bg-black border-gray-700 text-white text-lg h-12 pr-20" min="0" />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
                         </div>
-                        <Slider value={[simulatedUspdAmount]} onValueChange={(v) => setSimulatedUspdAmount(v[0])} max={100000} step={1000} className="mt-4" />
+                        <Slider value={[simulatedAmountToAdd]} onValueChange={(v) => setSimulatedAmountToAdd(v[0])} max={100000} step={1000} className="mt-4" />
                         <div className="flex justify-between text-xs text-gray-400 mt-2"><span>$0</span><span>$100,000</span></div>
+                        {isConnected && (
+                            <div className="text-xs text-muted-foreground mt-2 text-center bg-black/20 p-2 rounded-md">
+                                Total Projected Holdings: {userUspdBalance.toFixed(2)} + {simulatedAmountToAdd.toLocaleString()} = <span className="font-semibold text-gray-200">{(userUspdBalance + simulatedAmountToAdd).toLocaleString()} USPD</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Total Supply Display */}
@@ -275,7 +281,7 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                                 {mintError && <Alert variant="destructive" className="mt-4 text-left"><AlertDescription>{mintError}</AlertDescription></Alert>}
                             </>
                         ) : (
-                            <p className="text-base text-gray-200">Your simulated holdings match your current balance. Increase the amount above to see how much more you could earn and mint the difference.</p>
+                            <p className="text-base text-gray-200">Increase the amount to mint to see your potential earnings and enable minting.</p>
                         )}
                     </div>
                 )}
