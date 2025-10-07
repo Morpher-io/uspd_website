@@ -105,10 +105,9 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
             if (userUspdBalance > 1000 && userUspdBalance <= 10000) {
                 amountToAdd = 10000;
             } else if (userUspdBalance > 10000) {
-                amountToAdd = 25000;
+                amountToAdd = 20000;
             }
-            const nudgedAmount = Math.ceil((userUspdBalance + amountToAdd) / 1000) * 1000;
-            setSimulatedUspdAmount(nudgedAmount);
+            setSimulatedUspdAmount(userUspdBalance + amountToAdd);
         } else {
             setSimulatedUspdAmount(10000);
         }
@@ -263,15 +262,21 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                 </div>
                 
                 {/* Minting section */}
-                {isConnected && uspdToMint > 0.01 && (
+                {isConnected && (
                     <div className="mt-6 p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
-                        <p className="text-base text-gray-200 mb-2">You are simulating adding <strong>{uspdToMint.toFixed(2)} USPD</strong> to your holdings.</p>
-                        {isLoadingPrice ? <Skeleton className="h-5 w-48 mx-auto" /> : <p className="text-sm text-muted-foreground mb-4">This will require approximately <strong>{ethNeeded.toFixed(5)} ETH</strong> to mint.</p>}
-                        <Button onClick={handleMint} disabled={isMinting || isLoadingPrice || !hasEnoughEth || !uspdTokenAddress} className="w-full max-w-xs">
-                             {isMinting ? "Minting..." : `Mint ${uspdToMint.toFixed(2)} USPD`}
-                        </Button>
-                        {!hasEnoughEth && !isMinting && <p className="text-xs text-yellow-400 mt-2">You have insufficient ETH balance to perform this mint.</p>}
-                         {mintError && <Alert variant="destructive" className="mt-4 text-left"><AlertDescription>{mintError}</AlertDescription></Alert>}
+                        {uspdToMint > 0.01 ? (
+                            <>
+                                <p className="text-base text-gray-200 mb-2">You are simulating adding <strong>{uspdToMint.toFixed(2)} USPD</strong> to your holdings.</p>
+                                {isLoadingPrice ? <Skeleton className="h-5 w-48 mx-auto" /> : <p className="text-sm text-muted-foreground mb-4">This will require approximately <strong>{ethNeeded.toFixed(5)} ETH</strong> to mint.</p>}
+                                <Button onClick={handleMint} disabled={isMinting || isLoadingPrice || !hasEnoughEth || !uspdTokenAddress} className="w-full max-w-xs">
+                                    {isMinting ? "Minting..." : `Mint ${uspdToMint.toFixed(2)} USPD`}
+                                </Button>
+                                {!hasEnoughEth && !isMinting && <p className="text-xs text-yellow-400 mt-2">You have insufficient ETH balance to perform this mint.</p>}
+                                {mintError && <Alert variant="destructive" className="mt-4 text-left"><AlertDescription>{mintError}</AlertDescription></Alert>}
+                            </>
+                        ) : (
+                            <p className="text-base text-gray-200">Your simulated holdings match your current balance. Increase the amount above to see how much more you could earn and mint the difference.</p>
+                        )}
                     </div>
                 )}
                  {!isConnected && 
