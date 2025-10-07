@@ -272,42 +272,47 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                 </Card>
             </div>
 
-            <div className="mt-8 max-w-2xl mx-auto w-full">
-                {/* Minting section */}
-                {isConnected && (
-                    <div className="p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
-                        {uspdToMint > 0.01 ? (
-                            <>
-                                <p className="text-base text-gray-200 mb-2">You are simulating adding <strong>{uspdToMint.toFixed(2)} USPD</strong> to your holdings.</p>
-                                {isLoadingPrice ? <Skeleton className="h-5 w-48 mx-auto" /> : <p className="text-sm text-muted-foreground mb-4">This will require approximately <strong>{ethNeeded.toFixed(5)} ETH</strong> to mint.</p>}
-                                <Button onClick={handleMint} disabled={isMinting || isLoadingPrice || !hasEnoughEth || !uspdTokenAddress} className="w-full max-w-xs">
-                                    {isMinting ? "Minting..." : `Mint ${uspdToMint.toFixed(2)} USPD`}
-                                </Button>
-                                {!hasEnoughEth && !isMinting && <p className="text-xs text-yellow-400 mt-2">You have insufficient ETH balance to perform this mint.</p>}
-                                {mintError && <Alert variant="destructive" className="mt-4 text-left"><AlertDescription>{mintError}</AlertDescription></Alert>}
-                            </>
-                        ) : (
-                            <p className="text-base text-gray-200">Increase the amount to mint to see your potential earnings and enable minting.</p>
-                        )}
+            <Card className="mt-8 bg-gray-950/50 border-gray-800 p-6 md:p-8">
+                <div className="grid md:grid-cols-2 gap-8 items-center">
+                    {/* Pro Tip on the left */}
+                    <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-lg h-full flex items-center">
+                        <p className="text-sm text-emerald-200">
+                            <strong>💡 Pro Tip:</strong> The earlier you mint, the larger your share of the daily ${DAILY_REWARD.toLocaleString()} reward
+                            pool. Your projected share: <strong>{(!isNaN(projectedUserShare) ? projectedUserShare * 100 : 0).toFixed(4)}%</strong> ={" "}
+                            <strong>${(!isNaN(DAILY_REWARD * projectedUserShare) ? (DAILY_REWARD * projectedUserShare) : 0).toFixed(2)}/day</strong> from treasury boost alone!
+                        </p>
                     </div>
-                )}
-                {!isConnected &&
-                    <div className="p-4 bg-black/30 border border-gray-700 rounded-lg text-center">
-                        <p className="text-base text-gray-200 mb-4">Connect your wallet to calculate your earnings and mint USPD.</p>
-                        <ConnectButton.Custom>
-                            {({ openConnectModal }) => <Button onClick={openConnectModal}>Connect Wallet</Button>}
-                        </ConnectButton.Custom>
-                    </div>
-                }
 
-                <div className="mt-6 p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-lg">
-                    <p className="text-sm text-emerald-200">
-                        <strong>💡 Pro Tip:</strong> The earlier you mint, the larger your share of the daily ${DAILY_REWARD.toLocaleString()} reward
-                        pool. Your projected share: <strong>{(!isNaN(projectedUserShare) ? projectedUserShare * 100 : 0).toFixed(4)}%</strong> ={" "}
-                        <strong>${(!isNaN(DAILY_REWARD * projectedUserShare) ? (DAILY_REWARD * projectedUserShare) : 0).toFixed(2)}/day</strong> from treasury boost alone!
-                    </p>
+                    {/* Minting section on the right */}
+                    <div className="text-center">
+                        {isConnected && (
+                            <div>
+                                {uspdToMint > 0.01 ? (
+                                    <>
+                                        <p className="text-base text-gray-200 mb-2">You are simulating adding <strong>{uspdToMint.toFixed(2)} USPD</strong> to your holdings.</p>
+                                        {isLoadingPrice ? <Skeleton className="h-5 w-48 mx-auto" /> : <p className="text-sm text-muted-foreground mb-4">This will require approximately <strong>{ethNeeded.toFixed(5)} ETH</strong> to mint.</p>}
+                                        <Button onClick={handleMint} disabled={isMinting || isLoadingPrice || !hasEnoughEth || !uspdTokenAddress} className="w-full max-w-xs mx-auto">
+                                            {isMinting ? "Minting..." : `Mint ${uspdToMint.toFixed(2)} USPD`}
+                                        </Button>
+                                        {!hasEnoughEth && !isMinting && <p className="text-xs text-yellow-400 mt-2">You have insufficient ETH balance to perform this mint.</p>}
+                                        {mintError && <Alert variant="destructive" className="mt-4 text-left"><AlertDescription>{mintError}</AlertDescription></Alert>}
+                                    </>
+                                ) : (
+                                    <p className="text-base text-gray-200">Increase the amount to mint to see your potential earnings and enable minting.</p>
+                                )}
+                            </div>
+                        )}
+                        {!isConnected &&
+                            <div>
+                                <p className="text-base text-gray-200 mb-4">Connect your wallet to calculate your earnings and mint USPD.</p>
+                                <ConnectButton.Custom>
+                                    {({ openConnectModal }) => <Button onClick={openConnectModal}>Connect Wallet</Button>}
+                                </ConnectButton.Custom>
+                            </div>
+                        }
+                    </div>
                 </div>
-            </div>
+            </Card>
         </div>
     );
 }
