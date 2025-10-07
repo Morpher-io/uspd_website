@@ -227,7 +227,27 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
 
                 {/* Earnings Breakdown */}
                 <Card className="bg-gray-950/50 border-gray-800 p-8">
-                    <div className="flex items-center gap-2 mb-6"><span className="text-xl">🧮</span><h3 className="text-lg font-semibold text-white">Your Earnings</h3></div>
+                    <div className="flex items-center gap-2 mb-4"><span className="text-xl">🧮</span><h3 className="text-lg font-semibold text-white">Your Earnings</h3></div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-muted-foreground mb-4 border-b border-gray-800 pb-4">
+                        {isConnected && (
+                            <div>
+                                <div className="font-semibold text-gray-300">Current Balance</div>
+                                <div>{userUspdBalance.toFixed(2)} USPD</div>
+                            </div>
+                        )}
+                        <div>
+                            <div className="font-semibold text-gray-300">Projected Balance</div>
+                            <div>{projectedUspdAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} USPD</div>
+                        </div>
+                        <div>
+                            <div className="font-semibold text-gray-300">Current Supply</div>
+                            {isLoadingSupply ? <Skeleton className="h-4 w-20" /> : <div>{totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} USPD</div>}
+                        </div>
+                        <div>
+                            <div className="font-semibold text-gray-300">Projected Supply</div>
+                            {isLoadingSupply ? <Skeleton className="h-4 w-20" /> : <div>{projectedTotalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} USPD</div>}
+                        </div>
+                    </div>
                     <div className="space-y-4">
                         <EarningRow label="Daily" current={currentDailyEarnings} projected={projectedDailyEarnings} />
                         <EarningRow label="Monthly" current={currentMonthlyEarnings} projected={projectedMonthlyEarnings} />
@@ -237,7 +257,7 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
             </div>
 
             <Card className="bg-gray-950/50 border-gray-800 p-8 mb-8">
-                <div className="grid md:grid-cols-2 gap-8 items-start">
+                <div className="grid grid-cols-1 gap-8 items-start max-w-md mx-auto">
                     {/* USPD Amount Input */}
                     <div>
                         <label className="block text-sm font-medium mb-3 text-gray-200">Simulate USPD to Mint</label>
@@ -247,27 +267,6 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                         </div>
                         <Slider value={[simulatedAmountToAdd]} onValueChange={(v) => setSimulatedAmountToAdd(v[0])} max={100000} step={1000} className="mt-4" />
                         <div className="flex justify-between text-xs text-gray-400 mt-2"><span>$0</span><span>$100,000</span></div>
-                        {isConnected && (
-                            <div className="text-xs text-muted-foreground mt-2 text-center bg-black/20 p-2 rounded-md">
-                                Total Projected Holdings: {userUspdBalance.toFixed(2)} + {simulatedAmountToAdd.toLocaleString()} = <span className="font-semibold text-gray-200">{(userUspdBalance + simulatedAmountToAdd).toLocaleString()} USPD</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Total Supply Display */}
-                    <div>
-                        <label className="block text-sm font-medium mb-3 text-gray-200">Live Total USPD Supply</label>
-                        {isLoadingSupply ? <Skeleton className="h-12 w-full" /> :
-                            <div className="relative">
-                                <Input type="text" value={!isNaN(totalSupply) ? totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 }) : 'Loading...'} readOnly className="bg-black border-gray-700 text-white text-lg h-12 pr-20" />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">USPD</span>
-                            </div>}
-                        {!isLoadingSupply && (
-                            <div className="text-xs text-muted-foreground mt-2 text-center bg-black/20 p-2 rounded-md">
-                                New Total Supply: {totalSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} + {simulatedAmountToAdd.toLocaleString()} = <span className="font-semibold text-gray-200">{(totalSupply + simulatedAmountToAdd).toLocaleString(undefined, { maximumFractionDigits: 0 })} USPD</span>
-                            </div>
-                        )}
-                        {supplyError && <p className="text-xs text-red-400 mt-2">Failed to load live supply. Using estimate.</p>}
                     </div>
                 </div>
                 
