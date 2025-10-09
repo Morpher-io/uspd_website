@@ -744,9 +744,6 @@ export function StablecoinRiskAssessment() {
                                 <Button variant="outline" className="flex-1 bg-transparent" onClick={handleCancel} disabled={isLoading || isConfirming}>
                                     Cancel
                                 </Button>
-                                <Button variant="outline" className="flex-1 bg-transparent" onClick={handleCancel} disabled={isLoading || isConfirming}>
-                                    Cancel
-                                </Button>
                                 {conversionStep === 'needs_signature' && (
                                     <Button onClick={handleSignAndSwap} className="flex-1 bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold" disabled={isLoading || isConfirming}>
                                         {isLoading ? 'Check Wallet' : 'Sign & Swap for ETH'}
