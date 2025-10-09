@@ -430,9 +430,9 @@ export function StablecoinRiskAssessment() {
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
 
         const exactInputSingleParams = {
-            tokenIn: activeCoinConfig.address,
-            tokenOut: WETH_ADDRESS,
-            fee: activeCoinConfig.uniswapFeeTier,
+            tokenIn: activeCoinConfig.address as "0x${string}",
+            tokenOut: WETH_ADDRESS as "0x${string}",
+            fee: activeCoinConfig.uniswapFeeTier || 300,
             recipient: UNISWAP_V3_ROUTER_ADDRESS, // Swap output goes to router
             deadline: BigInt(deadline),
             amountIn: amountToConvertParsed,
