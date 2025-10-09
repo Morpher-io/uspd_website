@@ -191,7 +191,7 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
     const EarningRow = ({ label, current, projected }: { label: string, current: number, projected: number }) => (
          <div className="flex justify-between items-center p-4 bg-black/50 rounded-lg border border-gray-800">
             <span className="text-gray-300">{label}</span>
-            <div className="flex gap-4 sm:gap-6 text-right items-baseline">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 text-right items-end sm:items-baseline">
                 {isConnected && userUspdBalance > 0 && (
                     <div>
                         <div className="text-xs text-muted-foreground">Current</div>
@@ -210,11 +210,11 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
         <div>
             <div className="grid md:grid-cols-2 gap-6 mb-8">
                 {/* APY Display */}
-                <Card className="bg-gradient-to-br from-emerald-950/50 to-black border-emerald-500/30 p-8 flex flex-col justify-between h-full">
+                <Card className="bg-gradient-to-br from-emerald-950/50 to-black border-emerald-500/30 p-6 md:p-8 flex flex-col justify-between h-full">
                     <div className="text-center">
                         <div className="flex items-center justify-center gap-2 mb-4"><span className="text-2xl">📈</span><h3 className="text-lg font-semibold text-emerald-400">Projected Total APY</h3></div>
                         <div className="relative">
-                            <div className="text-7xl xl:text-8xl font-bold text-emerald-400 mb-2 font-mono">
+                            <div className="text-6xl sm:text-7xl xl:text-8xl font-bold text-emerald-400 mb-2 font-mono">
                                 {!isNaN(animatedYield) ? animatedYield.toFixed(2) : '0.00'}%
                             </div>
                             {isConnected && userUspdBalance > 0 && <div className="text-base text-emerald-400/70">Current APY: {!isNaN(currentTotalAPY) ? currentTotalAPY.toFixed(2) : '0.00'}%</div>}
@@ -237,8 +237,8 @@ function EarlyCitizensDividendCalculator({ uspdTokenAddress }: { uspdTokenAddres
                 </Card>
 
                 {/* Earnings Breakdown */}
-                <Card className="bg-gray-950/50 border-gray-800 p-8">
-                    <div className="flex justify-between items-start gap-4 mb-4 border-b border-gray-800 pb-4">
+                <Card className="bg-gray-950/50 border-gray-800 p-6 md:p-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4 border-b border-gray-800 pb-4">
                         <div className="flex items-center gap-2 shrink-0">
                             <span className="text-xl">🧮</span>
                             <h3 className="text-lg font-semibold text-white">Your Earnings</h3>
