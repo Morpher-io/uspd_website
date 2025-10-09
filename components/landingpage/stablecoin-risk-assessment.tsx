@@ -1,11 +1,56 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, CheckCircle2, TrendingUp, Shield, AlertCircle, ArrowRight, Sparkles } from "lucide-react"
+import { useAccount, useReadContracts } from "wagmi"
+import { formatUnits } from "viem"
+
+const erc20Abi = [
+  {
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const
+
+const STABLECOINS_CONFIG = [
+  {
+    symbol: "USDC",
+    name: "USD Coin",
+    address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as const,
+    decimals: 6,
+  },
+  {
+    symbol: "USDT",
+    name: "Tether",
+    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7" as const,
+    decimals: 6,
+  },
+  {
+    symbol: "DAI",
+    name: "Dai Stablecoin",
+    address: "0x6B175474E89094C44Da98b954EedeAC495271d0F" as const,
+    decimals: 18,
+  },
+  {
+    symbol: "FDUSD",
+    name: "First Digital USD",
+    address: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409" as const,
+    decimals: 18,
+  },
+  {
+    symbol: "USDtb",
+    name: "USDtb",
+    address: "0xC1391910F447e929f090Edeb554D95AbB8b18aC1C" as const,
+    decimals: 18,
+  },
+]
 
 interface Stablecoin {
   symbol: string
@@ -19,14 +64,51 @@ interface Stablecoin {
   }[]
 }
 
-interface StablecoinRiskAssessmentProps {
-  userBalances: Stablecoin[]
-}
-
-export function StablecoinRiskAssessment({ userBalances }: StablecoinRiskAssessmentProps) {
+export function StablecoinRiskAssessment() {
+  const { address, isConnected } = useAccount()
+  const [userBalances, setUserBalances] = useState<Omit<Stablecoin, "risks">[]>([])
   const [convertingCoin, setConvertingCoin] = useState<string | null>(null)
   const [conversionPercentages, setConversionPercentages] = useState<Record<string, number>>({})
   const [successCoin, setSuccessCoin] = useState<string | null>(null)
+
+  const contractsToQuery = STABLECOINS_CONFIG.map((coin) => ({
+    address: coin.address,
+    abi: erc20Abi,
+    functionName: "balanceOf" as const,
+    args: [address!],
+  }))
+
+  const { data: balancesData, isFetching } = useReadContracts({
+    contracts: contractsToQuery,
+    query: {
+      enabled: isConnected && !!address,
+    },
+  })
+
+  useEffect(() => {
+    if (balancesData && !isFetching) {
+      const formattedBalances = STABLECOINS_CONFIG.map((coin, index) => {
+        const balanceResult = balancesData[index]
+        if (balanceResult.status === "success" && typeof balanceResult.result === "bigint") {
+          const balance = parseFloat(formatUnits(balanceResult.result, coin.decimals))
+          if (balance > 1) {
+            // Only care about balances > $1
+            return {
+              symbol: coin.symbol,
+              name: coin.name,
+              balance: balance,
+              usdValue: balance, // Assuming 1 USD value
+            }
+          }
+        }
+        return null
+      }).filter((b): b is Omit<Stablecoin, "risks"> => b !== null)
+
+      setUserBalances(formattedBalances)
+    } else if (!isConnected) {
+      setUserBalances([])
+    }
+  }, [balancesData, isFetching, isConnected])
 
   const stablecoinData: Record<string, { risks: Stablecoin["risks"]; color: string }> = {
     USDC: {
