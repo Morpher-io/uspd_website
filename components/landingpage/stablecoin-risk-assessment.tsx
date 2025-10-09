@@ -1,13 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, CheckCircle2, TrendingUp, Shield, AlertCircle, ArrowRight, Sparkles } from "lucide-react"
-import { useAccount, useReadContracts } from "wagmi"
-import { formatUnits } from "viem"
+import { AlertTriangle, CheckCircle2, TrendingUp, Shield, AlertCircle, ArrowRight, Sparkles, ExternalLink } from "lucide-react"
+import { useAccount, useReadContracts, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt } from "wagmi"
+import { formatUnits, parseUnits, maxUint256, Abi, encodeFunctionData } from "viem"
+import { toast } from "sonner"
+import { mainnet } from "wagmi/chains"
+import { ConnectButton } from "@rainbow-me/rainbowkit"
+
+const UNISWAP_V3_ROUTER_ADDRESS = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" as const
+const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" as const
 
 const erc20Abi = [
   {
@@ -17,7 +23,65 @@ const erc20Abi = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    "inputs": [
+        { "internalType": "address", "name": "spender", "type": "address" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+        { "internalType": "address", "name": "owner", "type": "address" },
+        { "internalType": "address", "name": "spender", "type": "address" }
+    ],
+    "name": "allowance",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
 ] as const
+
+const uniswapRouterAbi = [
+    {
+        "inputs": [
+            { "components": [
+                { "internalType": "address", "name": "tokenIn", "type": "address" },
+                { "internalType": "address", "name": "tokenOut", "type": "address" },
+                { "internalType": "uint24", "name": "fee", "type": "uint24" },
+                { "internalType": "address", "name": "recipient", "type": "address" },
+                { "internalType": "uint256", "name": "deadline", "type": "uint256" },
+                { "internalType": "uint256", "name": "amountIn", "type": "uint256" },
+                { "internalType": "uint256", "name": "amountOutMinimum", "type": "uint256" },
+                { "internalType": "uint160", "name": "sqrtPriceLimitX96", "type": "uint160" }
+            ], "internalType": "struct ISwapRouter.ExactInputSingleParams", "name": "params", "type": "tuple" }
+        ],
+        "name": "exactInputSingle",
+        "outputs": [{ "internalType": "uint256", "name": "amountOut", "type": "uint256" }],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [{ "internalType": "bytes[]", "name": "data", "type": "bytes[]" }],
+        "name": "multicall",
+        "outputs": [{ "internalType": "bytes[]", "name": "results", "type": "bytes[]" }],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            { "internalType": "uint256", "name": "amountMinimum", "type": "uint256" },
+            { "internalType": "address", "name": "recipient", "type": "address" }
+        ],
+        "name": "unwrapWETH9",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    }
+] as const;
 
 const STABLECOINS_CONFIG = [
   {
@@ -25,6 +89,7 @@ const STABLECOINS_CONFIG = [
     name: "USD Coin",
     address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as const,
     decimals: 6,
+    uniswapFeeTier: 500, // 0.05%
   },
   {
     symbol: "USDT",
@@ -64,12 +129,85 @@ interface Stablecoin {
   }[]
 }
 
+type ConversionStep = "idle" | "needs_approval" | "approving" | "ready_to_swap" | "swapping" | "success"
 export function StablecoinRiskAssessment() {
   const { address, isConnected } = useAccount()
+  const chainId = useChainId()
+  const { writeContractAsync } = useWriteContract()
+
   const [userBalances, setUserBalances] = useState<Omit<Stablecoin, "risks">[]>([])
   const [convertingCoin, setConvertingCoin] = useState<string | null>(null)
   const [conversionPercentages, setConversionPercentages] = useState<Record<string, number>>({})
   const [successCoin, setSuccessCoin] = useState<string | null>(null)
+
+  // State for the conversion flow
+  const [conversionStep, setConversionStep] = useState<ConversionStep>("idle")
+  const [isLoading, setIsLoading] = useState(false)
+  const [txHash, setTxHash] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` | undefined });
+
+  const activeCoinConfig = useMemo(() => 
+    STABLECOINS_CONFIG.find(c => c.symbol === convertingCoin),
+    [convertingCoin]
+  );
+  
+  const amountToConvert = useMemo(() => {
+    if (!convertingCoin) return 0;
+    const coinData = userBalances.find(b => b.symbol === convertingCoin);
+    if (!coinData) return 0;
+    const percentage = conversionPercentages[convertingCoin] || 100;
+    return (coinData.balance * percentage) / 100;
+  }, [convertingCoin, userBalances, conversionPercentages]);
+
+  const amountToConvertParsed = useMemo(() => {
+    if (!activeCoinConfig || amountToConvert <= 0) return 0n;
+    return parseUnits(amountToConvert.toFixed(activeCoinConfig.decimals), activeCoinConfig.decimals);
+  }, [amountToConvert, activeCoinConfig]);
+
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: activeCoinConfig?.address,
+    abi: erc20Abi,
+    functionName: 'allowance',
+    args: [address!, UNISWAP_V3_ROUTER_ADDRESS],
+    query: {
+        enabled: !!address && !!activeCoinConfig && convertingCoin !== null,
+    }
+  });
+
+  useEffect(() => {
+    if (convertingCoin && allowance !== undefined) {
+      if (allowance >= amountToConvertParsed) {
+        setConversionStep('ready_to_swap');
+      } else {
+        setConversionStep('needs_approval');
+      }
+    }
+  }, [convertingCoin, allowance, amountToConvertParsed]);
+
+  useEffect(() => {
+    if (isConfirmed && txHash) {
+        if (conversionStep === 'approving') {
+            toast.success("Approval successful!");
+            refetchAllowance();
+            setConversionStep('ready_to_swap');
+        } else if (conversionStep === 'swapping') {
+            toast.success("Swap successful!");
+            setConversionStep('success');
+            setTimeout(() => {
+                const symbol = activeCoinConfig?.symbol;
+                if (symbol) {
+                    setConvertingCoin(null);
+                    setSuccessCoin(symbol);
+                    setTimeout(() => setSuccessCoin(null), 8000);
+                }
+            }, 5000);
+        }
+        setIsLoading(false);
+        setTxHash(null);
+    }
+  }, [isConfirmed, conversionStep, txHash, refetchAllowance, activeCoinConfig]);
 
   const contractsToQuery = STABLECOINS_CONFIG.map((coin) => ({
     address: coin.address,
@@ -241,15 +379,96 @@ export function StablecoinRiskAssessment() {
 
   const handleConvert = (symbol: string) => {
     setConvertingCoin(symbol)
+    setConversionStep('idle');
+    setError(null);
+    setTxHash(null);
+    setIsLoading(false);
+    setSuccessCoin(null);
   }
 
-  const handleConfirmConversion = (symbol: string) => {
-    // Simulate conversion
-    setTimeout(() => {
-      setConvertingCoin(null)
-      setSuccessCoin(symbol)
-      setTimeout(() => setSuccessCoin(null), 5000)
-    }, 1500)
+  const handleCancel = () => {
+    setConvertingCoin(null);
+    setConversionStep('idle');
+  }
+
+  const handleApprove = async () => {
+    if (!activeCoinConfig || !address || chainId !== mainnet.id) {
+        setError("Please connect to Ethereum Mainnet.");
+        return;
+    }
+    setError(null);
+    setIsLoading(true);
+    setConversionStep('approving');
+    try {
+        const hash = await writeContractAsync({
+            address: activeCoinConfig.address,
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [UNISWAP_V3_ROUTER_ADDRESS, maxUint256]
+        });
+        setTxHash(hash);
+        toast.info("Approval transaction sent...");
+    } catch (e) {
+        const error = e as Error;
+        setError(error.message);
+        toast.error(error.message);
+        setIsLoading(false);
+        setConversionStep('needs_approval');
+    }
+  }
+
+  const handleSwap = async () => {
+    if (!activeCoinConfig || !address || chainId !== mainnet.id || amountToConvertParsed <= 0) {
+        setError("Invalid state for swap.");
+        return;
+    }
+    setError(null);
+    setIsLoading(true);
+    setConversionStep('swapping');
+
+    try {
+        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+
+        const exactInputSingleParams = {
+            tokenIn: activeCoinConfig.address,
+            tokenOut: WETH_ADDRESS,
+            fee: activeCoinConfig.uniswapFeeTier,
+            recipient: UNISWAP_V3_ROUTER_ADDRESS, // Swap output goes to router
+            deadline: BigInt(deadline),
+            amountIn: amountToConvertParsed,
+            amountOutMinimum: 0n,
+            sqrtPriceLimitX96: 0n,
+        };
+
+        const exactInputSingleCallData = encodeFunctionData({
+            abi: uniswapRouterAbi,
+            functionName: 'exactInputSingle',
+            args: [exactInputSingleParams]
+        });
+
+        const unwrapWethCallData = encodeFunctionData({
+            abi: uniswapRouterAbi,
+            functionName: 'unwrapWETH9',
+            args: [0n, address] // amountMinimum = 0, recipient is user
+        });
+
+        const hash = await writeContractAsync({
+            address: UNISWAP_V3_ROUTER_ADDRESS,
+            abi: uniswapRouterAbi,
+            functionName: 'multicall',
+            args: [[exactInputSingleCallData, unwrapWethCallData]]
+        });
+
+        setTxHash(hash);
+        toast.info("Swap transaction sent...");
+
+    } catch(e) {
+        const error = e as Error;
+        setError(error.message);
+        toast.error(error.message);
+        setIsLoading(false);
+        setConversionStep('ready_to_swap');
+    }
   }
 
   const getSeverityColor = (severity: string) => {
@@ -393,62 +612,96 @@ export function StablecoinRiskAssessment() {
                         </div>
                       </div>
                     ) : isConverting ? (
-                      /* Conversion Interface */
+                      /* New Conversion Interface */
                       <div className="space-y-4 py-2">
+                        {/* Slider remains the same */}
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Convert to USDP</span>
-                            <span className="font-semibold">{percentage}%</span>
-                          </div>
-                          <Slider
-                            value={[percentage]}
-                            onValueChange={(value) =>
-                              setConversionPercentages((prev) => ({ ...prev, [coin.symbol]: value[0] }))
-                            }
-                            max={100}
-                            step={1}
-                            className="w-full"
-                          />
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              {((coin.balance * percentage) / 100).toFixed(2)} {coin.symbol}
-                            </span>
-                            <span className="text-[var(--uspd-green)] font-semibold">
-                              → {((coin.balance * percentage) / 100).toFixed(2)} USDP
-                            </span>
-                          </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Convert to USDP</span>
+                                <span className="font-semibold">{percentage}%</span>
+                            </div>
+                            <Slider
+                                value={[percentage]}
+                                onValueChange={(value) => setConversionPercentages((prev) => ({ ...prev, [coin.symbol]: value[0] }))}
+                                max={100} step={1} className="w-full"
+                                disabled={isLoading || isConfirming || conversionStep === 'success'}
+                            />
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">
+                                    {((coin.balance * percentage) / 100).toFixed(2)} {coin.symbol}
+                                </span>
+                                <span className="text-[var(--uspd-green)] font-semibold">
+                                    → Swap for ETH to mint USDP
+                                </span>
+                            </div>
                         </div>
+                        
+                        {/* Connection Check */}
+                        {!isConnected ? (
+                             <div className="text-center">
+                                <p className="text-sm mb-4">Connect wallet to proceed</p>
+                                <ConnectButton.Custom>
+                                    {({ openConnectModal }) => <Button onClick={openConnectModal}>Connect Wallet</Button>}
+                                </ConnectButton.Custom>
+                            </div>
+                        ) : chainId !== mainnet.id ? (
+                            <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                                <p className="text-sm font-semibold text-destructive-foreground">Wrong Network</p>
+                                <p className="text-xs text-muted-foreground">Please connect to Ethereum Mainnet to continue.</p>
+                            </div>
+                        ) : conversionStep === 'success' ? (
+                            <div className="text-center p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2">
+                                <h4 className="font-semibold text-green-400">Swap Successful!</h4>
+                                <p className="text-xs text-muted-foreground">You have received ETH and can now proceed to mint USDP.</p>
+                                {txHash && 
+                                    <a href={`${mainnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1">
+                                        View Transaction <ExternalLink className="w-3 h-3"/>
+                                    </a>
+                                }
+                            </div>
+                        ) : (
+                            /* Action Buttons */
+                            <div className="flex gap-3 pt-2">
+                                <Button variant="outline" className="flex-1 bg-transparent" onClick={handleCancel} disabled={isLoading || isConfirming}>
+                                    Cancel
+                                </Button>
+                                {conversionStep === 'needs_approval' && (
+                                    <Button onClick={handleApprove} className="flex-1" disabled={isLoading || isConfirming}>
+                                        {isConfirming ? 'Approving...' : isLoading ? 'Check Wallet' : 'Approve USDC'}
+                                    </Button>
+                                )}
+                                {conversionStep === 'approving' && (
+                                    <Button className="flex-1" disabled>
+                                        {isConfirming ? 'Approving...' : 'Check Wallet'}
+                                    </Button>
+                                )}
+                                {conversionStep === 'ready_to_swap' && (
+                                    <Button onClick={handleSwap} className="flex-1 bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold" disabled={isLoading || isConfirming}>
+                                        {isConfirming ? 'Swapping...' : isLoading ? 'Check Wallet' : 'Swap for ETH'}
+                                        <ArrowRight className="w-4 h-4 ml-2" />
+                                    </Button>
+                                )}
+                                {conversionStep === 'swapping' && (
+                                     <Button className="flex-1" disabled>
+                                        {isConfirming ? 'Swapping...' : 'Check Wallet'}
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                        
+                        {(isLoading || isConfirming) && txHash && (
+                            <div className="text-center text-xs text-muted-foreground">
+                                <p>Transaction in progress...</p>
+                                <a href={`${mainnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1">
+                                    View on Etherscan <ExternalLink className="w-3 h-3"/>
+                                </a>
+                            </div>
+                        )}
 
-                        <div className="bg-[var(--uspd-green)]/10 border border-[var(--uspd-green)]/20 rounded-lg p-4 space-y-2">
-                          <div className="flex items-center gap-2 text-[var(--uspd-green)] text-sm font-semibold">
-                            <TrendingUp className="w-4 h-4" />
-                            Projected Annual Yield
-                          </div>
-                          <p className="text-2xl font-bold text-[var(--uspd-green)]">
-                            ${(((coin.usdValue * percentage) / 100) * USDP_APY_MIN).toFixed(2)} - $
-                            {(((coin.usdValue * percentage) / 100) * USDP_APY_MAX).toFixed(2)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Based on 2.75-4% APY from Ethereum staking rewards
-                          </p>
-                        </div>
+                        {error && (
+                             <p className="text-xs text-red-500 text-center">{error}</p>
+                        )}
 
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            className="flex-1 bg-transparent"
-                            onClick={() => setConvertingCoin(null)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            className="flex-1 bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold"
-                            onClick={() => handleConfirmConversion(coin.symbol)}
-                          >
-                            Convert to USDP
-                            <ArrowRight className="w-4 h-4 ml-2" />
-                          </Button>
-                        </div>
                       </div>
                     ) : (
                       /* Risk Display */
@@ -476,9 +729,11 @@ export function StablecoinRiskAssessment() {
                           className="w-full bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold"
                           size="lg"
                           onClick={() => handleConvert(coin.symbol)}
+                          disabled={coin.symbol !== 'USDC'}
+                          title={coin.symbol !== 'USDC' ? 'Conversion for this stablecoin is coming soon.' : `Protect Your ${coin.symbol}`}
                         >
-                          Protect Your {coin.symbol} Now
-                          <Shield className="w-4 h-4 ml-2" />
+                          {coin.symbol !== 'USDC' ? 'Coming Soon' : `Protect Your ${coin.symbol} Now`}
+                          {coin.symbol === 'USDC' && <Shield className="w-4 h-4 ml-2" />}
                         </Button>
                       </>
                     )}
