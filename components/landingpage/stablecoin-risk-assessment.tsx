@@ -47,7 +47,7 @@ const STABLECOINS_CONFIG = [
   {
     symbol: "USDtb",
     name: "USDtb",
-    address: "0xC1391910F447e929f090Edeb554D95AbB8b18aC1C" as const,
+    address: "0xC139190F447e929f090Edeb554D95AbB8b18aC1C" as const,
     decimals: 18,
   },
 ]
@@ -91,6 +91,7 @@ export function StablecoinRiskAssessment() {
         const balanceResult = balancesData[index]
         if (balanceResult.status === "success" && typeof balanceResult.result === "bigint") {
           const balance = parseFloat(formatUnits(balanceResult.result, coin.decimals))
+          
           if (balance > 1) {
             // Only care about balances > $1
             return {
