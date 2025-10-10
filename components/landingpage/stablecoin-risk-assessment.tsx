@@ -129,7 +129,7 @@ interface Stablecoin {
   }[]
 }
 
-type ConversionStep = "idle" | "needs_approval" | "approving" | "ready_to_swap" | "swapping" | "ready_to_mint" | "minting" | "success"
+type ConversionStep = "idle" | "needs_approval" | "approving" | "ready_to_swap" | "swapping" | "ready_to_mint" | "minting" | "mint_success" | "success"
 
 const StepIndicator = ({ step }: { step: ConversionStep }) => {
     const steps = [
@@ -150,6 +150,7 @@ const StepIndicator = ({ step }: { step: ConversionStep }) => {
                 return 'upcoming';
             case 'ready_to_mint':
             case 'minting':
+            case 'mint_success':
                 if (stepId === 'approve' || stepId === 'swap') return 'completed';
                 return 'active';
             case 'success':
@@ -301,16 +302,11 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
             }
             setConversionStep('ready_to_mint');
             setIsLoading(false);
+            setTxHash(null); // Reset transaction hash to wait for the next one
         } else if (conversionStep === 'minting') {
             toast.success("Minting successful! You are now protected.");
-            setConversionStep('success');
+            setConversionStep('mint_success');
             setIsLoading(false);
-            const symbol = activeCoinConfig?.symbol;
-            if (symbol) {
-                setConvertingCoin(null);
-                setSuccessCoin(symbol);
-                setTimeout(() => setSuccessCoin(null), 8000);
-            }
         }
     }
   }, [isConfirmed, conversionStep, txHash, receipt, refetchAllowance, activeCoinConfig]);
@@ -571,6 +567,16 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
     }
   }
 
+  const handleShowSuccess = () => {
+    setConversionStep('success');
+    const symbol = activeCoinConfig?.symbol;
+    if (symbol) {
+        setConvertingCoin(null);
+        setSuccessCoin(symbol);
+        setTimeout(() => setSuccessCoin(null), 8000);
+    }
+  }
+
   const handleMint = async () => {
     if (!address || ethAmountToMint <= 0) {
         setError("No ETH amount to mint.");
@@ -817,6 +823,17 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                                         <ArrowRight className="w-4 h-4 ml-2" />
                                     </Button>
                                 </div>
+                            </div>
+                        ) : conversionStep === 'mint_success' ? (
+                            <div className="space-y-4">
+                                <div className="text-center p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-1">
+                                    <h4 className="font-semibold text-green-400">Mint Successful!</h4>
+                                    <p className="text-xs text-muted-foreground">Your funds are now protected by USDP.</p>
+                                </div>
+                                <Button onClick={handleShowSuccess} className="w-full bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold">
+                                    See The Benefits
+                                    <Sparkles className="w-4 h-4 ml-2" />
+                                </Button>
                             </div>
                         ) : (
                             /* Action Buttons */
