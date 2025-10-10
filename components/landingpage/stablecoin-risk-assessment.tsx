@@ -135,7 +135,7 @@ const StepIndicator = ({ step }: { step: ConversionStep }) => {
     const steps = [
         { id: 'approve', label: 'Approve' },
         { id: 'swap', label: 'Swap' },
-        { id: 'mint', label: 'Mint USDP' },
+        { id: 'mint', label: 'Mint USPD' },
     ];
 
     const getStepStatus = (stepId: string) => {
@@ -645,9 +645,9 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
   const heldCoins = userBalances.map((b) => b.symbol)
   const notHeldCoins = allStablecoins.filter((coin) => !heldCoins.includes(coin))
 
-  const USDP_APY_MIN = 0.0275
-  const USDP_APY_MAX = 0.04
-  const USDP_APY_MID = 0.0325
+  const USPD_APY_MIN = 0.0275
+  const USPD_APY_MAX = 0.04
+  const USPD_APY_MID = 0.0325
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 p-6">
@@ -661,7 +661,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
           Are Your Stablecoins <span className="text-[var(--uspd-green)]">Really Stable?</span>
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
-          GENIUS Act compliance comes with hidden risks. Discover how USDP eliminates counterparty risk while earning
+          GENIUS Act compliance comes with hidden risks. Discover how USPD eliminates counterparty risk while earning
           native yield.
         </p>
       </div>
@@ -681,7 +681,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
               const isSuccess = successCoin === coin.symbol
               const percentage = conversionPercentages[coin.symbol] || 100
 
-              const missedYieldPerYear = coin.usdValue * USDP_APY_MID
+              const missedYieldPerYear = coin.usdValue * USPD_APY_MID
 
               return (
                 <Card
@@ -734,7 +734,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          You could be earning this with USDP instead of holding idle {coin.symbol}
+                          You could be earning this with USPD instead of holding idle {coin.symbol}
                         </p>
                       </div>
                     )}
@@ -775,7 +775,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                         {conversionStep !== 'ready_to_mint' && (
                             <div className="space-y-3">
                             <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Convert to USDP</span>
+                                <span className="text-muted-foreground">Convert to USPD</span>
                                 <span className="font-semibold">{percentage}%</span>
                             </div>
                             <Slider
@@ -789,7 +789,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                                     {((coin.balance * percentage) / 100).toFixed(2)} {coin.symbol}
                                 </span>
                                 <span className="text-[var(--uspd-green)] font-semibold">
-                                    → Swap for ETH to mint USDP
+                                    → Swap for ETH to mint USPD
                                 </span>
                             </div>
                         </div>
@@ -819,7 +819,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                                         Cancel
                                     </Button>
                                     <Button onClick={handleMint} className="flex-1 bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold" disabled={isLoading || isLoadingPrice}>
-                                        {isLoadingPrice ? "Fetching Price..." : isLoading ? "Minting..." : "Mint USDP"}
+                                        {isLoadingPrice ? "Fetching Price..." : isLoading ? "Minting..." : "Mint USPD"}
                                         <ArrowRight className="w-4 h-4 ml-2" />
                                     </Button>
                                 </div>
@@ -828,7 +828,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                             <div className="space-y-4">
                                 <div className="text-center p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-1">
                                     <h4 className="font-semibold text-green-400">Mint Successful!</h4>
-                                    <p className="text-xs text-muted-foreground">Your funds are now protected by USDP.</p>
+                                    <p className="text-xs text-muted-foreground">Your funds are now protected by USPD.</p>
                                 </div>
                                 <Button onClick={handleShowSuccess} className="w-full bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold">
                                     See The Benefits
@@ -973,11 +973,11 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
         </div>
       )}
 
-      {/* USDP Benefits Footer */}
+      {/* USPD Benefits Footer */}
       <Card className="border-[var(--uspd-green)]/30 bg-gradient-to-br from-[var(--uspd-green)]/10 to-transparent">
         <div className="p-8 space-y-6">
           <div className="text-center space-y-2">
-            <h3 className="text-2xl font-bold">Why USDP is Different</h3>
+            <h3 className="text-2xl font-bold">Why USPD is Different</h3>
             <p className="text-muted-foreground">The only algorithmic stablecoin free from GENIUS Act constraints</p>
           </div>
 
