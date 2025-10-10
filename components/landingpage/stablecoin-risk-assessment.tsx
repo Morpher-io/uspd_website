@@ -6,11 +6,23 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, CheckCircle2, TrendingUp, Shield, AlertCircle, ArrowRight, Sparkles, ExternalLink } from "lucide-react"
-import { useAccount, useReadContracts, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt } from "wagmi"
+import { useAccount, useReadContracts, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useSwitchChain } from "wagmi"
 import { formatUnits, parseUnits, maxUint256, Abi, encodeFunctionData, encodePacked, zeroAddress, encodeAbiParameters, decodeEventLog } from "viem"
 import { toast } from "sonner"
 import { mainnet } from "wagmi/chains"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
+import { Alert } from "@/components/ui/alert"
+
+// Helper to get chain name
+const getChainName = (chainId: number | undefined): string => {
+    if (!chainId) return "the correct network";
+    switch (chainId) {
+        case 1: return "Ethereum Mainnet";
+        case 11155111: return "Sepolia Testnet";
+        // Add other chain names here as needed
+        default: return `Chain ID ${chainId}`;
+    }
+};
 
 const UNISWAP_UNIVERSAL_ROUTER_ADDRESS = "0x66a9893cc07d91d95644aedd05d03f95e1dba8af" as const
 const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" as const
@@ -191,7 +203,14 @@ interface StablecoinRiskAssessmentProps {
 export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: StablecoinRiskAssessmentProps) {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
+  const { switchChain, isPending: isSwitching } = useSwitchChain()
   const { writeContractAsync } = useWriteContract()
+
+  const liquidityChainId = process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID
+    ? parseInt(process.env.NEXT_PUBLIC_LIQUIDITY_CHAINID, 10)
+    : 1; // Default to mainnet if not set
+
+  const isWrongChain = isConnected && chainId !== liquidityChainId;
 
   const [userBalances, setUserBalances] = useState<Omit<Stablecoin, "risks">[]>([])
   const [convertingCoin, setConvertingCoin] = useState<string | null>(null)
@@ -321,7 +340,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
   const { data: balancesData, isFetching } = useReadContracts({
     contracts: contractsToQuery,
     query: {
-      enabled: isConnected && !!address,
+      enabled: isConnected && !!address && !isWrongChain,
     },
   })
 
@@ -347,10 +366,10 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
       }).filter((b): b is Omit<Stablecoin, "risks"> => b !== null)
 
       setUserBalances(formattedBalances)
-    } else if (!isConnected) {
+    } else if (!isConnected || isWrongChain) {
       setUserBalances([])
     }
-  }, [balancesData, isFetching, isConnected])
+  }, [balancesData, isFetching, isConnected, isWrongChain])
 
   const stablecoinData: Record<string, { risks: Stablecoin["risks"]; color: string }> = {
     USDC: {
@@ -496,8 +515,8 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
   }
 
   const handleApprove = async () => {
-    if (!activeCoinConfig || !address || chainId !== mainnet.id) {
-        setError("Please connect to Ethereum Mainnet.");
+    if (!activeCoinConfig || !address || isWrongChain) {
+        setError(`Please connect to ${getChainName(liquidityChainId)}.`);
         return;
     }
     setError(null);
@@ -523,7 +542,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
 
 
   const handleSwap = async () => {
-    if (!activeCoinConfig || !address || chainId !== mainnet.id || amountToConvertParsed <= 0) {
+    if (!activeCoinConfig || !address || isWrongChain || amountToConvertParsed <= 0) {
         setError("Invalid state for swap.");
         return;
     }
@@ -581,6 +600,10 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
   const handleMint = async () => {
     if (!address || ethAmountToMint <= 0) {
         setError("No ETH amount to mint.");
+        return;
+    }
+    if (isWrongChain) {
+        setError(`Please connect to ${getChainName(liquidityChainId)}.`);
         return;
     }
     setError(null);
@@ -667,8 +690,32 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
         </p>
       </div>
 
+      {isWrongChain && (
+        <Alert variant="destructive" className="w-full max-w-md mx-auto">
+            <div className="flex flex-col items-center justify-center gap-4 text-center">
+                <span>
+                    Wrong network detected. Please switch to{' '}
+                    <strong>{getChainName(liquidityChainId)}</strong> to assess your holdings.
+                </span>
+                <Button onClick={() => switchChain?.({ chainId: liquidityChainId })} disabled={!switchChain || isSwitching}>
+                    {isSwitching ? 'Switching...' : `Switch to ${getChainName(liquidityChainId)}`}
+                </Button>
+            </div>
+        </Alert>
+      )}
+
       {/* Holdings at Risk */}
-      {heldCoins.length > 0 && (
+      {isFetching && isConnected && !isWrongChain ? (
+          <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-6 h-6 text-yellow-500 animate-pulse" />
+                  <h2 className="text-2xl font-bold">Checking Your Holdings...</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {[...Array(3)].map((_, i) => <Card key={i} className="h-[400px] animate-pulse bg-muted/50"></Card>)}
+              </div>
+          </div>
+      ) : heldCoins.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-6 h-6 text-[var(--danger-red)]" />
@@ -804,10 +851,13 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                                     {({ openConnectModal }) => <Button onClick={openConnectModal}>Connect Wallet</Button>}
                                 </ConnectButton.Custom>
                             </div>
-                        ) : chainId !== mainnet.id ? (
-                            <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        ) : isWrongChain ? (
+                            <div className="text-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg space-y-2">
                                 <p className="text-sm font-semibold text-destructive-foreground">Wrong Network</p>
-                                <p className="text-xs text-muted-foreground">Please connect to Ethereum Mainnet to continue.</p>
+                                <p className="text-xs text-muted-foreground">Please switch to {getChainName(liquidityChainId)} to continue.</p>
+                                <Button size="sm" onClick={() => switchChain?.({ chainId: liquidityChainId })} disabled={!switchChain || isSwitching}>
+                                    {isSwitching ? 'Switching...' : `Switch to ${getChainName(liquidityChainId)}`}
+                                </Button>
                             </div>
                         ) : conversionStep === 'ready_to_mint' ? (
                             <div className="space-y-4">
