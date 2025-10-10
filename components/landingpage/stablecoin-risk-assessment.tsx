@@ -15,27 +15,6 @@ import { ConnectButton } from "@rainbow-me/rainbowkit"
 const UNISWAP_UNIVERSAL_ROUTER_ADDRESS = "0x66a9893cc07d91d95644aedd05d03f95e1dba8af" as const
 const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" as const
 
-// TODO: Replace with actual USPD contract details
-const USPD_TOKEN_ADDRESS = "0x..." as const;
-const USPD_TOKEN_ABI = [
-    {
-        "inputs": [
-            { "internalType": "address", "name": "recipient", "type": "address" },
-            { "components": [
-                { "internalType": "uint256", "name": "price", "type": "uint256" },
-                { "internalType": "uint8", "name": "decimals", "type": "uint8" },
-                { "internalType": "uint256", "name": "dataTimestamp", "type": "uint256" },
-                { "internalType": "bytes32", "name": "assetPair", "type": "bytes32" },
-                { "internalType": "bytes", "name": "signature", "type": "bytes" }
-            ], "internalType": "struct IPriceOracle.PriceAttestationQuery", "name": "priceQuery", "type": "tuple" }
-        ],
-        "name": "mint",
-        "outputs": [],
-        "stateMutability": "payable",
-        "type": "function"
-    }
-] as const;
-
 // From MintWidget.tsx
 interface PriceData {
     price: string;
@@ -203,8 +182,12 @@ const StepIndicator = ({ step }: { step: ConversionStep }) => {
     );
 };
 
+interface StablecoinRiskAssessmentProps {
+    uspdTokenAddress: `0x${string}`;
+    uspdTokenAbi: Abi;
+}
 
-export function StablecoinRiskAssessment() {
+export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: StablecoinRiskAssessmentProps) {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
   const { writeContractAsync } = useWriteContract()
@@ -615,8 +598,8 @@ export function StablecoinRiskAssessment() {
         };
         
         const hash = await writeContractAsync({
-            address: USPD_TOKEN_ADDRESS,
-            abi: USPD_TOKEN_ABI,
+            address: uspdTokenAddress,
+            abi: uspdTokenAbi,
             functionName: 'mint',
             args: [address, priceQuery],
             value: ethAmountToMint
