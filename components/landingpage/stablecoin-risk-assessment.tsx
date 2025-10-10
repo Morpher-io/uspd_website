@@ -11,7 +11,7 @@ import { formatUnits, parseUnits, maxUint256, Abi, encodeFunctionData, encodePac
 import { toast } from "sonner"
 import { mainnet } from "wagmi/chains"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import { Alert } from "@/components/ui/alert"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Helper to get chain name
 const getChainName = (chainId: number | undefined): string => {
@@ -692,7 +692,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
 
       {isWrongChain && (
         <Alert variant="destructive" className="w-full max-w-md mx-auto">
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
+            <AlertDescription className="flex flex-col items-center justify-center gap-4 text-center">
                 <span>
                     Wrong network detected. Please switch to{' '}
                     <strong>{getChainName(liquidityChainId)}</strong> to assess your holdings.
@@ -700,7 +700,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                 <Button onClick={() => switchChain?.({ chainId: liquidityChainId })} disabled={!switchChain || isSwitching}>
                     {isSwitching ? 'Switching...' : `Switch to ${getChainName(liquidityChainId)}`}
                 </Button>
-            </div>
+            </AlertDescription>
         </Alert>
       )}
 
