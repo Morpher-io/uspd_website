@@ -1,7 +1,7 @@
 import HeroSection from "@/components/landingpage/hero";
 import EarlyCitizensDividend from "@/components/landingpage/EarlyCitizensDividend";
 import { Features } from '@/components/landingpage/features';
-import StablecoinRiskAssessmentLoader from "@/components/landingpage/StablecoinRiskAssessmentLoader";
+import ComparisonTable from '@/components/landingpage/comparisonTable';
 import HowItWorks from '@/components/landingpage/howItWorks';
 import Team from '@/components/landingpage/team';
 import Investors from "@/components/landingpage/investors";
@@ -19,7 +19,7 @@ export default function IndexPage() {
             <WhyUspd />
             <Features />
             {/* <HowToEarn /> */}
-            <StablecoinRiskAssessmentLoader />
+            <ComparisonTable />
             <HowItWorks />
             <MultiChain />
             <Team />
