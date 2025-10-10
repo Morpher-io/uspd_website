@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, CheckCircle2, TrendingUp, Shield, AlertCircle, ArrowRight, Sparkles, ExternalLink } from "lucide-react"
 import { useAccount, useReadContracts, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt } from "wagmi"
-import { formatUnits, parseUnits, maxUint256, Abi, encodeFunctionData, encodePacked, zeroAddress, encodeAbiParameters } from "viem"
+import { formatUnits, parseUnits, maxUint256, Abi, encodeFunctionData, encodePacked, zeroAddress, encodeAbiParameters, decodeEventLog } from "viem"
 import { toast } from "sonner"
 import { mainnet } from "wagmi/chains"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
@@ -44,6 +44,18 @@ const erc20Abi = [
     "type": "function"
   }
 ] as const
+
+const wethAbi = [
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": true, "internalType": "address", "name": "src", "type": "address" },
+        { "indexed": false, "internalType": "uint256", "name": "wad", "type": "uint256" }
+      ],
+      "name": "Withdrawal",
+      "type": "event"
+    }
+] as const;
 
 const universalRouterAbi = [
     {
@@ -108,7 +120,60 @@ interface Stablecoin {
   }[]
 }
 
-type ConversionStep = "idle" | "needs_approval" | "approving" | "ready_to_swap" | "swapping" | "success"
+type ConversionStep = "idle" | "needs_approval" | "approving" | "ready_to_swap" | "swapping" | "ready_to_mint" | "minting" | "success"
+
+const StepIndicator = ({ step }: { step: ConversionStep }) => {
+    const steps = [
+        { id: 'approve', label: 'Approve' },
+        { id: 'swap', label: 'Swap' },
+        { id: 'mint', label: 'Mint USDP' },
+    ];
+
+    const getStepStatus = (stepId: string) => {
+        switch (step) {
+            case 'needs_approval':
+            case 'approving':
+                return stepId === 'approve' ? 'active' : 'upcoming';
+            case 'ready_to_swap':
+            case 'swapping':
+                if (stepId === 'approve') return 'completed';
+                if (stepId === 'swap') return 'active';
+                return 'upcoming';
+            case 'ready_to_mint':
+            case 'minting':
+                if (stepId === 'approve' || stepId === 'swap') return 'completed';
+                return 'active';
+            case 'success':
+                return 'completed';
+            default:
+                return 'upcoming';
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-background/50 mb-4">
+            {steps.map((s, index) => {
+                const status = getStepStatus(s.id);
+                return (
+                    <div key={s.id} className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                            status === 'completed' ? 'bg-[var(--uspd-green)] text-black' : 
+                            status === 'active' ? 'bg-blue-500 text-white' : 
+                            'bg-gray-700 text-gray-400'
+                        }`}>
+                            {status === 'completed' ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
+                        </div>
+                        <span className={`text-sm ${
+                            status === 'active' ? 'text-white font-semibold' : 'text-muted-foreground'
+                        }`}>{s.label}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+
 export function StablecoinRiskAssessment() {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
@@ -124,8 +189,9 @@ export function StablecoinRiskAssessment() {
   const [isLoading, setIsLoading] = useState(false)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [ethAmountToMint, setEthAmountToMint] = useState<bigint>(0n)
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` | undefined });
+  const { data: receipt, isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` | undefined });
 
   const activeCoinConfig = useMemo(() => 
     STABLECOINS_CONFIG.find(c => c.symbol === convertingCoin),
@@ -166,27 +232,38 @@ export function StablecoinRiskAssessment() {
   }, [convertingCoin, allowance, amountToConvertParsed, activeCoinConfig]);
 
   useEffect(() => {
-    if (isConfirmed && txHash) {
+    if (isConfirmed && txHash && receipt) {
         if (conversionStep === 'approving') {
             toast.success("Approval successful!");
             refetchAllowance();
             setConversionStep('ready_to_swap');
         } else if (conversionStep === 'swapping') {
             toast.success("Swap successful!");
-            setConversionStep('success');
-            setTimeout(() => {
-                const symbol = activeCoinConfig?.symbol;
-                if (symbol) {
-                    setConvertingCoin(null);
-                    setSuccessCoin(symbol);
-                    setTimeout(() => setSuccessCoin(null), 8000);
+            // Attempt to find the ETH amount from the Withdrawal event log
+            try {
+                const withdrawalLog = receipt.logs.find(
+                    (log) => log.address.toLowerCase() === WETH_ADDRESS.toLowerCase() && log.topics[0] === '0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65'
+                );
+
+                if (withdrawalLog) {
+                    const decodedLog = decodeEventLog({
+                        abi: wethAbi,
+                        data: withdrawalLog.data,
+                        topics: withdrawalLog.topics,
+                    });
+                    const amount = (decodedLog.args as { wad: bigint }).wad;
+                    setEthAmountToMint(amount);
                 }
-            }, 5000);
+            } catch (e) {
+                console.error("Failed to parse withdrawal log:", e);
+                // Fallback or error handling
+            }
+            setConversionStep('ready_to_mint');
         }
         setIsLoading(false);
-        setTxHash(null);
+        // We keep the txHash to show a link to the transaction
     }
-  }, [isConfirmed, conversionStep, txHash, refetchAllowance, activeCoinConfig]);
+  }, [isConfirmed, conversionStep, txHash, receipt, refetchAllowance, activeCoinConfig]);
 
   const contractsToQuery = STABLECOINS_CONFIG.map((coin) => ({
     address: coin.address,
@@ -368,6 +445,7 @@ export function StablecoinRiskAssessment() {
   const handleCancel = () => {
     setConvertingCoin(null);
     setConversionStep('idle');
+    setEthAmountToMint(0n);
   }
 
   const handleApprove = async () => {
@@ -441,6 +519,28 @@ export function StablecoinRiskAssessment() {
         setIsLoading(false);
         setConversionStep('ready_to_swap');
     }
+  }
+
+  const handleMint = async () => {
+    // Placeholder for minting logic
+    setConversionStep('minting');
+    setIsLoading(true);
+    
+    toast.info("Minting would happen here.", {
+      description: "This is a placeholder for the real mint transaction.",
+    });
+
+    // Simulate minting success and show final success state
+    setTimeout(() => {
+        setIsLoading(false);
+        setConversionStep('success');
+        const symbol = activeCoinConfig?.symbol;
+        if (symbol) {
+            setConvertingCoin(null);
+            setSuccessCoin(symbol);
+            setTimeout(() => setSuccessCoin(null), 8000);
+        }
+    }, 2000);
   }
 
   const getSeverityColor = (severity: string) => {
@@ -586,8 +686,9 @@ export function StablecoinRiskAssessment() {
                     ) : isConverting ? (
                       /* New Conversion Interface */
                       <div className="space-y-4 py-2">
-                        {/* Slider remains the same */}
-                        <div className="space-y-3">
+                        <StepIndicator step={conversionStep} />
+                        {conversionStep !== 'ready_to_mint' && (
+                            <div className="space-y-3">
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">Convert to USDP</span>
                                 <span className="font-semibold">{percentage}%</span>
@@ -607,6 +708,7 @@ export function StablecoinRiskAssessment() {
                                 </span>
                             </div>
                         </div>
+                        )}
                         
                         {/* Connection Check */}
                         {!isConnected ? (
@@ -621,15 +723,21 @@ export function StablecoinRiskAssessment() {
                                 <p className="text-sm font-semibold text-destructive-foreground">Wrong Network</p>
                                 <p className="text-xs text-muted-foreground">Please connect to Ethereum Mainnet to continue.</p>
                             </div>
-                        ) : conversionStep === 'success' ? (
-                            <div className="text-center p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2">
-                                <h4 className="font-semibold text-green-400">Swap Successful!</h4>
-                                <p className="text-xs text-muted-foreground">You have received ETH and can now proceed to mint USDP.</p>
-                                {txHash && 
-                                    <a href={`${mainnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1">
-                                        View Transaction <ExternalLink className="w-3 h-3"/>
-                                    </a>
-                                }
+                        ) : conversionStep === 'ready_to_mint' ? (
+                            <div className="space-y-4">
+                                <div className="text-center p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-1">
+                                    <h4 className="font-semibold text-green-400">Swap Successful!</h4>
+                                    <p className="text-xs text-muted-foreground">You received {formatUnits(ethAmountToMint, 18)} ETH.</p>
+                                </div>
+                                <div className="flex gap-3 pt-2">
+                                    <Button variant="outline" className="flex-1 bg-transparent" onClick={handleCancel} disabled={isLoading}>
+                                        Cancel
+                                    </Button>
+                                    <Button onClick={handleMint} className="flex-1 bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold" disabled={isLoading}>
+                                        {isLoading ? 'Minting...' : 'Mint USDP'}
+                                        <ArrowRight className="w-4 h-4 ml-2" />
+                                    </Button>
+                                </div>
                             </div>
                         ) : (
                             /* Action Buttons */
