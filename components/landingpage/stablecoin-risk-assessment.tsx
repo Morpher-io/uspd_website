@@ -747,7 +747,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
                           <Sparkles className="w-8 h-8 animate-pulse" />
                         </div>
                         <div className="text-center space-y-2">
-                          <h4 className="text-xl font-bold text-[var(--uspd-green)]">You're Now Protected!</h4>
+                          <h4 className="text-xl font-bold text-[var(--uspd-green)]">You&apos;re Now Protected!</h4>
                           <p className="text-sm text-muted-foreground">
                             Your funds are now secured by stETH collateral and earning{" "}
                             <span className="text-[var(--uspd-green)] font-semibold">2.75-4% APY</span>
@@ -925,7 +925,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="w-6 h-6 text-[var(--uspd-green)]" />
-            <h2 className="text-2xl font-bold">You're Safe From These Risks</h2>
+            <h2 className="text-2xl font-bold">You&apos;re Safe From These Risks</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -949,7 +949,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
 
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        You're avoiding{" "}
+                        You&apos;re avoiding{" "}
                         <span className="text-[var(--uspd-green)] font-semibold">{criticalRisks} critical risks</span>
                       </p>
                       <div className="flex flex-wrap gap-1">

@@ -55,7 +55,7 @@ export default function MultiChain() {
                         <p className="text-muted-foreground mb-6 text-lg">
                             Our native bridge architecture ensures your USPD retains its value and properties, no matter which network you&apos;re on. Experience fast, secure, and reliable transfers between Ethereum and other leading blockchains.
                         </p>
-                        <Link href="/docs/bridge" className="w-full md:w-auto">
+                        <Link href="/bridge" className="w-full md:w-auto">
                             <InteractiveHoverButton className="border-morpher-secondary rounded-sm p-6 w-full">
                                 BRIDGE YOUR USPD
                             </InteractiveHoverButton>

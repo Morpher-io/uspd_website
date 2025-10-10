@@ -16,6 +16,8 @@
 
   --color-morpher-primary: hsl(161,100%,38%);
   --color-morpher-secondary: hsl(162,63%,95%);
+  --uspd-green: hsl(161,100%,38%);
+  --uspd-green-dark: hsl(161, 100%, 33%);
   
   /* Brand Color Palette */
   --color-light-grey: #d6d6d6;
@@ -114,6 +116,7 @@
   --chart-5: hsl(340 75% 55%);
   --color-morpher-primary: hsl(162, 29%, 20%);
   --color-morpher-secondary: hsl(161,100%,38%);
+  
 }
 /*
   ---break---

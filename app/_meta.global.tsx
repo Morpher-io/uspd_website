@@ -20,6 +20,10 @@ export default {
     title: 'How USPD Works',
     display: "hidden"
   },
+  "riskassessment": {
+    title: 'Risk Assessment',
+    display: "hidden"
+  },
   
   docs: {
     // type: 'page',
