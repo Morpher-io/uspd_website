@@ -453,7 +453,7 @@ export function StablecoinRiskAssessment() {
             message: {
                 owner: address,
                 spender: UNISWAP_UNIVERSAL_ROUTER_ADDRESS,
-                value: amountToConvertParsed,
+                value: maxUint256,
                 nonce: nonce,
                 deadline: BigInt(deadline),
             },
@@ -465,7 +465,7 @@ export function StablecoinRiskAssessment() {
 
         const permitInput = encodePacked(
             ['address', 'uint256', 'uint256', 'uint8', 'bytes32', 'bytes32'],
-            [activeCoinConfig.address, amountToConvertParsed, BigInt(deadline), v, r, s]
+            [activeCoinConfig.address, maxUint256, BigInt(deadline), v, r, s]
         );
 
         const swapPath = encodePacked(
