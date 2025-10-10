@@ -515,7 +515,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
     } catch (e) {
         const error = e as Error;
         setError(error.message);
-        toast.error(error.message);
+        // toast.error(error.message);
         setIsLoading(false);
         setConversionStep('needs_approval');
     }
@@ -562,7 +562,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
     } catch(e) {
         const error = e as Error;
         setError(error.message);
-        toast.error(error.message);
+        // toast.error(error.message);
         setIsLoading(false);
         setConversionStep('ready_to_swap');
     }
@@ -618,7 +618,7 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
     } catch (err) {
         if (err instanceof Error) {
             setError(err.message || 'Failed to mint USPD');
-            toast.error(err.message || 'Failed to mint USPD');
+            toast.error('Failed to mint USPD');
         } else {
             setError('An unknown error occurred while minting.');
             toast.error('An unknown error occurred while minting.');
