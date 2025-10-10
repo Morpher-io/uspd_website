@@ -14,7 +14,6 @@ import { ConnectButton } from "@rainbow-me/rainbowkit"
 
 const UNISWAP_UNIVERSAL_ROUTER_ADDRESS = "0x66a9893cc07d91d95644aedd05d03f95e1dba8af" as const
 const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" as const
-const ADDRESS_THIS = "0x0000000000000000000000000000000000000001" as const
 
 const erc20Abi = [
   {
@@ -417,7 +416,7 @@ export function StablecoinRiskAssessment() {
         const inputs = [
             encodeAbiParameters( // V3_SWAP_EXACT_IN
                 [ { type: 'address' }, { type: 'uint256' }, { type: 'uint256' }, { type: 'bytes' }, { type: 'bool' } ],
-                [ADDRESS_THIS, amountToConvertParsed, 0n, swapPath, true] // recipient is the router, payer is the user
+                [UNISWAP_UNIVERSAL_ROUTER_ADDRESS, amountToConvertParsed, 0n, swapPath, true] // recipient is the router, payer is the user
             ),
             encodeAbiParameters( // UNWRAP_WETH
                 [ { type: 'address' }, { type: 'uint256' } ],
