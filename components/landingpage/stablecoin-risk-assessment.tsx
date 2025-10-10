@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, CheckCircle2, TrendingUp, Shield, AlertCircle, ArrowRight, Sparkles, ExternalLink } from "lucide-react"
-import { useAccount, useReadContracts, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useSignTypedData } from "wagmi"
+import { useAccount, useReadContracts, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt } from "wagmi"
 import { formatUnits, parseUnits, maxUint256, Abi, encodeFunctionData, encodePacked, zeroAddress } from "viem"
 import { toast } from "sonner"
 import { mainnet } from "wagmi/chains"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 
-const UNISWAP_UNIVERSAL_ROUTER_ADDRESS = "0x66a9893cc07d91d95644aedd05d03f95e1dba8af" as const
+const UNISWAP_UNIVERSAL_ROUTER_ADDRESS = "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD" as const
 const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" as const
 
 const erc20Abi = [
@@ -42,13 +42,6 @@ const erc20Abi = [
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "address", "name": "owner", "type": "address" }],
-    "name": "nonces",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
   }
 ] as const
 
@@ -72,36 +65,34 @@ const STABLECOINS_CONFIG = [
     address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as const,
     decimals: 6,
     uniswapFeeTier: 500, // 0.05%
-    permit: true,
-    permitVersion: "2", // USDC-specific
   },
   {
     symbol: "USDT",
     name: "Tether",
     address: "0xdAC17F958D2ee523a2206206994597C13D831ec7" as const,
     decimals: 6,
-    permit: false,
+    uniswapFeeTier: 3000, // 0.3% is common for USDT
   },
   {
     symbol: "DAI",
     name: "Dai Stablecoin",
     address: "0x6B175474E89094C44Da98b954EedeAC495271d0F" as const,
     decimals: 18,
-    permit: false, // DAI permit is non-standard, treat as no permit for now
+    uniswapFeeTier: 500, // 0.05%
   },
   {
     symbol: "FDUSD",
     name: "First Digital USD",
     address: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409" as const,
     decimals: 18,
-    permit: false,
+    uniswapFeeTier: 500, // Assuming 0.05%
   },
   {
     symbol: "USDtb",
     name: "USDtb",
     address: "0xC139190F447e929f090Edeb554D95AbB8b18aC1C" as const,
     decimals: 18,
-    permit: false,
+    uniswapFeeTier: 500, // Assuming 0.05%
   },
 ]
 
@@ -117,12 +108,11 @@ interface Stablecoin {
   }[]
 }
 
-type ConversionStep = "idle" | "needs_approval" | "approving" | "needs_signature" | "ready_to_swap" | "swapping" | "success"
+type ConversionStep = "idle" | "needs_approval" | "approving" | "ready_to_swap" | "swapping" | "success"
 export function StablecoinRiskAssessment() {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
   const { writeContractAsync } = useWriteContract()
-  const { signTypedDataAsync } = useSignTypedData()
 
   const [userBalances, setUserBalances] = useState<Omit<Stablecoin, "risks">[]>([])
   const [convertingCoin, setConvertingCoin] = useState<string | null>(null)
@@ -165,26 +155,12 @@ export function StablecoinRiskAssessment() {
     }
   });
 
-  const { data: nonce, refetch: refetchNonce } = useReadContract({
-    address: activeCoinConfig?.address,
-    abi: erc20Abi,
-    functionName: 'nonces',
-    args: [address!],
-    query: {
-        enabled: !!address && !!activeCoinConfig?.permit && convertingCoin !== null,
-    }
-  });
-
   useEffect(() => {
     if (convertingCoin && allowance !== undefined) {
       if (allowance >= amountToConvertParsed) {
         setConversionStep('ready_to_swap');
       } else {
-        if (activeCoinConfig?.permit) {
-            setConversionStep('needs_signature');
-        } else {
-            setConversionStep('needs_approval');
-        }
+        setConversionStep('needs_approval');
       }
     }
   }, [convertingCoin, allowance, amountToConvertParsed, activeCoinConfig]);
@@ -198,7 +174,6 @@ export function StablecoinRiskAssessment() {
         } else if (conversionStep === 'swapping') {
             toast.success("Swap successful!");
             setConversionStep('success');
-            refetchNonce(); // Refetch nonce for next permit signature
             setTimeout(() => {
                 const symbol = activeCoinConfig?.symbol;
                 if (symbol) {
@@ -421,88 +396,6 @@ export function StablecoinRiskAssessment() {
     }
   }
 
-  const handleSignAndSwap = async () => {
-    if (!activeCoinConfig || !address || chainId !== mainnet.id || amountToConvertParsed <= 0 || nonce === undefined) {
-        setError("Invalid state for signing.");
-        return;
-    }
-    setError(null);
-    setIsLoading(true);
-    setConversionStep('swapping');
-
-    try {
-        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
-
-        const signature = await signTypedDataAsync({
-            domain: {
-                name: activeCoinConfig.name,
-                version: activeCoinConfig.permitVersion,
-                chainId: chainId,
-                verifyingContract: activeCoinConfig.address,
-            },
-            types: {
-                Permit: [
-                    { name: 'owner', type: 'address' },
-                    { name: 'spender', type: 'address' },
-                    { name: 'value', type: 'uint256' },
-                    { name: 'nonce', type: 'uint256' },
-                    { name: 'deadline', type: 'uint256' },
-                ],
-            },
-            primaryType: 'Permit',
-            message: {
-                owner: address,
-                spender: UNISWAP_UNIVERSAL_ROUTER_ADDRESS,
-                value: maxUint256,
-                nonce: nonce,
-                deadline: BigInt(deadline),
-            },
-        });
-
-        const r = signature.slice(0, 66) as `0x${string}`;
-        const s = `0x${signature.slice(66, 130)}` as `0x${string}`;
-        const v = parseInt(signature.slice(130, 132), 16);
-
-        const permitInput = encodePacked(
-            ['address', 'uint256', 'uint256', 'uint8', 'bytes32', 'bytes32'],
-            [activeCoinConfig.address, maxUint256, BigInt(deadline), v, r, s]
-        );
-
-        const swapPath = encodePacked(
-            ['address', 'uint24', 'address'],
-            [activeCoinConfig.address, activeCoinConfig.uniswapFeeTier || 300, WETH_ADDRESS]
-        );
-
-        const commands = '0x01000c'; // PERMIT, V3_SWAP_EXACT_IN, UNWRAP_WETH
-        const inputs = [
-            permitInput,
-            encodePacked( // V3_SWAP_EXACT_IN
-                ['address', 'uint256', 'uint256', 'bytes', 'bool'],
-                [zeroAddress, amountToConvertParsed, 0n, swapPath, false] // payer is router
-            ),
-            encodePacked( // UNWRAP_WETH
-                ['address', 'uint256'],
-                [address, 0n]
-            )
-        ];
-
-        const hash = await writeContractAsync({
-            address: UNISWAP_UNIVERSAL_ROUTER_ADDRESS,
-            abi: universalRouterAbi,
-            functionName: 'execute',
-            args: [commands, inputs],
-        });
-
-        setTxHash(hash);
-        toast.info("Swap transaction sent...");
-    } catch(e) {
-        const error = e as Error;
-        setError(error.message);
-        toast.error(error.message);
-        setIsLoading(false);
-        setConversionStep('needs_signature');
-    }
-  }
 
   const handleSwap = async () => {
     if (!activeCoinConfig || !address || chainId !== mainnet.id || amountToConvertParsed <= 0) {
@@ -744,12 +637,6 @@ export function StablecoinRiskAssessment() {
                                 <Button variant="outline" className="flex-1 bg-transparent" onClick={handleCancel} disabled={isLoading || isConfirming}>
                                     Cancel
                                 </Button>
-                                {conversionStep === 'needs_signature' && (
-                                    <Button onClick={handleSignAndSwap} className="flex-1 bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold" disabled={isLoading || isConfirming}>
-                                        {isLoading ? 'Check Wallet' : 'Sign & Swap for ETH'}
-                                        <ArrowRight className="w-4 h-4 ml-2" />
-                                    </Button>
-                                )}
                                 {conversionStep === 'needs_approval' && (
                                     <Button onClick={handleApprove} className="flex-1" disabled={isLoading || isConfirming}>
                                         {isConfirming ? 'Approving...' : isLoading ? 'Check Wallet' : `Approve ${activeCoinConfig?.symbol || ''}`}
@@ -814,11 +701,10 @@ export function StablecoinRiskAssessment() {
                           className="w-full bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold"
                           size="lg"
                           onClick={() => handleConvert(coin.symbol)}
-                          disabled={coin.symbol !== 'USDC'}
-                          title={coin.symbol !== 'USDC' ? 'Conversion for this stablecoin is coming soon.' : `Protect Your ${coin.symbol}`}
+                          title={`Protect Your ${coin.symbol}`}
                         >
-                          {coin.symbol !== 'USDC' ? 'Coming Soon' : `Protect Your ${coin.symbol} Now`}
-                          {coin.symbol === 'USDC' && <Shield className="w-4 h-4 ml-2" />}
+                          Protect Your {coin.symbol} Now
+                          <Shield className="w-4 h-4 ml-2" />
                         </Button>
                       </>
                     )}
