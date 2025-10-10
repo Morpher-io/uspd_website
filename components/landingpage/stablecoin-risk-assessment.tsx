@@ -470,7 +470,7 @@ export function StablecoinRiskAssessment() {
 
         const swapPath = encodePacked(
             ['address', 'uint24', 'address'],
-            [activeCoinConfig.address, activeCoinConfig.uniswapFeeTier, WETH_ADDRESS]
+            [activeCoinConfig.address, activeCoinConfig.uniswapFeeTier || 300, WETH_ADDRESS]
         );
 
         const commands = '0x01000c'; // PERMIT, V3_SWAP_EXACT_IN, UNWRAP_WETH
