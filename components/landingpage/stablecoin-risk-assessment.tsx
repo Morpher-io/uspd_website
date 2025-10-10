@@ -15,6 +15,36 @@ import { ConnectButton } from "@rainbow-me/rainbowkit"
 const UNISWAP_UNIVERSAL_ROUTER_ADDRESS = "0x66a9893cc07d91d95644aedd05d03f95e1dba8af" as const
 const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" as const
 
+// TODO: Replace with actual USPD contract details
+const USPD_TOKEN_ADDRESS = "0x..." as const;
+const USPD_TOKEN_ABI = [
+    {
+        "inputs": [
+            { "internalType": "address", "name": "recipient", "type": "address" },
+            { "components": [
+                { "internalType": "uint256", "name": "price", "type": "uint256" },
+                { "internalType": "uint8", "name": "decimals", "type": "uint8" },
+                { "internalType": "uint256", "name": "dataTimestamp", "type": "uint256" },
+                { "internalType": "bytes32", "name": "assetPair", "type": "bytes32" },
+                { "internalType": "bytes", "name": "signature", "type": "bytes" }
+            ], "internalType": "struct IPriceOracle.PriceAttestationQuery", "name": "priceQuery", "type": "tuple" }
+        ],
+        "name": "mint",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    }
+] as const;
+
+// From MintWidget.tsx
+interface PriceData {
+    price: string;
+    decimals: number;
+    dataTimestamp: number;
+    assetPair: `0x${string}`;
+    signature: `0x${string}`;
+}
+
 const erc20Abi = [
   {
     inputs: [{ name: "_owner", type: "address" }],
@@ -190,8 +220,34 @@ export function StablecoinRiskAssessment() {
   const [txHash, setTxHash] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ethAmountToMint, setEthAmountToMint] = useState<bigint>(0n)
+  const [priceData, setPriceData] = useState<PriceData | null>(null)
+  const [isLoadingPrice, setIsLoadingPrice] = useState(false)
 
   const { data: receipt, isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash as `0x${string}` | undefined });
+
+  // From MintWidget.tsx
+  const fetchPriceData = async () => {
+      try {
+          setIsLoadingPrice(true)
+          const response = await fetch('/api/v1/price/eth-usd')
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data: PriceData = await response.json()
+          setPriceData(data)
+          return data
+      } catch (err) {
+          console.error('Failed to fetch price data:', err)
+          setError('Failed to fetch ETH price data')
+      } finally {
+          setIsLoadingPrice(false)
+      }
+  }
+
+  // Fetch price data on mount and periodically
+  useEffect(() => {
+      fetchPriceData()
+      const interval = setInterval(fetchPriceData, 30000) // Refresh every 30 seconds
+      return () => clearInterval(interval)
+  }, [])
 
   const activeCoinConfig = useMemo(() => 
     STABLECOINS_CONFIG.find(c => c.symbol === convertingCoin),
@@ -237,6 +293,8 @@ export function StablecoinRiskAssessment() {
             toast.success("Approval successful!");
             refetchAllowance();
             setConversionStep('ready_to_swap');
+            setIsLoading(false);
+            setTxHash(null);
         } else if (conversionStep === 'swapping') {
             toast.success("Swap successful!");
             // Attempt to find the ETH amount from the Withdrawal event log
@@ -259,9 +317,18 @@ export function StablecoinRiskAssessment() {
                 // Fallback or error handling
             }
             setConversionStep('ready_to_mint');
+            setIsLoading(false);
+        } else if (conversionStep === 'minting') {
+            toast.success("Minting successful! You are now protected.");
+            setConversionStep('success');
+            setIsLoading(false);
+            const symbol = activeCoinConfig?.symbol;
+            if (symbol) {
+                setConvertingCoin(null);
+                setSuccessCoin(symbol);
+                setTimeout(() => setSuccessCoin(null), 8000);
+            }
         }
-        setIsLoading(false);
-        // We keep the txHash to show a link to the transaction
     }
   }, [isConfirmed, conversionStep, txHash, receipt, refetchAllowance, activeCoinConfig]);
 
@@ -522,25 +589,54 @@ export function StablecoinRiskAssessment() {
   }
 
   const handleMint = async () => {
-    // Placeholder for minting logic
-    setConversionStep('minting');
+    if (!address || ethAmountToMint <= 0) {
+        setError("No ETH amount to mint.");
+        return;
+    }
+    setError(null);
     setIsLoading(true);
-    
-    toast.info("Minting would happen here.", {
-      description: "This is a placeholder for the real mint transaction.",
-    });
+    setConversionStep('minting');
 
-    // Simulate minting success and show final success state
-    setTimeout(() => {
-        setIsLoading(false);
-        setConversionStep('success');
-        const symbol = activeCoinConfig?.symbol;
-        if (symbol) {
-            setConvertingCoin(null);
-            setSuccessCoin(symbol);
-            setTimeout(() => setSuccessCoin(null), 8000);
+    try {
+        const freshPriceData = await fetchPriceData()
+        if (!freshPriceData) {
+            setError('Failed to fetch price data for minting')
+            setIsLoading(false);
+            setConversionStep('ready_to_mint');
+            return
         }
-    }, 2000);
+
+        const priceQuery = {
+            price: BigInt(freshPriceData.price),
+            decimals: Number(freshPriceData.decimals),
+            dataTimestamp: BigInt(freshPriceData.dataTimestamp),
+            assetPair: freshPriceData.assetPair as `0x${string}`,
+            signature: freshPriceData.signature as `0x${string}`
+        };
+        
+        const hash = await writeContractAsync({
+            address: USPD_TOKEN_ADDRESS,
+            abi: USPD_TOKEN_ABI,
+            functionName: 'mint',
+            args: [address, priceQuery],
+            value: ethAmountToMint
+        });
+
+        setTxHash(hash);
+        toast.info("Mint transaction sent...");
+
+    } catch (err) {
+        if (err instanceof Error) {
+            setError(err.message || 'Failed to mint USPD');
+            toast.error(err.message || 'Failed to mint USPD');
+        } else {
+            setError('An unknown error occurred while minting.');
+            toast.error('An unknown error occurred while minting.');
+        }
+        console.error(err)
+        setIsLoading(false);
+        setConversionStep('ready_to_mint');
+    }
   }
 
   const getSeverityColor = (severity: string) => {
@@ -733,8 +829,8 @@ export function StablecoinRiskAssessment() {
                                     <Button variant="outline" className="flex-1 bg-transparent" onClick={handleCancel} disabled={isLoading}>
                                         Cancel
                                     </Button>
-                                    <Button onClick={handleMint} className="flex-1 bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold" disabled={isLoading}>
-                                        {isLoading ? 'Minting...' : 'Mint USDP'}
+                                    <Button onClick={handleMint} className="flex-1 bg-[var(--uspd-green)] hover:bg-[var(--uspd-green-dark)] text-black font-semibold" disabled={isLoading || isLoadingPrice}>
+                                        {isLoadingPrice ? "Fetching Price..." : isLoading ? "Minting..." : "Mint USDP"}
                                         <ArrowRight className="w-4 h-4 ml-2" />
                                     </Button>
                                 </div>
