@@ -330,7 +330,8 @@ export function StablecoinRiskAssessment({ uspdTokenAddress, uspdTokenAbi }: Sta
       const formattedBalances = STABLECOINS_CONFIG.map((coin, index) => {
         const balanceResult = balancesData[index]
         if (balanceResult.status === "success" && typeof balanceResult.result === "bigint") {
-          const balance = parseFloat(formatUnits(balanceResult.result, coin.decimals))
+          let balance = parseFloat(formatUnits(balanceResult.result, coin.decimals))
+          balance = Math.floor(balance * 100) / 100;
           
           if (balance > 1) {
             // Only care about balances > $1
