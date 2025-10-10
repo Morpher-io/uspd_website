@@ -12,7 +12,7 @@ import { toast } from "sonner"
 import { mainnet } from "wagmi/chains"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 
-const UNISWAP_UNIVERSAL_ROUTER_ADDRESS = "0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD" as const
+const UNISWAP_UNIVERSAL_ROUTER_ADDRESS = "0x66a9893cc07d91d95644aedd05d03f95e1dba8af" as const
 const WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" as const
 
 const erc20Abi = [
